@@ -496,6 +496,7 @@ const MCPServers: React.FC<MCPServerProps> = ({ accessToken, userRole, userID })
             <Tab>All Servers</Tab>
             <Tab>Toolsets</Tab>
             <Tab>Connect</Tab>
+            <Tab>LazyMCP Connect</Tab>
             {isAdminRole(userRole) && <Tab>Semantic Filter</Tab>}
             {isAdminRole(userRole) && <Tab>Network Settings</Tab>}
             {isAdminRole(userRole) && (
@@ -650,6 +651,9 @@ const MCPServers: React.FC<MCPServerProps> = ({ accessToken, userRole, userID })
           </TabPanel>
           <TabPanel>
             <MCPConnect />
+          </TabPanel>
+          <TabPanel>
+            <MCPConnect mode="lazymcp" />
           </TabPanel>
           {isAdminRole(userRole) && (
             <TabPanel>

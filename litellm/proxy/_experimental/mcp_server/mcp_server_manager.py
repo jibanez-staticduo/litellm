@@ -780,14 +780,7 @@ class MCPServerManager:
                 # oauth specific fields
                 client_id=server_config.get("client_id", None),
                 client_secret=server_config.get("client_secret", None),
-                oauth2_flow=self._resolve_oauth2_flow(
-                    auth_type=auth_type,
-                    oauth2_flow=server_config.get("oauth2_flow", None),
-                    token_url=resolved_token_url,
-                    authorization_url=resolved_authorization_url,
-                    client_id=server_config.get("client_id", None),
-                    client_secret=server_config.get("client_secret", None),
-                ),
+                oauth2_flow=server_config.get("oauth2_flow", None),
                 scopes=resolved_scopes,
                 authorization_url=resolved_authorization_url,
                 token_url=resolved_token_url,
@@ -908,8 +901,7 @@ class MCPServerManager:
             # Add any static headers from server config.
             #
             # Note: `extra_headers` on MCPServer is a List[str] of header names to forward
-            # from each client MCP request; values are applied at call time via
-            # `_request_extra_headers` in server.py (not baked in here).
+            # from the client request (not available in this OpenAPI tool generation step).
             # `static_headers` is a dict of concrete headers to always send.
             headers = (
                 merge_mcp_headers(
@@ -1268,8 +1260,7 @@ class MCPServerManager:
                 server=server,
                 base_url=server.url or "",
             )
-            if initialize_mapping:
-                self.initialize_tool_name_to_mcp_server_name_mapping()
+            self.initialize_tool_name_to_mcp_server_name_mapping()
 
     async def add_server(self, mcp_server: LiteLLM_MCPServerTable):
         # The runtime registry is the allowlist for tool calls and health
@@ -1568,6 +1559,17 @@ class MCPServerManager:
                 ]
             for k in keys_to_remove:
                 cache_dict.pop(k, None)
+            try:
+                from litellm.proxy._experimental.mcp_server.server import (
+                    invalidate_lazymcp_cache,
+                )
+
+                invalidate_lazymcp_cache()
+            except Exception as lazy_exc:
+                verbose_logger.debug(
+                    "invalidate_toolset_cache: failed to evict LazyMCP entries: %s",
+                    lazy_exc,
+                )
         except Exception as e:
             verbose_logger.warning(f"invalidate_toolset_cache: failed to evict in-memory entries: {e}")
 
@@ -2049,9 +2051,8 @@ class MCPServerManager:
 
         Auth resolution (single place for all auth logic):
         1. ``mcp_auth_header`` — per-request/per-user override
-        2. OAuth2 Token Exchange (OBO) — exchange user token for scoped token
-        3. OAuth2 client_credentials token — auto-fetched and cached
-        4. ``server.authentication_token`` — static token from config/DB
+        2. OAuth2 client_credentials token — auto-fetched and cached
+        3. ``server.authentication_token`` — static token from config/DB
 
         Args:
             server: The server configuration.
@@ -2546,47 +2547,6 @@ class MCPServerManager:
         )
         return await client.get_prompt(get_prompt_request_params)
 
-    @staticmethod
-    def _is_same_authority_metadata_url(url: str, server_url: str) -> bool:
-        """
-        Whether ``url`` shares scheme, host, and port with ``server_url``.
-
-        Same-authority metadata URLs are produced by our well-known discovery
-        construction and by resource servers that publish protected-resource
-        metadata on the resource origin. These must keep working for
-        administrator-configured internal MCP servers, so they are fetched
-        directly. Cross-origin URLs are fetched through ``async_safe_get``.
-        """
-        try:
-            target = urlparse(url)
-            base = urlparse(server_url)
-        except Exception:
-            return False
-
-        if target.scheme not in ("http", "https") or not target.hostname:
-            return False
-
-        target_port = target.port or (443 if target.scheme == "https" else 80)
-        base_port = base.port or (443 if base.scheme == "https" else 80)
-        return (
-            base.scheme == target.scheme
-            and (base.hostname or "").lower() == target.hostname.lower()
-            and base_port == target_port
-        )
-
-    async def _fetch_oauth_discovery_url(self, url: str, server_url: str) -> Any:
-        client = get_async_httpx_client(
-            llm_provider=httpxSpecialProvider.MCP,
-            params={"timeout": MCP_METADATA_TIMEOUT},
-        )
-        if self._is_same_authority_metadata_url(url, server_url):
-            # Same-authority URLs may point at administrator-configured
-            # internal MCP servers. Do not run them through user URL
-            # validation, but also do not follow redirects because the
-            # redirect target would not inherit the same-authority guarantee.
-            return await client.get(url, follow_redirects=False)
-        return await async_safe_get(client, url)
-
     async def _descovery_metadata(
         self,
         server_url: str,
@@ -2702,15 +2662,6 @@ class MCPServerManager:
             response = await self._fetch_oauth_discovery_url(resource_metadata_url, server_url)
             response.raise_for_status()
             data = response.json()
-        except SSRFError as exc:
-            verbose_logger.warning(
-                "MCP OAuth discovery: refusing to fetch resource metadata from %s "
-                "(rejected by SSRF guard for server %s): %s",
-                resource_metadata_url,
-                server_url,
-                exc,
-            )
-            return [], None
         except Exception as exc:  # pragma: no cover - network issues
             verbose_logger.debug(
                 "Failed to fetch MCP OAuth metadata from %s: %s",
@@ -2751,7 +2702,7 @@ class MCPServerManager:
             (
                 authorization_servers,
                 scopes,
-            ) = await self._fetch_oauth_metadata_from_resource(url, server_url)
+            ) = await self._fetch_oauth_metadata_from_resource(url)
             if authorization_servers:
                 return authorization_servers, scopes
 
@@ -2767,7 +2718,7 @@ class MCPServerManager:
         return None
 
     async def _fetch_single_authorization_server_metadata(
-        self, issuer_url: str, server_url: str
+        self, issuer_url: str
     ) -> Optional[MCPOAuthMetadata]:
         try:
             parsed = urlparse(issuer_url)
@@ -2791,18 +2742,13 @@ class MCPServerManager:
 
         for url in candidate_urls:
             try:
-                response = await self._fetch_oauth_discovery_url(url, server_url)
+                client = get_async_httpx_client(
+                    llm_provider=httpxSpecialProvider.MCP,
+                    params={"timeout": MCP_METADATA_TIMEOUT},
+                )
+                response = await client.get(url)
                 response.raise_for_status()
                 data = response.json()
-            except SSRFError as exc:
-                verbose_logger.warning(
-                    "MCP OAuth discovery: refusing to fetch authorization-server "
-                    "metadata from %s (rejected by SSRF guard for server %s): %s",
-                    url,
-                    server_url,
-                    exc,
-                )
-                continue
             except Exception as exc:  # pragma: no cover - network issues
                 verbose_logger.debug(
                     "Failed to fetch authorization metadata from %s: %s",
@@ -3626,10 +3572,6 @@ class MCPServerManager:
                     )
             extra_headers.update(hook_extra_headers)
 
-        # Reset to None if no headers were actually added
-        if extra_headers is not None and len(extra_headers) == 0:
-            extra_headers = None
-
         stdio_env = self._build_stdio_env(mcp_server, raw_headers)
 
         client = await self._create_mcp_client(
@@ -4042,19 +3984,18 @@ class MCPServerManager:
         # against the *full* set so dedup is deterministic regardless of
         # iteration order.
         for server in db_mcp_servers:
-            try:
-                existing_server = previous_registry.get(server.server_id)
+            existing_server = previous_registry.get(server.server_id)
 
-                if (
-                    existing_server is not None
-                    and existing_server.updated_at is not None
-                    and server.updated_at is not None
-                    and existing_server.updated_at == server.updated_at
-                ):
-                    # Re-use existing server instance to avoid re-running build_mcp_server_from_table()
-                    # which can perform network discovery for OAuth2 servers.
-                    new_registry[server.server_id] = existing_server
-                    continue
+            if (
+                existing_server is not None
+                and existing_server.updated_at is not None
+                and server.updated_at is not None
+                and existing_server.updated_at == server.updated_at
+            ):
+                # Re-use existing server instance to avoid re-running build_mcp_server_from_table()
+                # which can perform network discovery for OAuth2 servers.
+                new_registry[server.server_id] = existing_server
+                continue
 
                 _warn_on_server_name_fields(
                     server_id=server.server_id,

@@ -231,6 +231,22 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
         completed_response._hidden_params["additional_headers"] = processed_headers
         completed_response._hidden_params["headers"] = raw_headers
 
+    @staticmethod
+    def _build_completed_response(
+        response_payload: dict, accumulated_output_items: list
+    ) -> ResponsesAPIResponse:
+        response_payload = dict(response_payload)
+        if "created_at" in response_payload:
+            response_payload["created_at"] = _safe_convert_created_field(
+                response_payload["created_at"]
+            )
+        if not response_payload.get("output") and accumulated_output_items:
+            response_payload["output"] = accumulated_output_items
+        try:
+            return ResponsesAPIResponse(**response_payload)
+        except Exception:
+            return ResponsesAPIResponse.model_construct(**response_payload)
+
     def get_complete_url(
         self,
         api_base: Optional[str],

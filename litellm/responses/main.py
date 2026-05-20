@@ -194,6 +194,7 @@ async def aresponses_api_with_mcp(
     mcp_auth_header: Optional[str] = None
     mcp_server_auth_headers: Optional[Dict[str, Dict[str, str]]] = None
     secret_fields = kwargs.get("secret_fields")
+    client_ip = ResponsesAPIRequestUtils.get_verified_mcp_client_ip(secret_fields)
     if secret_fields and isinstance(secret_fields, dict):
         (
             mcp_auth_header,
@@ -213,6 +214,7 @@ async def aresponses_api_with_mcp(
         mcp_auth_header=mcp_auth_header,
         mcp_server_auth_headers=mcp_server_auth_headers,
         request_tags=LiteLLM_Proxy_MCP_Handler._get_parent_request_tags(kwargs),
+        client_ip=client_ip,
     )
     openai_tools = LiteLLM_Proxy_MCP_Handler._transform_mcp_tools_to_openai(original_mcp_tools)
 
@@ -259,6 +261,7 @@ async def aresponses_api_with_mcp(
             user_api_key_auth=user_api_key_auth,
             base_item_id=base_item_id,
             pre_processed_mcp_tools=original_mcp_tools,
+            client_ip=client_ip,
         )
 
         return LiteLLM_Proxy_MCP_Handler._create_mcp_streaming_response(

@@ -115,8 +115,13 @@ async def acompletion_with_mcp(
         )
 
     # Extract user_api_key_auth from metadata or kwargs
-    user_api_key_auth = kwargs.get("user_api_key_auth") or ((kwargs.get("metadata", {}) or {}).get("user_api_key_auth"))
+    user_api_key_auth = kwargs.get("user_api_key_auth") or (
+        (kwargs.get("metadata", {}) or {}).get("user_api_key_auth")
+    )
     request_tags = LiteLLM_Proxy_MCP_Handler._get_parent_request_tags(kwargs)
+    client_ip = ResponsesAPIRequestUtils.get_verified_mcp_client_ip(
+        kwargs.get("secret_fields")
+    )
 
     # Extract MCP auth headers before fetching tools (needed for dynamic auth)
     (
@@ -140,6 +145,7 @@ async def acompletion_with_mcp(
         mcp_auth_header=mcp_auth_header,
         mcp_server_auth_headers=mcp_server_auth_headers,
         request_tags=request_tags,
+        client_ip=client_ip,
     )
 
     openai_tools = LiteLLM_Proxy_MCP_Handler._transform_mcp_tools_to_openai(
@@ -614,6 +620,7 @@ async def acompletion_with_mcp(
         mcp_server_auth_headers=mcp_server_auth_headers,
         oauth2_headers=oauth2_headers,
         raw_headers=raw_headers,
+        client_ip=client_ip,
         litellm_call_id=kwargs.get("litellm_call_id"),
         litellm_trace_id=kwargs.get("litellm_trace_id"),
         request_tags=request_tags,

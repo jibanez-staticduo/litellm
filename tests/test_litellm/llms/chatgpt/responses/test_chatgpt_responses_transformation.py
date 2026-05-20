@@ -290,6 +290,107 @@ class TestChatGPTResponsesAPITransformation:
 
         assert parsed.output_text == "Recovered from padded"
 
+    def test_chatgpt_accumulates_multiple_output_item_done_events(self):
+        config = ChatGPTResponsesAPIConfig()
+        reasoning_item = {
+            "id": "rs_test",
+            "type": "reasoning",
+            "summary": [],
+            "encrypted_content": "ENCRYPTED",
+        }
+        message_item = {
+            "id": "msg_test",
+            "type": "message",
+            "role": "assistant",
+            "status": "completed",
+            "content": [
+                {
+                    "type": "output_text",
+                    "text": "hello world",
+                    "annotations": [],
+                }
+            ],
+        }
+        response_payload = {
+            "id": "resp_test",
+            "object": "response",
+            "created_at": 1700000000,
+            "status": "completed",
+            "model": "gpt-5.3-codex",
+            "output": [],
+            "usage": {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15},
+        }
+        sse_body = "\n".join(
+            [
+                f"data: {json.dumps({'type': 'response.output_item.done', 'output_index': 0, 'item': reasoning_item})}",
+                f"data: {json.dumps({'type': 'response.output_item.done', 'output_index': 1, 'item': message_item})}",
+                f"data: {json.dumps({'type': 'response.completed', 'response': response_payload})}",
+                "data: [DONE]",
+                "",
+            ]
+        )
+        raw_response = httpx.Response(
+            200, headers={"content-type": "text/event-stream"}, text=sse_body
+        )
+
+        parsed = config.transform_response_api_response(
+            model="chatgpt/gpt-5.3-codex",
+            raw_response=raw_response,
+            logging_obj=MagicMock(),
+        )
+
+        assert len(parsed.output) == 2
+        assert parsed.output[0].type == "reasoning"
+        assert parsed.output[1].type == "message"
+        assert parsed.output_text == "hello world"
+
+    def test_chatgpt_prefers_nonempty_completed_output_over_accumulated(self):
+        config = ChatGPTResponsesAPIConfig()
+        stray_item = {
+            "id": "msg_stray",
+            "type": "message",
+            "role": "assistant",
+            "status": "completed",
+            "content": [{"type": "output_text", "text": "stray", "annotations": []}],
+        }
+        canonical_item = {
+            "id": "msg_canonical",
+            "type": "message",
+            "role": "assistant",
+            "status": "completed",
+            "content": [
+                {"type": "output_text", "text": "canonical", "annotations": []}
+            ],
+        }
+        response_payload = {
+            "id": "resp_test",
+            "object": "response",
+            "created_at": 1700000000,
+            "status": "completed",
+            "model": "gpt-5.3-codex",
+            "output": [canonical_item],
+        }
+        sse_body = "\n".join(
+            [
+                f"data: {json.dumps({'type': 'response.output_item.done', 'output_index': 0, 'item': stray_item})}",
+                f"data: {json.dumps({'type': 'response.completed', 'response': response_payload})}",
+                "data: [DONE]",
+                "",
+            ]
+        )
+        raw_response = httpx.Response(
+            200, headers={"content-type": "text/event-stream"}, text=sse_body
+        )
+
+        parsed = config.transform_response_api_response(
+            model="chatgpt/gpt-5.3-codex",
+            raw_response=raw_response,
+            logging_obj=MagicMock(),
+        )
+
+        assert len(parsed.output) == 1
+        assert parsed.output_text == "canonical"
+
     @pytest.mark.parametrize(
         "error_chunk",
         [
