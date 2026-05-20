@@ -481,7 +481,52 @@ const MCPServers: React.FC<MCPServerProps> = ({ accessToken, userRole, userID })
             </div>
             <p className="mt-1 text-sm text-muted-foreground">Configure and manage your MCP servers</p>
           </div>
-          <div className="flex items-center gap-2">
+          <Text className="text-tremor-content mt-1">Configure and manage your MCP servers</Text>
+        </div>
+        <div className="flex items-center gap-2">
+          {isAdminRole(userRole) && (
+            <Button className="shrink-0" onClick={() => setDiscoveryVisible(true)}>
+              + Add New MCP Server
+            </Button>
+          )}
+          {!isAdminRole(userRole) && (
+            <Button
+              className="shrink-0"
+              onClick={() => {
+                setPrefillData(null);
+                setModalVisible(true);
+              }}
+              variant="secondary"
+            >
+              + Submit MCP Server
+            </Button>
+          )}
+        </div>
+      </div>
+      <MCPDiscovery
+        isVisible={isDiscoveryVisible}
+        onClose={() => setDiscoveryVisible(false)}
+        onSelectServer={(server: DiscoverableMCPServer) => {
+          setPrefillData(server);
+          setDiscoveryVisible(false);
+          setModalVisible(true);
+        }}
+        onCustomServer={() => {
+          setPrefillData(null);
+          setDiscoveryVisible(false);
+          setModalVisible(true);
+        }}
+        accessToken={accessToken}
+      />
+      <TabGroup className="w-full h-full">
+        <TabList className="flex justify-between mt-2 w-full items-center">
+          <div className="flex">
+            <Tab>All Servers</Tab>
+            <Tab>Toolsets</Tab>
+            <Tab>Connect</Tab>
+            <Tab>LazyMCP Connect</Tab>
+            {isAdminRole(userRole) && <Tab>Semantic Filter</Tab>}
+            {isAdminRole(userRole) && <Tab>Network Settings</Tab>}
             {isAdminRole(userRole) && (
               <Button className="shrink-0" onClick={() => setDiscoveryVisible(true)}>
                 + Add New MCP Server
@@ -708,7 +753,10 @@ const MCPServers: React.FC<MCPServerProps> = ({ accessToken, userRole, userID })
           </TabsContent>
           <TabsContent value="connect">
             <MCPConnect />
-          </TabsContent>
+          </TabPanel>
+          <TabPanel>
+            <MCPConnect mode="lazymcp" />
+          </TabPanel>
           {isAdminRole(userRole) && (
             <TabsContent value="semantic-filter">
               <MCPSemanticFilterSettings accessToken={accessToken} />

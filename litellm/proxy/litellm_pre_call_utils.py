@@ -8,8 +8,7 @@ from collections.abc import Mapping
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Final
 
-from fastapi import HTTPException, Request
-from pydantic import ValidationError as PydanticValidationError
+from fastapi import Request
 from starlette.datastructures import Headers
 
 import litellm
@@ -29,10 +28,6 @@ from litellm.litellm_core_utils.initialize_dynamic_callback_params import (
     iter_client_callback_metadata_dicts,
 )
 from litellm.litellm_core_utils.safe_json_loads import safe_json_loads
-from litellm.litellm_core_utils.url_utils import (
-    is_url_destination_allowed_by_host,
-    provider_url_destination_candidates,
-)
 from litellm.proxy._types import (
     AddTeamCallback,
     CommonProxyErrors,
@@ -48,6 +43,7 @@ from litellm.proxy.common_utils.callback_utils import (
     strip_callback_config,
 )
 from litellm.proxy.common_utils.http_parsing_utils import _safe_get_request_headers
+from litellm.proxy.auth.ip_address_utils import IPAddressUtils
 
 # Cache special headers as a frozenset for O(1) lookup performance
 _SPECIAL_HEADERS_CACHE: Final = frozenset(v.value.lower() for v in SpecialHeaders._member_map_.values())
@@ -133,7 +129,6 @@ from litellm.secret_managers.main import get_secret_bool
 from litellm.types.llms.anthropic import ANTHROPIC_API_HEADERS
 from litellm.types.services import ServiceTypes
 from litellm.types.utils import (
-    CustomPricingLiteLLMParams,
     LlmProviders,
     ProviderSpecificHeader,
     StandardLoggingUserAPIKeyMetadata,
@@ -678,7 +673,9 @@ def convert_key_logging_metadata_to_callback(
     for var, value in data.callback_vars.items():
         if team_callback_settings_obj.callback_vars is None:
             team_callback_settings_obj.callback_vars = {}
-        team_callback_settings_obj.callback_vars[var] = str(value)
+        team_callback_settings_obj.callback_vars[var] = str(
+            litellm.utils.get_secret(value, default_value=value) or value
+        )
 
     return team_callback_settings_obj
 
@@ -728,11 +725,8 @@ def _get_dynamic_logging_metadata(
     #########################################################################################
     if key_dynamic_logging_settings is not None:
         for item in key_dynamic_logging_settings:
-            callback = _get_validated_callback_metadata(item=item, source="key-level")
-            if callback is None:
-                continue
             callback_settings_obj = convert_key_logging_metadata_to_callback(
-                data=callback,
+                data=AddTeamCallback(**item),
                 team_callback_settings_obj=callback_settings_obj,
             )
     #########################################################################################
@@ -740,11 +734,8 @@ def _get_dynamic_logging_metadata(
     #########################################################################################
     elif team_dynamic_logging_settings is not None:
         for item in team_dynamic_logging_settings:
-            callback = _get_validated_callback_metadata(item=item, source="team-level")
-            if callback is None:
-                continue
             callback_settings_obj = convert_key_logging_metadata_to_callback(
-                data=callback,
+                data=AddTeamCallback(**item),
                 team_callback_settings_obj=callback_settings_obj,
             )
     #########################################################################################
@@ -1571,7 +1562,6 @@ async def add_litellm_data_to_request(
         if _allow_client_mock_response and _internal_key in _CLIENT_MOCK_CONTROL_FIELDS:
             continue
         data.pop(_internal_key, None)
-    _reject_url_valued_destinations(data)
     # Strip spoofable auth metadata from user-supplied metadata dict
     _user_metadata = data.get("metadata")
     if isinstance(_user_metadata, dict):
@@ -1679,12 +1669,12 @@ async def add_litellm_data_to_request(
         if "user" not in data:
             data["user"] = user
 
-    if litellm.overwrite_user_with_key_hash is True:
-        stampable_hash: Final = _stampable_key_hash(user_api_key_dict)
-        if stampable_hash is not None:
-            data["user"] = stampable_hash
-
-    data["secret_fields"] = SecretFields(raw_headers=_raw_headers)
+    data["secret_fields"] = SecretFields(
+        raw_headers=_raw_headers,
+        mcp_client_ip=IPAddressUtils.get_mcp_client_ip(
+            request, general_settings=general_settings
+        ),
+    )
 
     ## Dynamic api version (Azure OpenAI endpoints) ##
     try:
@@ -1979,10 +1969,16 @@ async def add_litellm_data_to_request(
     )
 
     if tags is not None:
-        data[_metadata_variable_name]["tags"] = LiteLLMProxyRequestSetup._merge_tags(
-            request_tags=data[_metadata_variable_name].get("tags"),
-            tags_to_add=tags,
-        )
+        if _admin_allow_client_tags:
+            data[_metadata_variable_name]["tags"] = LiteLLMProxyRequestSetup._merge_tags(
+                request_tags=data[_metadata_variable_name].get("tags"),
+                tags_to_add=tags,
+            )
+        else:
+            verbose_proxy_logger.warning(
+                "Ignored caller-supplied tags from header/root body: this "
+                "key/team does not have `allow_client_tags: true` in its metadata."
+            )
 
     _caller_body_metadata: Final = data.get("metadata") if _metadata_variable_name != "metadata" else None
     _caller_body_tags: Final = (
