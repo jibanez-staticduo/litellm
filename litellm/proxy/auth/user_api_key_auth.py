@@ -1723,10 +1723,15 @@ async def _user_api_key_auth_builder(
                     )
                     user_obj = None
 
+                user_metadata = (
+                    user_obj.get("metadata")
+                    if isinstance(user_obj, dict)
+                    else getattr(user_obj, "metadata", None)
+                )
                 if (
                     user_obj is not None
-                    and isinstance(user_obj.metadata, dict)
-                    and user_obj.metadata.get("scim_active") is False
+                    and isinstance(user_metadata, dict)
+                    and user_metadata.get("scim_active") is False
                 ):
                     raise Exception(
                         f"User={valid_token.user_id} has been deactivated via SCIM. Keys owned by this user cannot be used."
