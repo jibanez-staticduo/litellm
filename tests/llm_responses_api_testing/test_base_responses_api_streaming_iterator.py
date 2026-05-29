@@ -26,6 +26,7 @@ sys.path.insert(0, os.path.abspath("../.."))
 from litellm.constants import STREAM_SSE_DONE_STRING
 from litellm.litellm_core_utils.litellm_logging import Logging as LiteLLMLoggingObj
 from litellm.llms.base_llm.responses.transformation import BaseResponsesAPIConfig
+from litellm.llms.openai.responses.transformation import OpenAIResponsesAPIConfig
 from litellm.responses.streaming_iterator import BaseResponsesAPIStreamingIterator
 from litellm.responses.utils import ResponsesAPIRequestUtils
 from litellm.types.llms.openai import (
@@ -655,3 +656,65 @@ class TestBaseResponsesAPIStreamingIterator:
             # Failure handlers should NOT have been called
             mock_logging_obj.async_failure_handler.assert_not_called()
             mock_logging_obj.failure_handler.assert_not_called()
+
+    def test_transform_streaming_response_normalizes_chat_usage(self):
+        config = OpenAIResponsesAPIConfig()
+        chunk = {
+            "type": "response.completed",
+            "response": {
+                "id": "resp_123",
+                "created_at": 1710000000,
+                "output": [],
+                "usage": {
+                    "prompt_tokens": 29732,
+                    "completion_tokens": 267,
+                    "total_tokens": 29999,
+                    "prompt_tokens_details": {"cached_tokens": 10},
+                    "completion_tokens_details": {"reasoning_tokens": 3},
+                },
+            },
+        }
+
+        event = config.transform_streaming_response(
+            model="gpt-5.5",
+            parsed_chunk=chunk,
+            logging_obj=Mock(spec=LiteLLMLoggingObj),
+        )
+
+        assert event.type == ResponsesAPIStreamEvents.RESPONSE_COMPLETED
+        assert event.response.usage.input_tokens == 29732
+        assert event.response.usage.output_tokens == 267
+        assert event.response.usage.total_tokens == 29999
+        assert event.response.usage.input_tokens_details.cached_tokens == 10
+        assert event.response.usage.output_tokens_details.reasoning_tokens == 3
+
+    def test_transform_streaming_response_preserves_responses_usage(self):
+        config = OpenAIResponsesAPIConfig()
+        usage = {
+            "input_tokens": 12,
+            "output_tokens": 5,
+            "total_tokens": 17,
+            "input_tokens_details": {"cached_tokens": 2},
+            "output_tokens_details": {"reasoning_tokens": 1},
+        }
+        chunk = {
+            "type": "response.completed",
+            "response": {
+                "id": "resp_123",
+                "created_at": 1710000000,
+                "output": [],
+                "usage": usage,
+            },
+        }
+
+        event = config.transform_streaming_response(
+            model="gpt-4.1",
+            parsed_chunk=chunk,
+            logging_obj=Mock(spec=LiteLLMLoggingObj),
+        )
+
+        assert event.response.usage.input_tokens == 12
+        assert event.response.usage.output_tokens == 5
+        assert event.response.usage.total_tokens == 17
+        assert event.response.usage.input_tokens_details.cached_tokens == 2
+        assert event.response.usage.output_tokens_details.reasoning_tokens == 1
