@@ -16,6 +16,12 @@ from litellm.constants import SENTRY_DENYLIST, SENTRY_PII_DENYLIST
 from litellm.integrations.custom_logger import CustomLogger
 from litellm.litellm_core_utils.litellm_logging import Logging as LitellmLogging
 from litellm.litellm_core_utils.litellm_logging import set_callbacks
+from litellm.types.llms.openai import (
+    ResponseAPIUsage,
+    ResponseCompletedEvent,
+    ResponsesAPIResponse,
+    ResponsesAPIStreamEvents,
+)
 from litellm.types.utils import ModelResponse, TextCompletionResponse
 
 
@@ -2347,6 +2353,75 @@ def test_streaming_success_handler_includes_vertex_ai_metadata_in_standard_loggi
     assert payload is not None
     assert payload["response"]["vertex_ai_grounding_metadata"] == grounding_metadata
     assert payload["response"]["vertex_ai_url_context_metadata"] == url_context_metadata
+
+
+def test_get_assembled_streaming_response_transforms_dict_response_usage():
+    """Responses stream events can carry a dict response during success logging."""
+    import datetime
+
+    logging_obj = _make_logging_obj(stream=True)
+    response = {
+        "id": "resp-1",
+        "object": "response",
+        "output": [],
+        "usage": {
+            "input_tokens": 10,
+            "output_tokens": 5,
+            "total_tokens": 15,
+        },
+    }
+    result = ResponseCompletedEvent.model_construct(
+        type=ResponsesAPIStreamEvents.RESPONSE_COMPLETED,
+        response=response,
+    )
+
+    assembled = logging_obj._get_assembled_streaming_response(
+        result=result,
+        start_time=datetime.datetime.now(),
+        end_time=datetime.datetime.now(),
+        is_async=True,
+        streaming_chunks=[],
+    )
+
+    assert assembled is response
+    assert assembled["usage"]["prompt_tokens"] == 10
+    assert assembled["usage"]["completion_tokens"] == 5
+    assert assembled["usage"]["total_tokens"] == 15
+
+
+def test_get_assembled_streaming_response_transforms_typed_response_usage():
+    """Typed Responses API usage should keep existing chat-usage transformation."""
+    import datetime
+
+    logging_obj = _make_logging_obj(stream=True)
+    response = ResponsesAPIResponse(
+        id="resp-1",
+        created_at=0,
+        object="response",
+        output=[],
+        usage=ResponseAPIUsage(
+            input_tokens=7,
+            output_tokens=3,
+            total_tokens=10,
+        ),
+    )
+    result = ResponseCompletedEvent(
+        type=ResponsesAPIStreamEvents.RESPONSE_COMPLETED,
+        response=response,
+    )
+
+    assembled = logging_obj._get_assembled_streaming_response(
+        result=result,
+        start_time=datetime.datetime.now(),
+        end_time=datetime.datetime.now(),
+        is_async=True,
+        streaming_chunks=[],
+    )
+
+    assert assembled is response
+    assert assembled.usage["prompt_tokens"] == 7
+    assert assembled.usage["completion_tokens"] == 3
+    assert assembled.usage["total_tokens"] == 10
 
 
 def test_get_assembled_streaming_response_returns_none_for_non_streaming_text_completion():
