@@ -247,6 +247,30 @@ class TestResponseAPILoggingUtils:
         assert result.total_tokens == 30
         assert result.prompt_tokens_details and result.prompt_tokens_details.cached_tokens == 2
 
+    def test_transform_chat_usage_to_chat_usage(self):
+        """Test chat-format usage is accepted by the shared Responses usage transformer."""
+        usage = {
+            "prompt_tokens": 29732,
+            "completion_tokens": 267,
+            "total_tokens": 29999,
+            "prompt_tokens_details": {"cached_tokens": 10, "audio_tokens": 0},
+            "completion_tokens_details": {"reasoning_tokens": 3},
+        }
+
+        result = ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(
+            usage
+        )
+
+        assert isinstance(result, Usage)
+        assert result.prompt_tokens == 29732
+        assert result.completion_tokens == 267
+        assert result.total_tokens == 29999
+        assert result.prompt_tokens_details is not None
+        assert result.prompt_tokens_details.cached_tokens == 10
+        assert result.prompt_tokens_details.audio_tokens == 0
+        assert result.completion_tokens_details is not None
+        assert result.completion_tokens_details.reasoning_tokens == 3
+
     def test_transform_response_api_usage_with_none_values(self):
         """Test transformation handles None values properly"""
         # Setup
