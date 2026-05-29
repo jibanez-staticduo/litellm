@@ -313,6 +313,7 @@ class OpenAIResponsesAPIConfig(BaseResponsesAPIConfig):
         verbose_logger.debug("Raw OpenAI Chunk=%s", parsed_chunk)
         event_type = str(parsed_chunk.get("type"))
         event_pydantic_model = OpenAIResponsesAPIConfig.get_event_model_class(event_type=event_type)
+        parsed_chunk = self._normalize_streaming_response_usage(parsed_chunk)
         # Some OpenAI-compatible providers send error.code: null; coalesce so validation succeeds.
         try:
             error_obj = parsed_chunk.get("error")
@@ -332,6 +333,49 @@ class OpenAIResponsesAPIConfig(BaseResponsesAPIConfig):
                 parsed_chunk,
             )
             return event_pydantic_model.model_construct(**parsed_chunk)
+
+    @staticmethod
+    def _normalize_streaming_response_usage(parsed_chunk: dict) -> dict:
+        response = parsed_chunk.get("response")
+        if not isinstance(response, dict):
+            return parsed_chunk
+
+        usage = response.get("usage")
+        if not isinstance(usage, dict):
+            return parsed_chunk
+        if "input_tokens" in usage and "output_tokens" in usage:
+            return parsed_chunk
+        if "prompt_tokens" not in usage and "completion_tokens" not in usage:
+            return parsed_chunk
+
+        normalized_usage = dict(usage)
+        if "input_tokens" not in normalized_usage and "prompt_tokens" in usage:
+            normalized_usage["input_tokens"] = usage["prompt_tokens"]
+        if "output_tokens" not in normalized_usage and "completion_tokens" in usage:
+            normalized_usage["output_tokens"] = usage["completion_tokens"]
+        if (
+            "input_tokens_details" not in normalized_usage
+            and "prompt_tokens_details" in usage
+        ):
+            normalized_usage["input_tokens_details"] = usage["prompt_tokens_details"]
+        if (
+            "output_tokens_details" not in normalized_usage
+            and "completion_tokens_details" in usage
+        ):
+            normalized_usage["output_tokens_details"] = usage[
+                "completion_tokens_details"
+            ]
+        if "total_tokens" not in normalized_usage:
+            input_tokens = normalized_usage.get("input_tokens")
+            output_tokens = normalized_usage.get("output_tokens")
+            if input_tokens is not None and output_tokens is not None:
+                normalized_usage["total_tokens"] = input_tokens + output_tokens
+
+        normalized_response = dict(response)
+        normalized_response["usage"] = normalized_usage
+        normalized_chunk = dict(parsed_chunk)
+        normalized_chunk["response"] = normalized_response
+        return normalized_chunk
 
     @staticmethod
     def get_event_model_class(event_type: str) -> Any:
