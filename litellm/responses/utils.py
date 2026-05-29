@@ -945,6 +945,30 @@ class ResponsesAPIRequestUtils:
 
 class ResponseAPILoggingUtils:
     @staticmethod
+    def _normalize_chat_usage_to_response_api_usage(usage: dict) -> dict:
+        if "input_tokens" in usage and "output_tokens" in usage:
+            return usage
+        if "prompt_tokens" not in usage or "completion_tokens" not in usage:
+            return usage
+
+        normalized_usage = dict(usage)
+        normalized_usage["input_tokens"] = usage["prompt_tokens"]
+        normalized_usage["output_tokens"] = usage["completion_tokens"]
+        if (
+            "input_tokens_details" not in normalized_usage
+            and "prompt_tokens_details" in usage
+        ):
+            normalized_usage["input_tokens_details"] = usage["prompt_tokens_details"]
+        if (
+            "output_tokens_details" not in normalized_usage
+            and "completion_tokens_details" in usage
+        ):
+            normalized_usage["output_tokens_details"] = usage[
+                "completion_tokens_details"
+            ]
+        return normalized_usage
+
+    @staticmethod
     def _is_response_api_usage(usage: Union[dict, ResponseAPIUsage]) -> bool:
         """returns True if usage is from OpenAI Response API"""
         if isinstance(usage, ResponseAPIUsage):
@@ -972,11 +996,12 @@ class ResponseAPILoggingUtils:
         response_api_usage: ResponseAPIUsage
         if isinstance(usage_input, dict):
             usage_input = dict(usage_input)  # shallow copy; avoid mutating caller
-            # Realtime *_token_details → *_tokens_details when unset.
+            # Realtime *_token_details -> *_tokens_details when unset.
             if usage_input.get("input_tokens_details") is None and "input_token_details" in usage_input:
                 usage_input["input_tokens_details"] = usage_input["input_token_details"]
             if usage_input.get("output_tokens_details") is None and "output_token_details" in usage_input:
                 usage_input["output_tokens_details"] = usage_input["output_token_details"]
+            usage_input = ResponseAPILoggingUtils._normalize_chat_usage_to_response_api_usage(usage_input)
             total_tokens = usage_input.get("total_tokens")
             if total_tokens is None:
                 input_tokens = usage_input.get("input_tokens")
