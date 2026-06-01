@@ -1,0 +1,3 @@
+container=/litellm status=running health=healthy image=docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260601 image_id=sha256:ab75ad44ea89242baa2e386f94950e53f067f6a11dd70de5117091ae717de782 started=2026-06-01T05:11:59.396863821Z
+readiness_status=200
+{"status":"healthy","db":"connected"}
