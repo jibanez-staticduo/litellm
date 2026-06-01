@@ -55,6 +55,7 @@ from litellm.proxy._experimental.mcp_server.mcp_context import (
     _mcp_gateway_server_name,
 )
 from litellm.proxy._experimental.mcp_server.mcp_debug import MCPDebug
+from litellm.proxy._experimental.mcp_server.mcp_server_manager import MCPServerManager
 from litellm.proxy._experimental.mcp_server.utils import (
     LITELLM_MCP_SERVER_DESCRIPTION,
     LITELLM_MCP_SERVER_NAME,
@@ -1677,6 +1678,9 @@ if MCP_AVAILABLE:
                 if header_value is None:
                     continue
                 extra_headers[header] = header_value
+
+        if extra_headers is not None and len(extra_headers) == 0:
+            extra_headers = None
 
         if server_auth_header is None:
             server_auth_header = mcp_auth_header
