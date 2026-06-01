@@ -31,6 +31,7 @@ from litellm.proxy.auth.handle_jwt import JWTHandler
 from litellm.proxy.auth.auth_checks import (
     _cache_key_object,
     _get_user_role,
+    _get_user_object_value,
     _is_user_proxy_admin,
     common_checks,
     get_key_object,
@@ -84,6 +85,33 @@ def test_route_requires_auth_despite_public_for_metrics(monkeypatch):
     monkeypatch.setattr(litellm, "require_auth_for_metrics_endpoint", False)
 
     assert _route_requires_auth_despite_public("/metrics", {}) is False
+
+
+def test_get_user_object_value_reads_cached_user_dict_and_object():
+    user_dict = {
+        "tpm_limit": 1000,
+        "rpm_limit": 100,
+        "user_email": "cached@example.com",
+        "spend": 250.0,
+        "max_budget": 1000.0,
+        "user_role": "internal_user",
+    }
+    user_obj = SimpleNamespace(
+        tpm_limit=2000,
+        rpm_limit=200,
+        user_email="object@example.com",
+        spend=125.0,
+        max_budget=500.0,
+        user_role="proxy_admin",
+    )
+
+    assert _get_user_object_value(user_dict, "tpm_limit") == 1000
+    assert _get_user_object_value(user_dict, "rpm_limit") == 100
+    assert _get_user_object_value(user_dict, "spend") == 250.0
+    assert _get_user_object_value(user_dict, "missing") is None
+    assert _get_user_object_value(user_obj, "tpm_limit") == 2000
+    assert _get_user_object_value(user_obj, "rpm_limit") == 200
+    assert _get_user_object_value(user_obj, "spend") == 125.0
 
 
 def test_public_ai_hub_routes_remain_public():

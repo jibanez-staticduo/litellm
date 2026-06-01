@@ -626,21 +626,22 @@ async def common_checks(
             if (
                 (team_object is None or team_object.team_id is None)
                 and user_object is not None
-                and user_object.max_budget is not None
+                and _get_user_object_value(user_object, "max_budget") is not None
             ):
                 from litellm.proxy.proxy_server import get_current_spend
 
-                user_budget = user_object.max_budget
+                user_budget = _get_user_object_value(user_object, "max_budget")
+                user_id = _get_user_object_value(user_object, "user_id")
                 user_spend = await get_current_spend(
-                    counter_key=f"spend:user:{user_object.user_id}",
-                    fallback_spend=user_object.spend or 0.0,
+                    counter_key=f"spend:user:{user_id}",
+                    fallback_spend=_get_user_object_value(user_object, "spend") or 0.0,
                     max_budget=user_budget,
                 )
                 if math.isfinite(user_budget) and user_spend >= user_budget:
                     raise litellm.BudgetExceededError(
                         current_cost=user_spend,
                         max_budget=user_budget,
-                        message=f"ExceededBudget: User={user_object.user_id} over budget. Spend={user_spend}, Budget={user_budget}",
+                        message=f"ExceededBudget: User={user_id} over budget. Spend={user_spend}, Budget={user_budget}",
                     )
 
         # Each scope reads a distinct counter key with no cross-scope ordering
@@ -740,9 +741,7 @@ def _get_user_role(
     if user_obj is None:
         return None
 
-    _user_role = (
-        user_obj.get("user_role") if isinstance(user_obj, dict) else user_obj.user_role
-    )
+    _user_role = _get_user_object_value(user_obj=user_obj, field="user_role")
     try:
         role = LitellmUserRoles(_user_role)
     except ValueError:
@@ -782,8 +781,18 @@ def _is_user_proxy_admin(user_obj: Optional[Union[LiteLLM_UserTable, dict]]):
     if user_obj is None:
         return False
 
-    user_role = user_obj.get("user_role") if isinstance(user_obj, dict) else user_obj.user_role
+    user_role = _get_user_object_value(user_obj=user_obj, field="user_role")
     return user_role is not None and user_role == LitellmUserRoles.PROXY_ADMIN.value
+
+
+def _get_user_object_value(
+    user_obj: Optional[Union[LiteLLM_UserTable, dict]], field: str
+):
+    if user_obj is None:
+        return None
+    if isinstance(user_obj, dict):
+        return user_obj.get(field)
+    return getattr(user_obj, field, None)
 
 
 def _allowed_routes_check(user_route: str, allowed_routes: list) -> bool:
@@ -3256,7 +3265,8 @@ async def can_user_call_model(
     if user_object is None:
         return True
 
-    if SpecialModelNames.no_default_models.value in user_object.models:
+    user_models = _get_user_object_value(user_object, "models") or []
+    if SpecialModelNames.no_default_models.value in user_models:
         raise ProxyException(
             message=f"User not allowed to access model. No default model access, only team models allowed. Tried to access {model}",
             type=ProxyErrorTypes.key_model_access_denied,
@@ -3267,7 +3277,7 @@ async def can_user_call_model(
     return _can_object_call_model(
         model=model,
         llm_router=llm_router,
-        models=user_object.models,
+        models=user_models,
         object_type="user",
     )
 
@@ -3457,7 +3467,7 @@ async def _virtual_key_max_budget_check(
         user_email = None
         # Check if the token has any user id information
         if user_obj is not None:
-            user_email = user_obj.user_email
+            user_email = _get_user_object_value(user_obj, "user_email")
 
         call_info = CallInfo(
             token=valid_token.token,
@@ -3564,7 +3574,9 @@ async def _virtual_key_soft_budget_check(
             team_id=valid_token.team_id,
             team_alias=valid_token.team_alias,
             organization_id=valid_token.org_id,
-            user_email=user_obj.user_email if user_obj else None,
+            user_email=(
+                _get_user_object_value(user_obj, "user_email") if user_obj else None
+            ),
             key_alias=valid_token.key_alias,
             event_group=Litellm_EntityType.KEY,
         )
@@ -3631,7 +3643,7 @@ async def _virtual_key_max_budget_alert_check(
     """
 
     if valid_token.max_budget is not None and valid_token.spend is not None and valid_token.spend > 0:
-        owner_email = user_obj.user_email if user_obj else None
+        owner_email = _get_user_object_value(user_obj, "user_email") if user_obj else None
         alert_email_config: Optional[Dict[str, List[str]]] = _merge_budget_alert_email_configs(
             global_cfg=litellm.default_key_max_budget_alert_emails,
             per_key_cfg=(valid_token.metadata or {}).get("max_budget_alert_emails"),

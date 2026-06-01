@@ -36,6 +36,7 @@ from litellm.proxy.auth.auth_checks import (
     _check_end_user_budget,
     _delete_cache_key_object,
     _get_user_role,
+    _get_user_object_value,
     _is_model_cost_zero,
     _is_user_proxy_admin,
     _virtual_key_max_budget_alert_check,
@@ -108,14 +109,6 @@ def _normalize_public_auth_route(route: str) -> str:
     if route != "/" and route.endswith("/"):
         return route.rstrip("/")
     return route
-
-
-def _get_user_obj_value(user_obj: Optional[Union[LiteLLM_UserTable, dict]], field: str):
-    if user_obj is None:
-        return None
-    if isinstance(user_obj, dict):
-        return user_obj.get(field)
-    return getattr(user_obj, field, None)
 
 
 def _route_requires_auth_despite_public(route: str, general_settings: Optional[dict]) -> bool:
@@ -1304,16 +1297,25 @@ async def _user_api_key_auth_builder(
                         team_rpm_limit=(team_object.rpm_limit if team_object is not None else None),
                         team_models=(team_object.models if team_object is not None else []),
                         user_role=(
-                            LitellmUserRoles(user_object.user_role)
-                            if user_object is not None and user_object.user_role is not None
+                            LitellmUserRoles(_get_user_object_value(user_object, "user_role"))
+                            if user_object is not None
+                            and _get_user_object_value(user_object, "user_role") is not None
                             else LitellmUserRoles.INTERNAL_USER
                         ),
                         user_id=user_id,
                         org_id=org_id,
                         parent_otel_span=parent_otel_span,
                         end_user_id=end_user_id,
-                        user_tpm_limit=(user_object.tpm_limit if user_object is not None else None),
-                        user_rpm_limit=(user_object.rpm_limit if user_object is not None else None),
+                        user_tpm_limit=(
+                            _get_user_object_value(user_object, "tpm_limit")
+                            if user_object is not None
+                            else None
+                        ),
+                        user_rpm_limit=(
+                            _get_user_object_value(user_object, "rpm_limit")
+                            if user_object is not None
+                            else None
+                        ),
                         team_member_rpm_limit=(
                             team_membership.safe_get_team_member_rpm_limit() if team_membership is not None else None
                         ),
@@ -2331,7 +2333,11 @@ async def _run_centralized_common_checks(
         user_object = LiteLLM_UserTable(
             user_id=user_api_key_auth_obj.user_id or litellm_proxy_admin_name,
             user_role=LitellmUserRoles.PROXY_ADMIN,
-            spend=user_object.spend if user_object is not None else 0.0,
+            spend=(
+                _get_user_object_value(user_object, "spend")
+                if user_object is not None
+                else 0.0
+            ),
         )
 
     if project_object is not None:
@@ -2643,11 +2649,11 @@ async def _return_user_api_key_auth_obj(
     }
     if user_obj is not None:
         user_api_key_kwargs.update(
-            user_tpm_limit=_get_user_obj_value(user_obj, "tpm_limit"),
-            user_rpm_limit=_get_user_obj_value(user_obj, "rpm_limit"),
-            user_email=_get_user_obj_value(user_obj, "user_email"),
-            user_spend=_get_user_obj_value(user_obj, "spend"),
-            user_max_budget=_get_user_obj_value(user_obj, "max_budget"),
+            user_tpm_limit=_get_user_object_value(user_obj, "tpm_limit"),
+            user_rpm_limit=_get_user_object_value(user_obj, "rpm_limit"),
+            user_email=_get_user_object_value(user_obj, "user_email"),
+            user_spend=_get_user_object_value(user_obj, "spend"),
+            user_max_budget=_get_user_object_value(user_obj, "max_budget"),
         )
     if user_obj is not None and _is_user_proxy_admin(user_obj=user_obj):
         user_api_key_kwargs.update(
