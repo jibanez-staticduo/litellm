@@ -1,0 +1,6 @@
+tpm_limit_attr_error=0
+user_role_attr_error=0
+spend_attr_error=0
+generic_dict_attr_error=0
+generic_object_attr_error=0
+auth_exception=0
