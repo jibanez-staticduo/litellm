@@ -1482,6 +1482,50 @@ async def test_return_user_api_key_auth_obj_user_spend_and_budget():
     assert result.user_email == "test@example.com"
 
 
+@pytest.mark.asyncio
+async def test_return_user_api_key_auth_obj_cached_user_dict_limits():
+    """
+    Test that _return_user_api_key_auth_obj reads user limits from cached dicts.
+    """
+    from datetime import datetime
+
+    from litellm.proxy._types import UserAPIKeyAuth
+    from litellm.proxy.auth.user_api_key_auth import _return_user_api_key_auth_obj
+
+    user_obj = {
+        "tpm_limit": 1000,
+        "rpm_limit": 100,
+        "user_email": "cached@example.com",
+        "spend": 250.0,
+        "max_budget": 1000.0,
+        "user_role": "internal_user",
+    }
+
+    mock_service_logger = MagicMock()
+    mock_service_logger.async_service_success_hook = AsyncMock()
+
+    with patch(
+        "litellm.proxy.auth.user_api_key_auth.user_api_key_service_logger_obj",
+        new=mock_service_logger,
+    ):
+        result = await _return_user_api_key_auth_obj(
+            user_obj=user_obj,
+            api_key="sk-test-key",
+            parent_otel_span=None,
+            valid_token_dict={"user_id": "test-user", "org_id": "test-org"},
+            route="/chat/completions",
+            start_time=datetime.now(),
+            user_role=None,
+        )
+
+    assert isinstance(result, UserAPIKeyAuth)
+    assert result.user_tpm_limit == 1000
+    assert result.user_rpm_limit == 100
+    assert result.user_email == "cached@example.com"
+    assert result.user_spend == 250.0
+    assert result.user_max_budget == 1000.0
+
+
 def test_proxy_admin_jwt_auth_includes_identity_fields():
     """
     Test that the proxy admin early-return path in JWT auth populates

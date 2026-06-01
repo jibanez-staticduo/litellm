@@ -110,6 +110,14 @@ def _normalize_public_auth_route(route: str) -> str:
     return route
 
 
+def _get_user_obj_value(user_obj: Optional[Union[LiteLLM_UserTable, dict]], field: str):
+    if user_obj is None:
+        return None
+    if isinstance(user_obj, dict):
+        return user_obj.get(field)
+    return getattr(user_obj, field, None)
+
+
 def _route_requires_auth_despite_public(route: str, general_settings: Optional[dict]) -> bool:
     normalized_route = _normalize_public_auth_route(route)
     if normalized_route == "/metrics":
@@ -2604,7 +2612,7 @@ async def user_api_key_auth(
 
 
 async def _return_user_api_key_auth_obj(
-    user_obj: Optional[LiteLLM_UserTable],
+    user_obj: Optional[Union[LiteLLM_UserTable, dict]],
     api_key: str,
     parent_otel_span: Optional[Span],
     valid_token_dict: dict,
@@ -2635,11 +2643,11 @@ async def _return_user_api_key_auth_obj(
     }
     if user_obj is not None:
         user_api_key_kwargs.update(
-            user_tpm_limit=user_obj.tpm_limit,
-            user_rpm_limit=user_obj.rpm_limit,
-            user_email=user_obj.user_email,
-            user_spend=getattr(user_obj, "spend", None),
-            user_max_budget=getattr(user_obj, "max_budget", None),
+            user_tpm_limit=_get_user_obj_value(user_obj, "tpm_limit"),
+            user_rpm_limit=_get_user_obj_value(user_obj, "rpm_limit"),
+            user_email=_get_user_obj_value(user_obj, "user_email"),
+            user_spend=_get_user_obj_value(user_obj, "spend"),
+            user_max_budget=_get_user_obj_value(user_obj, "max_budget"),
         )
     if user_obj is not None and _is_user_proxy_admin(user_obj=user_obj):
         user_api_key_kwargs.update(
