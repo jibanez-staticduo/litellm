@@ -5756,6 +5756,49 @@ async def dequeue_spend_logs(prisma_client: PrismaClient, limit: int) -> list[di
 
 class ProxyUpdateSpend:
     @staticmethod
+    async def _create_spend_logs_batch_with_isolation(
+        prisma_client: PrismaClient, batch_with_dates: List[Dict[str, Any]]
+    ) -> None:
+        try:
+            await prisma_client.db.litellm_spendlogs.create_many(
+                data=batch_with_dates, skip_duplicates=True
+            )
+            return
+        except DB_CONNECTION_ERROR_TYPES:
+            raise
+        except Exception as batch_error:
+            if len(batch_with_dates) <= 1:
+                raise
+
+            verbose_proxy_logger.warning(
+                "Spend tracking - batch spend log insert failed; retrying entries individually. "
+                "batch_size=%d, error=%s",
+                len(batch_with_dates),
+                str(batch_error),
+            )
+
+            successful_inserts = 0
+            for entry in batch_with_dates:
+                try:
+                    await prisma_client.db.litellm_spendlogs.create_many(
+                        data=[entry], skip_duplicates=True
+                    )
+                    successful_inserts += 1
+                except DB_CONNECTION_ERROR_TYPES:
+                    raise
+                except Exception as entry_error:
+                    spend_log_error(
+                        "Spend tracking - failed to insert spend log entry. "
+                        "request_id=%s, error=%s",
+                        entry.get("request_id") or entry.get("id"),
+                        str(entry_error),
+                        exc=entry_error,
+                    )
+
+            if successful_inserts == 0:
+                raise batch_error
+
+    @staticmethod
     async def update_end_user_spend(
         n_retry_times: int,
         prisma_client: PrismaClient,
@@ -5833,19 +5876,22 @@ class ProxyUpdateSpend:
                             # Items already removed from queue at start of function
                             pass
                     else:
+                        from litellm.proxy.spend_tracking.spend_tracking_utils import (
+                            sanitize_spend_log_payload_for_db,
+                        )
+
                         for j in range(0, len(logs_to_process), BATCH_SIZE):
                             batch = logs_to_process[j : j + BATCH_SIZE]
-                            batch_with_dates = [prisma_client.jsonify_object({**entry}) for entry in batch]
-                            isolation_budget = MAX_SPEND_LOG_ISOLATION_FAILURES_PER_BATCH
-                            for statement_rows in spend_log_write_batches(
-                                batch_with_dates, SPEND_LOG_WRITE_BATCH_MAX_BYTES
-                            ):
-                                isolation_budget = await _create_spend_logs_with_poison_isolation(
-                                    SpendLogsRepository(prisma_client),
-                                    statement_rows,
-                                    isolation_budget,
-                                )
-                            verbose_proxy_logger.debug("Flushed %s logs to the DB.", len(batch))
+                            batch_with_dates = [
+                                prisma_client.jsonify_object(sanitize_spend_log_payload_for_db({**entry}))
+                                for entry in batch
+                            ]
+                            await _create_spend_logs_with_poison_isolation(
+                                SpendLogsRepository(prisma_client),
+                                batch_with_dates,
+                                MAX_SPEND_LOG_ISOLATION_ATTEMPTS_PER_BATCH,
+                            )
+                            verbose_proxy_logger.debug(f"Flushed {len(batch)} logs to the DB.")
                             # Explicitly clear batch memory
                             del batch, batch_with_dates
 

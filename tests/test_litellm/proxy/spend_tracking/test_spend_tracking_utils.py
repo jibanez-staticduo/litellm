@@ -37,7 +37,7 @@ from litellm.proxy.spend_tracking.spend_tracking_utils import (
     _sanitize_request_body_for_spend_logs_payload,
     _should_store_prompts_and_responses_in_spend_logs,
     get_logging_payload,
-    get_spend_logs_id,
+    sanitize_spend_log_payload_for_db,
 )
 from litellm.types.utils import (
     StandardLoggingHiddenParams,
@@ -373,6 +373,40 @@ def test_sanitize_request_body_for_spend_logs_payload_mixed_types():
     assert len(sanitized["nested"]["dict"]["key"]) == expected_length
 
 
+def test_sanitize_spend_log_payload_for_db_removes_nested_null_bytes():
+    payload = {
+        "request_id": "req\x001",
+        "metadata": {
+            "nested\x00key": "value\\u0000with-escape",
+            "items": ["a\x00b", {"response": "c\\U0000d"}],
+        },
+    }
+
+    sanitized = sanitize_spend_log_payload_for_db(payload)
+
+    assert sanitized == {
+        "request_id": "req1",
+        "metadata": {
+            "nestedkey": "valuewith-escape",
+            "items": ["ab", {"response": "cd"}],
+        },
+    }
+
+
+def test_sanitize_request_body_for_spend_logs_payload_removes_null_bytes():
+    request_body = {
+        "messages": [
+            {"role": "user", "content": "hello\x00world"},
+            {"role": "assistant", "content": "hi\\u0000there"},
+        ]
+    }
+
+    sanitized = _sanitize_request_body_for_spend_logs_payload(request_body)
+
+    assert sanitized["messages"][0]["content"] == "helloworld"
+    assert sanitized["messages"][1]["content"] == "hithere"
+
+
 def test_sanitize_request_body_for_spend_logs_payload_uses_runtime_env_override(
     monkeypatch: pytest.MonkeyPatch,
 ):
@@ -506,18 +540,17 @@ def test_get_messages_for_spend_logs_realtime_returns_messages(mock_should_store
 @patch(
     "litellm.proxy.spend_tracking.spend_tracking_utils._should_store_prompts_and_responses_in_spend_logs"
 )
-def test_get_messages_for_spend_logs_strips_null_bytes(mock_should_store):
-    """Regression for PostgreSQL 22P05: NUL bytes must be stripped from messages."""
+def test_get_messages_for_spend_logs_realtime_removes_null_bytes(mock_should_store):
     mock_should_store.return_value = True
     payload = cast(
         StandardLoggingPayload,
         {
-            "call_type": "_arealtime",
             "messages": [{"role": "user", "content": "hello\x00world"}],
         },
     )
     result = _get_messages_for_spend_logs_payload(payload)
     assert "\\u0000" not in result
+    assert "\x00" not in result
     parsed = json.loads(result)
     assert parsed[0]["content"] == "helloworld"
 
@@ -595,16 +628,52 @@ def test_get_response_for_spend_logs_payload_truncates_large_base64(mock_should_
 @patch(
     "litellm.proxy.spend_tracking.spend_tracking_utils._should_store_prompts_and_responses_in_spend_logs"
 )
-def test_get_response_for_spend_logs_payload_strips_null_bytes(mock_should_store):
-    """Regression for PostgreSQL 22P05: NUL bytes must be stripped from response."""
+def test_get_response_for_spend_logs_payload_removes_nested_null_bytes(
+    mock_should_store,
+):
     mock_should_store.return_value = True
     payload = cast(
         StandardLoggingPayload,
-        {"response": {"content": "answer\x00here"}},
+        {
+            "response": {
+                "choices": [{"message": {"content": "bad\x00response\\u0000payload"}}]
+            }
+        },
     )
+
     response_json = _get_response_for_spend_logs_payload(payload)
+    parsed = json.loads(response_json)
+
+    assert parsed["choices"][0]["message"]["content"] == "badresponsepayload"
     assert "\\u0000" not in response_json
-    assert json.loads(response_json)["content"] == "answerhere"
+    assert "\x00" not in response_json
+
+
+@patch(
+    "litellm.proxy.spend_tracking.spend_tracking_utils._should_store_prompts_and_responses_in_spend_logs"
+)
+def test_get_proxy_server_request_for_spend_logs_payload_removes_nested_null_bytes(
+    mock_should_store,
+):
+    mock_should_store.return_value = True
+    litellm_params = {
+        "proxy_server_request": {
+            "body": {
+                "messages": [{"role": "user", "content": "bad\x00request"}],
+                "metadata": {"nested": "bad\\u0000metadata"},
+            }
+        }
+    }
+
+    request_json = _get_proxy_server_request_for_spend_logs_payload(
+        metadata={}, litellm_params=litellm_params, kwargs={}
+    )
+    parsed = json.loads(request_json)
+
+    assert parsed["messages"][0]["content"] == "badrequest"
+    assert parsed["metadata"]["nested"] == "badmetadata"
+    assert "\\u0000" not in request_json
+    assert "\x00" not in request_json
 
 
 @patch(

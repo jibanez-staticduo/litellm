@@ -53,14 +53,50 @@ def _get_max_string_length_prompt_in_db() -> int:
         return DEFAULT_MAX_STRING_LENGTH_PROMPT_IN_DB
 
 
-def _hash_api_key_for_spend_log(api_key: str) -> str:
-    stripped: Final = api_key[7:] if api_key[:7].lower() == "bearer " else api_key
-    if stripped.startswith("sk-"):
-        return hash_token(stripped)
-    return stripped
+def _strip_null_bytes_from_string(value: str) -> str:
+    return value.replace("\x00", "").replace("\\u0000", "").replace("\\U0000", "")
 
 
-def _is_master_key(api_key: str | None, _master_key: str | None) -> bool:
+def sanitize_spend_log_payload_for_db(value: Any, visited: Optional[set] = None) -> Any:
+    """Remove NUL bytes recursively before writing spend log JSON to Postgres."""
+    if isinstance(value, str):
+        return _strip_null_bytes_from_string(value)
+
+    if visited is None:
+        visited = set()
+
+    if isinstance(value, dict):
+        obj_id = id(value)
+        if obj_id in visited:
+            return {}
+        visited.add(obj_id)
+        try:
+            return {
+                sanitize_spend_log_payload_for_db(
+                    k, visited
+                ): sanitize_spend_log_payload_for_db(v, visited)
+                for k, v in value.items()
+            }
+        finally:
+            visited.remove(obj_id)
+
+    if isinstance(value, list):
+        obj_id = id(value)
+        if obj_id in visited:
+            return []
+        visited.add(obj_id)
+        try:
+            return [sanitize_spend_log_payload_for_db(item, visited) for item in value]
+        finally:
+            visited.remove(obj_id)
+
+    if isinstance(value, tuple):
+        return tuple(sanitize_spend_log_payload_for_db(item, visited) for item in value)
+
+    return value
+
+
+def _is_master_key(api_key: Optional[str], _master_key: Optional[str]) -> bool:
     """
     Raw-only constant-time master-key comparison. The hashed form is never
     considered equivalent — only the raw master-key string matches.
@@ -448,7 +484,7 @@ def get_logging_payload(kwargs, response_obj, start_time, end_time) -> SpendLogs
         # Explicitly clear large intermediate objects to reduce memory pressure
         del response_obj_dict, usage, clean_metadata, additional_usage_values
 
-        return payload
+        return cast(SpendLogsPayload, sanitize_spend_log_payload_for_db(payload))
     except Exception as e:
         spend_log_error("Error creating spendlogs object - %s", str(e), exc=e)
         raise e
@@ -645,6 +681,7 @@ def _get_messages_for_spend_logs_payload(
                 messages: Final = standard_logging_payload.get("messages")
                 if messages is not None:
                     try:
+                        messages = sanitize_spend_log_payload_for_db(messages)
                         return safe_dumps(messages)
                     except Exception:
                         return "{}"
@@ -688,6 +725,7 @@ def _sanitize_request_body_for_spend_logs_payload(
         elif isinstance(value, list):
             return [_sanitize_value(item) for item in value]
         elif isinstance(value, str):
+            value = _strip_null_bytes_from_string(value)
             if len(value) > max_string_length_prompt_in_db:
                 # Keep 35% from beginning and 65% from end (end is usually more important)
                 # This split ensures we keep more context from the end of conversations
