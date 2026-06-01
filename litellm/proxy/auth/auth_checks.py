@@ -732,14 +732,14 @@ async def common_checks(
 
 
 def _get_user_role(
-    user_obj: Optional[LiteLLM_UserTable],
+    user_obj: Optional[Union[LiteLLM_UserTable, dict]],
 ) -> Optional[LitellmUserRoles]:
     if user_obj is None:
         return None
 
-    _user = user_obj
-
-    _user_role = _user.user_role
+    _user_role = (
+        user_obj.get("user_role") if isinstance(user_obj, dict) else user_obj.user_role
+    )
     try:
         role = LitellmUserRoles(_user_role)
     except ValueError:
@@ -775,17 +775,12 @@ def _is_api_route_allowed(
     return True
 
 
-def _is_user_proxy_admin(user_obj: Optional[LiteLLM_UserTable]):
+def _is_user_proxy_admin(user_obj: Optional[Union[LiteLLM_UserTable, dict]]):
     if user_obj is None:
         return False
 
-    if user_obj.user_role is not None and user_obj.user_role == LitellmUserRoles.PROXY_ADMIN.value:
-        return True
-
-    if user_obj.user_role is not None and user_obj.user_role == LitellmUserRoles.PROXY_ADMIN.value:
-        return True
-
-    return False
+    user_role = user_obj.get("user_role") if isinstance(user_obj, dict) else user_obj.user_role
+    return user_role is not None and user_role == LitellmUserRoles.PROXY_ADMIN.value
 
 
 def _allowed_routes_check(user_route: str, allowed_routes: list) -> bool:

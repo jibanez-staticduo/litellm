@@ -28,7 +28,12 @@ from litellm.proxy._types import (
     JWTRoutingOverride,
 )
 from litellm.proxy.auth.handle_jwt import JWTHandler
-from litellm.proxy.auth.auth_checks import get_key_object, _cache_key_object
+from litellm.proxy.auth.auth_checks import (
+    _cache_key_object,
+    _get_user_role,
+    _is_user_proxy_admin,
+    get_key_object,
+)
 from litellm.proxy.auth.route_checks import RouteChecks
 from litellm.proxy.auth.user_api_key_auth import (
     _check_key_model_budget_with_fallback,
@@ -90,6 +95,20 @@ def test_public_ai_hub_routes_remain_public():
     ):
         assert route in LiteLLMRoutes.public_routes.value
         assert _route_requires_auth_despite_public(route, {}) is False
+
+
+def test_cached_user_dict_role_helpers_are_dict_safe():
+    cached_user = {"user_role": LitellmUserRoles.PROXY_ADMIN.value}
+
+    assert _get_user_role(cached_user) == LitellmUserRoles.PROXY_ADMIN
+    assert _is_user_proxy_admin(cached_user) is True
+
+
+def test_cached_user_dict_unknown_role_defaults_to_internal_user():
+    cached_user = {"user_role": "unknown-role"}
+
+    assert _get_user_role(cached_user) == LitellmUserRoles.INTERNAL_USER
+    assert _is_user_proxy_admin(cached_user) is False
 
 
 @pytest.mark.asyncio
