@@ -701,7 +701,10 @@ async def common_checks(
     """
     from litellm.proxy.proxy_server import prisma_client, user_api_key_cache
 
-    _model: Final[str | list[str] | None] = get_model_from_request(
+    if isinstance(valid_token, dict):
+        valid_token = UserAPIKeyAuth(**valid_token)
+
+    _model: Optional[Union[str, List[str]]] = get_model_from_request(
         request_data=request_body,
         route=route,
         request_headers=_safe_get_request_headers(request=request),

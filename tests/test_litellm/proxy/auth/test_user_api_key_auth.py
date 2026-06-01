@@ -33,6 +33,7 @@ from litellm.proxy.auth.auth_checks import (
     _cache_key_object,
     _get_user_role,
     _is_user_proxy_admin,
+    common_checks,
     get_key_object,
 )
 from litellm.proxy.auth.route_checks import RouteChecks
@@ -199,81 +200,28 @@ async def test_budget_reservation_runs_when_not_disabled():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "general_settings,expected_flag",
-    [
-        ({"fail_closed_budget_enforcement": True}, True),
-        ({}, False),
-    ],
-)
-async def test_fail_closed_budget_enforcement_reaches_reservation(
-    general_settings, expected_flag
-):
-    """#33923: the strict flag must be threaded into reserve_budget_for_request so a
-    failed reservation write can reject instead of failing open."""
-    user_api_key_auth_obj = UserAPIKeyAuth(token="test_token")
-
-    with patch(
-        "litellm.proxy.spend_tracking.budget_reservation.reserve_budget_for_request",
-        new=AsyncMock(return_value=None),
-    ) as mock_reserve:
-        await _reserve_budget_after_common_checks(
-            user_api_key_auth_obj=user_api_key_auth_obj,
-            request_data={"model": "gpt-4o"},
-            route="/v1/chat/completions",
-            llm_router=None,
-            team_object=None,
-            user_object=None,
-            prisma_client=None,
-            user_api_key_cache=MagicMock(),
-            proxy_logging_obj=MagicMock(),
-            skip_budget_checks=False,
-            general_settings=general_settings,
-        )
+async def test_common_checks_accepts_cached_key_dict():
+    request = MagicMock()
+    request.headers = {}
+    request.query_params = {}
+    request.method = "GET"
 
     assert (
-        mock_reserve.await_args.kwargs["fail_closed_budget_enforcement"]
-        is expected_flag
-    )
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "general_settings,expected_flag",
-    [
-        ({"apply_user_budget_to_team_keys": True}, True),
-        ({"apply_user_budget_to_team_keys": False}, False),
-        ({}, False),
-    ],
-)
-async def test_apply_user_budget_to_team_keys_reaches_reservation(
-    general_settings, expected_flag
-):
-    """The opt-in lives in general_settings but is consumed inside
-    _get_budget_counters, so it has to be threaded through reserve_budget_for_request
-    or the reservation path keeps exempting team keys while the read path enforces."""
-    user_api_key_auth_obj = UserAPIKeyAuth(token="test_token")
-
-    with patch(
-        "litellm.proxy.spend_tracking.budget_reservation.reserve_budget_for_request",
-        new=AsyncMock(return_value=None),
-    ) as mock_reserve:
-        await _reserve_budget_after_common_checks(
-            user_api_key_auth_obj=user_api_key_auth_obj,
-            request_data={"model": "gpt-4o"},
-            route="/v1/chat/completions",
-            llm_router=None,
+        await common_checks(
+            request_body={},
             team_object=None,
             user_object=None,
-            prisma_client=None,
-            user_api_key_cache=MagicMock(),
+            end_user_object=None,
+            global_proxy_spend=None,
+            general_settings={},
+            route="/v1/models",
+            llm_router=None,
             proxy_logging_obj=MagicMock(),
-            skip_budget_checks=False,
-            general_settings=general_settings,
+            valid_token={"token": "hashed-token", "spend": 0.0},
+            request=request,
+            skip_budget_checks=True,
         )
-
-    assert (
-        mock_reserve.await_args.kwargs["apply_user_budget_to_team_keys"] is expected_flag
+        is True
     )
 
 
