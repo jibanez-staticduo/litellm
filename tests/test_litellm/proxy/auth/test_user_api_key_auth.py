@@ -32,6 +32,7 @@ from litellm.proxy.auth.auth_checks import (
     _cache_key_object,
     _get_user_role,
     _is_user_proxy_admin,
+    common_checks,
     get_key_object,
 )
 from litellm.proxy.auth.route_checks import RouteChecks
@@ -195,6 +196,32 @@ async def test_budget_reservation_runs_when_not_disabled():
 
     mock_reserve.assert_awaited_once()
     assert user_api_key_auth_obj.budget_reservation == reservation
+
+
+@pytest.mark.asyncio
+async def test_common_checks_accepts_cached_key_dict():
+    request = MagicMock()
+    request.headers = {}
+    request.query_params = {}
+    request.method = "GET"
+
+    assert (
+        await common_checks(
+            request_body={},
+            team_object=None,
+            user_object=None,
+            end_user_object=None,
+            global_proxy_spend=None,
+            general_settings={},
+            route="/v1/models",
+            llm_router=None,
+            proxy_logging_obj=MagicMock(),
+            valid_token={"token": "hashed-token", "spend": 0.0},
+            request=request,
+            skip_budget_checks=True,
+        )
+        is True
+    )
 
 
 @pytest.mark.asyncio
