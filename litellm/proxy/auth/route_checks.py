@@ -1,5 +1,5 @@
 import re
-from typing import Final
+from typing import List, Optional, Union
 
 from fastapi import HTTPException, Request, status
 
@@ -14,6 +14,17 @@ from litellm.proxy._types import (
 )
 
 from .auth_checks_organization import _user_is_org_admin
+
+
+def _get_user_object_value(
+    user_obj: Optional[Union[LiteLLM_UserTable, dict]], field: str
+):
+    if user_obj is None:
+        return None
+    if isinstance(user_obj, dict):
+        return user_obj.get(field)
+    return getattr(user_obj, field, None)
+
 
 # Management write routes denied to PROXY_ADMIN_VIEW_ONLY. Adding a new write
 # endpoint to a management router REQUIRES adding it here too — the surrounding
@@ -201,7 +212,7 @@ class RouteChecks:
 
     @staticmethod
     def _raise_admin_only_route_exception(
-        user_obj: LiteLLM_UserTable | None,
+        user_obj: Optional[Union[LiteLLM_UserTable, dict]],
         route: str,
     ) -> None:
         """
@@ -217,8 +228,8 @@ class RouteChecks:
         user_role = "unknown"
         user_id = "unknown"
         if user_obj is not None:
-            user_role = user_obj.user_role or "unknown"
-            user_id = user_obj.user_id or "unknown"
+            user_role = _get_user_object_value(user_obj, "user_role") or "unknown"
+            user_id = _get_user_object_value(user_obj, "user_id") or "unknown"
 
         masked_user_id: Final = RouteChecks._mask_user_id(user_id)
         raise Exception(
@@ -227,8 +238,8 @@ class RouteChecks:
 
     @staticmethod
     def non_proxy_admin_allowed_routes_check(
-        user_obj: LiteLLM_UserTable | None,
-        _user_role: LitellmUserRoles | None,
+        user_obj: Optional[Union[LiteLLM_UserTable, dict]],
+        _user_role: Optional[LitellmUserRoles],
         route: str,
         request: Request,
         valid_token: UserAPIKeyAuth,
