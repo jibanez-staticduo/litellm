@@ -167,10 +167,38 @@ async def test_update_spend_logs_non_connection_error():
 
     # Verify error message
     assert str(exc_info.value) == "Unexpected database error"
-    # Verify only tried once (no retries for non-connection errors)
-    assert create_many_mock.call_count == 1
+    # The batch is isolated into individual entries before raising when all fail.
+    assert create_many_mock.call_count == 3
     # Verify failure handler was called
     assert proxy_logging_obj.failure_handler.called
+
+
+@pytest.mark.asyncio
+async def test_update_spend_logs_isolates_single_bad_entry_in_batch():
+    prisma_client = MockPrismaClient()
+    proxy_logging_obj = create_mock_proxy_logging()
+
+    prisma_client.spend_log_transactions = [
+        {"id": "bad", "spend": 10, "metadata": '{"nested":"bad\\u0000value"}'},
+        {"id": "good", "spend": 20},
+    ]
+
+    async def create_many_side_effect(**kwargs):
+        data = kwargs["data"]
+        if len(data) > 1:
+            raise ValueError("unsupported Unicode escape sequence")
+        if data[0]["id"] == "bad":
+            raise ValueError("unsupported Unicode escape sequence")
+        return None
+
+    create_many_mock = AsyncMock(side_effect=create_many_side_effect)
+    prisma_client.db.litellm_spendlogs.create_many = create_many_mock
+
+    await update_spend(prisma_client, None, proxy_logging_obj)
+
+    assert create_many_mock.call_count == 3
+    assert len(prisma_client.spend_log_transactions) == 0
+    proxy_logging_obj.failure_handler.assert_not_called()
 
 
 @pytest.mark.asyncio
