@@ -470,6 +470,47 @@ async def test_unchanged_auth_type_does_not_clear_flow_fields():
 
 
 @pytest.mark.asyncio
+async def test_partial_update_ignores_null_tool_override_maps():
+    data = UpdateMCPServerRequest(
+        server_id="my-test-server",
+        tool_name_to_display_name=None,
+        tool_name_to_description=None,
+    )
+
+    data_dict = await _run_update(data)
+
+    assert "tool_name_to_display_name" not in data_dict
+    assert "tool_name_to_description" not in data_dict
+
+
+@pytest.mark.asyncio
+async def test_partial_update_writes_tool_override_maps_and_empty_clears():
+    populated = await _run_update(
+        UpdateMCPServerRequest(
+            server_id="my-test-server",
+            tool_name_to_display_name={"list": "List Memories"},
+            tool_name_to_description={"list": "List stored memories"},
+        )
+    )
+    assert json.loads(populated["tool_name_to_display_name"]) == {
+        "list": "List Memories"
+    }
+    assert json.loads(populated["tool_name_to_description"]) == {
+        "list": "List stored memories"
+    }
+
+    cleared = await _run_update(
+        UpdateMCPServerRequest(
+            server_id="my-test-server",
+            tool_name_to_display_name={},
+            tool_name_to_description={},
+        )
+    )
+    assert cleared["tool_name_to_display_name"] == "{}"
+    assert cleared["tool_name_to_description"] == "{}"
+
+
+@pytest.mark.asyncio
 async def test_create_still_writes_defaults():
     """
     Regression guard: create (POST) must keep writing defaults so DB columns
