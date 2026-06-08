@@ -32,3 +32,16 @@
 - Conflict: no content conflict; commit added shared accessor regression coverage.
 - Resolution: kept `_get_user_object_value` import and `test_get_user_object_value_reads_cached_user_dict_and_object`.
 - Secrets: none logged.
+
+## f424f1bda1 fix: TASK-2026-06-08-002 repair MCP and spend logs
+
+- File: `litellm/proxy/spend_tracking/spend_management_endpoints.py`
+- Conflict: upstream had moved spend log access to `SpendLogsRepository`, while the local commit rejected unbounded legacy `/spend/logs` queries and routed filtered legacy list requests through a lightweight column query.
+- Resolution: kept upstream `SpendLogsRepository` for `request_id` exact log lookups and summary grouping, preserved the local unbounded-query rejection, and preserved `_get_legacy_spend_logs_without_heavy_columns` for non-`request_id` filtered legacy responses.
+- File: `litellm/proxy/_experimental/mcp_server/ui_session_utils.py`
+- Conflict: no content conflict; local commit added dict-safe UI session team resolution.
+- Resolution: kept dict/object team extraction for cached UI session users.
+- File: `tests/test_litellm/proxy/spend_tracking/test_spend_management_endpoints.py`
+- Conflict: no content conflict; local commit added legacy spend log rejection coverage and updated mock query path.
+- Resolution: kept the test updates.
+- Secrets: none logged.

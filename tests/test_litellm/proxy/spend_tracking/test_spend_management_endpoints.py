@@ -2834,7 +2834,9 @@ async def test_view_spend_logs_summarize_parameter(client, monkeypatch):
             self.litellm_spendlogs = self
 
         async def find_many(self, *args, **kwargs):
-            # Return individual log entries when summarize=false
+            return mock_spend_logs
+
+        async def query_raw(self, *args, **kwargs):
             return mock_spend_logs
 
         async def group_by(self, *args, **kwargs):
@@ -2941,6 +2943,35 @@ async def test_view_spend_logs_summarize_parameter(client, monkeypatch):
         assert "models" in data[0]
     finally:
         app.dependency_overrides.pop(ps.user_api_key_auth, None)
+
+
+@pytest.mark.asyncio
+async def test_view_spend_logs_without_filters_rejects_unbounded_query(
+    client, monkeypatch
+):
+    class MockPrismaClient:
+        async def get_data(self, *args, **kwargs):
+            raise AssertionError("legacy /spend/logs must not call unbounded get_data")
+
+    monkeypatch.setattr("litellm.proxy.proxy_server.prisma_client", MockPrismaClient())
+    app.dependency_overrides[ps.user_api_key_auth] = lambda: UserAPIKeyAuth(
+        user_role=LitellmUserRoles.PROXY_ADMIN, user_id="admin_user"
+    )
+
+    try:
+        response = client.get(
+            "/spend/logs",
+            headers={"Authorization": "Bearer sk-test"},
+        )
+    finally:
+        app.dependency_overrides.pop(ps.user_api_key_auth, None)
+
+    assert response.status_code == 400
+    error = response.json()["error"]
+    assert error["type"] == "bad_request"
+    assert "/spend/logs/v2" in error["message"]
+    assert "start_date" in error["message"]
+    assert "page_size" in error["message"]
 
 
 @pytest.mark.asyncio
