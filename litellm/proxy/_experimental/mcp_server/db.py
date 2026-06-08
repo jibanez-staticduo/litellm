@@ -215,6 +215,12 @@ def _prepare_mcp_server_data(
         if fields_set is None:
             fields_set = data.fields_set()
         data_dict = data.model_dump(exclude_unset=True)
+        for optional_map_field in (
+            "tool_name_to_display_name",
+            "tool_name_to_description",
+        ):
+            if data_dict.get(optional_map_field) is None:
+                data_dict.pop(optional_map_field, None)
         # ``validate_and_normalize_mcp_server_payload`` always assigns ``alias``
         # on the payload, which marks it as set even when the caller omitted it.
         # Drop it only when the original request omitted alias; an explicit

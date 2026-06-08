@@ -7,6 +7,7 @@ Omitting a field must NOT reset it to its Pydantic schema default (e.g.
 would silently overwrite the existing DB row.
 """
 
+import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -176,6 +177,47 @@ async def test_partial_update_can_explicitly_clear_alias():
 
     assert "alias" in data_dict
     assert data_dict["alias"] is None
+
+
+@pytest.mark.asyncio
+async def test_partial_update_ignores_null_tool_override_maps():
+    data = UpdateMCPServerRequest(
+        server_id="my-test-server",
+        tool_name_to_display_name=None,
+        tool_name_to_description=None,
+    )
+
+    data_dict = await _run_update(data)
+
+    assert "tool_name_to_display_name" not in data_dict
+    assert "tool_name_to_description" not in data_dict
+
+
+@pytest.mark.asyncio
+async def test_partial_update_writes_tool_override_maps_and_empty_clears():
+    populated = await _run_update(
+        UpdateMCPServerRequest(
+            server_id="my-test-server",
+            tool_name_to_display_name={"list": "List Memories"},
+            tool_name_to_description={"list": "List stored memories"},
+        )
+    )
+    assert json.loads(populated["tool_name_to_display_name"]) == {
+        "list": "List Memories"
+    }
+    assert json.loads(populated["tool_name_to_description"]) == {
+        "list": "List stored memories"
+    }
+
+    cleared = await _run_update(
+        UpdateMCPServerRequest(
+            server_id="my-test-server",
+            tool_name_to_display_name={},
+            tool_name_to_description={},
+        )
+    )
+    assert cleared["tool_name_to_display_name"] == "{}"
+    assert cleared["tool_name_to_description"] == "{}"
 
 
 @pytest.mark.asyncio
