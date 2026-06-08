@@ -52,6 +52,52 @@ async def test_resolve_ui_session_team_ids_returns_unique_ids(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_resolve_ui_session_team_ids_handles_dict_user_object(monkeypatch):
+    user_auth = UserAPIKeyAuth(
+        team_id=UI_SESSION_TOKEN_TEAM_ID,
+        user_id="user-1",
+    )
+
+    monkeypatch.setattr(
+        "litellm.proxy.auth.auth_checks.get_user_object",
+        AsyncMock(return_value={"teams": ["team-a", "team-b", "team-a"]}),
+    )
+
+    import litellm.proxy.proxy_server as proxy_server
+
+    monkeypatch.setattr(proxy_server, "prisma_client", object())
+    monkeypatch.setattr(proxy_server, "proxy_logging_obj", None)
+    monkeypatch.setattr(proxy_server, "user_api_key_cache", None)
+
+    team_ids = await resolve_ui_session_team_ids(user_auth)
+
+    assert team_ids == ["team-a", "team-b"]
+
+
+@pytest.mark.asyncio
+async def test_resolve_ui_session_team_ids_handles_object_without_teams(monkeypatch):
+    user_auth = UserAPIKeyAuth(
+        team_id=UI_SESSION_TOKEN_TEAM_ID,
+        user_id="user-1",
+    )
+
+    monkeypatch.setattr(
+        "litellm.proxy.auth.auth_checks.get_user_object",
+        AsyncMock(return_value=object()),
+    )
+
+    import litellm.proxy.proxy_server as proxy_server
+
+    monkeypatch.setattr(proxy_server, "prisma_client", object())
+    monkeypatch.setattr(proxy_server, "proxy_logging_obj", None)
+    monkeypatch.setattr(proxy_server, "user_api_key_cache", None)
+
+    team_ids = await resolve_ui_session_team_ids(user_auth)
+
+    assert team_ids == []
+
+
+@pytest.mark.asyncio
 async def test_resolve_ui_session_team_ids_short_circuits_when_not_ui_session():
     normal_user = UserAPIKeyAuth(team_id="regular-team", user_id="user-1")
 

@@ -58,11 +58,15 @@ async def resolve_ui_session_team_ids(
         )
         return []
 
-    if user_obj is None or not user_obj.teams:
+    if user_obj is None:
+        return []
+
+    teams = user_obj.get("teams") if isinstance(user_obj, dict) else getattr(user_obj, "teams", None)
+    if not teams:
         return []
 
     resolved_team_ids: List[str] = []
-    for team_id in user_obj.teams:
+    for team_id in teams:
         if team_id and team_id not in resolved_team_ids:
             resolved_team_ids.append(team_id)
     return resolved_team_ids

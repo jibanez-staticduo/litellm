@@ -44,6 +44,63 @@ else:
 
 router = APIRouter()
 
+LEGACY_SPEND_LOGS_LIGHTWEIGHT_COLUMNS = """
+    request_id, call_type, api_key, spend, total_tokens,
+    prompt_tokens, completion_tokens, "startTime", "endTime",
+    "completionStartTime", model, model_id, model_group,
+    custom_llm_provider, api_base, "user", metadata,
+    cache_hit, cache_key, request_tags, team_id,
+    organization_id, end_user, requester_ip_address,
+    session_id, status, mcp_namespaced_tool_name, agent_id,
+    request_duration_ms
+"""
+
+
+async def _get_legacy_spend_logs_without_heavy_columns(
+    prisma_client: PrismaClient,
+    filter_query: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    sql_conditions: List[str] = []
+    sql_params: List[Any] = []
+    p = 1
+
+    start_time_filter = filter_query.get("startTime")
+    if isinstance(start_time_filter, dict):
+        if start_time_filter.get("gte") is not None:
+            sql_conditions.append(f'"startTime" >= ${p}')
+            sql_params.append(start_time_filter["gte"])
+            p += 1
+        if start_time_filter.get("lte") is not None:
+            sql_conditions.append(f'"startTime" <= ${p}')
+            sql_params.append(start_time_filter["lte"])
+            p += 1
+
+    for sql_col, filter_key in [
+        ("api_key", "api_key"),
+        ('"user"', "user"),
+    ]:
+        value = filter_query.get(filter_key)
+        if isinstance(value, str):
+            sql_conditions.append(f"{sql_col} = ${p}")
+            sql_params.append(value)
+            p += 1
+
+    if not sql_conditions:
+        raise ProxyException(
+            message="/spend/logs requires filters. Use /spend/logs/v2 with start_date, end_date, page, and page_size for paginated spend logs.",
+            type="bad_request",
+            param="None",
+            code=status.HTTP_400_BAD_REQUEST,
+        )
+
+    sql_query = f"""
+        SELECT {LEGACY_SPEND_LOGS_LIGHTWEIGHT_COLUMNS}
+        FROM "LiteLLM_SpendLogs"
+        WHERE {" AND ".join(sql_conditions)}
+        ORDER BY "startTime" DESC
+    """
+    return await prisma_client.db.query_raw(sql_query, *sql_params)
+
 
 @router.get(
     "/spend/keys",
@@ -2347,7 +2404,6 @@ async def view_spend_logs(
             raise Exception(
                 "Database not connected. Connect a database to your proxy - https://docs.litellm.ai/docs/simple_proxy#managing-auth---virtual-keys"
             )
-        spend_logs = []
         if (
             start_date is not None
             and isinstance(start_date, str)
@@ -2381,7 +2437,12 @@ async def view_spend_logs(
 
             # Check if user wants unsummarized data
             if not summarize:
-                # Return filtered individual log entries (similar to UI endpoint)
+                if request_id is None:
+                    return await _get_legacy_spend_logs_without_heavy_columns(
+                        prisma_client=prisma_client,
+                        filter_query=filter_query,
+                    )
+
                 data = await SpendLogsRepository(prisma_client).table.find_many(
                     where=filter_query,  # type: ignore
                     order={
@@ -2457,14 +2518,24 @@ async def view_spend_logs(
                 scoped_filter["user"] = user_id
 
             if not scoped_filter:
-                spend_logs = await prisma_client.get_data(table_name="spend", query_type="find_all")
-                return spend_logs
+                raise ProxyException(
+                    message="/spend/logs requires filters. Use /spend/logs/v2 with start_date, end_date, page, and page_size for paginated spend logs.",
+                    type="bad_request",
+                    param="None",
+                    code=status.HTTP_400_BAD_REQUEST,
+                )
 
-            data = await SpendLogsRepository(prisma_client).table.find_many(
-                where=scoped_filter,  # type: ignore
-                order={"startTime": "desc"},
+            if request_id is not None:
+                data = await SpendLogsRepository(prisma_client).table.find_many(
+                    where=scoped_filter,  # type: ignore
+                    order={"startTime": "desc"},
+                )
+                return data
+
+            return await _get_legacy_spend_logs_without_heavy_columns(
+                prisma_client=prisma_client,
+                filter_query=scoped_filter,
             )
-            return data
 
         return None
 
