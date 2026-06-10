@@ -1,0 +1,3 @@
+POST /cache/settings/test from inside litellm container
+Payload shape: {"cache_settings":{"type":"redis","host":"redis","port":"6379","username":"default","password":"<redacted>"}}
+{"status":"success","message":"Redis connection test successful","error":null}

@@ -1,0 +1,1 @@
+Redis ACL username/password ping from litellm container to redis:6379: PONG

@@ -1,0 +1,14 @@
+Command: staticeng_validate
+
+Result: FAIL
+
+Validation failed on pre-existing repository/StaticEng CodeMap coverage issues, not on this task's MCP implementation files. The first reported errors were:
+
+- .staticeng/codemap.yml link path does not exist: Agents_Common.md
+- .staticeng/codemap.yml link path does not exist: docs/core/agent_orchestration.md
+- .staticeng/codemap.yml link path does not exist: docs/architecture/TECHNICAL_ARCHITECTURE.md
+- .staticeng/codemap.yml paths violate Rule of Local Knowledge for nested docs paths
+- Many existing source directories are missing codemap.yml files, including docker, scripts, litellm, and numerous litellm subdirectories
+
+The full tool output was truncated by the CLI and saved outside the repo at:
+/home/staticduo/.local/share/opencode/tool-output/tool_eb2044457001jq0XeAgVaAjP06

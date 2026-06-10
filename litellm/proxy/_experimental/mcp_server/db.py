@@ -3,7 +3,7 @@ import binascii
 import hashlib
 import json
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
 
 from litellm._logging import verbose_proxy_logger
 from litellm._uuid import uuid
@@ -527,7 +527,64 @@ async def delete_mcp_server_from_virtualkey():
     pass
 
 
-async def delete_mcp_server(prisma_client: PrismaClient, server_id: str) -> Optional[LiteLLM_MCPServerTable]:
+def _get_mcp_tool_permissions_without_server(
+    mcp_tool_permissions: Any, server_id: str
+) -> Tuple[Any, bool]:
+    if mcp_tool_permissions is None:
+        return mcp_tool_permissions, False
+
+    serialized_input = isinstance(mcp_tool_permissions, str)
+    if serialized_input:
+        try:
+            mcp_tool_permissions = json.loads(mcp_tool_permissions)
+        except (TypeError, ValueError):
+            return mcp_tool_permissions, False
+
+    if not isinstance(mcp_tool_permissions, dict) or server_id not in mcp_tool_permissions:
+        return mcp_tool_permissions, False
+
+    updated_permissions = dict(mcp_tool_permissions)
+    updated_permissions.pop(server_id, None)
+    if serialized_input:
+        from litellm.litellm_core_utils.safe_json_dumps import safe_dumps
+
+        return safe_dumps(updated_permissions), True
+    return updated_permissions, True
+
+
+async def cleanup_mcp_server_references(
+    prisma_client: PrismaClient, server_id: str
+) -> bool:
+    object_permission_records = await prisma_client.db.litellm_objectpermissiontable.find_many()
+
+    cleaned_references = False
+    for object_permission in object_permission_records:
+        update_data: Dict[str, Any] = {}
+        mcp_servers = object_permission.mcp_servers
+        if isinstance(mcp_servers, list) and server_id in mcp_servers:
+            update_data["mcp_servers"] = [s for s in mcp_servers if s != server_id]
+
+        updated_tool_permissions, did_update_tool_permissions = _get_mcp_tool_permissions_without_server(
+            object_permission.mcp_tool_permissions, server_id
+        )
+        if did_update_tool_permissions:
+            update_data["mcp_tool_permissions"] = updated_tool_permissions
+
+        if update_data:
+            await prisma_client.db.litellm_objectpermissiontable.update(
+                where={"object_permission_id": object_permission.object_permission_id},
+                data=update_data,
+            )
+            cleaned_references = True
+
+    deleted_credentials = await prisma_client.db.litellm_mcpusercredentials.delete_many(where={"server_id": server_id})
+    cleaned_references = cleaned_references or getattr(deleted_credentials, "count", 0) > 0
+    return cleaned_references
+
+
+async def delete_mcp_server(
+    prisma_client: PrismaClient, server_id: str
+) -> Optional[LiteLLM_MCPServerTable]:
     """
     Delete the mcp server from the db by server_id
 

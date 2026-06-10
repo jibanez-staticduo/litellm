@@ -1479,6 +1479,203 @@ class TestTeamScopedMCPServerAccess:
         assert "Restricted virtual key" in str(exc_info.value.detail)
 
 
+class TestRemoveMCPServer:
+    @pytest.mark.asyncio
+    async def test_delete_existing_server_cleans_permissions_and_credentials(self):
+        mock_prisma_client = MagicMock()
+        mock_deleted_server = generate_mock_mcp_server_db_record(server_id="server-1")
+        mock_user_auth = generate_mock_user_api_key_auth(
+            user_role=LitellmUserRoles.PROXY_ADMIN
+        )
+        mock_manager = MagicMock()
+        mock_manager.remove_server = MagicMock()
+        mock_manager.reload_servers_from_database = AsyncMock()
+
+        with (
+            patch(
+                "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
+                return_value=mock_prisma_client,
+            ),
+            patch(
+                "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
+                AsyncMock(return_value=mock_deleted_server),
+            ),
+            patch(
+                "litellm.proxy.management_endpoints.mcp_management_endpoints.cleanup_mcp_server_references",
+                AsyncMock(return_value=True),
+            ) as mock_cleanup,
+            patch(
+                "litellm.proxy.management_endpoints.mcp_management_endpoints.delete_mcp_server",
+                AsyncMock(return_value=mock_deleted_server),
+            ) as mock_delete,
+            patch(
+                "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
+                mock_manager,
+            ),
+        ):
+            from litellm.proxy.management_endpoints.mcp_management_endpoints import (
+                remove_mcp_server,
+            )
+
+            response = await remove_mcp_server(
+                server_id="server-1", user_api_key_dict=mock_user_auth
+            )
+
+        assert response.status_code == 202
+        mock_cleanup.assert_awaited_once_with(mock_prisma_client, "server-1")
+        mock_delete.assert_awaited_once_with(mock_prisma_client, "server-1")
+        mock_manager.remove_server.assert_called_once_with(mock_deleted_server)
+        mock_manager.reload_servers_from_database.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_delete_missing_referenced_server_returns_cleanup_response(self):
+        mock_prisma_client = MagicMock()
+        mock_user_auth = generate_mock_user_api_key_auth(
+            user_role=LitellmUserRoles.PROXY_ADMIN
+        )
+        mock_manager = MagicMock()
+        mock_manager.reload_servers_from_database = AsyncMock()
+        mock_manager.remove_server = MagicMock()
+
+        with (
+            patch(
+                "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
+                return_value=mock_prisma_client,
+            ),
+            patch(
+                "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
+                AsyncMock(return_value=None),
+            ),
+            patch(
+                "litellm.proxy.management_endpoints.mcp_management_endpoints.cleanup_mcp_server_references",
+                AsyncMock(return_value=True),
+            ),
+            patch(
+                "litellm.proxy.management_endpoints.mcp_management_endpoints.delete_mcp_server",
+                AsyncMock(),
+            ) as mock_delete,
+            patch(
+                "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
+                mock_manager,
+            ),
+        ):
+            from litellm.proxy.management_endpoints.mcp_management_endpoints import (
+                remove_mcp_server,
+            )
+
+            response = await remove_mcp_server(
+                server_id="stale-server", user_api_key_dict=mock_user_auth
+            )
+
+        assert response.status_code == 202
+        assert json.loads(response.body) == {
+            "message": "Cleaned stale MCP server references for server_id=stale-server",
+            "server_id": "stale-server",
+            "deleted": False,
+            "cleaned_stale_references": True,
+        }
+        mock_delete.assert_not_awaited()
+        mock_manager.remove_server.assert_not_called()
+        mock_manager.reload_servers_from_database.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_delete_missing_unreferenced_server_returns_404(self):
+        mock_user_auth = generate_mock_user_api_key_auth(
+            user_role=LitellmUserRoles.PROXY_ADMIN
+        )
+
+        with (
+            patch(
+                "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
+                AsyncMock(return_value=None),
+            ),
+            patch(
+                "litellm.proxy.management_endpoints.mcp_management_endpoints.cleanup_mcp_server_references",
+                AsyncMock(return_value=False),
+            ),
+        ):
+            from litellm.proxy.management_endpoints.mcp_management_endpoints import (
+                remove_mcp_server,
+            )
+
+            with pytest.raises(HTTPException) as exc_info:
+                await remove_mcp_server(
+                    server_id="missing-server", user_api_key_dict=mock_user_auth
+                )
+
+        assert exc_info.value.status_code == 404
+        assert "missing-server" in str(exc_info.value.detail)
+
+
+@pytest.mark.asyncio
+async def test_cleanup_mcp_server_references_removes_permissions_and_credentials():
+    from litellm.proxy._experimental.mcp_server.db import cleanup_mcp_server_references
+
+    first_permission = MagicMock()
+    first_permission.object_permission_id = "permission-1"
+    first_permission.mcp_servers = ["server-1", "server-2", "server-1"]
+    first_permission.mcp_tool_permissions = {
+        "server-1": ["tool1"],
+        "server-2": ["tool2"],
+    }
+    second_permission = MagicMock()
+    second_permission.object_permission_id = "permission-2"
+    second_permission.mcp_servers = ["server-3"]
+    second_permission.mcp_tool_permissions = {"server-3": ["tool3"]}
+    delete_result = MagicMock(count=2)
+
+    mock_prisma_client = MagicMock()
+    mock_prisma_client.db.litellm_objectpermissiontable.find_many = AsyncMock(
+        return_value=[first_permission, second_permission]
+    )
+    mock_prisma_client.db.litellm_objectpermissiontable.update = AsyncMock()
+    mock_prisma_client.db.litellm_mcpusercredentials.delete_many = AsyncMock(
+        return_value=delete_result
+    )
+
+    cleaned = await cleanup_mcp_server_references(mock_prisma_client, "server-1")
+
+    assert cleaned is True
+    mock_prisma_client.db.litellm_objectpermissiontable.update.assert_awaited_once_with(
+        where={"object_permission_id": "permission-1"},
+        data={
+            "mcp_servers": ["server-2"],
+            "mcp_tool_permissions": {"server-2": ["tool2"]},
+        },
+    )
+    mock_prisma_client.db.litellm_mcpusercredentials.delete_many.assert_awaited_once_with(
+        where={"server_id": "server-1"}
+    )
+
+
+@pytest.mark.asyncio
+async def test_cleanup_mcp_server_references_returns_false_when_no_references():
+    from litellm.proxy._experimental.mcp_server.db import cleanup_mcp_server_references
+
+    permission = MagicMock()
+    permission.mcp_servers = ["server-2"]
+    permission.mcp_tool_permissions = {"server-2": ["tool2"]}
+    delete_result = MagicMock(count=0)
+
+    mock_prisma_client = MagicMock()
+    mock_prisma_client.db.litellm_objectpermissiontable.find_many = AsyncMock(
+        return_value=[permission]
+    )
+    mock_prisma_client.db.litellm_objectpermissiontable.update = AsyncMock()
+    mock_prisma_client.db.litellm_mcpusercredentials.delete_many = AsyncMock(
+        return_value=delete_result
+    )
+
+    cleaned = await cleanup_mcp_server_references(mock_prisma_client, "server-1")
+
+    assert cleaned is False
+    mock_prisma_client.db.litellm_objectpermissiontable.update.assert_not_awaited()
+
+
 class TestTemporaryMCPSessionEndpoints:
     def test_inherit_credentials_from_existing_server(self):
         payload = NewMCPServerRequest(

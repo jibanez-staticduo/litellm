@@ -113,6 +113,7 @@ if MCP_AVAILABLE:
 
     from litellm.proxy._experimental.mcp_server.db import (
         approve_mcp_server,
+        cleanup_mcp_server_references,
         create_mcp_server,
         delete_mcp_server,
         delete_user_credential,
@@ -1750,14 +1751,26 @@ if MCP_AVAILABLE:
                 },
             )
 
-        # try to delete the mcp server
-        mcp_server_record_deleted = await delete_mcp_server(prisma_client, server_id)
+        mcp_server_record = await get_mcp_server(prisma_client, server_id)
+        cleaned_references = await cleanup_mcp_server_references(prisma_client, server_id)
 
-        if mcp_server_record_deleted is None:
+        if mcp_server_record is None:
+            if cleaned_references:
+                return JSONResponse(
+                    status_code=status.HTTP_202_ACCEPTED,
+                    content={
+                        "message": f"Cleaned stale MCP server references for server_id={server_id}",
+                        "server_id": server_id,
+                        "deleted": False,
+                        "cleaned_stale_references": True,
+                    },
+                )
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"error": f"MCP Server not found, passed server_id={server_id}"},
             )
+
+        mcp_server_record_deleted = await delete_mcp_server(prisma_client, server_id)
         global_mcp_server_manager.remove_server(mcp_server_record_deleted)
 
         # Ensure registry is up to date by reloading from database

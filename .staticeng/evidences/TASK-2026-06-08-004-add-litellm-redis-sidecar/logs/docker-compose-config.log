@@ -1,0 +1,178 @@
+name: litellm
+services:
+  litellm:
+    command:
+      - --host
+      - 0.0.0.0
+      - --port
+      - "4000"
+      - --config
+      - /app/config.yaml
+    container_name: litellm
+    entrypoint:
+      - /bin/sh
+      - /app/start-litellm.sh
+    environment:
+      ANTHROPIC_OAUTH_TOKEN_DIR: /app/data/anthropic-auth
+      CHATGPT_TOKEN_DIR: /app/data/chatgpt-auth
+      DATABASE_URL: <redacted>
+      DEFAULT_COMPETITOR_DISCOVERY_MODEL: chatgpt/gpt-5.4
+      GENERIC_AUTHORIZATION_ENDPOINT: https://auth.staticduo.com/realms/apps/protocol/openid-connect/auth
+      GENERIC_CLIENT_ID: litellm-sso
+      GENERIC_CLIENT_SECRET: <redacted>
+      GENERIC_SCOPE: openid profile email groups
+      GENERIC_TOKEN_ENDPOINT: https://auth.staticduo.com/realms/apps/protocol/openid-connect/token
+      GENERIC_USERINFO_ENDPOINT: https://auth.staticduo.com/realms/apps/protocol/openid-connect/userinfo
+      LITELLM_MASTER_KEY: <redacted>
+      LITELLM_MCP_CLIENT_TIMEOUT: "180"
+      LITELLM_MCP_HEALTH_CHECK_TIMEOUT: "30"
+      LITELLM_SALT_KEY: <redacted>
+      NO_DOCS: "True"
+      NO_REDOC: "True"
+      OPENAI_API_KEY: <redacted>
+      PROXY_BASE_URL: https://litellm.staticduo.com
+      STORE_MODEL_IN_DB: "True"
+      TZ: Europe/Madrid
+    extra_hosts:
+      - host.docker.internal=host-gateway
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'bash -c ''exec 3<>/dev/tcp/127.0.0.1/4000; printf "GET /health/readiness HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3; head -n 1 <&3 | grep -q "200"'''
+      timeout: 5s
+      interval: 30s
+      retries: 3
+      start_period: 20s
+    image: docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260608-fix-mcp-null-maps
+    networks:
+      llm-net: null
+      npm_npm-net: null
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /volume2/docker/litellm/config.yaml
+        target: /app/config.yaml
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /volume2/docker/litellm/start-litellm.sh
+        target: /app/start-litellm.sh
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /volume2/docker/litellm/onepassword-mcp-wrapper.sh
+        target: /app/onepassword-mcp-wrapper.sh
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /volume2/docker/litellm/data/op_service_account_token
+        target: /run/secrets/op_service_account_token
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /volume2/docker/litellm/data
+        target: /app/data
+        bind:
+          create_host_path: true
+  litellm-admin-mcp:
+    build:
+      context: /volume2/docker/litellm/admin-mcp
+      dockerfile: Dockerfile
+    container_name: litellm-admin-mcp
+    depends_on:
+      litellm:
+        condition: service_started
+        required: true
+    environment:
+      DATABASE_URL: <redacted>
+      DEFAULT_COMPETITOR_DISCOVERY_MODEL: chatgpt/gpt-5.4
+      FASTMCP_HOST: 0.0.0.0
+      FASTMCP_PORT: "8080"
+      GENERIC_AUTHORIZATION_ENDPOINT: https://auth.staticduo.com/realms/apps/protocol/openid-connect/auth
+      GENERIC_CLIENT_ID: litellm-sso
+      GENERIC_CLIENT_SECRET: <redacted>
+      GENERIC_SCOPE: openid profile email groups
+      GENERIC_TOKEN_ENDPOINT: https://auth.staticduo.com/realms/apps/protocol/openid-connect/token
+      GENERIC_USER_EXTRA_ATTRIBUTES: groups
+      GENERIC_USERINFO_ENDPOINT: https://auth.staticduo.com/realms/apps/protocol/openid-connect/userinfo
+      LITELLM_BASE_URL: http://litellm:4000
+      LITELLM_IMAGE: docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260608-fix-mcp-null-maps
+      LITELLM_MASTER_KEY: <redacted>
+      LITELLM_PORT: "11440"
+      LITELLM_SALT_KEY: <redacted>
+      PORT: "8080"
+      PROXY_BASE_URL: https://litellm.staticduo.com
+      REDIS_PASSWORD: <redacted>
+      REDIS_USERNAME: default
+      TZ: Europe/Madrid
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -q --spider --timeout=3 http://127.0.0.1:8080/sse
+      timeout: 10s
+      interval: 30s
+      retries: 3
+      start_period: 10s
+    networks:
+      llm-net: null
+    restart: unless-stopped
+  litellm-admin-mcp-compat:
+    build:
+      context: /volume2/docker/mcp/compat-mcp
+      dockerfile: Dockerfile
+    container_name: litellm-admin-mcp-compat
+    depends_on:
+      litellm-admin-mcp:
+        condition: service_healthy
+        required: true
+    environment:
+      FASTMCP_HOST: 0.0.0.0
+      FASTMCP_PORT: "8000"
+      SERVER_INSTRUCTIONS: Compatibility wrapper for LiteLLM admin MCP to expose a stable HTTP MCP endpoint over the upstream SSE server.
+      SERVER_NAME: litellm-admin-mcp-compat
+      TZ: Europe/Madrid
+      UPSTREAM_TRANSPORT: sse
+      UPSTREAM_URL: http://litellm-admin-mcp:8080/sse
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - nc -z 127.0.0.1 8000
+      timeout: 5s
+      interval: 30s
+      retries: 3
+      start_period: 30s
+    networks:
+      llm-net: null
+    restart: unless-stopped
+  redis:
+    command:
+      - /bin/sh
+      - -c
+      - redis-server --appendonly no --requirepass "$$REDIS_PASSWORD"
+    container_name: litellm-redis
+    environment:
+      REDIS_PASSWORD: <redacted>
+      REDIS_USERNAME: default
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - redis-cli --user "$$REDIS_USERNAME" --pass "$$REDIS_PASSWORD" ping | grep -q PONG
+      timeout: 5s
+      interval: 30s
+      retries: 3
+      start_period: 10s
+    image: redis:7.4-alpine
+    networks:
+      llm-net: null
+    restart: unless-stopped
+networks:
+  llm-net:
+    name: llm-net
+    external: true
+  npm_npm-net:
+    name: npm_npm-net
+    external: true

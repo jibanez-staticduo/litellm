@@ -1,0 +1,6 @@
+ litellm/proxy/_experimental/mcp_server/db.py       |  63 ++++++-
+ .../mcp_management_endpoints.py                    |  19 +-
+ .../management_helpers/object_permission_utils.py  |   5 +-
+ .../test_mcp_management_endpoints.py               | 197 +++++++++++++++++++++
+ .../test_object_permission_utils.py                |  56 +++++-
+ 5 files changed, 330 insertions(+), 10 deletions(-)
