@@ -45,3 +45,19 @@
 - Conflict: no content conflict; local commit added legacy spend log rejection coverage and updated mock query path.
 - Resolution: kept the test updates.
 - Secrets: none logged.
+
+## 067be69f8f fix: TASK-2026-06-10-001 clean stale MCP delete refs
+
+- File: `.gitignore`
+- Conflict: upstream added coverage/dashboard output ignores while the local commit added StaticEng private-state ignore rules.
+- Resolution: kept both upstream ignore rules and StaticEng private-state ignore rules.
+- File: `litellm/proxy/_experimental/mcp_server/db.py`
+- Conflict: upstream retained `TYPE_CHECKING` imports and existing delete cleanup while the local commit added tuple typing plus stale object-permission cleanup helpers before MCP server delete.
+- Resolution: kept `TYPE_CHECKING` and `Tuple`, added `_get_mcp_tool_permissions_without_server` and `cleanup_mcp_server_references`, and preserved upstream `delete_mcp_server` per-user credential/env best-effort cleanup.
+- File: `litellm/proxy/management_helpers/object_permission_utils.py`
+- Conflict: upstream preserved unresolved server IDs in team allowed MCP resolution, while the local commit intentionally drops stale/deleted MCP server IDs.
+- Resolution: used the local stale-reference cleanup behavior by returning only `_flatten_resolved_mcp_server_ids(resolved_servers)`.
+- File: `tests/test_litellm/proxy/management_helpers/test_object_permission_utils.py`
+- Conflict: import list conflicted between upstream `_rewrite_object_permission_mcp_servers` coverage and local `_resolve_mcp_server_identifiers_to_ids` stale-id coverage.
+- Resolution: kept both imports and both test groups.
+- Secrets: none logged.

@@ -18,6 +18,7 @@ from litellm.proxy._types import (
 from litellm.proxy.management_helpers.object_permission_utils import (
     _extract_requested_mcp_access_groups,
     _extract_requested_mcp_server_ids,
+    _resolve_mcp_server_identifiers_to_ids,
     _resolve_team_allowed_mcp_servers,
     _rewrite_object_permission_mcp_servers,
     _set_object_permission,
@@ -846,6 +847,10 @@ async def test_validate_team_access_groups_resolve_to_servers(
 
 @pytest.mark.asyncio
 @patch(
+    "litellm.proxy._experimental.mcp_server.mcp_server_manager.global_mcp_server_manager",
+    new=_make_mock_mcp_manager(),
+)
+@patch(
     "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler._get_mcp_servers_from_access_groups",
     new_callable=AsyncMock,
     return_value=[],
@@ -860,10 +865,14 @@ async def test_resolve_team_allowed_mcp_servers_string_tool_permissions(
     mock_perm.mcp_tool_permissions = json.dumps({"server-2": ["tool1"]})
 
     result = await _resolve_team_allowed_mcp_servers(mock_perm)
-    assert result == {"server-1", "server-2"}
+    assert result == set()
 
 
 @pytest.mark.asyncio
+@patch(
+    "litellm.proxy._experimental.mcp_server.mcp_server_manager.global_mcp_server_manager",
+    new=_make_mock_mcp_manager(),
+)
 @patch(
     "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler._get_mcp_servers_from_access_groups",
     new_callable=AsyncMock,
@@ -879,7 +888,50 @@ async def test_resolve_team_allowed_mcp_servers_dict_tool_permissions(
     mock_perm.mcp_tool_permissions = {"server-a": ["tool1"]}
 
     result = await _resolve_team_allowed_mcp_servers(mock_perm)
-    assert result == {"server-a"}
+    assert result == set()
+
+
+@pytest.mark.asyncio
+async def test_resolve_team_allowed_mcp_servers_filters_stale_ids_from_db_lookup():
+    mock_prisma_client = MagicMock()
+    mock_db_server = MagicMock()
+    mock_db_server.server_id = "server-1"
+    mock_db_server.alias = None
+    mock_db_server.server_name = None
+    mock_prisma_client.db.litellm_mcpservertable.find_many = AsyncMock(
+        return_value=[mock_db_server]
+    )
+
+    mock_perm = MagicMock(spec=LiteLLM_ObjectPermissionTable)
+    mock_perm.mcp_servers = ["server-1", "stale-server"]
+    mock_perm.mcp_access_groups = []
+    mock_perm.mcp_tool_permissions = {"stale-tool-server": ["tool1"]}
+
+    with patch(
+        "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler._get_mcp_servers_from_access_groups",
+        AsyncMock(return_value=[]),
+    ):
+        result = await _resolve_team_allowed_mcp_servers(
+            mock_perm, prisma_client=mock_prisma_client
+        )
+
+    assert result == {"server-1"}
+
+
+@pytest.mark.asyncio
+async def test_resolve_mcp_server_identifiers_does_not_resolve_unknown_ids():
+    mock_prisma_client = MagicMock()
+    mock_prisma_client.db.litellm_mcpservertable.find_many = AsyncMock(return_value=[])
+
+    with patch(
+        "litellm.proxy._experimental.mcp_server.mcp_server_manager.global_mcp_server_manager",
+        new=_make_mock_mcp_manager(),
+    ):
+        result = await _resolve_mcp_server_identifiers_to_ids(
+            identifiers={"stale-server"}, prisma_client=mock_prisma_client
+        )
+
+    assert result == {"stale-server": set()}
 
 
 # ---- Tests for the all-proxy-mcpservers sentinel (team scoped to every server) ----

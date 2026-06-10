@@ -1,0 +1,4 @@
+Recent LiteLLM log inspection for Redis cache test diagnostics:
+- No `invalid username-password pair or user is disabled` lines were found in the captured recent LiteLLM logs.
+- Recent Redis-related LiteLLM errors were `Timeout connecting to server`, which appear to be stale/cached Redis-client activity around the sidecar restart rather than the `/cache/settings/test` endpoint result.
+- Real endpoint verification is recorded in `litellm-cache-test.log` and returned success with the redacted UI-shaped payload.

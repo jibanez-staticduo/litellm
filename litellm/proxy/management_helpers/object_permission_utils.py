@@ -374,8 +374,7 @@ async def _resolve_team_allowed_mcp_servers(
         identifiers=raw_servers,
         prisma_client=prisma_client,
     )
-    unresolved_servers: Final = {server_id for server_id in raw_servers if not resolved_servers.get(server_id)}
-    return _flatten_resolved_mcp_server_ids(resolved_servers) | unresolved_servers
+    return _flatten_resolved_mcp_server_ids(resolved_servers)
 
 
 def _get_allow_all_keys_server_ids() -> set[str]:

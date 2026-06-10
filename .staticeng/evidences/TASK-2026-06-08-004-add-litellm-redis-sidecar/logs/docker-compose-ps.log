@@ -1,0 +1,5 @@
+NAME                       IMAGE                                                                                COMMAND                  SERVICE                    CREATED          STATUS                    PORTS
+litellm                    docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260608-fix-mcp-null-maps   "/bin/sh /app/start-…"   litellm                    31 minutes ago   Up 31 minutes (healthy)   4000/tcp
+litellm-admin-mcp          sha256:f2ebdf56c65d86c9c78c48f424db7e145d3c2fa166308c8d90362f0c54fa0c53              "python /app/server.…"   litellm-admin-mcp          3 weeks ago      Up 6 days (healthy)       
+litellm-admin-mcp-compat   sha256:b32721b3532277078b6759f60c9cc984842d60f9aca0c34c235ade3fcc27995e              "python /app/server.…"   litellm-admin-mcp-compat   3 weeks ago      Up 6 days (healthy)       
+litellm-redis              redis:7.4-alpine                                                                     "docker-entrypoint.s…"   redis                      13 minutes ago   Up 13 minutes (healthy)   6379/tcp
