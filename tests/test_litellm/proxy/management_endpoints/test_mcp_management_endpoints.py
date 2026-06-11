@@ -1579,10 +1579,13 @@ class TestRemoveMCPServer:
         mock_manager.reload_servers_from_database.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_delete_missing_unreferenced_server_returns_404(self):
+    async def test_delete_missing_unreferenced_server_returns_noop_response(self):
         mock_user_auth = generate_mock_user_api_key_auth(
             user_role=LitellmUserRoles.PROXY_ADMIN
         )
+        mock_manager = MagicMock()
+        mock_manager.reload_servers_from_database = AsyncMock()
+        mock_manager.remove_server = MagicMock()
 
         with (
             patch(
@@ -1597,30 +1600,51 @@ class TestRemoveMCPServer:
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.cleanup_mcp_server_references",
                 AsyncMock(return_value=False),
             ),
+            patch(
+                "litellm.proxy.management_endpoints.mcp_management_endpoints.delete_mcp_server",
+                AsyncMock(),
+            ) as mock_delete,
+            patch(
+                "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
+                mock_manager,
+            ),
         ):
             from litellm.proxy.management_endpoints.mcp_management_endpoints import (
                 remove_mcp_server,
             )
 
-            with pytest.raises(HTTPException) as exc_info:
-                await remove_mcp_server(
-                    server_id="missing-server", user_api_key_dict=mock_user_auth
-                )
+            response = await remove_mcp_server(
+                server_id="missing-server", user_api_key_dict=mock_user_auth
+            )
 
-        assert exc_info.value.status_code == 404
-        assert "missing-server" in str(exc_info.value.detail)
+        assert response.status_code == 202
+        assert json.loads(response.body) == {
+            "message": "MCP Server already absent for server_id=missing-server",
+            "server_id": "missing-server",
+            "deleted": False,
+            "cleaned_stale_references": False,
+        }
+        mock_delete.assert_not_awaited()
+        mock_manager.remove_server.assert_not_called()
+        mock_manager.reload_servers_from_database.assert_not_awaited()
 
 
 @pytest.mark.asyncio
 async def test_cleanup_mcp_server_references_removes_permissions_and_credentials():
     from litellm.proxy._experimental.mcp_server.db import cleanup_mcp_server_references
 
+    deleted_server_id = "16010c20-88dd-4f12-9025-9dd84bafc283"
+    remaining_server_id = "26010c20-88dd-4f12-9025-9dd84bafc284"
     first_permission = MagicMock()
     first_permission.object_permission_id = "permission-1"
-    first_permission.mcp_servers = ["server-1", "server-2", "server-1"]
+    first_permission.mcp_servers = [
+        deleted_server_id,
+        remaining_server_id,
+        deleted_server_id,
+    ]
     first_permission.mcp_tool_permissions = {
-        "server-1": ["tool1"],
-        "server-2": ["tool2"],
+        deleted_server_id: ["tool1"],
+        remaining_server_id: ["tool2"],
     }
     second_permission = MagicMock()
     second_permission.object_permission_id = "permission-2"
@@ -1637,18 +1661,19 @@ async def test_cleanup_mcp_server_references_removes_permissions_and_credentials
         return_value=delete_result
     )
 
-    cleaned = await cleanup_mcp_server_references(mock_prisma_client, "server-1")
+    cleaned = await cleanup_mcp_server_references(mock_prisma_client, deleted_server_id)
 
     assert cleaned is True
-    mock_prisma_client.db.litellm_objectpermissiontable.update.assert_awaited_once_with(
-        where={"object_permission_id": "permission-1"},
-        data={
-            "mcp_servers": ["server-2"],
-            "mcp_tool_permissions": {"server-2": ["tool2"]},
-        },
-    )
+    mock_prisma_client.db.litellm_objectpermissiontable.update.assert_awaited_once()
+    update_call = mock_prisma_client.db.litellm_objectpermissiontable.update.await_args.kwargs
+    assert update_call["where"] == {"object_permission_id": "permission-1"}
+    assert update_call["data"]["mcp_servers"] == [remaining_server_id]
+    assert isinstance(update_call["data"]["mcp_tool_permissions"], str)
+    assert json.loads(update_call["data"]["mcp_tool_permissions"]) == {
+        remaining_server_id: ["tool2"]
+    }
     mock_prisma_client.db.litellm_mcpusercredentials.delete_many.assert_awaited_once_with(
-        where={"server_id": "server-1"}
+        where={"server_id": deleted_server_id}
     )
 
 
