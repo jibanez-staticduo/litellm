@@ -753,11 +753,10 @@ def _get_mcp_tool_permissions_without_server(
 
     updated_permissions = dict(mcp_tool_permissions)
     updated_permissions.pop(server_id, None)
-    if serialized_input:
-        from litellm.litellm_core_utils.safe_json_dumps import safe_dumps
 
-        return safe_dumps(updated_permissions), True
-    return updated_permissions, True
+    from litellm.litellm_core_utils.safe_json_dumps import safe_dumps
+
+    return safe_dumps(updated_permissions), True
 
 
 async def cleanup_mcp_server_references(

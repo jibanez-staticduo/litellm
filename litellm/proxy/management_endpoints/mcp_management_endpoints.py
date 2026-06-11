@@ -1987,18 +1987,17 @@ if MCP_AVAILABLE:
 
         if mcp_server_record is None:
             if cleaned_references:
-                return JSONResponse(
-                    status_code=status.HTTP_202_ACCEPTED,
-                    content={
-                        "message": f"Cleaned stale MCP server references for server_id={server_id}",
-                        "server_id": server_id,
-                        "deleted": False,
-                        "cleaned_stale_references": True,
-                    },
-                )
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={"error": f"MCP Server not found, passed server_id={server_id}"},
+                message = f"Cleaned stale MCP server references for server_id={server_id}"
+            else:
+                message = f"MCP Server already absent for server_id={server_id}"
+            return JSONResponse(
+                status_code=status.HTTP_202_ACCEPTED,
+                content={
+                    "message": message,
+                    "server_id": server_id,
+                    "deleted": False,
+                    "cleaned_stale_references": cleaned_references,
+                },
             )
 
         mcp_server_record_deleted = await delete_mcp_server(prisma_client, server_id)
