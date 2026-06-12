@@ -1,0 +1,5 @@
+Fedora LiteLLM verification
+2026-06-12T13:12:06+02:00
+name=/litellm image=docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260612-onboarding-claim-session status=running health=healthy started=2026-06-12T11:10:29.484258954Z
+NAME      IMAGE                                                                                       COMMAND                  SERVICE   CREATED              STATUS                        PORTS
+litellm   docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260612-onboarding-claim-session   "/bin/sh /app/start-…"   litellm   About a minute ago   Up About a minute (healthy)   0.0.0.0:4000->4000/tcp, [::]:4000->4000/tcp

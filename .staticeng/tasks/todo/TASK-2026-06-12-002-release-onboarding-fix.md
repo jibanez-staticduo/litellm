@@ -61,3 +61,15 @@ Create `.staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/` with:
 
 [Agent Message] From: product_manager To: tech_lead
 Please perform safe commit and release execution for the onboarding fix. Inspect both `/home/staticduo/git/litellm` and `/home/staticduo/git/litellm-production-main` before committing or releasing. Preserve unrelated dirty changes. Use the release script to deploy to both local and Fedora. Return Summary, Work Performed, Acceptance Criteria Coverage, Documentation Impact, Open Risks, Recommended Next Step with exact commit hash, image tag, and verification evidence paths.
+
+# Post Implementation Task Updates
+
+## tech_lead: Post Implementation Expectations
+
+Committed and pushed the onboarding claim session fix from `/home/staticduo/git/litellm-production-main` without staging unrelated dirty files from `/home/staticduo/git/litellm`. Source commit: `89cb8d2916d8551bef83ffbe3cbf121225af4f20`. Evidence commit before release: `3d814838ae7f41efa44213bbf31201d17d42afcfe`.
+
+Ran `/home/staticduo/git/release-litellm.sh --tag staticduo-gpt-lazymcp-main-20260612-onboarding-claim-session` from the production workspace. The script built and pushed `docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260612-onboarding-claim-session` and stable tag `docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-latest`, both digest `sha256:102158c62182f4db494be543dbb09580b4074dd69f87967a15e77ba3a5349a79`. Rollback tag created: `docker.staticduo.com/litellm:rollback-20260612-130841`.
+
+Verified local and Fedora `litellm` containers are running the new image with Docker health `healthy`. Readiness checks inside both containers returned HTTP `200` with `{"status":"healthy","db":"connected"}`.
+
+Evidence is under `.staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/`. `staticeng_validate` remains blocked by pre-existing CodeMap coverage/configuration issues unrelated to this onboarding release.
