@@ -1561,7 +1561,7 @@ export const claimOnboardingToken = async (
     return data;
     // Handle success - you might want to update some state or UI based on the created key
   } catch (error) {
-    console.error("Failed to delete key:", error);
+    console.error("Failed to claim onboarding token:", error);
     throw error;
   }
 };

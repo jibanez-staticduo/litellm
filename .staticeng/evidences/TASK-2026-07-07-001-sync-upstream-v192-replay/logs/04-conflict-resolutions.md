@@ -61,3 +61,16 @@
 - Conflict: import list conflicted between upstream `_rewrite_object_permission_mcp_servers` coverage and local `_resolve_mcp_server_identifiers_to_ids` stale-id coverage.
 - Resolution: kept both imports and both test groups.
 - Secrets: none logged.
+
+## 89cb8d2916 fix: TASK-2026-06-12-002 release onboarding claim session
+
+- File: `litellm/proxy/proxy_server.py`
+- Conflict: upstream had moved onboarding claim into a transaction that consumed the invite before minting the UI session, while the local commit reserved the invite, rolled it back on password/session failures, returned a UI session token, and sanitized the user response.
+- Resolution: preserved the local session-token behavior, single-use `update_many` reservation, rollback-on-failure paths, final accepted_at refresh, and sanitized response while keeping upstream repository-based invite/user lookup and onboarding helper shapes already present in the file.
+- File: `tests/test_litellm/proxy/auth/test_onboarding.py`
+- Conflict: no content conflict; local commit added missing-user, rollback, and final-update failure coverage.
+- Resolution: kept onboarding regression tests and upstream route test adjustment.
+- File: `ui/litellm-dashboard/src/components/networking.tsx`
+- Conflict: no content conflict; local commit removed debug logging and fixed the onboarding claim error message.
+- Resolution: kept the UI networking cleanup.
+- Secrets: none logged.

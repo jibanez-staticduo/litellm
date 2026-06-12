@@ -287,6 +287,33 @@ async def test_claim_token_rejects_mismatched_user_id():
 
 
 @pytest.mark.asyncio
+async def test_claim_token_rejects_missing_user():
+    from litellm.proxy.proxy_server import claim_onboarding_link
+
+    invite = _make_invite(is_accepted=False)
+    prisma = _make_prisma(invite, user=None)
+    request = _make_claim_request(_make_onboarding_token())
+    data = InvitationClaim(
+        invitation_link="invite-abc",
+        user_id="user-123",
+        password="NewP@ssw0rd",
+    )
+
+    with (
+        patch("litellm.proxy.proxy_server.prisma_client", prisma),
+        patch("litellm.proxy.proxy_server.master_key", "sk-test"),
+        patch("litellm.proxy.proxy_server.general_settings", {}),
+    ):
+        with pytest.raises(HTTPException) as exc_info:
+            await claim_onboarding_link(data=data, request=request)
+
+    assert exc_info.value.status_code == 401
+    assert "User does not exist" in exc_info.value.detail["error"]
+    prisma.db.litellm_invitationlink.update_many.assert_not_called()
+    prisma.db.litellm_usertable.update.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_claim_token_rejects_missing_onboarding_token():
     """The password endpoint must require the onboarding token returned by get_token."""
     from litellm.proxy.proxy_server import claim_onboarding_link
@@ -374,7 +401,8 @@ async def test_claim_token_rejects_concurrent_reuse_before_password_write():
     from litellm.proxy.proxy_server import claim_onboarding_link
 
     invite = _make_invite(is_accepted=False)
-    prisma = _make_prisma(invite)
+    user = _make_user()
+    prisma = _make_prisma(invite, user)
     prisma.db.litellm_invitationlink.update_many = AsyncMock(return_value=0)
     request = _make_claim_request(_make_onboarding_token())
     data = InvitationClaim(
@@ -505,3 +533,94 @@ async def test_claim_token_rolls_back_invite_when_session_key_mint_fails():
     }
     assert rollback_kwargs["data"]["accepted_at"] is None
     assert rollback_kwargs["data"]["is_accepted"] is False
+
+
+@pytest.mark.asyncio
+async def test_claim_token_rolls_back_invite_when_password_update_raises():
+    from litellm.proxy.proxy_server import claim_onboarding_link
+
+    invite = _make_invite(is_accepted=False)
+    user = _make_user()
+    prisma = _make_prisma(invite, user)
+    prisma.db.litellm_usertable.update = AsyncMock(side_effect=Exception("db failed"))
+    request = _make_claim_request(_make_onboarding_token())
+
+    data = InvitationClaim(
+        invitation_link="invite-abc",
+        user_id="user-123",
+        password="NewP@ssw0rd",
+    )
+
+    with (
+        patch("litellm.proxy.proxy_server.prisma_client", prisma),
+        patch("litellm.proxy.proxy_server.master_key", "sk-test"),
+        patch("litellm.proxy.proxy_server.general_settings", {}),
+        patch(
+            "litellm.proxy.proxy_server.generate_key_helper_fn",
+            new_callable=AsyncMock,
+        ) as mock_generate_key,
+    ):
+        with pytest.raises(HTTPException) as exc_info:
+            await claim_onboarding_link(data=data, request=request)
+
+    assert exc_info.value.status_code == 500
+    assert "Failed to claim onboarding invitation" in exc_info.value.detail["error"]
+    assert prisma.db.litellm_invitationlink.update_many.call_count == 2
+    rollback_kwargs = prisma.db.litellm_invitationlink.update_many.call_args_list[
+        1
+    ].kwargs
+    assert rollback_kwargs["where"] == {
+        "id": "invite-abc",
+        "is_accepted": True,
+    }
+    assert rollback_kwargs["data"]["accepted_at"] is None
+    assert rollback_kwargs["data"]["is_accepted"] is False
+    mock_generate_key.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_claim_token_returns_session_when_final_invite_update_fails():
+    from litellm.proxy.proxy_server import claim_onboarding_link
+
+    invite = _make_invite(is_accepted=False)
+    user = _make_user()
+    prisma = _make_prisma(invite, user)
+    prisma.db.litellm_invitationlink.update = AsyncMock(
+        side_effect=Exception("accepted_at refresh failed")
+    )
+    request = _make_claim_request(_make_onboarding_token())
+    data = InvitationClaim(
+        invitation_link="invite-abc",
+        user_id="user-123",
+        password="NewP@ssw0rd",
+    )
+    mock_token_response = {"token": "sk-generated-key", "user_id": "user-123"}
+
+    with (
+        patch("litellm.proxy.proxy_server.prisma_client", prisma),
+        patch("litellm.proxy.proxy_server.master_key", "sk-test"),
+        patch("litellm.proxy.proxy_server.general_settings", {}),
+        patch("litellm.proxy.proxy_server.premium_user", False),
+        patch(
+            "litellm.proxy.proxy_server.generate_key_helper_fn",
+            new_callable=AsyncMock,
+            return_value=mock_token_response,
+        ),
+        patch(
+            "litellm.proxy.proxy_server.get_custom_url",
+            return_value="http://localhost:4000/",
+        ),
+        patch(
+            "litellm.proxy.proxy_server.get_disabled_non_admin_personal_key_creation",
+            return_value=False,
+        ),
+        patch("litellm.proxy.proxy_server.get_server_root_path", return_value=""),
+    ):
+        result = await claim_onboarding_link(data=data, request=request)
+
+    outer_claims = jwt.decode(result["token"], "sk-test", algorithms=["HS256"])
+    assert outer_claims["key"] == "sk-generated-key"
+    prisma.db.litellm_invitationlink.update_many.assert_called_once()
+    reserve_kwargs = prisma.db.litellm_invitationlink.update_many.call_args.kwargs
+    assert reserve_kwargs["data"]["accepted_at"] is not None
+    assert reserve_kwargs["data"]["is_accepted"] is True
