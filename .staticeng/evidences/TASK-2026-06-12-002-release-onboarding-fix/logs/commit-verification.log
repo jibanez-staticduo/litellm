@@ -1,0 +1,16 @@
+89cb8d2916 fix: TASK-2026-06-12-002 release onboarding claim session
+ ...026-06-12-001-onboarding-claim-session-token.md |   48 +
+ .../SUMMARY.md                                     |   31 +
+ .../logs/backend-onboarding-tests-rerun.log        |   40 +
+ .../logs/backend-onboarding-tests.log              | 1596 ++++++++++++++++++++
+ .../logs/ruff-check.log                            |    1 +
+ .../logs/staticeng-validate.log                    |    1 +
+ .../logs/syntax-check.log                          |    0
+ .../logs/uv-sync-proxy-dev.log                     |  190 +++
+ ...-2026-06-12-001-fix-onboarding-claim-session.md |   97 ++
+ .../TASK-2026-06-12-002-release-onboarding-fix.md  |   63 +
+ litellm/proxy/proxy_server.py                      |  227 ++-
+ tests/test_litellm/proxy/auth/test_onboarding.py   |  121 +-
+ .../proxy/proxy_server/test_routes_onboarding.py   |    2 +-
+ ui/litellm-dashboard/src/components/networking.tsx |    3 +-
+ 14 files changed, 2387 insertions(+), 33 deletions(-)

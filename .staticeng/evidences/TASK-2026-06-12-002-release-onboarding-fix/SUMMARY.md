@@ -6,7 +6,7 @@ Prepared the onboarding claim session fix for production release. Release deploy
 
 ## Acceptance Criteria Coverage
 
-- AC-1: Pending commit.
+- AC-1: PASS. Source fix committed as `89cb8d2916d8551bef83ffbe3cbf121225af4f20`.
 - AC-2: Pending release script execution.
 - AC-3: Pending local stack verification.
 - AC-4: Pending Fedora stack verification.
@@ -18,6 +18,7 @@ Prepared the onboarding claim session fix for production release. Release deploy
 - PASS: `uv run ruff check litellm/proxy/proxy_server.py tests/test_litellm/proxy/auth/test_onboarding.py tests/test_litellm/proxy/proxy_server/test_routes_onboarding.py` in `logs/ruff-check.log`.
 - PASS: `uv run python -m pytest tests/test_litellm/proxy/auth/test_onboarding.py tests/test_litellm/proxy/proxy_server/test_routes_onboarding.py` after `uv sync --all-extras --group proxy-dev`; `26 passed, 22 warnings` in `logs/backend-onboarding-tests-rerun.log`.
 - PASS: `python -m py_compile litellm/proxy/proxy_server.py` in `logs/syntax-check.log`.
+- PASS: Commit verification captured `89cb8d2916d8551bef83ffbe3cbf121225af4f20` in `logs/commit-verification.log`.
 - BLOCKED: `staticeng_validate` tool reports pre-existing CodeMap coverage/configuration issues in `/home/staticduo/git/litellm`; `staticeng_validate` CLI is not installed in the production worktree shell. See `logs/staticeng-validate.log` and StaticEng tool output in session.
 
 ## Files Changed
