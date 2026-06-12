@@ -12,7 +12,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import jwt
-import pytest
 
 from .conftest import normalize
 
@@ -211,6 +210,7 @@ def test_claim_onboarding_link_happy(client, monkeypatch, mock_prisma):
     mock_prisma.db.litellm_invitationlink.find_unique.return_value = invite
     mock_prisma.db.litellm_invitationlink.update_many.return_value = 1
     mock_prisma.db.litellm_invitationlink.update.return_value = invite
+    mock_prisma.db.litellm_usertable.find_unique.return_value = user_obj
     mock_prisma.db.litellm_usertable.update.return_value = user_obj
     _install_tx_context(mock_prisma)
 

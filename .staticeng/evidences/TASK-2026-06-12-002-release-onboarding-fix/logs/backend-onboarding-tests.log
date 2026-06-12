@@ -1,0 +1,1596 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.0.3, pluggy-1.6.0
+rootdir: /home/staticduo/git/litellm-production-main
+configfile: pyproject.toml
+plugins: postgresql-7.0.2, respx-0.22.0, anyio-4.13.0, asyncio-1.3.0, recording-0.13.4, rerunfailures-15.1, requests-mock-1.12.1, cov-5.0.0, mock-3.15.1, xdist-3.8.0, timeout-2.4.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=session, asyncio_default_test_loop_scope=function
+collected 26 items
+
+tests/test_litellm/proxy/proxy_server/test_routes_onboarding.py EEEEE    [ 19%]
+tests/test_litellm/proxy/auth/test_onboarding.py EEEEEEEEEEEEEEEE        [ 80%]
+tests/test_litellm/proxy/proxy_server/test_routes_onboarding.py EEEEE    [100%]
+
+==================================== ERRORS ====================================
+_____ ERROR at setup of test_claim_onboarding_link_bad_onboarding_jwt_401 ______
+
+fixturedef = <FixtureDef argname='app' scope='session' baseid='tests/test_litellm/proxy/proxy_server'>
+request = <SubRequest 'app' for <Function test_claim_onboarding_link_bad_onboarding_jwt_401>>
+
+    @pytest.hookimpl(wrapper=True)
+    def pytest_fixture_setup(fixturedef: FixtureDef, request) -> object | None:
+        asyncio_mode = _get_asyncio_mode(request.config)
+        if not _is_asyncio_fixture_function(fixturedef.func):
+            if asyncio_mode == Mode.STRICT:
+                # Ignore async fixtures without explicit asyncio mark in strict mode
+                # This applies to pytest_trio fixtures, for example
+                return (yield)
+            if not _is_coroutine_or_asyncgen(fixturedef.func):
+>               return (yield)
+                        ^^^^^
+
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_litellm/proxy/proxy_server/conftest.py:77: in app
+    from litellm.proxy.proxy_server import app as _app
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+______________ ERROR at setup of test_claim_onboarding_link_happy ______________
+
+    @pytest.fixture(scope="session")
+    def app():
+        """Return the proxy_server FastAPI app with lifespan effectively disabled.
+    
+        TestClient used WITHOUT the ``with`` context manager skips the lifespan,
+        so the startup event (DB connect, Router init, OTEL setup) never fires.
+        Module import still runs once; module-level globals are harmless.
+        """
+        os.environ.setdefault("LITELLM_LOG", "ERROR")
+>       from litellm.proxy.proxy_server import app as _app
+
+tests/test_litellm/proxy/proxy_server/conftest.py:77: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+_______ ERROR at setup of test_claim_onboarding_link_invalid_invite_401 ________
+
+    @pytest.fixture(scope="session")
+    def app():
+        """Return the proxy_server FastAPI app with lifespan effectively disabled.
+    
+        TestClient used WITHOUT the ``with`` context manager skips the lifespan,
+        so the startup event (DB connect, Router init, OTEL setup) never fires.
+        Module import still runs once; module-level globals are harmless.
+        """
+        os.environ.setdefault("LITELLM_LOG", "ERROR")
+>       from litellm.proxy.proxy_server import app as _app
+
+tests/test_litellm/proxy/proxy_server/conftest.py:77: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+________ ERROR at setup of test_claim_onboarding_link_missing_field_422 ________
+
+    @pytest.fixture(scope="session")
+    def app():
+        """Return the proxy_server FastAPI app with lifespan effectively disabled.
+    
+        TestClient used WITHOUT the ``with`` context manager skips the lifespan,
+        so the startup event (DB connect, Router init, OTEL setup) never fires.
+        Module import still runs once; module-level globals are harmless.
+        """
+        os.environ.setdefault("LITELLM_LOG", "ERROR")
+>       from litellm.proxy.proxy_server import app as _app
+
+tests/test_litellm/proxy/proxy_server/conftest.py:77: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+______ ERROR at setup of test_claim_onboarding_link_user_id_mismatch_401 _______
+
+    @pytest.fixture(scope="session")
+    def app():
+        """Return the proxy_server FastAPI app with lifespan effectively disabled.
+    
+        TestClient used WITHOUT the ``with`` context manager skips the lifespan,
+        so the startup event (DB connect, Router init, OTEL setup) never fires.
+        Module import still runs once; module-level globals are harmless.
+        """
+        os.environ.setdefault("LITELLM_LOG", "ERROR")
+>       from litellm.proxy.proxy_server import app as _app
+
+tests/test_litellm/proxy/proxy_server/conftest.py:77: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+_________ ERROR at setup of test_claim_token_rejects_already_used_link _________
+
+self = <Coroutine test_claim_token_rejects_already_used_link>
+
+    def setup(self) -> None:
+        runner_fixture_id = f"_{self._loop_scope}_scoped_runner"
+        if runner_fixture_id not in self.fixturenames:
+            self.fixturenames.append(runner_fixture_id)
+>       return super().setup()
+               ^^^^^^^^^^^^^^^
+
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+---------------------------- Captured stdout setup -----------------------------
+[conftest] Module setup complete (worker: master)
+_ ERROR at setup of test_claim_token_rejects_concurrent_reuse_before_password_write _
+
+self = <Coroutine test_claim_token_rejects_concurrent_reuse_before_password_write>
+
+    def setup(self) -> None:
+        runner_fixture_id = f"_{self._loop_scope}_scoped_runner"
+        if runner_fixture_id not in self.fixturenames:
+            self.fixturenames.append(runner_fixture_id)
+>       return super().setup()
+               ^^^^^^^^^^^^^^^
+
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+___________ ERROR at setup of test_claim_token_rejects_expired_link ____________
+
+self = <Coroutine test_claim_token_rejects_expired_link>
+
+    def setup(self) -> None:
+        runner_fixture_id = f"_{self._loop_scope}_scoped_runner"
+        if runner_fixture_id not in self.fixturenames:
+            self.fixturenames.append(runner_fixture_id)
+>       return super().setup()
+               ^^^^^^^^^^^^^^^
+
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+_______ ERROR at setup of test_claim_token_rejects_invalid_bearer_token ________
+
+self = <Coroutine test_claim_token_rejects_invalid_bearer_token>
+
+    def setup(self) -> None:
+        runner_fixture_id = f"_{self._loop_scope}_scoped_runner"
+        if runner_fixture_id not in self.fixturenames:
+            self.fixturenames.append(runner_fixture_id)
+>       return super().setup()
+               ^^^^^^^^^^^^^^^
+
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+________ ERROR at setup of test_claim_token_rejects_mismatched_user_id _________
+
+self = <Coroutine test_claim_token_rejects_mismatched_user_id>
+
+    def setup(self) -> None:
+        runner_fixture_id = f"_{self._loop_scope}_scoped_runner"
+        if runner_fixture_id not in self.fixturenames:
+            self.fixturenames.append(runner_fixture_id)
+>       return super().setup()
+               ^^^^^^^^^^^^^^^
+
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+_____ ERROR at setup of test_claim_token_rejects_missing_onboarding_token ______
+
+self = <Coroutine test_claim_token_rejects_missing_onboarding_token>
+
+    def setup(self) -> None:
+        runner_fixture_id = f"_{self._loop_scope}_scoped_runner"
+        if runner_fixture_id not in self.fixturenames:
+            self.fixturenames.append(runner_fixture_id)
+>       return super().setup()
+               ^^^^^^^^^^^^^^^
+
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+___________ ERROR at setup of test_claim_token_rejects_missing_user ____________
+
+self = <Coroutine test_claim_token_rejects_missing_user>
+
+    def setup(self) -> None:
+        runner_fixture_id = f"_{self._loop_scope}_scoped_runner"
+        if runner_fixture_id not in self.fixturenames:
+            self.fixturenames.append(runner_fixture_id)
+>       return super().setup()
+               ^^^^^^^^^^^^^^^
+
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+_____ ERROR at setup of test_claim_token_rejects_wrong_onboarding_session ______
+
+self = <Coroutine test_claim_token_rejects_wrong_onboarding_session>
+
+    def setup(self) -> None:
+        runner_fixture_id = f"_{self._loop_scope}_scoped_runner"
+        if runner_fixture_id not in self.fixturenames:
+            self.fixturenames.append(runner_fixture_id)
+>       return super().setup()
+               ^^^^^^^^^^^^^^^
+
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+_ ERROR at setup of test_claim_token_returns_session_when_final_invite_update_fails _
+
+self = <Coroutine test_claim_token_returns_session_when_final_invite_update_fails>
+
+    def setup(self) -> None:
+        runner_fixture_id = f"_{self._loop_scope}_scoped_runner"
+        if runner_fixture_id not in self.fixturenames:
+            self.fixturenames.append(runner_fixture_id)
+>       return super().setup()
+               ^^^^^^^^^^^^^^^
+
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+_ ERROR at setup of test_claim_token_rolls_back_invite_when_password_update_raises _
+
+self = <Coroutine test_claim_token_rolls_back_invite_when_password_update_raises>
+
+    def setup(self) -> None:
+        runner_fixture_id = f"_{self._loop_scope}_scoped_runner"
+        if runner_fixture_id not in self.fixturenames:
+            self.fixturenames.append(runner_fixture_id)
+>       return super().setup()
+               ^^^^^^^^^^^^^^^
+
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+_ ERROR at setup of test_claim_token_rolls_back_invite_when_session_key_mint_fails _
+
+self = <Coroutine test_claim_token_rolls_back_invite_when_session_key_mint_fails>
+
+    def setup(self) -> None:
+        runner_fixture_id = f"_{self._loop_scope}_scoped_runner"
+        if runner_fixture_id not in self.fixturenames:
+            self.fixturenames.append(runner_fixture_id)
+>       return super().setup()
+               ^^^^^^^^^^^^^^^
+
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+__ ERROR at setup of test_claim_token_sets_accepted_at_after_password_written __
+
+self = <Coroutine test_claim_token_sets_accepted_at_after_password_written>
+
+    def setup(self) -> None:
+        runner_fixture_id = f"_{self._loop_scope}_scoped_runner"
+        if runner_fixture_id not in self.fixturenames:
+            self.fixturenames.append(runner_fixture_id)
+>       return super().setup()
+               ^^^^^^^^^^^^^^^
+
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+__________ ERROR at setup of test_get_token_rejects_already_used_link __________
+
+self = <Coroutine test_get_token_rejects_already_used_link>
+
+    def setup(self) -> None:
+        runner_fixture_id = f"_{self._loop_scope}_scoped_runner"
+        if runner_fixture_id not in self.fixturenames:
+            self.fixturenames.append(runner_fixture_id)
+>       return super().setup()
+               ^^^^^^^^^^^^^^^
+
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+____________ ERROR at setup of test_get_token_rejects_expired_link _____________
+
+self = <Coroutine test_get_token_rejects_expired_link>
+
+    def setup(self) -> None:
+        runner_fixture_id = f"_{self._loop_scope}_scoped_runner"
+        if runner_fixture_id not in self.fixturenames:
+            self.fixturenames.append(runner_fixture_id)
+>       return super().setup()
+               ^^^^^^^^^^^^^^^
+
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+____________ ERROR at setup of test_get_token_rejects_missing_link _____________
+
+self = <Coroutine test_get_token_rejects_missing_link>
+
+    def setup(self) -> None:
+        runner_fixture_id = f"_{self._loop_scope}_scoped_runner"
+        if runner_fixture_id not in self.fixturenames:
+            self.fixturenames.append(runner_fixture_id)
+>       return super().setup()
+               ^^^^^^^^^^^^^^^
+
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+_ ERROR at setup of test_get_token_returns_onboarding_token_without_minting_ui_key _
+
+self = <Coroutine test_get_token_returns_onboarding_token_without_minting_ui_key>
+
+    def setup(self) -> None:
+        runner_fixture_id = f"_{self._loop_scope}_scoped_runner"
+        if runner_fixture_id not in self.fixturenames:
+            self.fixturenames.append(runner_fixture_id)
+>       return super().setup()
+               ^^^^^^^^^^^^^^^
+
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+________ ERROR at setup of test_onboarding_get_token_expired_invite_401 ________
+
+    @pytest.fixture(scope="session")
+    def app():
+        """Return the proxy_server FastAPI app with lifespan effectively disabled.
+    
+        TestClient used WITHOUT the ``with`` context manager skips the lifespan,
+        so the startup event (DB connect, Router init, OTEL setup) never fires.
+        Module import still runs once; module-level globals are harmless.
+        """
+        os.environ.setdefault("LITELLM_LOG", "ERROR")
+>       from litellm.proxy.proxy_server import app as _app
+
+tests/test_litellm/proxy/proxy_server/conftest.py:77: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+______________ ERROR at setup of test_onboarding_get_token_happy _______________
+
+    @pytest.fixture(scope="session")
+    def app():
+        """Return the proxy_server FastAPI app with lifespan effectively disabled.
+    
+        TestClient used WITHOUT the ``with`` context manager skips the lifespan,
+        so the startup event (DB connect, Router init, OTEL setup) never fires.
+        Module import still runs once; module-level globals are harmless.
+        """
+        os.environ.setdefault("LITELLM_LOG", "ERROR")
+>       from litellm.proxy.proxy_server import app as _app
+
+tests/test_litellm/proxy/proxy_server/conftest.py:77: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+_____ ERROR at setup of test_onboarding_get_token_invalid_invite_link_401 ______
+
+    @pytest.fixture(scope="session")
+    def app():
+        """Return the proxy_server FastAPI app with lifespan effectively disabled.
+    
+        TestClient used WITHOUT the ``with`` context manager skips the lifespan,
+        so the startup event (DB connect, Router init, OTEL setup) never fires.
+        Module import still runs once; module-level globals are harmless.
+        """
+        os.environ.setdefault("LITELLM_LOG", "ERROR")
+>       from litellm.proxy.proxy_server import app as _app
+
+tests/test_litellm/proxy/proxy_server/conftest.py:77: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+______ ERROR at setup of test_onboarding_get_token_master_key_missing_500 ______
+
+    @pytest.fixture(scope="session")
+    def app():
+        """Return the proxy_server FastAPI app with lifespan effectively disabled.
+    
+        TestClient used WITHOUT the ``with`` context manager skips the lifespan,
+        so the startup event (DB connect, Router init, OTEL setup) never fires.
+        Module import still runs once; module-level globals are harmless.
+        """
+        os.environ.setdefault("LITELLM_LOG", "ERROR")
+>       from litellm.proxy.proxy_server import app as _app
+
+tests/test_litellm/proxy/proxy_server/conftest.py:77: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+_____ ERROR at setup of test_onboarding_get_token_missing_query_param_422 ______
+
+    @pytest.fixture(scope="session")
+    def app():
+        """Return the proxy_server FastAPI app with lifespan effectively disabled.
+    
+        TestClient used WITHOUT the ``with`` context manager skips the lifespan,
+        so the startup event (DB connect, Router init, OTEL setup) never fires.
+        Module import still runs once; module-level globals are harmless.
+        """
+        os.environ.setdefault("LITELLM_LOG", "ERROR")
+>       from litellm.proxy.proxy_server import app as _app
+
+tests/test_litellm/proxy/proxy_server/conftest.py:77: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    import asyncio
+    import copy
+    import enum
+    import importlib
+    import inspect
+    import io
+    import os
+    import random
+    import re
+    import secrets
+    import shutil
+    import subprocess
+    import sys
+    import threading
+    import time
+    import traceback
+    import warnings
+    from datetime import datetime, timedelta, timezone
+    from typing import (
+        TYPE_CHECKING,
+        Any,
+        AsyncGenerator,
+        Callable,
+        Dict,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+        cast,
+        get_args,
+        get_origin,
+        get_type_hints,
+    )
+    
+    import anyio
+>   import websockets
+E   ModuleNotFoundError: No module named 'websockets'
+
+litellm/proxy/proxy_server.py:38: ModuleNotFoundError
+=========================== short test summary info ============================
+ERROR tests/test_litellm/proxy/proxy_server/test_routes_onboarding.py::test_claim_onboarding_link_bad_onboarding_jwt_401
+ERROR tests/test_litellm/proxy/proxy_server/test_routes_onboarding.py::test_claim_onboarding_link_happy
+ERROR tests/test_litellm/proxy/proxy_server/test_routes_onboarding.py::test_claim_onboarding_link_invalid_invite_401
+ERROR tests/test_litellm/proxy/proxy_server/test_routes_onboarding.py::test_claim_onboarding_link_missing_field_422
+ERROR tests/test_litellm/proxy/proxy_server/test_routes_onboarding.py::test_claim_onboarding_link_user_id_mismatch_401
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_already_used_link
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_concurrent_reuse_before_password_write
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_expired_link
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_invalid_bearer_token
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_mismatched_user_id
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_missing_onboarding_token
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_missing_user
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_wrong_onboarding_session
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_returns_session_when_final_invite_update_fails
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rolls_back_invite_when_password_update_raises
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rolls_back_invite_when_session_key_mint_fails
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_sets_accepted_at_after_password_written
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_get_token_rejects_already_used_link
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_get_token_rejects_expired_link
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_get_token_rejects_missing_link
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_get_token_returns_onboarding_token_without_minting_ui_key
+ERROR tests/test_litellm/proxy/proxy_server/test_routes_onboarding.py::test_onboarding_get_token_expired_invite_401
+ERROR tests/test_litellm/proxy/proxy_server/test_routes_onboarding.py::test_onboarding_get_token_happy
+ERROR tests/test_litellm/proxy/proxy_server/test_routes_onboarding.py::test_onboarding_get_token_invalid_invite_link_401
+ERROR tests/test_litellm/proxy/proxy_server/test_routes_onboarding.py::test_onboarding_get_token_master_key_missing_500
+ERROR tests/test_litellm/proxy/proxy_server/test_routes_onboarding.py::test_onboarding_get_token_missing_query_param_422
+============================== 26 errors in 5.03s ==============================
