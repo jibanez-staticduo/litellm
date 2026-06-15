@@ -16,10 +16,10 @@
 - AC-1: Fixed `user_obj.tpm_limit` / `user_obj.rpm_limit` by reading cached users through dict/object-safe accessors.
 - AC-2: Audited same-scope auth paths and fixed additional cached user dict reads for `user_role`, `spend`, `max_budget`, `models`, `user_id`, and `user_email` in auth flow helpers.
 - AC-3: Added focused regression coverage for cached user dict `tpm_limit`/`rpm_limit` and shared accessor behavior.
-- AC-4: Ran focused tests and Black. See `logs/tests.log`.
+- AC-4: Ran focused tests and Black. See `.staticeng/evidences/TASK-2026-06-01-003-fix-auth-dict-tpm-limit/logs/tests.log`.
 - AC-5: Pushed fork `main` without force through `08a3aac163` before final deployment.
-- AC-6: Deployed with `/home/staticduo/git/release-litellm.sh --workdir /tmp/opencode/litellm-production-main`. See `logs/deploy.log`.
-- AC-7: Health is healthy/readiness 200 and final log scan shows zero matching auth dict attribute errors. See `logs/health-after.log` and `logs/error-scan-after.log`.
+- AC-6: Deployed with `/home/staticduo/git/release-litellm.sh --workdir /tmp/opencode/litellm-production-main`. See `.staticeng/evidences/TASK-2026-06-01-003-fix-auth-dict-tpm-limit/logs/deploy.log`.
+- AC-7: Health is healthy/readiness 200 and final log scan shows zero matching auth dict attribute errors. See `.staticeng/evidences/TASK-2026-06-01-003-fix-auth-dict-tpm-limit/logs/health-after.log` and `.staticeng/evidences/TASK-2026-06-01-003-fix-auth-dict-tpm-limit/logs/error-scan-after.log`.
 
 ## Verification
 

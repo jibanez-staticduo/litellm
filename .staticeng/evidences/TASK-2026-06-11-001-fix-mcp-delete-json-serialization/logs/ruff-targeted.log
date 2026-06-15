@@ -1,0 +1,2 @@
+$ python -m ruff check litellm/proxy/_experimental/mcp_server/db.py tests/test_litellm/proxy/management_endpoints/test_mcp_management_endpoints.py
+/usr/bin/python: No module named ruff

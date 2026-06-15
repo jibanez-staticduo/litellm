@@ -1,0 +1,9 @@
+fedora host default: PASS
+fedora stack dir default: PASS
+fedora env opt out: PASS
+fedora cli opt out: PASS
+remote ssh args: PASS
+remote env update: PASS
+remote compose pull: PASS
+remote compose up: PASS
+build only disables deploy: PASS

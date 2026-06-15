@@ -1,0 +1,9 @@
+$ staticeng_validate
+FAIL: Validation errors found.
+
+Representative validation failures:
+- .staticeng/codemap.yml references missing paths: Agents_Common.md, docs/core/agent_orchestration.md, docs/architecture/TECHNICAL_ARCHITECTURE.md.
+- .staticeng/codemap.yml has Rule of Local Knowledge violations for nested docs paths.
+- Repository-wide missing codemap.yml errors for many pre-existing source directories, including docker, scripts, litellm, and many litellm/llms subdirectories.
+
+The validation output was very large and dominated by pre-existing repository CodeMap coverage/configuration issues; no task-specific CodeMap file exists for the changed source paths.

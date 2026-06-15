@@ -13,7 +13,7 @@
 - AC-3: Covered. No-filter legacy `/spend/logs` raises a clear 400 instead of unbounded full-table fetch.
 - AC-4: Covered. Filtered legacy list paths use a lightweight raw SQL projection excluding `messages`, `response`, and `proxy_server_request`; `request_id` still uses the existing full-row path.
 - AC-5: Covered. Added no-filter safety test and adjusted the summarize=false test mock for the lightweight list query.
-- AC-6: Covered. Focused tests passed; see `logs/tests.log`.
+- AC-6: Covered. Focused tests passed; see `.staticeng/evidences/TASK-2026-06-08-002-fix-mcp-teams-and-spend-logs/logs/tests.log`.
 - AC-7: No product docs required for this operational bugfix. API callers using deprecated no-filter `/spend/logs` should switch to `/spend/logs/v2` with date range and pagination.
 
 ## Heavy Column Notes

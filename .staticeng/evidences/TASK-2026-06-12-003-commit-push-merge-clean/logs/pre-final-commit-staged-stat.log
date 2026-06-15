@@ -1,0 +1,37 @@
+ ...-2026-06-10-002-release-script-fedora-deploy.md |  45 ++
+ ...11-001-mcp-delete-graphql-json-serialization.md |  44 ++
+ ...2026-06-11-002-mcp-delete-idempotent-missing.md |  29 +
+ ...CR-2026-06-11-003-clone-selected-mcps-fedora.md |  63 ++
+ .../SUMMARY.md                                     |  34 ++
+ .../logs/bash-n.log                                |   0
+ .../logs/command-path-review.log                   |   9 +
+ .../logs/help.log                                  |  28 +
+ .../logs/live-release.log                          | 646 +++++++++++++++++++++
+ .../SUMMARY.md                                     |  31 +
+ .../logs/formal-release.log                        | 379 ++++++++++++
+ .../logs/pytest-targeted.log                       |  11 +
+ .../logs/ruff-targeted.log                         |   2 +
+ .../logs/staticeng-validate.log                    |  11 +
+ .../SUMMARY.md                                     |  21 +
+ .../logs/formal-release.log                        | 379 ++++++++++++
+ .../logs/pytest-targeted.log                       |  12 +
+ .../logs/ruff-check.log                            |   1 +
+ .../SUMMARY.md                                     |  37 ++
+ .../first-pass-fedora-registration-redacted.json   |   1 +
+ ...st-pass-fedora-registration-stderr-redacted.log |   1 +
+ .../logs/first-pass-source-inventory-redacted.json | 207 +++++++
+ .../logs/first-pass-summary-redacted.json          |  61 ++
+ .../SUMMARY.md                                     |  36 ++
+ .../logs/backend-onboarding-tests.log              |  41 ++
+ .../logs/frontend-onboarding-tests.log             |  26 +
+ .../logs/ruff-check.log                            |   2 +
+ .../logs/staticeng-validate.log                    |   9 +
+ .../logs/syntax-check.log                          |   2 +
+ ...litellm-release-script-for-fedora-deployment.md | 107 ++++
+ ...e-onboarding-fix-to-local-and-fedora-litellm.md | 100 ++++
+ ...-2026-06-10-002-update-release-script-fedora.md |  69 +++
+ ...-06-11-001-fix-mcp-delete-json-serialization.md |  67 +++
+ ...2026-06-11-002-mcp-delete-idempotent-missing.md |  51 ++
+ ...SK-2026-06-11-003-clone-selected-mcps-fedora.md |  80 +++
+ .../TASK-2026-06-12-003-commit-push-merge-clean.md |  71 +++
+ 36 files changed, 2713 insertions(+)

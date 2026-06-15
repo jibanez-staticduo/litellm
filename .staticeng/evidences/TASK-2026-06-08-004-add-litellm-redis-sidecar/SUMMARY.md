@@ -20,14 +20,14 @@ The LiteLLM dashboard connection test rejected blank username mode with `invalid
 - AC-3: Passed. Redis runs as a single node service and exposes only container port `6379/tcp`, with no public host port mapping.
 - AC-4: Passed. Redis username/password are sourced from `/volume2/docker/litellm/.env` keys `REDIS_USERNAME` and `REDIS_PASSWORD`; the password value is not included in evidence.
 - AC-5: Passed. `docker compose up -d redis` completed after the reopen fix and `docker-compose-ps.log` shows all LiteLLM stack services running/healthy.
-- AC-6: Passed. Evidence packet includes `SUMMARY.md`, `logs/docker-compose-config.log`, `logs/docker-compose-ps.log`, `logs/redis-ping.log`, `logs/litellm-cache-test.log`, and `logs/litellm-cache-test-logs.log`.
+- AC-6: Passed. Evidence packet includes `SUMMARY.md`, `.staticeng/evidences/TASK-2026-06-08-004-add-litellm-redis-sidecar/logs/docker-compose-config.log`, `.staticeng/evidences/TASK-2026-06-08-004-add-litellm-redis-sidecar/logs/docker-compose-ps.log`, `.staticeng/evidences/TASK-2026-06-08-004-add-litellm-redis-sidecar/logs/redis-ping.log`, `.staticeng/evidences/TASK-2026-06-08-004-add-litellm-redis-sidecar/logs/litellm-cache-test.log`, and `.staticeng/evidences/TASK-2026-06-08-004-add-litellm-redis-sidecar/logs/litellm-cache-test-logs.log`.
 
 ## Verification Artifacts
-- `logs/docker-compose-config.log`: sanitized compose config validation output.
-- `logs/docker-compose-ps.log`: post-apply stack service status.
-- `logs/redis-ping.log`: Redis ACL username/password ping result from within the LiteLLM container/network.
-- `logs/litellm-cache-test.log`: Real LiteLLM `/cache/settings/test` endpoint result with secret values redacted.
-- `logs/litellm-cache-test-logs.log`: Sanitized recent LiteLLM log excerpts relevant to Redis/cache-test diagnostics.
+- `.staticeng/evidences/TASK-2026-06-08-004-add-litellm-redis-sidecar/logs/docker-compose-config.log`: sanitized compose config validation output.
+- `.staticeng/evidences/TASK-2026-06-08-004-add-litellm-redis-sidecar/logs/docker-compose-ps.log`: post-apply stack service status.
+- `.staticeng/evidences/TASK-2026-06-08-004-add-litellm-redis-sidecar/logs/redis-ping.log`: Redis ACL username/password ping result from within the LiteLLM container/network.
+- `.staticeng/evidences/TASK-2026-06-08-004-add-litellm-redis-sidecar/logs/litellm-cache-test.log`: Real LiteLLM `/cache/settings/test` endpoint result with secret values redacted.
+- `.staticeng/evidences/TASK-2026-06-08-004-add-litellm-redis-sidecar/logs/litellm-cache-test-logs.log`: Sanitized recent LiteLLM log excerpts relevant to Redis/cache-test diagnostics.
 
 ## Notes
 No UI screenshots were required because this was an infrastructure sidecar change only.

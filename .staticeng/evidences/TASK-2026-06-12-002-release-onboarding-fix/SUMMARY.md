@@ -15,14 +15,14 @@ Committed the onboarding claim session fix and released it to the local LiteLLM 
 
 ## Verification
 
-- PASS: `uv run ruff check litellm/proxy/proxy_server.py tests/test_litellm/proxy/auth/test_onboarding.py tests/test_litellm/proxy/proxy_server/test_routes_onboarding.py` in `logs/ruff-check.log`.
-- PASS: `uv run python -m pytest tests/test_litellm/proxy/auth/test_onboarding.py tests/test_litellm/proxy/proxy_server/test_routes_onboarding.py` after `uv sync --all-extras --group proxy-dev`; `26 passed, 22 warnings` in `logs/backend-onboarding-tests-rerun.log`.
-- PASS: `python -m py_compile litellm/proxy/proxy_server.py` in `logs/syntax-check.log`.
-- PASS: Commit verification captured `89cb8d2916d8551bef83ffbe3cbf121225af4f20` in `logs/commit-verification.log`. Follow-up evidence commit is `3d814838ae7f41efa44213bbf31201d17d42afcfe`.
-- PASS: Release log in `logs/release.log` shows image build/push for `docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260612-onboarding-claim-session`, stable tag push for `docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-latest`, rollback tag `docker.staticduo.com/litellm:rollback-20260612-130841`, and deployment to local plus Fedora.
-- PASS: Local verification in `logs/local-verification.log` and `logs/local-readiness.log` shows the new image running healthy with readiness `200`.
-- PASS: Fedora verification in `logs/fedora-verification.log` and `logs/fedora-readiness.log` shows the new image running healthy with readiness `200`.
-- BLOCKED: `staticeng_validate` tool reports pre-existing CodeMap coverage/configuration issues in `/home/staticduo/git/litellm`; `staticeng_validate` CLI is not installed in the production worktree shell. See `logs/staticeng-validate.log` and StaticEng tool output in session.
+- PASS: `uv run ruff check litellm/proxy/proxy_server.py tests/test_litellm/proxy/auth/test_onboarding.py tests/test_litellm/proxy/proxy_server/test_routes_onboarding.py` in `.staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/logs/ruff-check.log`.
+- PASS: `uv run python -m pytest tests/test_litellm/proxy/auth/test_onboarding.py tests/test_litellm/proxy/proxy_server/test_routes_onboarding.py` after `uv sync --all-extras --group proxy-dev`; `26 passed, 22 warnings` in `.staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/logs/backend-onboarding-tests-rerun.log`.
+- PASS: `python -m py_compile litellm/proxy/proxy_server.py` in `.staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/logs/syntax-check.log`.
+- PASS: Commit verification captured `89cb8d2916d8551bef83ffbe3cbf121225af4f20` in `.staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/logs/commit-verification.log`. Follow-up evidence commit is `3d814838ae7f41efa44213bbf31201d17d42afcfe`.
+- PASS: Release log in `.staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/logs/release.log` shows image build/push for `docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260612-onboarding-claim-session`, stable tag push for `docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-latest`, rollback tag `docker.staticduo.com/litellm:rollback-20260612-130841`, and deployment to local plus Fedora.
+- PASS: Local verification in `.staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/logs/local-verification.log` and `.staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/logs/local-readiness.log` shows the new image running healthy with readiness `200`.
+- PASS: Fedora verification in `.staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/logs/fedora-verification.log` and `.staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/logs/fedora-readiness.log` shows the new image running healthy with readiness `200`.
+- BLOCKED: `staticeng_validate` tool reports pre-existing CodeMap coverage/configuration issues in `/home/staticduo/git/litellm`; `staticeng_validate` CLI is not installed in the production worktree shell. See `.staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/logs/staticeng-validate.log` and StaticEng tool output in session.
 
 ## Files Changed
 
