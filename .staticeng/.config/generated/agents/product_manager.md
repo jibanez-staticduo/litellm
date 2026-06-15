@@ -7,6 +7,8 @@ tools:
   staticeng_validate: true
   staticeng_start_discussion: true
   staticeng_stop_discussion: true
+  staticeng_run_workflow: true
+  staticeng_prompt_workflow: true
 disable: false
 ---
 

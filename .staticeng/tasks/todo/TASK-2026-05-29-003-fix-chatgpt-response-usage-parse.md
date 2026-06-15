@@ -65,7 +65,7 @@ This also causes very large raw prompt dumps in Docker logs because the stream p
 
 ## Expected Evidence
 
-Create `evidences/TASK-2026-05-29-003-fix-chatgpt-response-usage-parse/` with:
+Create `.staticeng/evidences/TASK-2026-05-29-003-fix-chatgpt-response-usage-parse/` with:
 
 - `SUMMARY.md` mapping AC-1..AC-7.
 - `logs/focused-tests.log`.

@@ -1,0 +1,11 @@
+$ staticeng_validate
+FAIL: Validation errors found before task closure.
+
+Observed failure categories:
+- Existing `.staticeng/codemap.yml` link paths do not exist and violate local-knowledge rules.
+- Many repository source directories are missing `codemap.yml` files.
+
+The validation output was very large and truncated by the CLI; full tool output was saved by opencode at:
+/home/staticduo/.local/share/opencode/tool-output/tool_eb551a8c8001wiWGL0j1nroKbw
+
+No task-specific CodeMap changes were made for this minimal serialization fix.

@@ -1,0 +1,10 @@
+50c1450db4 (HEAD -> staticduo-production-main, fork/main) chore: TASK-2026-06-12-002 record release evidence
+3d814838ae chore: TASK-2026-06-12-002 record commit evidence
+89cb8d2916 fix: TASK-2026-06-12-002 release onboarding claim session
+b4dd9e0613 fix: TASK-2026-06-11-001 make MCP delete robust
+218bd20690 merge: update staticduo production main from upstream
+067be69f8f fix: TASK-2026-06-10-001 clean stale MCP delete refs
+343e453c2a (origin/main, origin/HEAD) Merge pull request #30076 from BerriAI/litellm_hotfix_fable_5_cost_map
+7f57a7a068 Add Claude Fable 5 cost map entries as a data-only hotfix
+2aaba47324 fix: TASK-2026-06-08-003 handle null MCP tool maps
+f424f1bda1 fix: TASK-2026-06-08-002 repair MCP and spend logs

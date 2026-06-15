@@ -16,8 +16,8 @@ Implemented a focused MCP update fix so explicit `null` values for optional tool
 
 ## Evidence Logs
 
-- `logs/tests.log`
-- `logs/diff-stat.log`
+- `.staticeng/evidences/TASK-2026-06-08-003-fix-mcp-null-tool-display-update/logs/tests.log`
+- `.staticeng/evidences/TASK-2026-06-08-003-fix-mcp-null-tool-display-update/logs/diff-stat.log`
 
 ## Notes
 

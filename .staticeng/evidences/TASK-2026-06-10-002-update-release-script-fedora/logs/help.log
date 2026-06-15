@@ -1,0 +1,28 @@
+Uso: /home/staticduo/git/release-litellm.sh [--build-only] [--tag TAG] [--no-rollback] [--workdir RUTA] [--no-upstream-merge] [--no-fedora-deploy]
+
+Deploys LiteLLM from the private production main workspace. This script no
+longer clean-clones upstream or cherry-picks local hotfixes. The fork main
+workspace is the Docker source of truth.
+
+Opciones:
+  --build-only          Construye y publica la imagen, sin desplegar.
+  --tag TAG             Usa una etiqueta concreta en vez de la generada por fecha.
+  --no-rollback         No crea la imagen Docker de rollback antes de la release.
+  --workdir RUTA        Production main workspace (default: /home/staticduo/git/litellm-production-main).
+  --no-upstream-merge   Omite el merge de origin/main.
+  --no-fedora-deploy    Omite el despliegue remoto en Fedora.
+
+Entorno:
+  PRODUCTION_WORKDIR    Workspace de fork main usado para build/deploy.
+  UPSTREAM_REMOTE       Remote upstream original (default: origin).
+  UPSTREAM_BRANCH       Rama upstream a mezclar (default: main).
+  FORK_REMOTE           Remote del fork privado (default: fork).
+  FORK_BRANCH           Rama del fork privado (default: main).
+  IMAGE_REPO            Repositorio de imagen (default: docker.staticduo.com/litellm).
+  STACK_DIR             Stack de despliegue local (default: /volume2/docker/litellm).
+  FEDORA_HOST           Host SSH de Fedora (default: fedora).
+  FEDORA_STACK_DIR      Stack remoto de Fedora (default: /home/staticduo/docker/litellm).
+  FEDORA_DEPLOY         Si es 0, omite el despliegue remoto en Fedora.
+  STABLE_TAG            Tag estable adicional (default: staticduo-gpt-lazymcp-main-latest).
+  BUILD_DASHBOARD       Si es 1, reconstruye dashboard static out/ antes del docker build;
+                        el script aborta si eso deja cambios sin commit.

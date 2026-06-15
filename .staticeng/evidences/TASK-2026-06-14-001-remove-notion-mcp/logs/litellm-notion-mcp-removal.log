@@ -1,0 +1,5 @@
+LiteLLM admin delete_mcp_server server_id=Notion returned: ok=true, status=202.
+Follow-up LiteLLM admin list_mcp_servers returned no server with alias=notion.
+Residual cleanup targeted only running mcp-remote processes whose args referenced mcp.notion.com/mcp.
+Post-cleanup verification: residual_notion_processes=0 recent_error_matches=0.
+Docker status after cleanup: litellm Up 2 days (healthy); admin MCP containers and redis remained healthy.

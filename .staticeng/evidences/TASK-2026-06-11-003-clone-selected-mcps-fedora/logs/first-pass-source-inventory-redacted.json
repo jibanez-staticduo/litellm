@@ -1,0 +1,207 @@
+{
+  "records": [
+    {
+      "alias": "notion",
+      "allow_all_keys": false,
+      "allowed_tools": [],
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.notion.com/mcp",
+        "--transport",
+        "http-first",
+        "--header",
+        "Authorization: Bearer ${AUTH_TOKEN}"
+      ],
+      "auth_type": "oauth2",
+      "authorization_url": "<redacted>",
+      "available_on_public_internet": false,
+      "byok_description": [],
+      "command": "npx",
+      "delegate_auth_to_upstream": false,
+      "description": "Notion, pages, databases, workspace docs",
+      "env": {
+        "AUTH_TOKEN": "<redacted>"
+      },
+      "extra_headers": [],
+      "is_byok": false,
+      "mcp_access_groups": [
+        "opencode",
+        "defend.tech"
+      ],
+      "mcp_info": {
+        "description": "Notion, pages, databases, workspace docs",
+        "logo_url": "https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png",
+        "server_name": "Notion"
+      },
+      "registration_url": "https://mcp.notion.com/register",
+      "server_id": "96d12a20-45c1-4ffd-b581-307f175dd815",
+      "server_name": "Notion",
+      "static_headers": {},
+      "token_url": "<redacted>",
+      "tool_name_to_description": {},
+      "tool_name_to_display_name": {},
+      "transport": "stdio",
+      "url": "<redacted-url>"
+    },
+    {
+      "alias": "clickup",
+      "allow_all_keys": false,
+      "allowed_tools": [],
+      "args": [
+        "-y",
+        "@hauptsache.net/clickup-mcp@latest"
+      ],
+      "available_on_public_internet": false,
+      "byok_description": [],
+      "command": "npx",
+      "delegate_auth_to_upstream": false,
+      "description": "ClickUp, tasks, spaces, lists, task management",
+      "env": {
+        "CLICKUP_API_KEY": "<redacted>",
+        "CLICKUP_TEAM_ID": "90121804503"
+      },
+      "extra_headers": [],
+      "is_byok": false,
+      "mcp_access_groups": [
+        "opencode",
+        "defend.tech"
+      ],
+      "mcp_info": {
+        "description": "ClickUp, tasks, spaces, lists, task management",
+        "logo_url": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR_Xe5b7aH9zof_6-PHMwFU7_ucsuVAJaoE3A&s",
+        "server_name": "ClickUp"
+      },
+      "server_id": "84e10206-dd5b-4c9f-97c7-cbbf82d63407",
+      "server_name": "ClickUp",
+      "static_headers": {},
+      "tool_name_to_description": {},
+      "tool_name_to_display_name": {},
+      "transport": "stdio"
+    },
+    {
+      "alias": "websearch",
+      "allow_all_keys": false,
+      "allowed_tools": [
+        "web_search_exa"
+      ],
+      "args": [],
+      "auth_type": "none",
+      "available_on_public_internet": false,
+      "byok_description": [],
+      "delegate_auth_to_upstream": false,
+      "description": "Exa web search, live web results (Alternative to Kindly_web_search or Firecrawl_search, use only if they didn't work)",
+      "env": {},
+      "extra_headers": [],
+      "is_byok": false,
+      "mcp_access_groups": [
+        "opencode",
+        "search"
+      ],
+      "mcp_info": {
+        "description": "Exa web search, live web results (Alternative to Kindly_web_search or Firecrawl_search, use only if they didn't work)",
+        "logo_url": "https://www.finsmes.com/wp-content/uploads/2024/07/exa.jpeg",
+        "mcp_server_cost_info": null,
+        "server_name": "Exa_Web_Search"
+      },
+      "server_id": "de32d59f-63d9-4d39-9246-4b0f894bce67",
+      "server_name": "Exa_Web_Search",
+      "static_headers": {},
+      "tool_name_to_description": {},
+      "tool_name_to_display_name": {},
+      "transport": "http",
+      "url": "<redacted-url>"
+    },
+    {
+      "alias": "context7",
+      "allow_all_keys": false,
+      "allowed_tools": [
+        "resolve-library-id",
+        "query-docs"
+      ],
+      "args": [],
+      "auth_type": "none",
+      "available_on_public_internet": false,
+      "byok_description": [],
+      "delegate_auth_to_upstream": false,
+      "description": "Context7, library docs, API references",
+      "env": {},
+      "extra_headers": [],
+      "is_byok": false,
+      "mcp_access_groups": [
+        "opencode",
+        "search"
+      ],
+      "mcp_info": {
+        "description": "Context7, library docs, API references",
+        "logo_url": "https://upstash.gallerycdn.vsassets.io/extensions/upstash/context7-mcp/1.0.1/1754329920224/Microsoft.VisualStudio.Services.Icons.Default",
+        "mcp_server_cost_info": null,
+        "server_name": "Context7"
+      },
+      "server_id": "8535e977-b685-4e00-96e6-c08a19413c91",
+      "server_name": "Context7",
+      "static_headers": {},
+      "tool_name_to_description": {},
+      "tool_name_to_display_name": {},
+      "transport": "http",
+      "url": "<redacted-url>"
+    },
+    {
+      "alias": "litellm_admin",
+      "allow_all_keys": false,
+      "allowed_tools": [
+        "health",
+        "list_mcp_servers",
+        "create_mcp_server",
+        "update_mcp_server",
+        "delete_mcp_server",
+        "list_models",
+        "add_model",
+        "update_model",
+        "delete_model",
+        "list_credentials",
+        "create_credential",
+        "update_credential",
+        "delete_credential",
+        "admin_request"
+      ],
+      "args": [],
+      "auth_type": "none",
+      "available_on_public_internet": false,
+      "byok_description": [],
+      "delegate_auth_to_upstream": false,
+      "description": "LiteLLM admin, models, credentials, MCP servers",
+      "env": {},
+      "extra_headers": [],
+      "is_byok": false,
+      "mcp_access_groups": [
+        "opencode",
+        "nas",
+        "openclaw"
+      ],
+      "mcp_info": {
+        "description": "LiteLLM admin, models, credentials, MCP servers",
+        "logo_url": "https://cdn.prod.website-files.com/66f2feef6cd182361acd52e8/67fe1c2809428a7beab6cd9b_litellm.jpg",
+        "mcp_server_cost_info": null,
+        "server_name": "LiteLLM_Admin"
+      },
+      "server_id": "6b9c6105-dfc9-4e40-9873-4dcdc8f63f89",
+      "server_name": "LiteLLM_Admin",
+      "static_headers": {},
+      "tool_name_to_description": {},
+      "tool_name_to_display_name": {},
+      "transport": "http",
+      "url": "<redacted-url>"
+    }
+  ],
+  "selected": [
+    "Notion",
+    "ClickUp",
+    "Exa_Web_Search",
+    "Context7",
+    "LiteLLM_Admin"
+  ],
+  "source_endpoint": "https://litellm.staticduo.com/v1/mcp/server",
+  "source_total_count": 26,
+  "timestamp": "2026-06-11T15:07:44.225118+00:00"
+}

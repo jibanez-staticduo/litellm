@@ -1,0 +1,2 @@
+$ python -m py_compile litellm/proxy/proxy_server.py
+(no output)

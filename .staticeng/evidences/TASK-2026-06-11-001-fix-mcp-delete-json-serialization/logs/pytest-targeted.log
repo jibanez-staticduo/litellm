@@ -1,0 +1,11 @@
+$ python -m pytest tests/test_litellm/proxy/management_endpoints/test_mcp_management_endpoints.py -k "cleanup_mcp_server_references"
+ImportError while loading conftest '/home/staticduo/git/litellm/tests/test_litellm/conftest.py'.
+tests/test_litellm/conftest.py:21: in <module>
+    import litellm
+litellm/__init__.py:1189: in <module>
+    from litellm.types.secret_managers.main import KeyManagementSettings
+litellm/types/secret_managers/main.py:4: in <module>
+    from litellm.types.llms.base import LiteLLMPydanticObjectBase
+litellm/types/llms/base.py:3: in <module>
+    from openai._models import BaseModel as OpenAIObject
+E   ModuleNotFoundError: No module named 'openai'
