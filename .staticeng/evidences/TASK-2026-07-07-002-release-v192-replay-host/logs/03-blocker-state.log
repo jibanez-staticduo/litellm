@@ -1,0 +1,106 @@
+## timestamp
+2026-07-07T13:11:45+02:00
+
+## release command result
+Release command exited before build/deploy because production worktree was dirty.
+
+## git status
+ M .staticeng/.config/runtime/discussions.json
+ M .staticeng/tasks/current.md
+?? .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/
+?? .staticeng/tasks/todo/TASK-2026-07-07-002-release-v192-replay-host.md
+
+## compose ps /volume2/docker/litellm
+NAME                       IMAGE                                                                                       COMMAND                  SERVICE                    CREATED       STATUS                 PORTS
+litellm                    docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260612-onboarding-claim-session   "/bin/sh /app/start-…"   litellm                    3 weeks ago   Up 8 days (healthy)    4000/tcp
+litellm-admin-mcp          sha256:6437f49262dc3d37e5f8aff069ecd57bf3f1b14021abac7e041a583a9cf3c58a                     "python /app/server.…"   litellm-admin-mcp          3 weeks ago   Up 2 weeks (healthy)   
+litellm-admin-mcp-compat   sha256:2bef15be45e47e4dae234eaccb515f7c970f89a1fddc382ff9cc8a8741a67f76                     "python /app/server.…"   litellm-admin-mcp-compat   3 weeks ago   Up 2 weeks (healthy)   
+litellm-redis              redis:7.4-alpine                                                                            "docker-entrypoint.s…"   redis                      3 weeks ago   Up 2 weeks (healthy)   6379/tcp
+
+## litellm container inspect
+name=/litellm status=running health=healthy image=docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260612-onboarding-claim-session image_id=sha256:2fe088e4abda03473a4ac7decd847050d28e4387b349c5c9cb464cbeafa42d08
+
+## current image inspect
+repo_tags=["docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260612-onboarding-claim-session","docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-latest"] repo_digests=["docker.staticduo.com/litellm@sha256:102158c62182f4db494be543dbb09580b4074dd69f87967a15e77ba3a5349a79"] id=sha256:2fe088e4abda03473a4ac7decd847050d28e4387b349c5c9cb464cbeafa42d08 created=2026-06-12T13:09:12.543031229+02:00
+
+## recent litellm logs
+INFO:     172.28.0.20:33058 - "POST /embeddings HTTP/1.1" 200 OK
+INFO:     172.28.0.20:33070 - "POST /embeddings HTTP/1.1" 200 OK
+INFO:     172.18.0.1:40510 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.28.0.20:33086 - "POST /embeddings HTTP/1.1" 200 OK
+INFO:     172.28.0.20:33100 - "POST /embeddings HTTP/1.1" 200 OK
+INFO:     172.18.0.1:40530 - "POST /v1/embeddings HTTP/1.1" 200 OK
+INFO:     172.28.0.20:54026 - "POST /embeddings HTTP/1.1" 200 OK
+INFO:     172.18.0.1:56470 - "POST /v1/embeddings HTTP/1.1" 200 OK
+INFO:     172.18.0.1:56486 - "POST /v1/embeddings HTTP/1.1" 200 OK
+INFO:     172.18.0.1:56498 - "POST /v1/embeddings HTTP/1.1" 200 OK
+INFO:     172.28.0.20:33096 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.28.0.20:54032 - "POST /chat/completions HTTP/1.1" 200 OK
+INFO:     172.18.0.1:55076 - "POST /v1/embeddings HTTP/1.1" 200 OK
+INFO:     172.28.0.20:54046 - "POST /embeddings HTTP/1.1" 200 OK
+INFO:     172.28.0.20:54054 - "POST /embeddings HTTP/1.1" 200 OK
+INFO:     172.28.0.20:54060 - "POST /embeddings HTTP/1.1" 200 OK
+INFO:     172.28.0.20:54012 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.28.0.20:54072 - "POST /chat/completions HTTP/1.1" 200 OK
+INFO:     172.28.0.20:54084 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.28.0.20:54092 - "POST /embeddings HTTP/1.1" 200 OK
+INFO:     172.28.0.20:54102 - "POST /embeddings HTTP/1.1" 200 OK
+INFO:     172.28.0.20:54114 - "POST /embeddings HTTP/1.1" 200 OK
+INFO:     172.28.0.20:54130 - "POST /embeddings HTTP/1.1" 200 OK
+INFO:     172.28.0.20:56940 - "POST /chat/completions HTTP/1.1" 200 OK
+INFO:     172.28.0.20:56948 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.28.0.20:56952 - "POST /embeddings HTTP/1.1" 200 OK
+INFO:     172.28.0.20:56966 - "POST /embeddings HTTP/1.1" 200 OK
+INFO:     172.28.0.20:56976 - "POST /embeddings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34364 - "GET /health/readiness HTTP/1.1" 200 OK
+INFO:     172.28.0.20:56980 - "POST /embeddings HTTP/1.1" 200 OK
+INFO:     172.28.0.20:56982 - "POST /embeddings HTTP/1.1" 200 OK
+INFO:     172.28.0.20:56992 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.28.0.20:38742 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.28.0.20:52346 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.18.0.1:59650 - "POST /v1/embeddings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /health/readiness HTTP/1.1" 200 OK
+INFO:     172.28.0.20:44594 - "POST /lazymcp HTTP/1.1" 200 OK
+INFO:     172.28.0.20:44596 - "POST /lazymcp HTTP/1.1" 202 Accepted
+INFO:     172.28.0.20:44612 - "GET /lazymcp HTTP/1.1" 200 OK
+INFO:     172.28.0.20:44626 - "POST /lazymcp HTTP/1.1" 200 OK
+INFO:     172.28.0.20:44632 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.28.0.20:52352 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.28.0.20:44650 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.28.0.20:44638 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.18.0.1:46986 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.18.0.1:46998 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.18.0.1:47000 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.18.0.1:47012 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.18.0.1:47014 - "POST /v1/embeddings HTTP/1.1" 200 OK
+INFO:     172.28.0.20:58748 - "POST /lazymcp HTTP/1.1" 200 OK
+INFO:     172.28.0.20:58754 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.18.0.1:47018 - "POST /v1/embeddings HTTP/1.1" 200 OK
+INFO:     172.18.0.1:59846 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.28.0.20:59876 - "POST /lazymcp HTTP/1.1" 200 OK
+INFO:     172.18.0.1:59840 - "POST /v1/embeddings HTTP/1.1" 200 OK
+INFO:     172.18.0.1:59856 - "POST /v1/embeddings HTTP/1.1" 200 OK
+INFO:     172.18.0.1:59864 - "POST /v1/embeddings HTTP/1.1" 200 OK
+INFO:     172.18.0.1:59850 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.28.0.20:58742 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.18.0.1:59878 - "POST /v1/embeddings HTTP/1.1" 200 OK
+INFO:     172.18.0.1:59892 - "POST /v1/embeddings HTTP/1.1" 200 OK
+INFO:     172.18.0.1:59900 - "POST /v1/embeddings HTTP/1.1" 200 OK
+INFO:     172.18.0.1:59910 - "POST /v1/embeddings HTTP/1.1" 200 OK
+INFO:     172.18.0.1:59922 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+npm warn Unknown builtin config "globalignorefile". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown builtin config "python". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+INFO:     172.18.0.1:59932 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+Starting ClickUp MCP in write mode
+Connected as: Defend Tech Product Manager (jibanez+pm@defend.tech)
+Pre-loaded 3 active spaces
+INFO:     172.18.0.1:59944 - "POST /v1/embeddings HTTP/1.1" 200 OK
+INFO:     172.18.0.1:59960 - "POST /v1/embeddings HTTP/1.1" 200 OK
+INFO:     172.18.0.1:59974 - "POST /v1/embeddings HTTP/1.1" 200 OK
+INFO:     172.18.0.1:59978 - "POST /v1/embeddings HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34036 - "GET /health/readiness HTTP/1.1" 200 OK
+INFO:     172.28.0.20:59868 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.28.0.20:53644 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.28.0.20:53662 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.18.0.1:54532 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+INFO:     172.18.0.1:54544 - "POST /v1/chat/completions HTTP/1.1" 200 OK

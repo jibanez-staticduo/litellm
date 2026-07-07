@@ -1,10 +1,10 @@
 # Current Tasks (Backlog)
 
 ## 💬 Active Discussions
-- (None)
+- DISCUSSION-002: Release LiteLLM v1.92 replay on this host
 
 ## 🚀 Active
-- (None)
+- TASK-2026-07-07-002-release-v192-replay-host - Release LiteLLM v1.92 replay on this host (`workflow_runner`)
 
 ## 📋 Todo
 - (None)

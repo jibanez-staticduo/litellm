@@ -1,0 +1,5 @@
+ERROR: production worktree has uncommitted changes: /home/staticduo/git/litellm
+ M .staticeng/.config/runtime/discussions.json
+ M .staticeng/tasks/current.md
+?? .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/
+?? .staticeng/tasks/todo/TASK-2026-07-07-002-release-v192-replay-host.md
