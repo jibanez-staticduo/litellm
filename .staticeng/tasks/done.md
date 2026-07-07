@@ -14,3 +14,4 @@
 | 2026-07-07 | TASK-2026-07-07-006-release-chatgpt-profiles-local-and-add-account2-models | SCR-2026-07-07-001-chatgpt-auth-profiles | pending-commit | Built and deployed local ChatGPT auth profile image and added account2 ChatGPT deployments directly in the database. |
 | 2026-07-07 | TASK-2026-07-07-007-remove-defend-account2-model | none | pending-commit | Removed mistaken `defend-account2/gpt-5.5` deployment while preserving `defend/gpt-5.5` and ChatGPT account2 deployments. |
 | 2026-07-07 | TASK-2026-07-07-008-trigger-chatgpt-account2-login | none | pending-commit | Triggered account2 ChatGPT device-code login and returned transient auth details directly to the user without storing them. |
+| 2026-07-07 | TASK-2026-07-07-009-smoke-chatgpt-account2 | none | pending-commit | Attempted account2 ChatGPT smoke; request reached LiteLLM but failed with sanitized Responses parsing error. |
