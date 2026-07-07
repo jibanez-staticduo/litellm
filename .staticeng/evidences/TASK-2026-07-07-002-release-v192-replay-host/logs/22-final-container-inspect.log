@@ -1,0 +1,1 @@
+name=/litellm status=running health=healthy image=docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707 image_id=sha256:583ebf2f408f6d9540ffd84f41629ba9e2a30884114dfdeacd2ad12051de0fec started_at=2026-07-07T11:52:02.285425241Z

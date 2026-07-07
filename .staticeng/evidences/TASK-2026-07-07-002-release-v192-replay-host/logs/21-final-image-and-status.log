@@ -1,0 +1,7 @@
+release_repo_digests=["docker.staticduo.com/litellm@sha256:23f346521079a27dfeb9039e73dc2328c268ec50d44e11dc662c33d78a006d86"] image_id=sha256:583ebf2f408f6d9540ffd84f41629ba9e2a30884114dfdeacd2ad12051de0fec
+rollback_repo_digests=["docker.staticduo.com/litellm@sha256:102158c62182f4db494be543dbb09580b4074dd69f87967a15e77ba3a5349a79"] image_id=sha256:2fe088e4abda03473a4ac7decd847050d28e4387b349c5c9cb464cbeafa42d08
+NAMES                      IMAGE                                                                                    STATUS
+litellm                    docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707   Up 2 minutes (healthy)
+litellm-admin-mcp-compat   2bef15be45e4                                                                             Up 2 weeks (healthy)
+litellm-admin-mcp          6437f49262dc                                                                             Up 2 weeks (healthy)
+litellm-redis              redis:7.4-alpine                                                                         Up 2 weeks (healthy)

@@ -1,0 +1,376 @@
+> Fetching fork and upstream remotes
+From github.com:jibanez-staticduo/litellm
+ * branch                  main       -> FETCH_HEAD
+From https://github.com/BerriAI/litellm
+ * branch                  main       -> FETCH_HEAD
+> Skipping upstream merge by request
+> Building docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707 from /home/staticduo/git/litellm
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 4.90kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 ...
+
+#3 [auth] docker/dockerfile:pull token for registry-1.docker.io
+#3 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 0.6s
+
+#4 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#4 CACHED
+
+#5 [internal] load metadata for cgr.dev/chainguard/wolfi-base@sha256:c61ac6919b811ea53c4782d69f1fe05218ba3c25d53f01b6ab7892e621bd4370
+#5 ...
+
+#6 [internal] load metadata for docker.io/library/node:20.18-alpine3.20@sha256:3488b10bf958af7125a176419d2d8a9937d895bf124012aae811651988d2ffe6
+#6 DONE 0.0s
+
+#7 [internal] load metadata for ghcr.io/astral-sh/uv:0.11.7@sha256:240fb85ab0f263ef12f492d8476aa3a2e4e1e333f7d67fbdd923d00a506a516a
+#7 DONE 0.7s
+
+#5 [internal] load metadata for cgr.dev/chainguard/wolfi-base@sha256:c61ac6919b811ea53c4782d69f1fe05218ba3c25d53f01b6ab7892e621bd4370
+#5 DONE 0.7s
+
+#8 [internal] load .dockerignore
+#8 transferring context: 806B done
+#8 DONE 0.0s
+
+#9 [runtime  1/11] FROM cgr.dev/chainguard/wolfi-base@sha256:c61ac6919b811ea53c4782d69f1fe05218ba3c25d53f01b6ab7892e621bd4370
+#9 DONE 0.0s
+
+#10 [ui-builder 1/6] FROM docker.io/library/node:20.18-alpine3.20@sha256:3488b10bf958af7125a176419d2d8a9937d895bf124012aae811651988d2ffe6
+#10 DONE 0.0s
+
+#11 [uvbin 1/1] FROM ghcr.io/astral-sh/uv:0.11.7@sha256:240fb85ab0f263ef12f492d8476aa3a2e4e1e333f7d67fbdd923d00a506a516a
+#11 DONE 0.0s
+
+#12 [internal] load build context
+#12 transferring context: 1.42MB 0.4s done
+#12 DONE 0.5s
+
+#13 [builder  4/16] COPY --from=uvbin /uvx /usr/local/bin/uvx
+#13 CACHED
+
+#14 [builder  8/16] COPY litellm-proxy-extras/pyproject.toml litellm-proxy-extras/
+#14 CACHED
+
+#15 [builder  3/16] COPY --from=uvbin /uv /usr/local/bin/uv
+#15 CACHED
+
+#16 [builder  6/16] COPY pyproject.toml uv.lock ./
+#16 CACHED
+
+#17 [builder  5/16] RUN apk add --no-cache     bash     gcc     python3     python3-dev     rust     openssl     openssl-dev     nodejs     npm     libsndfile
+#17 CACHED
+
+#18 [builder  7/16] COPY enterprise/pyproject.toml enterprise/
+#18 CACHED
+
+#19 [builder  2/16] WORKDIR /app
+#19 CACHED
+
+#20 [builder  9/16] RUN uv sync --frozen --no-install-project --no-install-workspace --no-default-groups --no-editable     --extra proxy     --extra proxy-runtime     --extra extra_proxy     --extra semantic-router     --python python3
+#20 CACHED
+
+#21 [ui-builder 5/6] COPY ui/litellm-dashboard/ ./
+#21 CACHED
+
+#22 [ui-builder 2/6] WORKDIR /ui
+#22 CACHED
+
+#23 [ui-builder 3/6] COPY ui/litellm-dashboard/package.json ui/litellm-dashboard/package-lock.json ./
+#23 CACHED
+
+#24 [ui-builder 4/6] RUN --mount=type=cache,target=/root/.npm npm ci --prefer-offline
+#24 CACHED
+
+#25 [ui-builder 6/6] RUN npm run build
+#25 CACHED
+
+#26 [builder 10/16] COPY . .
+#26 DONE 1.4s
+
+#27 [builder 11/16] RUN rm -rf litellm/proxy/_experimental/out
+#27 DONE 0.3s
+
+#28 [builder 12/16] COPY --from=ui-builder /ui/out/. litellm/proxy/_experimental/out/
+#28 DONE 0.1s
+
+#29 [builder 13/16] RUN sed -i 's/\r$//' docker/build_admin_ui.sh && chmod +x docker/build_admin_ui.sh && ./docker/build_admin_ui.sh
+#29 0.335
+#29 0.335 /app
+#29 0.335 Admin UI - using default LiteLLM UI
+#29 DONE 0.3s
+
+#30 [builder 14/16] RUN uv sync --frozen --no-default-groups --no-editable     --extra proxy     --extra proxy-runtime     --extra extra_proxy     --extra semantic-router     --python python3
+#30 0.431    Building litellm @ file:///app
+#30 0.432    Building litellm-enterprise @ file:///app/enterprise
+#30 0.432    Building litellm-proxy-extras @ file:///app/litellm-proxy-extras
+#30 0.921       Built litellm-proxy-extras @ file:///app/litellm-proxy-extras
+#30 0.935       Built litellm-enterprise @ file:///app/enterprise
+#30 75.67       Built litellm @ file:///app
+#30 75.83 Prepared 3 packages in 1m 15s
+#30 76.51 Installed 3 packages in 676ms
+#30 76.51  + litellm==1.92.0 (from file:///app)
+#30 76.51  + litellm-enterprise==0.1.47 (from file:///app/enterprise)
+#30 76.51  + litellm-proxy-extras==0.4.75 (from file:///app/litellm-proxy-extras)
+#30 DONE 76.8s
+
+#31 [builder 15/16] RUN prisma generate --schema=./schema.prisma
+#31 1.683 Installing Prisma CLI
+#31 5.833 prisma:warn Prisma doesn't know which engines to download for the Linux distro "wolfi". Falling back to Prisma engines built "debian".
+#31 5.833 Please report your experience by creating an issue at https://github.com/prisma/prisma/issues so we can add your distro to the list of known supported distros.
+#31 6.357 Prisma schema loaded from schema.prisma
+#31 6.396 prisma:warn Prisma doesn't know which engines to download for the Linux distro "wolfi". Falling back to Prisma engines built "debian".
+#31 6.396 Please report your experience by creating an issue at https://github.com/prisma/prisma/issues so we can add your distro to the list of known supported distros.
+#31 7.908
+#31 7.908 Some types are disabled by default due to being incompatible with Mypy, it is highly recommended
+#31 7.908 to use Pyright instead and configure Prisma Python to use recursive types. To re-enable certain types:
+#31 7.908
+#31 7.908 generator client {
+#31 7.908   provider             = "prisma-client-py"
+#31 7.908   recursive_type_depth = -1
+#31 7.908 }
+#31 7.908
+#31 7.908 If you need to use Mypy, you can also disable this message by explicitly setting the default value:
+#31 7.908
+#31 7.908 generator client {
+#31 7.908   provider             = "prisma-client-py"
+#31 7.908   recursive_type_depth = 5
+#31 7.908 }
+#31 7.908
+#31 7.908 For more information see: https://prisma-client-py.readthedocs.io/en/stable/reference/limitations/#default-type-limitations
+#31 7.908
+#31 7.908
+#31 7.908 Warning: The binaryTargets option is not officially supported by Prisma Client Python.
+#31 8.489
+#31 8.489 ✔ Generated Prisma Client Python (v0.11.0) to ./.venv/lib/python3.13/site-packages/prisma in 790ms
+#31 8.489
+#31 DONE 8.8s
+
+#32 [builder 16/16] RUN sed -i 's/\r$//' docker/entrypoint.sh && chmod +x docker/entrypoint.sh &&     sed -i 's/\r$//' docker/prod_entrypoint.sh && chmod +x docker/prod_entrypoint.sh
+#32 DONE 0.3s
+
+#33 [runtime  2/11] RUN apk add --no-cache bash openssl tzdata nodejs python3 libsndfile
+#33 CACHED
+
+#34 [runtime  3/11] WORKDIR /app
+#34 CACHED
+
+#35 [runtime  4/11] COPY --from=builder /app/.venv /app/.venv
+#35 DONE 2.7s
+
+#36 [runtime  5/11] COPY --from=builder /app/docker /app/docker
+#36 DONE 0.0s
+
+#37 [runtime  6/11] COPY --from=builder /app/schema.prisma /app/schema.prisma
+#37 DONE 0.0s
+
+#38 [runtime  7/11] COPY --from=builder /app/litellm/proxy/prisma_migration.py /app/litellm/proxy/prisma_migration.py
+#38 DONE 0.0s
+
+#39 [runtime  8/11] COPY --from=builder /app/enterprise /app/enterprise
+#39 DONE 0.0s
+
+#40 [runtime  9/11] COPY --from=builder /root/.cache/prisma /root/.cache/prisma
+#40 DONE 0.2s
+
+#41 [runtime 10/11] COPY --from=builder /root/.cache/prisma-python /root/.cache/prisma-python
+#41 DONE 0.3s
+
+#42 [runtime 11/11] RUN find /app/.venv -type f -path "*/tornado/test/*" -delete &&     find /app/.venv -type d -path "*/tornado/test" -delete
+#42 0.625 find: /app/.venv/lib/python3.13/site-packages/tornado/test: Directory not empty
+#42 DONE 0.7s
+
+#43 exporting to image
+#43 exporting layers
+#43 exporting layers 3.0s done
+#43 writing image sha256:583ebf2f408f6d9540ffd84f41629ba9e2a30884114dfdeacd2ad12051de0fec done
+#43 naming to docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707 done
+#43 DONE 3.0s
+> Pushing docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707
+The push refers to repository [docker.staticduo.com/litellm]
+480d104eb0f0: Preparing
+af43c1321bbe: Preparing
+c30fdaa62a46: Preparing
+f459d0ae6850: Preparing
+a105a4992199: Preparing
+9aea5a97d4b4: Preparing
+5fd6c01da1d1: Preparing
+1ee5768c7b6e: Preparing
+6ad7a5d70136: Preparing
+af34a8ac7d0c: Preparing
+b5c5932eb40b: Preparing
+b8195249dcd9: Preparing
+852a2b932582: Preparing
+90cfe0bd8cd6: Preparing
+66489d33a006: Preparing
+c51a24e0862e: Preparing
+caaccf89b866: Preparing
+9aea5a97d4b4: Waiting
+d691fe338bf4: Preparing
+5fd6c01da1d1: Waiting
+1ee5768c7b6e: Waiting
+e4ec9eb458d8: Preparing
+6ad7a5d70136: Waiting
+469fc7229c4d: Preparing
+af34a8ac7d0c: Waiting
+d4abef11f918: Preparing
+b5c5932eb40b: Waiting
+b8195249dcd9: Waiting
+c51a24e0862e: Waiting
+852a2b932582: Waiting
+caaccf89b866: Waiting
+90cfe0bd8cd6: Waiting
+d691fe338bf4: Waiting
+66489d33a006: Waiting
+e4ec9eb458d8: Waiting
+d4abef11f918: Waiting
+469fc7229c4d: Waiting
+a105a4992199: Pushed
+480d104eb0f0: Pushed
+5fd6c01da1d1: Pushed
+9aea5a97d4b4: Pushed
+6ad7a5d70136: Layer already exists
+af34a8ac7d0c: Layer already exists
+b5c5932eb40b: Layer already exists
+b8195249dcd9: Layer already exists
+852a2b932582: Layer already exists
+90cfe0bd8cd6: Layer already exists
+f459d0ae6850: Pushed
+66489d33a006: Layer already exists
+c51a24e0862e: Layer already exists
+caaccf89b866: Layer already exists
+d691fe338bf4: Layer already exists
+e4ec9eb458d8: Layer already exists
+469fc7229c4d: Layer already exists
+d4abef11f918: Layer already exists
+c30fdaa62a46: Pushed
+af43c1321bbe: Pushed
+1ee5768c7b6e: Pushed
+staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707: digest: sha256:23f346521079a27dfeb9039e73dc2328c268ec50d44e11dc662c33d78a006d86 size: 4720
+> Pushing docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-latest
+The push refers to repository [docker.staticduo.com/litellm]
+480d104eb0f0: Preparing
+af43c1321bbe: Preparing
+c30fdaa62a46: Preparing
+f459d0ae6850: Preparing
+a105a4992199: Preparing
+9aea5a97d4b4: Preparing
+5fd6c01da1d1: Preparing
+1ee5768c7b6e: Preparing
+6ad7a5d70136: Preparing
+af34a8ac7d0c: Preparing
+b5c5932eb40b: Preparing
+b8195249dcd9: Preparing
+852a2b932582: Preparing
+90cfe0bd8cd6: Preparing
+66489d33a006: Preparing
+c51a24e0862e: Preparing
+caaccf89b866: Preparing
+d691fe338bf4: Preparing
+e4ec9eb458d8: Preparing
+469fc7229c4d: Preparing
+d4abef11f918: Preparing
+5fd6c01da1d1: Waiting
+1ee5768c7b6e: Waiting
+6ad7a5d70136: Waiting
+af34a8ac7d0c: Waiting
+b5c5932eb40b: Waiting
+b8195249dcd9: Waiting
+852a2b932582: Waiting
+90cfe0bd8cd6: Waiting
+66489d33a006: Waiting
+d4abef11f918: Waiting
+469fc7229c4d: Waiting
+c51a24e0862e: Waiting
+caaccf89b866: Waiting
+d691fe338bf4: Waiting
+e4ec9eb458d8: Waiting
+9aea5a97d4b4: Waiting
+480d104eb0f0: Layer already exists
+c30fdaa62a46: Layer already exists
+a105a4992199: Layer already exists
+f459d0ae6850: Layer already exists
+af43c1321bbe: Layer already exists
+9aea5a97d4b4: Layer already exists
+1ee5768c7b6e: Layer already exists
+5fd6c01da1d1: Layer already exists
+6ad7a5d70136: Layer already exists
+af34a8ac7d0c: Layer already exists
+b5c5932eb40b: Layer already exists
+b8195249dcd9: Layer already exists
+66489d33a006: Layer already exists
+90cfe0bd8cd6: Layer already exists
+852a2b932582: Layer already exists
+d691fe338bf4: Layer already exists
+c51a24e0862e: Layer already exists
+caaccf89b866: Layer already exists
+e4ec9eb458d8: Layer already exists
+469fc7229c4d: Layer already exists
+d4abef11f918: Layer already exists
+staticduo-gpt-lazymcp-main-latest: digest: sha256:23f346521079a27dfeb9039e73dc2328c268ec50d44e11dc662c33d78a006d86 size: 4720
+> Tagging current deployed image docker.staticduo.com/litellm:rollback-20260707-131635 as docker.staticduo.com/litellm:rollback-20260707-134929
+The push refers to repository [docker.staticduo.com/litellm]
+1cba53a0140d: Preparing
+f77c5912efd9: Preparing
+c00be4b4a30f: Preparing
+3c409779f8c4: Preparing
+ae825cf2d62a: Preparing
+8ca6bf98b650: Preparing
+8f43f428401b: Preparing
+b8195249dcd9: Preparing
+852a2b932582: Preparing
+90cfe0bd8cd6: Preparing
+298bacf2e4ef: Preparing
+70991d5976e2: Preparing
+caaccf89b866: Preparing
+6562679d109c: Preparing
+3c40083cbf99: Preparing
+7b8515b1d8a7: Preparing
+272d94535c70: Preparing
+b8195249dcd9: Waiting
+852a2b932582: Waiting
+90cfe0bd8cd6: Waiting
+298bacf2e4ef: Waiting
+70991d5976e2: Waiting
+caaccf89b866: Waiting
+6562679d109c: Waiting
+3c40083cbf99: Waiting
+7b8515b1d8a7: Waiting
+272d94535c70: Waiting
+8ca6bf98b650: Waiting
+8f43f428401b: Waiting
+3c409779f8c4: Layer already exists
+ae825cf2d62a: Layer already exists
+1cba53a0140d: Layer already exists
+f77c5912efd9: Layer already exists
+c00be4b4a30f: Layer already exists
+8f43f428401b: Layer already exists
+852a2b932582: Layer already exists
+8ca6bf98b650: Layer already exists
+90cfe0bd8cd6: Layer already exists
+b8195249dcd9: Layer already exists
+298bacf2e4ef: Layer already exists
+3c40083cbf99: Layer already exists
+70991d5976e2: Layer already exists
+caaccf89b866: Layer already exists
+6562679d109c: Layer already exists
+7b8515b1d8a7: Layer already exists
+272d94535c70: Layer already exists
+rollback-20260707-134929: digest: sha256:102158c62182f4db494be543dbb09580b4074dd69f87967a15e77ba3a5349a79 size: 3885
+> Rollback image ready: set LITELLM_IMAGE=docker.staticduo.com/litellm:rollback-20260707-134929 and redeploy to roll back
+> Updating stack env
+> Deploying stack
+ litellm Pulling
+ litellm Pulled
+ Container litellm  Recreate
+ Container litellm  Recreated
+ Container litellm  Starting
+ Container litellm  Started
+> Skipping Fedora deploy by request
+> Done: docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707

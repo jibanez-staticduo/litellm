@@ -3,7 +3,7 @@ task_id: TASK-2026-07-07-002-release-v192-replay-host
 complexity: standard
 track: implementation
 slice: qa
-status: todo
+status: done
 assigned_to: developer
 handoff_from: product_manager
 scr: none
@@ -145,4 +145,7 @@ AC-16. If the retry succeeds, production ends on the new cachecodecfix image, he
 - 2026-07-07 pre-release fix: Added the missing `CacheCodec` import to `litellm/proxy/proxy_server.py`.
 - Added focused regression coverage for cached user/team spend serialization in `tests/test_litellm/proxy/proxy_server/test_spend_counters.py`.
 - Pre-release verification passed: `py_compile`, focused `CacheCodec` import check, and targeted pytest (`test_cache_codec.py` plus `test_spend_counters.py`).
-- Next step: commit and push this pre-release fix/state to `origin main`, then run the local-host-only release retry from a clean source worktree with tag `staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707`.
+- Pre-release fix/state was committed and pushed to `origin main` as `12d3455669c2cefc92b0bbf81f96c5357d400386` before retrying the release.
+- Release retry succeeded with `staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707`; final image digest is `docker.staticduo.com/litellm@sha256:23f346521079a27dfeb9039e73dc2328c268ec50d44e11dc662c33d78a006d86`.
+- Final production state: `litellm` is running and Docker-healthy on the cachecodecfix image; readiness returns DB connected, liveliness passes, and current-container logs show zero `CacheCodec is not defined` matches after deploy.
+- Retry rollback path if needed later: set `LITELLM_IMAGE=docker.staticduo.com/litellm:rollback-20260707-134929` in `/volume2/docker/litellm/.env` and redeploy the local stack.
