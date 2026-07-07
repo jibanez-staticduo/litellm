@@ -1,0 +1,4 @@
+Rollback verification
+image=docker.staticduo.com/litellm:rollback-20260707-131635 status=running health=healthy started=2026-07-07T11:23:33.269549318Z
+/health/readiness 200 {"status":"healthy","db":"connected"}
+/health/liveliness 200 "I'm alive!"

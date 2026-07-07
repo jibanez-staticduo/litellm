@@ -3,7 +3,7 @@ task_id: TASK-2026-07-07-002-release-v192-replay-host
 complexity: standard
 track: implementation
 slice: qa
-status: todo
+status: blocked
 assigned_to: workflow_runner
 handoff_from: product_manager
 scr: none
@@ -103,3 +103,19 @@ Create `.staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/` with
 
 [Agent Message] From: product_manager To: workflow_runner
 Please release the current LiteLLM `main` commit `29373e89c1c33624cfbcbc7ec432886bc278b8cc` on this host using the explicit local-host-only release command in this task. Verify preflight state, run the release, confirm Fedora deploy is skipped, validate health/readiness and LazyMCP/MCP if feasible, handle rollback if needed, produce the evidence packet, update/archive the task, commit StaticEng evidence/closure artifacts, and push only to `origin`. Return Summary, Work Performed, Acceptance Criteria Coverage, Documentation Impact, Open Risks, Recommended Next Step, final image tag/digest, container status, and rollback tag/path.
+
+## Blocker Report
+
+Release was attempted on 2026-07-07 after committing the StaticEng preflight artifacts that made the source worktree dirty.
+
+The release script successfully built and pushed `docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-20260707`, created rollback tag `docker.staticduo.com/litellm:rollback-20260707-131635`, updated the local stack, recreated `litellm`, and skipped Fedora deploy.
+
+Post-deploy readiness and LazyMCP smoke worked, but recent logs showed a release-blocking regression:
+
+```text
+Spend tracking - failed to update user/team spend in cache. Budget enforcement may use stale spend values. ... name 'CacheCodec' is not defined
+```
+
+The release was rolled back to `docker.staticduo.com/litellm:rollback-20260707-131635`. Rollback verification passed: container running, Docker health healthy, readiness `200 {"status":"healthy","db":"connected"}`, liveliness `200 "I'm alive!"`.
+
+Resolution needed: fix the missing `CacheCodec` import/availability in `litellm/proxy/proxy_server.py`, verify spend/cache behavior, then retry the release.
