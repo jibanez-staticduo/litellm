@@ -1,0 +1,6 @@
+NAMES                      IMAGE                                                                                    STATUS
+litellm                    docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707   Up 10 seconds (health: starting)
+litellm-admin-mcp-compat   2bef15be45e4                                                                             Up 2 weeks (healthy)
+litellm-admin-mcp          6437f49262dc                                                                             Up 2 weeks (healthy)
+litellm-redis              redis:7.4-alpine                                                                         Up 2 weeks (healthy)
+name=/litellm status=running health=starting image=docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707 image_id=sha256:583ebf2f408f6d9540ffd84f41629ba9e2a30884114dfdeacd2ad12051de0fec

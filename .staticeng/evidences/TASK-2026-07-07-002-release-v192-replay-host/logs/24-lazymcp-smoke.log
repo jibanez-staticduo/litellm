@@ -1,0 +1,5 @@
+LazyMCP status smoke via LiteLLM MCP tooling passed.
+
+Status result: enabled=true, mode=lazymcp, visible_server_count=25, visible_tool_count=535, route_restricted=false.
+
+MCP describe smoke for server `memory` returned tool metadata successfully.

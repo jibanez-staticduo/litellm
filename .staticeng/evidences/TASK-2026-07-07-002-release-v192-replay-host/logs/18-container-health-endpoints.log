@@ -1,0 +1,2 @@
+/health/readiness status=200 body={"status":"healthy","db":"connected"}
+/health/liveliness status=200 body="I'm alive!"

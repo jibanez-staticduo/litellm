@@ -1,0 +1,1 @@
+git status --short produced no output after release before final evidence updates; source worktree was clean.

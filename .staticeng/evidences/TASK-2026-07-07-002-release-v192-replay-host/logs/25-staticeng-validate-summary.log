@@ -1,0 +1,5 @@
+staticeng_validate was run during the pre-release phase.
+
+Result: failed on pre-existing StaticEng/CodeMap coverage issues, including broken links in `.staticeng/codemap.yml` and many missing module CodeMaps across the upstream LiteLLM source tree.
+
+staticeng_repair dry-run was run. It proposed broad deterministic repairs, including creating many CodeMaps across the repository. Those broad repairs were not applied to preserve the release-blocker scope and avoid introducing a large unrelated source-tree change before the local release retry.
