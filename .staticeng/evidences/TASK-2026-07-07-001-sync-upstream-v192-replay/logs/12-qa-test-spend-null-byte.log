@@ -1,0 +1,54 @@
+EE                                                                       [100%]
+==================================== ERRORS ====================================
+_ ERROR at setup of test_sanitize_request_body_for_spend_logs_payload_removes_null_bytes _
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:273: in get_code
+    code = _get_code(fullname)
+           ^^^^^^^^^^^^^^^^^^^
+E     File "/home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/mcp_server_manager.py", line 4016
+E       except Exception as e:
+E       ^^^^^^
+E   SyntaxError: invalid syntax
+---------------------------- Captured stdout setup -----------------------------
+[conftest] Module setup complete (worker: master)
+_ ERROR at setup of test_sanitize_spend_log_payload_for_db_removes_nested_null_bytes _
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:273: in get_code
+    code = _get_code(fullname)
+           ^^^^^^^^^^^^^^^^^^^
+E     File "/home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/mcp_server_manager.py", line 4016
+E       except Exception as e:
+E       ^^^^^^
+E   SyntaxError: invalid syntax
+=========================== short test summary info ============================
+ERROR tests/test_litellm/proxy/spend_tracking/test_spend_tracking_utils.py::test_sanitize_request_body_for_spend_logs_payload_removes_null_bytes
+ERROR tests/test_litellm/proxy/spend_tracking/test_spend_tracking_utils.py::test_sanitize_spend_log_payload_for_db_removes_nested_null_bytes
+2 errors in 2.78s

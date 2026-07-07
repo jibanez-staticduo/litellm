@@ -1,0 +1,164 @@
+Dependency sync started: Tue Jul  7 08:17:01 AM UTC 2026
+
+Chosen command: uv sync --inexact --frozen --group proxy-dev --extra proxy
+Reason: repo Makefile install-proxy-dev uses --group proxy-dev --extra proxy; --inexact preserves the existing venv while installing missing locked proxy-extra deps, and --frozen prevents lock updates.
+
+$ git status --short --branch
+## sync-upstream-v1.92-replay...upstream/main [ahead 26]
+ M litellm/proxy/_experimental/mcp_server/mcp_server_manager.py
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/01-pre-status.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/02-fetch-branch.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/03-cherry-pick.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/06-qa-git-history.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/07-qa-static-behavior.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/07-tech-lead-review.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/08-qa-test-lazymcp.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/09-qa-test-chatgpt-responses-usage.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/10-qa-test-auth-cached-dicts.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/11-qa-test-mcp-delete-null-maps.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/12-qa-test-spend-null-byte.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/13-qa-test-onboarding.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/14-qa-syntax-import.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/15-qa-final-status.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/16-qa-conflict-marker-precise.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/17-developer-reopen-fix.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/18-qa-rerun-status-history.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/18-tech-lead-rereview.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/19-qa-rerun-syntax-import.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/20-qa-rerun-static-behavior.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/21-qa-rerun-test-lazymcp.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/22-qa-rerun-test-chatgpt-responses-usage.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/23-qa-rerun-test-auth-cached-dicts.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/24-qa-rerun-test-mcp-delete-null-maps.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/25-qa-rerun-test-spend-null-byte.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/26-qa-rerun-test-onboarding.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/27-qa-rerun-env-expression.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/28-qa-rerun-test-chatgpt-only.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/29-qa-rerun-test-narrow-mcp-no-management-endpoints.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/30-qa-rerun-final-status.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/31-qa-dependency-sync.log
+?? .staticeng/tasks/todo/TASK-2026-07-07-001-sync-upstream-v192-replay.md
+
+$ uv sync --inexact --frozen --group proxy-dev --extra proxy
+   Building litellm @ file:///home/staticduo/git/litellm
+   Building litellm-enterprise @ file:///home/staticduo/git/litellm/enterprise
+   Building litellm-proxy-extras @ file:///home/staticduo/git/litellm/litellm-proxy-extras
+Downloading aiohttp (1.7MiB)
+Downloading cryptography (4.5MiB)
+Downloading basedpyright (12.6MiB)
+Downloading nodejs-wheel-binaries (57.9MiB)
+      Built litellm-enterprise @ file:///home/staticduo/git/litellm/enterprise
+      Built litellm-proxy-extras @ file:///home/staticduo/git/litellm/litellm-proxy-extras
+ Downloaded aiohttp
+ Downloaded cryptography
+ Downloaded basedpyright
+ Downloaded nodejs-wheel-binaries
+      Built litellm @ file:///home/staticduo/git/litellm
+Prepared 29 packages in 1m 18s
+Uninstalled 21 packages in 457ms
+Installed 45 packages in 407ms
+ - a2a-sdk==0.3.24
+ + a2a-sdk==1.1.0
+ - aiohttp==3.13.5
+ + aiohttp==3.14.1
+ + aiologic==0.17.0
+ - azure-core==1.39.0
+ + azure-core==1.41.0
+ + basedpyright==1.39.7
+ - boto3==1.42.59
+ + boto3==1.43.1
+ - botocore==1.42.88
+ + botocore==1.43.6
+ + botocore-stubs==1.43.14
+ - cryptography==46.0.7
+ + cryptography==48.0.1
+ + culsans==0.11.0
+ + expression==5.6.0
+ - google-auth==2.49.2
+ + google-auth==2.52.0
+ + granian==2.7.4
+ + h2==4.3.0
+ + hpack==4.1.0
+ + hypercorn==0.17.3
+ + hyperframe==6.1.0
+ + json-rpc==1.15.0
+ - litellm==1.88.0 (from file:///home/staticduo/git/litellm)
+ + litellm==1.92.0 (from file:///home/staticduo/git/litellm)
+ - litellm-enterprise==0.1.38 (from file:///home/staticduo/git/litellm/enterprise)
+ + litellm-enterprise==0.1.47 (from file:///home/staticduo/git/litellm/enterprise)
+ - litellm-proxy-extras==0.4.67 (from file:///home/staticduo/git/litellm/litellm-proxy-extras)
+ + litellm-proxy-extras==0.4.75 (from file:///home/staticduo/git/litellm/litellm-proxy-extras)
+ + nodejs-wheel-binaries==24.16.0
+ - orjson==3.11.5
+ + orjson==3.11.6
+ - packaging==23.2
+ + packaging==26.2
+ + priority==2.0.0
+ - proto-plus==1.27.2
+ + proto-plus==1.28.0
+ - pydantic-settings==2.13.1
+ + pydantic-settings==2.14.2
+ - pyjwt==2.12.0
+ + pyjwt==2.13.0
+ - python-multipart==0.0.26
+ + python-multipart==0.0.32
+ - s3transfer==0.16.0
+ + s3transfer==0.17.0
+ - sse-starlette==3.3.4
+ + sse-starlette==3.4.4
+ - starlette==1.1.0
+ + starlette==1.3.1
+ - tomlkit==0.14.0
+ + tomlkit==0.15.0
+ + types-awscrt==0.34.1
+ + types-boto3==1.43.30
+ + types-boto3-bedrock==1.43.26
+ + types-boto3-bedrock-agent==1.43.0
+ + types-boto3-bedrock-runtime==1.43.30
+ + types-boto3-kms==1.43.12
+ + types-boto3-s3==1.43.14
+ + types-boto3-sagemaker-runtime==1.43.29
+ + types-boto3-sts==1.43.0
+ + types-s3transfer==0.16.0
+ - vcrpy==8.1.1
+ + vcrpy==8.2.1
+ + wsproto==1.3.2
+uv_sync_exit=0
+
+$ git status --short --branch
+## sync-upstream-v1.92-replay...upstream/main [ahead 26]
+ M litellm/proxy/_experimental/mcp_server/mcp_server_manager.py
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/01-pre-status.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/02-fetch-branch.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/03-cherry-pick.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/06-qa-git-history.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/07-qa-static-behavior.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/07-tech-lead-review.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/08-qa-test-lazymcp.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/09-qa-test-chatgpt-responses-usage.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/10-qa-test-auth-cached-dicts.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/11-qa-test-mcp-delete-null-maps.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/12-qa-test-spend-null-byte.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/13-qa-test-onboarding.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/14-qa-syntax-import.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/15-qa-final-status.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/16-qa-conflict-marker-precise.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/17-developer-reopen-fix.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/18-qa-rerun-status-history.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/18-tech-lead-rereview.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/19-qa-rerun-syntax-import.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/20-qa-rerun-static-behavior.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/21-qa-rerun-test-lazymcp.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/22-qa-rerun-test-chatgpt-responses-usage.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/23-qa-rerun-test-auth-cached-dicts.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/24-qa-rerun-test-mcp-delete-null-maps.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/25-qa-rerun-test-spend-null-byte.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/26-qa-rerun-test-onboarding.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/27-qa-rerun-env-expression.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/28-qa-rerun-test-chatgpt-only.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/29-qa-rerun-test-narrow-mcp-no-management-endpoints.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/30-qa-rerun-final-status.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/31-qa-dependency-sync.log
+?? .staticeng/tasks/todo/TASK-2026-07-07-001-sync-upstream-v192-replay.md
+
+$ git diff --name-only -- pyproject.toml uv.lock .python-version

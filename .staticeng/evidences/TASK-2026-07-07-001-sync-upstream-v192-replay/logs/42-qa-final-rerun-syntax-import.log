@@ -1,0 +1,10 @@
+Final rerun py_compile/import started: Tue Jul  7 10:11:23 AM UTC 2026
+
+$ python -m py_compile litellm/proxy/_experimental/mcp_server/mcp_server_manager.py litellm/proxy/_experimental/mcp_server/server.py litellm/proxy/proxy_server.py litellm/proxy/auth/user_api_key_auth.py litellm/proxy/auth/identity_store.py
+[Errno 2] No such file or directory: 'litellm/proxy/auth/identity_store.py'exit=1
+
+$ uv run --no-sync python -c "import litellm.proxy._experimental.mcp_server.mcp_server_manager; import litellm.proxy._experimental.mcp_server.server; import litellm.proxy.proxy_server; import litellm.proxy.auth.user_api_key_auth; import litellm.proxy.auth.identity_store"
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+ModuleNotFoundError: No module named 'litellm.proxy.auth.identity_store'
+exit=1

@@ -1,0 +1,45 @@
+QA rerun started: Tue Jul  7 08:07:36 AM UTC 2026
+
+$ git status --short --branch
+## sync-upstream-v1.92-replay...upstream/main [ahead 26]
+ M litellm/proxy/_experimental/mcp_server/mcp_server_manager.py
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/01-pre-status.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/02-fetch-branch.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/03-cherry-pick.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/06-qa-git-history.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/07-qa-static-behavior.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/07-tech-lead-review.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/08-qa-test-lazymcp.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/09-qa-test-chatgpt-responses-usage.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/10-qa-test-auth-cached-dicts.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/11-qa-test-mcp-delete-null-maps.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/12-qa-test-spend-null-byte.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/13-qa-test-onboarding.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/14-qa-syntax-import.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/15-qa-final-status.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/16-qa-conflict-marker-precise.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/17-developer-reopen-fix.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/18-qa-rerun-status-history.log
+?? .staticeng/tasks/todo/TASK-2026-07-07-001-sync-upstream-v192-replay.md
+
+$ git rev-parse HEAD upstream/main origin/main main
+1a2082ea12e21403581abfa52570d62f6dd04e38
+79a6b8f7f0cdf8a7fa0bd4fbfda10120b3113aa2
+4f7364064d7163289dcb83ab57757164d4364fea
+4f7364064d7163289dcb83ab57757164d4364fea
+
+$ git merge-base HEAD upstream/main
+79a6b8f7f0cdf8a7fa0bd4fbfda10120b3113aa2
+
+$ git merge-base --is-ancestor upstream/main HEAD
+exit=0
+
+$ git rev-list --count upstream/main..HEAD
+26
+
+$ git log --oneline --merges upstream/main..HEAD
+
+$ git ls-files -u
+
+$ rg -n "^(<<<<<<<|=======$|>>>>>>>)( .*)?$" --glob "!uv.lock" --glob "!*.snap" .
+rg_exit=1

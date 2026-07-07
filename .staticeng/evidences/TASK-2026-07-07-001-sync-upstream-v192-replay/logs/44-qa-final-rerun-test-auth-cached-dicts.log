@@ -1,0 +1,10 @@
+Command: PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest tests/test_litellm/proxy/auth/test_user_api_key_auth.py::test_get_user_object_value_reads_cached_user_dict_and_object tests/test_litellm/proxy/auth/test_user_api_key_auth.py::test_cached_user_dict_role_helpers_are_dict_safe tests/test_litellm/proxy/auth/test_user_api_key_auth.py::test_cached_user_dict_unknown_role_defaults_to_internal_user tests/test_litellm/proxy/auth/test_user_api_key_auth.py::test_common_checks_accepts_cached_key_dict tests/test_litellm/proxy/auth/test_user_api_key_auth.py::test_scim_deactivated_user_key_is_rejected_when_cached_user_is_dict tests/test_litellm/proxy/auth/test_user_api_key_auth.py::test_return_user_api_key_auth_obj_cached_user_dict_limits -p no:cacheprovider --tb=short -q
+......                                                                   [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295
+  /home/staticduo/git/litellm/.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    self.loader.exec_module(module)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+6 passed, 1 warning in 7.39s
+exit=0

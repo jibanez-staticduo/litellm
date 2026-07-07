@@ -683,6 +683,7 @@ if MCP_AVAILABLE:
             _session_manager_cm, \
             _session_manager_stateful_cm, \
             _sse_session_manager_cm, \
+            _lazy_session_manager_cm, \
             _stateful_auth_context_cleanup_task
 
         # Use async lock to prevent concurrent initialization
@@ -702,6 +703,7 @@ if MCP_AVAILABLE:
             await _session_manager_cm.__aenter__()
             await _session_manager_stateful_cm.__aenter__()
             await _sse_session_manager_cm.__aenter__()
+            await _lazy_session_manager_cm.__aenter__()
             _stateful_auth_context_cleanup_task = asyncio.create_task(_cleanup_expired_stateful_session_auth_contexts())
 
             _SESSION_MANAGERS_INITIALIZED = True
@@ -714,6 +716,7 @@ if MCP_AVAILABLE:
             _session_manager_cm, \
             _session_manager_stateful_cm, \
             _sse_session_manager_cm, \
+            _lazy_session_manager_cm, \
             _stateful_auth_context_cleanup_task
 
         if _SESSION_MANAGERS_INITIALIZED:

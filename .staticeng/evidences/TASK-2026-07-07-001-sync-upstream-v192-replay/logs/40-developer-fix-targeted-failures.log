@@ -1,0 +1,181 @@
+# Developer Fix Targeted Failures Log
+
+Task: TASK-2026-07-07-001-sync-upstream-v192-replay
+Date: 2026-07-07
+Branch: sync-upstream-v1.92-replay
+Head: 1a2082ea12e21403581abfa52570d62f6dd04e38
+
+## QA Failures Addressed
+
+1. LazyMCP shutdown failed with `UnboundLocalError` for `_lazy_session_manager_cm`.
+2. Cached auth dict regression patched stale `user_api_key_auth.get_key_object` after upstream auth resolver refactor.
+3. MCP partial update null tool map test expected `{}` for explicit `null`, conflicting with preserved behavior that ignores null map fields and uses explicit `{}` to clear.
+
+## Fixes
+
+- `litellm/proxy/_experimental/mcp_server/server.py`: added `_lazy_session_manager_cm` to initialize/shutdown globals and entered the LazyMCP session manager context on initialization so shutdown can exit and reset it.
+- `tests/test_litellm/proxy/auth/test_user_api_key_auth.py`: updated the cached-user SCIM dict test patch target to `litellm.proxy.auth.resolvers.store.IdentityStore._resolve_key`, matching upstream's auth resolver seam.
+- `tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_partial_update.py`: aligned the duplicate null-map test with preserved behavior: explicit null map fields are omitted; explicit empty maps clear overrides.
+- Existing `litellm/proxy/_experimental/mcp_server/mcp_server_manager.py` reopen syntax fix was retained.
+
+## Verification
+
+### LazyMCP targeted command
+
+Command:
+
+```text
+PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py tests/test_litellm/responses/mcp/test_litellm_proxy_mcp_handler.py -p no:cacheprovider --tb=short -q
+```
+
+Result:
+
+```text
+189 passed, 4 warnings in 44.94s
+```
+
+### Cached auth dict targeted command
+
+Command:
+
+```text
+PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest tests/test_litellm/proxy/auth/test_user_api_key_auth.py::test_get_user_object_value_reads_cached_user_dict_and_object tests/test_litellm/proxy/auth/test_user_api_key_auth.py::test_cached_user_dict_role_helpers_are_dict_safe tests/test_litellm/proxy/auth/test_user_api_key_auth.py::test_cached_user_dict_unknown_role_defaults_to_internal_user tests/test_litellm/proxy/auth/test_user_api_key_auth.py::test_common_checks_accepts_cached_key_dict tests/test_litellm/proxy/auth/test_user_api_key_auth.py::test_scim_deactivated_user_key_is_rejected_when_cached_user_is_dict tests/test_litellm/proxy/auth/test_user_api_key_auth.py::test_return_user_api_key_auth_obj_cached_user_dict_limits -p no:cacheprovider --tb=short -q
+```
+
+Result:
+
+```text
+6 passed, 1 warning in 7.27s
+```
+
+### MCP delete/null-map targeted command
+
+Command:
+
+```text
+PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_partial_update.py::test_partial_update_null_tool_name_maps_clear_to_empty_json tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_partial_update.py::test_partial_update_ignores_null_tool_override_maps tests/test_litellm/proxy/management_endpoints/test_mcp_management_endpoints.py::test_cleanup_mcp_server_references_removes_permissions_and_credentials tests/test_litellm/proxy/management_endpoints/test_mcp_management_endpoints.py::test_cleanup_mcp_server_references_returns_false_when_no_references tests/test_litellm/proxy/management_helpers/test_object_permission_utils.py::test_validate_stale_mcp_server_ids_are_silently_dropped tests/test_litellm/proxy/management_helpers/test_object_permission_utils.py::test_validate_stale_ids_in_mcp_tool_permissions_silently_dropped tests/test_litellm/proxy/management_helpers/test_object_permission_utils.py::test_resolve_team_allowed_mcp_servers_filters_stale_ids_from_db_lookup -p no:cacheprovider --tb=short -q
+```
+
+Result:
+
+```text
+7 passed, 1 warning in 8.91s
+```
+
+### py_compile touched modules
+
+Command:
+
+```text
+python -m py_compile "litellm/proxy/_experimental/mcp_server/mcp_server_manager.py" "litellm/proxy/_experimental/mcp_server/server.py" "litellm/proxy/_experimental/mcp_server/db.py" "litellm/proxy/auth/user_api_key_auth.py"
+```
+
+Result: passed with no output.
+
+### Import touched modules
+
+Command:
+
+```text
+PYTHONDONTWRITEBYTECODE=1 uv run --no-sync python - <<'PY'
+import importlib
+for name in [
+    'litellm.proxy._experimental.mcp_server.mcp_server_manager',
+    'litellm.proxy._experimental.mcp_server.server',
+    'litellm.proxy._experimental.mcp_server.db',
+    'litellm.proxy.auth.user_api_key_auth',
+]:
+    importlib.import_module(name)
+    print(f'imported {name}')
+PY
+```
+
+Result:
+
+```text
+imported litellm.proxy._experimental.mcp_server.mcp_server_manager
+imported litellm.proxy._experimental.mcp_server.server
+imported litellm.proxy._experimental.mcp_server.db
+imported litellm.proxy.auth.user_api_key_auth
+```
+
+### git ls-files -u
+
+Command:
+
+```text
+git ls-files -u
+```
+
+Result: no unresolved index entries.
+
+### Precise conflict marker scan
+
+Command:
+
+```text
+rg -n '^(<<<<<<< .+|=======$|>>>>>>> .+)$' --glob '!**/*.lock' --glob '!**/*.snap' --glob '!**/package-lock.json' --glob '!**/bun.lockb'
+```
+
+Result: no conflict markers found.
+
+### git status --short --branch
+
+Command:
+
+```text
+git status --short --branch
+```
+
+Result:
+
+```text
+## sync-upstream-v1.92-replay...upstream/main [ahead 26]
+ M litellm/proxy/_experimental/mcp_server/mcp_server_manager.py
+ M litellm/proxy/_experimental/mcp_server/server.py
+ M tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_partial_update.py
+ M tests/test_litellm/proxy/auth/test_user_api_key_auth.py
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/01-pre-status.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/02-fetch-branch.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/03-cherry-pick.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/06-qa-git-history.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/07-qa-static-behavior.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/07-tech-lead-review.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/08-qa-test-lazymcp.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/09-qa-test-chatgpt-responses-usage.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/10-qa-test-auth-cached-dicts.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/11-qa-test-mcp-delete-null-maps.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/12-qa-test-spend-null-byte.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/13-qa-test-onboarding.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/14-qa-syntax-import.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/15-qa-final-status.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/16-qa-conflict-marker-precise.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/17-developer-reopen-fix.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/18-qa-rerun-status-history.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/18-tech-lead-rereview.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/19-qa-rerun-syntax-import.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/20-qa-rerun-static-behavior.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/21-qa-rerun-test-lazymcp.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/22-qa-rerun-test-chatgpt-responses-usage.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/23-qa-rerun-test-auth-cached-dicts.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/24-qa-rerun-test-mcp-delete-null-maps.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/25-qa-rerun-test-spend-null-byte.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/26-qa-rerun-test-onboarding.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/27-qa-rerun-env-expression.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/28-qa-rerun-test-chatgpt-only.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/29-qa-rerun-test-narrow-mcp-no-management-endpoints.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/30-qa-rerun-final-status.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/31-qa-dependency-sync.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/32-qa-post-sync-syntax-import.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/33-qa-post-sync-test-lazymcp.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/34-qa-post-sync-test-auth-cached-dicts.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/35-qa-post-sync-test-mcp-delete-null-maps.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/36-qa-post-sync-test-spend-null-byte.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/37-qa-post-sync-test-onboarding.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/38-qa-post-sync-test-chatgpt-responses-usage.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/39-qa-post-sync-final-status.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/40-developer-fix-targeted-failures.log
+?? .staticeng/tasks/todo/TASK-2026-07-07-001-sync-upstream-v192-replay.md
+```
+
+No secrets logged.

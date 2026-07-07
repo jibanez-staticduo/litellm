@@ -1427,7 +1427,7 @@ async def test_scim_deactivated_user_key_is_rejected_when_cached_user_is_dict():
 
         with (
             patch(
-                "litellm.proxy.auth.user_api_key_auth.get_key_object",
+                "litellm.proxy.auth.resolvers.store.IdentityStore._resolve_key",
                 new_callable=AsyncMock,
                 return_value=valid_token,
             ),

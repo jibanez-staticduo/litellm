@@ -5432,18 +5432,19 @@ class MCPServerManager:
         # against the *full* set so dedup is deterministic regardless of
         # iteration order.
         for server in db_mcp_servers:
-            existing_server = previous_registry.get(server.server_id)
+            try:
+                existing_server = previous_registry.get(server.server_id)
 
-            if (
-                existing_server is not None
-                and existing_server.updated_at is not None
-                and server.updated_at is not None
-                and existing_server.updated_at == server.updated_at
-            ):
-                # Re-use existing server instance to avoid re-running build_mcp_server_from_table()
-                # which can perform network discovery for OAuth2 servers.
-                new_registry[server.server_id] = existing_server
-                continue
+                if (
+                    existing_server is not None
+                    and existing_server.updated_at is not None
+                    and server.updated_at is not None
+                    and existing_server.updated_at == server.updated_at
+                ):
+                    # Re-use existing server instance to avoid re-running build_mcp_server_from_table()
+                    # which can perform network discovery for OAuth2 servers.
+                    new_registry[server.server_id] = existing_server
+                    continue
 
                 _warn_on_server_name_fields(
                     server_id=server.server_id,

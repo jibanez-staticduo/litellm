@@ -77,7 +77,7 @@ async def test_partial_update_omits_unset_defaultful_fields():
 
 @pytest.mark.asyncio
 async def test_partial_update_null_tool_name_maps_clear_to_empty_json():
-    """Explicit null on Json map fields must clear overrides (UI legacy)."""
+    """Explicit null map fields are ignored; explicit empty maps clear overrides."""
     data = UpdateMCPServerRequest(
         server_id="my-test-server",
         tool_name_to_display_name=None,
@@ -86,8 +86,8 @@ async def test_partial_update_null_tool_name_maps_clear_to_empty_json():
 
     data_dict = await _run_update(data)
 
-    assert data_dict["tool_name_to_display_name"] == "{}"
-    assert data_dict["tool_name_to_description"] == "{}"
+    assert "tool_name_to_display_name" not in data_dict
+    assert "tool_name_to_description" not in data_dict
 
 
 @pytest.mark.asyncio

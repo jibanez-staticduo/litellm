@@ -1,0 +1,128 @@
+Tue Jul  7 05:49:17 AM UTC 2026
+From https://github.com/BerriAI/litellm
+ - [deleted]               (none)     -> upstream/cache_docs_clarification
+ - [deleted]               (none)     -> upstream/claude/cranky-visvesvaraya
+ - [deleted]               (none)     -> upstream/dependabot/github_actions/github-actions-a87701dc78
+ - [deleted]               (none)     -> upstream/dependabot/npm_and_yarn/docs/my-website/follow-redirects-1.16.0
+ - [deleted]               (none)     -> upstream/dependabot/npm_and_yarn/docs/my-website/uuid-14.0.0
+ - [deleted]               (none)     -> upstream/dependabot/npm_and_yarn/ui/litellm-dashboard/next-16.2.3
+ - [deleted]               (none)     -> upstream/dependabot/npm_and_yarn/ui/litellm-dashboard/next-16.2.6
+ - [deleted]               (none)     -> upstream/dependabot/uv/aiohttp-3.13.4
+ - [deleted]               (none)     -> upstream/dependabot/uv/black-26.3.1
+ - [deleted]               (none)     -> upstream/dependabot/uv/langchain-core-1.3.3
+ - [deleted]               (none)     -> upstream/dependabot/uv/pypdf-6.10.0
+ - [deleted]               (none)     -> upstream/dependabot/uv/python-dotenv-1.2.2
+ - [deleted]               (none)     -> upstream/dependabot/uv/tornado-6.5.5
+ - [deleted]               (none)     -> upstream/litellm_/kind-kowalevski-df24b5
+ - [deleted]               (none)     -> upstream/litellm_/split-mcp-routes-management-vs-inference
+ - [deleted]               (none)     -> upstream/litellm_Sameerlite/openai-chat-to-responses
+ - [deleted]               (none)     -> upstream/litellm_Sameerlite/responses-bridge-optin
+ - [deleted]               (none)     -> upstream/litellm_access-group-routing-fix
+ - [deleted]               (none)     -> upstream/litellm_adaptive_routing
+ - [deleted]               (none)     -> upstream/litellm_add_team_id_search_to_teams_page
+ - [deleted]               (none)     -> upstream/litellm_anthropic-json-mode-nonstreaming-mixed-tools
+ - [deleted]               (none)     -> upstream/litellm_anthropic-stream-strip-gemini-thought-tool-id
+ - [deleted]               (none)     -> upstream/litellm_anthropic_messages_call_type_fix
+ - [deleted]               (none)     -> upstream/litellm_clean_litellm_oss_staging_04_01_2026
+ - [deleted]               (none)     -> upstream/litellm_dbReconnectNonBlocking
+ - [deleted]               (none)     -> upstream/litellm_dev_04_14_2026_p1
+ - [deleted]               (none)     -> upstream/litellm_docs-code-block-padding-parity
+ - [deleted]               (none)     -> upstream/litellm_docs-gemini3-thinking-defaults
+ - [deleted]               (none)     -> upstream/litellm_docs-response-headers-model-group
+ - [deleted]               (none)     -> upstream/litellm_docs_tweaks
+ - [deleted]               (none)     -> upstream/litellm_feat-add-reload-flag-proxy
+ - [deleted]               (none)     -> upstream/litellm_feat-mcp-server-alias-permissions
+ - [deleted]               (none)     -> upstream/litellm_fix-ag-not-resolved
+ - [deleted]               (none)     -> upstream/litellm_fix-edit-page-tools-fetch-422
+ - [deleted]               (none)     -> upstream/litellm_fix-issue-26153
+ - [deleted]               (none)     -> upstream/litellm_fix-preserve-reserved-metadata
+ - [deleted]               (none)     -> upstream/litellm_fix-ui-unconditional-cost-write
+ - [deleted]               (none)     -> upstream/litellm_fix-vertex-embed-content-logging
+ - [deleted]               (none)     -> upstream/litellm_fix/componentization
+ - [deleted]               (none)     -> upstream/litellm_fix/redact-prompts-error
+ - [deleted]               (none)     -> upstream/litellm_fix/tf-aws-gcp
+ - [deleted]               (none)     -> upstream/litellm_fix_enterprise_namespace_test_imports
+ - [deleted]               (none)     -> upstream/litellm_fix_proxy_test_master_key_leak
+ - [deleted]               (none)     -> upstream/litellm_fix_responses_get_error_body
+ - [deleted]               (none)     -> upstream/litellm_fix_stateful_statless_mcp
+ - [deleted]               (none)     -> upstream/litellm_fix_upperbound_regenerate_enforcement
+ - [deleted]               (none)     -> upstream/litellm_gemini_provider_default_thinking
+ - [deleted]               (none)     -> upstream/litellm_google_generate_content_response_headers
+ - [deleted]               (none)     -> upstream/litellm_gpt54_mini_nano_versioned_models
+ - [deleted]               (none)     -> upstream/litellm_hosted-vllm-custom-tool-normalization
+ - [deleted]               (none)     -> upstream/litellm_hotfix_gpt-5-5-azure
+ - [deleted]               (none)     -> upstream/litellm_ishaan_april14
+ - [deleted]               (none)     -> upstream/litellm_ishaan_april6
+ - [deleted]               (none)     -> upstream/litellm_jwt_override_scope_wildcard_reapply
+ - [deleted]               (none)     -> upstream/litellm_lit-2517-key-overview-expires-and-user
+ - [deleted]               (none)     -> upstream/litellm_live_api_tool_calling_support
+ - [deleted]               (none)     -> upstream/litellm_llm-judge-guardrail
+ - [deleted]               (none)     -> upstream/litellm_local-rate-limit-fallbacks
+ - [deleted]               (none)     -> upstream/litellm_mc_purview_guardrails
+ - [deleted]               (none)     -> upstream/litellm_memory_endpoints
+ - [deleted]               (none)     -> upstream/litellm_metrics_auth
+ - [deleted]               (none)     -> upstream/litellm_migration_projects
+ - [deleted]               (none)     -> upstream/litellm_non-root-dockerfile-optimization-31b6
+ - [deleted]               (none)     -> upstream/litellm_oss_staging_04_06_2026
+ - [deleted]               (none)     -> upstream/litellm_oss_staging_04_17_2026
+ - [deleted]               (none)     -> upstream/litellm_otelSemconvStabilityOptIn
+ - [deleted]               (none)     -> upstream/litellm_refactor-spend-logs-view
+ - [deleted]               (none)     -> upstream/litellm_responses_object_field_fix
+ - [deleted]               (none)     -> upstream/litellm_responses_strip_custom_tool_call_namespace
+ - [deleted]               (none)     -> upstream/litellm_sendInviteEmailToggle
+ - [deleted]               (none)     -> upstream/litellm_shin_agent_oss_staging_05_10_2026
+ - [deleted]               (none)     -> upstream/litellm_staging_03_21_2026
+ - [deleted]               (none)     -> upstream/litellm_staging_03_22_2026
+ - [deleted]               (none)     -> upstream/litellm_staging_03_23_2026
+ - [deleted]               (none)     -> upstream/litellm_standardize_rate_limit_errors-5fb4
+ - [deleted]               (none)     -> upstream/litellm_tag_budget_header_enforcement
+ - [deleted]               (none)     -> upstream/litellm_token_verification_query_opt
+ - [deleted]               (none)     -> upstream/litellm_ui-api-double-prefix-a8a3
+ - [deleted]               (none)     -> upstream/litellm_vector-store-team-byok-model-none
+ - [deleted]               (none)     -> upstream/litellm_vector_search_access
+ - [deleted]               (none)     -> upstream/litellm_vertex-batch-output-transformation
+ - [deleted]               (none)     -> upstream/litellm_vertex_anthropic_messages_cache_fix
+ - [deleted]               (none)     -> upstream/litellm_vertex_cached_content_mutual_exclusion
+ - [deleted]               (none)     -> upstream/litellm_vertex_model_garden_xai_openapi
+ - [deleted]               (none)     -> upstream/litellm_vertex_request_metadata_labels
+ - [deleted]               (none)     -> upstream/litellm_wildcard_order_fallback
+ - [deleted]               (none)     -> upstream/litellm_yj_apr14
+ - [deleted]               (none)     -> upstream/litellm_yj_apr23
+ - [deleted]               (none)     -> upstream/sandcastle/compat-matrix-stack
+ - [deleted]               (none)     -> upstream/shin_agent_oss_staging_05_08_2026
+ - [deleted]               (none)     -> upstream/shin_agent_oss_staging_05_10_2026
+ - [deleted]               (none)     -> upstream/shin_agent_oss_staging_05_11_2026
+ - [deleted]               (none)     -> upstream/shin_agent_oss_staging_05_12_2026
+ * [new branch]            litellm_bedrock-unmanaged-batch-cost-tracking -> upstream/litellm_bedrock-unmanaged-batch-cost-tracking
+   9076c33347..7d6a080d3f  litellm_internal_staging -> upstream/litellm_internal_staging
+branch_exists:1
+79a6b8f7f0cdf8a7fa0bd4fbfda10120b3113aa2
+origin/sync-upstream-v1.92-replay
+Tue Jul  7 05:49:44 AM UTC 2026
+4f7364064d7163289dcb83ab57757164d4364fea main
+4f7364064d7163289dcb83ab57757164d4364fea origin/main
+79a6b8f7f0cdf8a7fa0bd4fbfda10120b3113aa2 upstream/main
+error: Your local changes to the following files would be overwritten by checkout:
+	.staticeng/.config/runtime/discussions.json
+	.staticeng/tasks/current.md
+Please commit your changes or stash them before you switch branches.
+Aborting
+sync-upstream-v1.92
+4f7364064d7163289dcb83ab57757164d4364fea
+## sync-upstream-v1.92
+ M .staticeng/.config/runtime/discussions.json
+ M .staticeng/tasks/current.md
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/
+?? .staticeng/tasks/todo/TASK-2026-07-07-001-sync-upstream-v192-replay.md
+Tue Jul  7 05:50:15 AM UTC 2026
+Stashing tracked StaticEng setup files to allow branch switch; untracked task/evidence retained.
+Saved working directory and index state On sync-upstream-v1.92: staticeng-task-setup-before-replay
+## sync-upstream-v1.92
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/
+?? .staticeng/tasks/todo/TASK-2026-07-07-001-sync-upstream-v192-replay.md
+Switched to a new branch 'sync-upstream-v1.92-replay'
+branch 'sync-upstream-v1.92-replay' set up to track 'upstream/main'.
+sync-upstream-v1.92-replay
+79a6b8f7f0cdf8a7fa0bd4fbfda10120b3113aa2
+## sync-upstream-v1.92-replay...upstream/main
+?? .staticeng/

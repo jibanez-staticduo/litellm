@@ -1,0 +1,205 @@
+Command: PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_partial_update.py::test_partial_update_null_tool_name_maps_clear_to_empty_json tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_partial_update.py::test_partial_update_ignores_null_tool_override_maps tests/test_litellm/proxy/management_helpers/test_object_permission_utils.py::test_validate_stale_mcp_server_ids_are_silently_dropped tests/test_litellm/proxy/management_helpers/test_object_permission_utils.py::test_validate_stale_ids_in_mcp_tool_permissions_silently_dropped tests/test_litellm/proxy/management_helpers/test_object_permission_utils.py::test_resolve_team_allowed_mcp_servers_filters_stale_ids_from_db_lookup -p no:cacheprovider --tb=short -q
+EEEEE                                                                    [100%]
+==================================== ERRORS ====================================
+____ ERROR at setup of test_partial_update_ignores_null_tool_override_maps _____
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+---------------------------- Captured stdout setup -----------------------------
+[conftest] Module setup complete (worker: master)
+_ ERROR at setup of test_partial_update_null_tool_name_maps_clear_to_empty_json _
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+_ ERROR at setup of test_resolve_team_allowed_mcp_servers_filters_stale_ids_from_db_lookup _
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+---------------------------- Captured stdout setup -----------------------------
+[conftest] Module setup complete (worker: master)
+_ ERROR at setup of test_validate_stale_ids_in_mcp_tool_permissions_silently_dropped _
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+__ ERROR at setup of test_validate_stale_mcp_server_ids_are_silently_dropped ___
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+=========================== short test summary info ============================
+ERROR tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_partial_update.py::test_partial_update_ignores_null_tool_override_maps
+ERROR tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_partial_update.py::test_partial_update_null_tool_name_maps_clear_to_empty_json
+ERROR tests/test_litellm/proxy/management_helpers/test_object_permission_utils.py::test_resolve_team_allowed_mcp_servers_filters_stale_ids_from_db_lookup
+ERROR tests/test_litellm/proxy/management_helpers/test_object_permission_utils.py::test_validate_stale_ids_in_mcp_tool_permissions_silently_dropped
+ERROR tests/test_litellm/proxy/management_helpers/test_object_permission_utils.py::test_validate_stale_mcp_server_ids_are_silently_dropped
+5 errors in 5.71s
+exit=1

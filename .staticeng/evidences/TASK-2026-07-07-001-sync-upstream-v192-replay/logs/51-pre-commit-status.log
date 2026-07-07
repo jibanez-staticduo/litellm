@@ -1,0 +1,66 @@
+## sync-upstream-v1.92-replay...upstream/main [ahead 26]
+ M .staticeng/tasks/done.md
+ M litellm/proxy/_experimental/mcp_server/mcp_server_manager.py
+ M litellm/proxy/_experimental/mcp_server/server.py
+ M tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_partial_update.py
+ M tests/test_litellm/proxy/auth/test_user_api_key_auth.py
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/SUMMARY.md
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/01-pre-status.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/02-fetch-branch.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/03-cherry-pick.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/06-qa-git-history.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/07-qa-static-behavior.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/07-tech-lead-review.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/08-qa-test-lazymcp.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/09-qa-test-chatgpt-responses-usage.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/10-qa-test-auth-cached-dicts.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/11-qa-test-mcp-delete-null-maps.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/12-qa-test-spend-null-byte.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/13-qa-test-onboarding.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/14-qa-syntax-import.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/15-qa-final-status.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/16-qa-conflict-marker-precise.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/17-developer-reopen-fix.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/18-qa-rerun-status-history.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/18-tech-lead-rereview.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/19-qa-rerun-syntax-import.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/20-qa-rerun-static-behavior.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/21-qa-rerun-test-lazymcp.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/22-qa-rerun-test-chatgpt-responses-usage.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/23-qa-rerun-test-auth-cached-dicts.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/24-qa-rerun-test-mcp-delete-null-maps.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/25-qa-rerun-test-spend-null-byte.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/26-qa-rerun-test-onboarding.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/27-qa-rerun-env-expression.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/28-qa-rerun-test-chatgpt-only.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/29-qa-rerun-test-narrow-mcp-no-management-endpoints.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/30-qa-rerun-final-status.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/31-qa-dependency-sync.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/32-qa-post-sync-syntax-import.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/33-qa-post-sync-test-lazymcp.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/34-qa-post-sync-test-auth-cached-dicts.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/35-qa-post-sync-test-mcp-delete-null-maps.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/36-qa-post-sync-test-spend-null-byte.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/37-qa-post-sync-test-onboarding.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/38-qa-post-sync-test-chatgpt-responses-usage.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/39-qa-post-sync-final-status.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/40-developer-fix-targeted-failures.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/41-qa-final-rerun-history.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/42-qa-final-rerun-syntax-import.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/42-tech-lead-final-review.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/43-qa-final-rerun-test-lazymcp.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/44-qa-final-rerun-test-auth-cached-dicts.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/45-qa-final-rerun-test-mcp-delete-null-maps.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/46-qa-final-rerun-test-spend-null-byte.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/47-qa-final-rerun-test-onboarding.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/48-qa-final-rerun-test-chatgpt-responses-usage.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/49-qa-final-rerun-hygiene-status.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/50-qa-final-rerun-corrected-syntax-import.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/51-pre-commit-status.log
+?? .staticeng/tasks/done/TASK-2026-07-07-001-sync-upstream-v192-replay.md
+ .staticeng/tasks/done.md                           |  1 +
+ .../_experimental/mcp_server/mcp_server_manager.py | 23 +++++++++++-----------
+ litellm/proxy/_experimental/mcp_server/server.py   |  3 +++
+ .../mcp_server/test_mcp_partial_update.py          |  6 +++---
+ .../proxy/auth/test_user_api_key_auth.py           |  2 +-
+ 5 files changed, 20 insertions(+), 15 deletions(-)

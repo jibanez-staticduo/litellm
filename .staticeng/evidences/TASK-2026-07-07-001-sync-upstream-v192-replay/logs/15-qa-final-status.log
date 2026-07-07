@@ -1,0 +1,40 @@
+Final QA status started: Tue Jul  7 07:58:14 AM UTC 2026
+
+$ git status --short --branch
+## sync-upstream-v1.92-replay...upstream/main [ahead 26]
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/01-pre-status.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/02-fetch-branch.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/03-cherry-pick.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/06-qa-git-history.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/07-qa-static-behavior.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/07-tech-lead-review.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/08-qa-test-lazymcp.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/09-qa-test-chatgpt-responses-usage.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/10-qa-test-auth-cached-dicts.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/11-qa-test-mcp-delete-null-maps.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/12-qa-test-spend-null-byte.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/13-qa-test-onboarding.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/14-qa-syntax-import.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/15-qa-final-status.log
+?? .staticeng/tasks/todo/TASK-2026-07-07-001-sync-upstream-v192-replay.md
+
+$ git ls-files -u
+
+$ rg -n "^(<<<<<<<|=======|>>>>>>>)" --glob "!uv.lock" --glob "!*.snap" .
+./tests/litellm_utils_tests/log.txt:1:============================= test session starts ==============================
+./tests/litellm_utils_tests/log.txt:14:=============================== warnings summary ===============================
+./tests/litellm_utils_tests/log.txt:24:======================== 3 passed, 2 warnings in 0.92s =========================
+./tests/test_litellm/llms/databricks/test_databricks_partner_integration.py:3:=======================================================
+./tests/test_litellm/llms/databricks/test_databricks_e2e.py:3:====================================================
+./tests/logging_callback_tests/log.txt:1:============================= test session starts ==============================
+./tests/logging_callback_tests/log.txt:11:=============================== warnings summary ===============================
+./tests/logging_callback_tests/log.txt:21:======================== 1 passed, 2 warnings in 4.10s =========================
+./tests/eval_swe_bench.py:3:==================================
+./litellm/proxy/common_utils/performance_utils.md:114:==============================================================
+./litellm/proxy/_experimental/mcp_server/mcp_debug.py:3:========================
+./scripts/eval_compression.py:3:======================================
+./scripts/health_check/health_check_client_README.md:148:============================================================
+./scripts/health_check/health_check_client_README.md:161:============================================================
+./scripts/health_check/health_check_client_README.md:163:============================================================
+./scripts/health_check/health_check_client_README.md:167:============================================================
+rg_exit=0

@@ -1,0 +1,20 @@
+Command: PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_partial_update.py::test_partial_update_null_tool_name_maps_clear_to_empty_json tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_partial_update.py::test_partial_update_ignores_null_tool_override_maps tests/test_litellm/proxy/management_endpoints/test_mcp_management_endpoints.py::test_cleanup_mcp_server_references_removes_permissions_and_credentials tests/test_litellm/proxy/management_endpoints/test_mcp_management_endpoints.py::test_cleanup_mcp_server_references_returns_false_when_no_references tests/test_litellm/proxy/management_helpers/test_object_permission_utils.py::test_validate_stale_mcp_server_ids_are_silently_dropped tests/test_litellm/proxy/management_helpers/test_object_permission_utils.py::test_validate_stale_ids_in_mcp_tool_permissions_silently_dropped tests/test_litellm/proxy/management_helpers/test_object_permission_utils.py::test_resolve_team_allowed_mcp_servers_filters_stale_ids_from_db_lookup -p no:cacheprovider --tb=short -q
+...F...                                                                  [100%]
+=================================== FAILURES ===================================
+_________ test_partial_update_null_tool_name_maps_clear_to_empty_json __________
+tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_partial_update.py:83: in test_partial_update_null_tool_name_maps_clear_to_empty_json
+    assert data_dict["tool_name_to_display_name"] == "{}"
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'tool_name_to_display_name'
+--------------------------- Captured stdout teardown ---------------------------
+[conftest] Module teardown complete (worker: master)
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295
+  /home/staticduo/git/litellm/.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    self.loader.exec_module(module)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_partial_update.py::test_partial_update_null_tool_name_maps_clear_to_empty_json
+1 failed, 6 passed, 1 warning in 9.73s
+exit=1

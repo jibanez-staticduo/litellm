@@ -1,0 +1,24 @@
+Command: PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py tests/test_litellm/responses/mcp/test_litellm_proxy_mcp_handler.py -p no:cacheprovider --tb=short -q
+........................................................................ [ 38%]
+........................................................................ [ 76%]
+.............................................                            [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295
+  /home/staticduo/git/litellm/.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    self.loader.exec_module(module)
+
+tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py::TestMCPServerManagerReload::test_rebuilds_server_when_updated_at_changes
+  /home/staticduo/git/litellm/tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py:4836: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    timestamp = datetime.utcnow()
+
+tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py::TestMCPServerManagerReload::test_skips_server_when_build_from_database_fails
+  /home/staticduo/git/litellm/tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py:4884: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    timestamp = datetime.utcnow()
+
+tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py::TestMCPServerManagerReload::test_skips_server_when_openapi_registration_fails
+  /home/staticduo/git/litellm/tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py:4943: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    timestamp = datetime.utcnow()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+189 passed, 4 warnings in 42.64s
+exit=0

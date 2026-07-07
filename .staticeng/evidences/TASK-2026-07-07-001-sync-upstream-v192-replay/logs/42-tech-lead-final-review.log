@@ -1,0 +1,41 @@
+Tech Lead final review: Tue Jul 7 2026
+
+Task: TASK-2026-07-07-001-sync-upstream-v192-replay
+Branch: sync-upstream-v1.92-replay
+HEAD before closure/fix commit: 1a2082ea12e21403581abfa52570d62f6dd04e38
+upstream/main: 79a6b8f7f0cdf8a7fa0bd4fbfda10120b3113aa2
+
+Reviewed current source/test diff since HEAD:
+- litellm/proxy/_experimental/mcp_server/mcp_server_manager.py
+- litellm/proxy/_experimental/mcp_server/server.py
+- tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_partial_update.py
+- tests/test_litellm/proxy/auth/test_user_api_key_auth.py
+- task/evidence artifacts under .staticeng
+
+Checks performed:
+- git status --short --branch: branch ahead 26, four modified source/test files, task/evidence untracked.
+- git diff --check: pass.
+- git ls-files -u: no unresolved index entries.
+- git log --oneline --merges upstream/main..HEAD: no merge commits.
+- git rev-list --left-right --count upstream/main...HEAD: 0 26.
+- git ls-remote --heads origin sync-upstream-v1.92-replay: no remote branch returned.
+- Read developer evidence in log 40; targeted commands reported LazyMCP 189 passed, auth dict 6 passed, MCP delete/null-map 7 passed, compile/import pass.
+- Reran focused final checks:
+  PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py::test_lazymcp_session_manager_shutdown_resets_lazy_manager tests/test_litellm/proxy/auth/test_user_api_key_auth.py::test_scim_deactivated_user_key_is_rejected_when_cached_user_is_dict tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_partial_update.py::test_partial_update_null_tool_name_maps_clear_to_empty_json tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_partial_update.py::test_partial_update_ignores_null_tool_override_maps -p no:cacheprovider --tb=short -q
+  Result: 4 passed, 1 warning in 10.41s.
+- Reran py_compile for touched modules/tests: pass.
+
+Review conclusions:
+- Source/test fixes are appropriate and minimal.
+- mcp_server_manager.py fix restores the missing per-server try/except scope without changing reload semantics beyond making the intended code syntactically valid.
+- server.py fix correctly includes _lazy_session_manager_cm in the init/shutdown global lifecycle so LazyMCP session manager is entered/exited and reset with the other managers.
+- auth test patch now targets IdentityStore._resolve_key, matching upstream resolver seam.
+- MCP partial update test now matches actual preserved behavior: explicit null maps are ignored, explicit empty maps clear overrides.
+
+Closure notes:
+- A closure/fix commit is required before push because HEAD does not include the fixes/evidence.
+- A current task SUMMARY.md is still missing and should be added before closure.
+- Older QA logs 33-35 contain pre-fix failures; log 40 and this final review supersede them. SUMMARY.md should make that clear.
+- StaticEng validate broad CodeMap failures should be reported/escalated rather than repaired in this task; repair would create large unrelated CodeMap churn.
+
+Push recommendation: push to origin is acceptable after committing the four source/test fixes plus task/evidence/SUMMARY closure artifacts. Do not push to upstream.

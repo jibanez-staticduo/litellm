@@ -1,0 +1,79 @@
+# Developer Reopen Fix Log
+
+Task: TASK-2026-07-07-001-sync-upstream-v192-replay
+Date: 2026-07-07
+Branch: sync-upstream-v1.92-replay
+Head before fix: 1a2082ea12e21403581abfa52570d62f6dd04e38
+
+## QA Blocker
+
+QA reported `python -m py_compile litellm/proxy/_experimental/mcp_server/mcp_server_manager.py` failed with `SyntaxError: invalid syntax` at line 4016, blocking targeted pytest collection.
+
+## Fix
+
+Restored the missing `try:` block around per-server rebuild work in `MCPServerManager.reload_servers_from_database` and dedented the rebuild path so it is not nested under the unchanged-server `continue` branch.
+
+## Verification
+
+### python -m py_compile litellm/proxy/_experimental/mcp_server/mcp_server_manager.py
+
+Command:
+
+```text
+python -m py_compile "litellm/proxy/_experimental/mcp_server/mcp_server_manager.py"
+```
+
+Result: passed with no output.
+
+### git ls-files -u
+
+Command:
+
+```text
+git ls-files -u
+```
+
+Result: no unresolved index entries.
+
+### Precise conflict marker scan
+
+Command:
+
+```text
+rg -n '^(<<<<<<< .+|=======$|>>>>>>> .+)$' --glob '!**/*.lock' --glob '!**/*.snap' --glob '!**/package-lock.json' --glob '!**/bun.lockb'
+```
+
+Result: no conflict markers found.
+
+### git status --short --branch
+
+Command:
+
+```text
+git status --short --branch
+```
+
+Result:
+
+```text
+## sync-upstream-v1.92-replay...upstream/main [ahead 26]
+ M litellm/proxy/_experimental/mcp_server/mcp_server_manager.py
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/01-pre-status.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/02-fetch-branch.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/03-cherry-pick.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/06-qa-git-history.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/07-qa-static-behavior.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/07-tech-lead-review.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/08-qa-test-lazymcp.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/09-qa-test-chatgpt-responses-usage.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/10-qa-test-auth-cached-dicts.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/11-qa-test-mcp-delete-null-maps.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/12-qa-test-spend-null-byte.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/13-qa-test-onboarding.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/14-qa-syntax-import.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/15-qa-final-status.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/16-qa-conflict-marker-precise.log
+?? .staticeng/tasks/todo/TASK-2026-07-07-001-sync-upstream-v192-replay.md
+```
+
+No secrets logged.
