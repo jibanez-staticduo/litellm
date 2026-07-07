@@ -1,0 +1,10 @@
+Removal method: LiteLLM admin API `POST /model/delete` from inside the running `litellm` container against `http://127.0.0.1:4000`, authenticated with the container's existing master key environment variable. The request body contained only the target deployment id.
+
+method=POST /model/delete target_model_name=defend-account2/gpt-5.5 target_model_id=7f239a33-28d4-4d6c-953d-ea8ed5dad661
+status_code=200
+{"message":"Model: 7f239a33-28d4-4d6c-953d-ea8ed5dad661 deleted successfully"}
+
+Notes:
+- No application code was modified.
+- No rebuild or redeploy was performed.
+- No ChatGPT model invocation, auth refresh, or login was performed.
