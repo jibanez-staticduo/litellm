@@ -27,7 +27,7 @@ Capture the user's request to update LiteLLM on Fedora and preserve the deployme
   - `docs/core/agent_orchestration.md` does not exist.
   - `docs/architecture/TECHNICAL_ARCHITECTURE.md` does not exist.
   - Those paths also violate StaticEng's Rule of Local Knowledge.
-- StaticEng also reported many missing `codemap.yml` files because source directories lack CodeMaps.
+- StaticEng also reported many missing `.staticeng/codemap.yml` files because source directories lack CodeMaps.
 - Affected unmapped areas explicitly mentioned include `examples`, `docker`, `scripts`, `litellm`, `litellm/responses`, and multiple `litellm/llms/...` paths.
 - The large number of missing CodeMaps is due to replaying/importing the full upstream repository while StaticEng expects many source directories to be mapped.
 - `staticeng_repair` was run in dry-run during the release.

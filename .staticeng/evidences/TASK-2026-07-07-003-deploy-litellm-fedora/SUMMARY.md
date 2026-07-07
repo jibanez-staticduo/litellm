@@ -15,12 +15,12 @@ Deployed the known-good LiteLLM image to the Fedora stack at `/home/staticduo/do
 
 ## Acceptance Criteria Coverage
 
-- AC-1: PASS. Previous Fedora env image, running image, image ID, and health were recorded before deployment in `logs/01-preflight.log` without printing `.env` contents.
-- AC-2: PASS. Fedora stack `/home/staticduo/docker/litellm` was updated to `docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707`; `pull` and `up -d` targeted only `litellm`. See `logs/02-deploy.log`.
-- AC-3: PASS. Final Docker status is `status=running health=healthy`. See `logs/04-wait-for-docker-health.log` and `logs/06-final-status.log`.
-- AC-4: PASS. Fedora-local `http://127.0.0.1:4000/health/readiness` returned `{"status":"healthy","db":"connected"}` and liveliness returned `"I'm alive!"`. See `logs/03-health-and-log-check.log` and `logs/06-final-status.log`.
-- AC-5: PASS. Docker logs since the new container start have no `CacheCodec is not defined` entries. See `logs/03-health-and-log-check.log` and `logs/06-final-status.log`.
-- AC-6: PASS. LazyMCP tooling status and memory server describe passed locally, and Fedora `/v1/mcp/tools` returned HTTP 200 using an in-session key read that did not print secret values. See `logs/05-lazymcp-smoke.log`.
+- AC-1: PASS. Previous Fedora env image, running image, image ID, and health were recorded before deployment in `.staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/01-preflight.log` without printing `.env` contents.
+- AC-2: PASS. Fedora stack `/home/staticduo/docker/litellm` was updated to `docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707`; `pull` and `up -d` targeted only `litellm`. See `.staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/02-deploy.log`.
+- AC-3: PASS. Final Docker status is `status=running health=healthy`. See `.staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/04-wait-for-docker-health.log` and `.staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/06-final-status.log`.
+- AC-4: PASS. Fedora-local `http://127.0.0.1:4000/health/readiness` returned `{"status":"healthy","db":"connected"}` and liveliness returned `"I'm alive!"`. See `.staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/03-health-and-log-check.log` and `.staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/06-final-status.log`.
+- AC-5: PASS. Docker logs since the new container start have no `CacheCodec is not defined` entries. See `.staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/03-health-and-log-check.log` and `.staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/06-final-status.log`.
+- AC-6: PASS. LazyMCP tooling status and memory server describe passed locally, and Fedora `/v1/mcp/tools` returned HTTP 200 using an in-session key read that did not print secret values. See `.staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/05-lazymcp-smoke.log`.
 - AC-7: PASS. Evidence packet exists with `SUMMARY.md` and safe logs under `.staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/`.
 - AC-8: PASS. Task is moved to `.staticeng/tasks/done/`, and `.staticeng/tasks/current.md` is updated to no active/blocked tasks.
 - AC-9: PASS. Closure artifacts were committed and pushed to `origin main` only in `6ccbc2e680`.
@@ -51,11 +51,11 @@ Expected service impact: one `litellm` container recreate; transient LiteLLM una
 
 ## Logs
 
-- `logs/01-preflight.log`
-- `logs/02-deploy.log`
-- `logs/03-health-and-log-check.log`
-- `logs/04-wait-for-docker-health.log`
-- `logs/05-lazymcp-smoke.log`
-- `logs/06-final-status.log`
-- `logs/07-staticeng-validate.log`
-- `logs/08-pre-commit-git-status.log`
+- `.staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/01-preflight.log`
+- `.staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/02-deploy.log`
+- `.staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/03-health-and-log-check.log`
+- `.staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/04-wait-for-docker-health.log`
+- `.staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/05-lazymcp-smoke.log`
+- `.staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/06-final-status.log`
+- `.staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/07-staticeng-validate.log`
+- `.staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/08-pre-commit-git-status.log`

@@ -1,0 +1,101 @@
+query-engine ac9d7041ed77bcc8a8dbd2ab6616b39013829574
+{
+  "api_model_info": {
+    "all_account2_visible": true,
+    "all_regular_visible": true,
+    "note": "GET /model/info redacts banned/sensitive litellm params, so exact profile value is verified via direct DB inspection below.",
+    "visible_account2": [
+      "chatgpt-account2/gpt-5.3-codex",
+      "chatgpt-account2/gpt-5.3-codex-spark",
+      "chatgpt-account2/gpt-5.4",
+      "chatgpt-account2/gpt-5.4-mini",
+      "chatgpt-account2/gpt-5.5",
+      "defend-account2/gpt-5.5"
+    ],
+    "visible_regular": [
+      "chatgpt/gpt-5.3-codex",
+      "chatgpt/gpt-5.3-codex-spark",
+      "chatgpt/gpt-5.4",
+      "chatgpt/gpt-5.4-mini",
+      "chatgpt/gpt-5.5",
+      "defend/gpt-5.5"
+    ]
+  },
+  "db_profile_check": {
+    "account2_have_account2_profile": true,
+    "regular_have_no_account2_profile": true,
+    "rows": [
+      {
+        "blocked": false,
+        "chatgpt_auth_profile": "account2",
+        "model_name": "chatgpt-account2/gpt-5.3-codex"
+      },
+      {
+        "blocked": false,
+        "chatgpt_auth_profile": "account2",
+        "model_name": "chatgpt-account2/gpt-5.3-codex-spark"
+      },
+      {
+        "blocked": false,
+        "chatgpt_auth_profile": "account2",
+        "model_name": "chatgpt-account2/gpt-5.4"
+      },
+      {
+        "blocked": false,
+        "chatgpt_auth_profile": "account2",
+        "model_name": "chatgpt-account2/gpt-5.4-mini"
+      },
+      {
+        "blocked": false,
+        "chatgpt_auth_profile": "account2",
+        "model_name": "chatgpt-account2/gpt-5.5"
+      },
+      {
+        "blocked": false,
+        "chatgpt_auth_profile": null,
+        "model_name": "chatgpt/gpt-5.3-codex"
+      },
+      {
+        "blocked": false,
+        "chatgpt_auth_profile": null,
+        "model_name": "chatgpt/gpt-5.3-codex-spark"
+      },
+      {
+        "blocked": false,
+        "chatgpt_auth_profile": null,
+        "model_name": "chatgpt/gpt-5.4"
+      },
+      {
+        "blocked": false,
+        "chatgpt_auth_profile": null,
+        "model_name": "chatgpt/gpt-5.4-mini"
+      },
+      {
+        "blocked": false,
+        "chatgpt_auth_profile": null,
+        "model_name": "chatgpt/gpt-5.5"
+      },
+      {
+        "blocked": false,
+        "chatgpt_auth_profile": "account2",
+        "model_name": "defend-account2/gpt-5.5"
+      },
+      {
+        "blocked": false,
+        "chatgpt_auth_profile": null,
+        "model_name": "defend/gpt-5.5"
+      }
+    ]
+  },
+  "health": {
+    "/health/liveliness": {
+      "body_preview": "\"I'm alive!\"",
+      "status_code": 200
+    },
+    "/health/readiness": {
+      "body_preview": "{\"status\":\"healthy\",\"db\":\"connected\"}",
+      "status_code": 200
+    }
+  },
+  "no_live_chatgpt_invocation": true
+}

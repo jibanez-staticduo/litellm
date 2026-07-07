@@ -25,7 +25,7 @@ The user wants one LiteLLM deployment to expose multiple ChatGPT-backed model de
 - Fedora stack path: `/home/staticduo/docker/litellm` via SSH host `fedora`.
 - Release script: `/home/staticduo/git/release-litellm.sh`.
 - Recent release state: local/NAS and Fedora deployments are healthy on the known good image; readiness reports `{"status":"healthy","db":"connected"}`, liveliness returns `"I'm alive!"`, and LazyMCP/MCP smoke checks passed.
-- `staticeng_validate` is currently not green because of pre-existing StaticEng metadata/CodeMap debt, specifically broken links in `.staticeng/codemap.yml` and many missing `codemap.yml` files across source directories; this is not considered a functional LiteLLM blocker.
+- `staticeng_validate` is currently not green because of pre-existing StaticEng metadata/CodeMap debt, specifically broken links in `.staticeng/codemap.yml` and many missing `.staticeng/codemap.yml` files across source directories; this is not considered a functional LiteLLM blocker.
 - Prior ChatGPT auth investigation was recorded and pushed in commit `32d4f4d3a3` with message `chore: TASK-2026-07-07-004 record ChatGPT auth investigation`.
 - Git was clean and `main` synchronized with `origin/main` after the investigation.
 

@@ -24,7 +24,7 @@ The user wants one LiteLLM instance to route to multiple different ChatGPT subsc
 - Local/NAS stack path: `/volume2/docker/litellm`.
 - Fedora stack path: `/home/staticduo/docker/litellm` via SSH host `fedora`.
 - Release script: `/home/staticduo/git/release-litellm.sh`.
-- `staticeng_validate` is currently known to fail because of StaticEng metadata/CodeMap debt, not functional LiteLLM release issues: broken links in `.staticeng/codemap.yml` and many missing `codemap.yml` files across source directories.
+- `staticeng_validate` is currently known to fail because of StaticEng metadata/CodeMap debt, not functional LiteLLM release issues: broken links in `.staticeng/codemap.yml` and many missing `.staticeng/codemap.yml` files across source directories.
 - Existing local features/fixes to preserve while changing auth behavior include LazyMCP, ChatGPT/private GPT, Responses usage, auth/cache, MCP, spend, and onboarding fixes.
 - Recent release blocker `NameError: CacheCodec is not defined` was fixed by importing `CacheCodec` in `litellm/proxy/proxy_server.py`, with regression test `test_update_cache_serializes_cached_user_and_team_spend`.
 - Local/NAS and Fedora deployments of the known good image are healthy; readiness returns `{"status":"healthy","db":"connected"}`, liveliness returns `"I'm alive!"`, LazyMCP/MCP smoke checks pass, and post-deploy logs are clean.

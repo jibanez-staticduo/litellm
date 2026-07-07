@@ -1,0 +1,21 @@
+repo_head=6ccc6ae91940406cc6ce806eb2d9997c9e9dc39c
+repo_branch=main
+repo_tags_at_head=<none>
+
+worktree_status_short:
+ M .staticeng/.config/generated/agents/product_manager.md
+ M .staticeng/.config/runtime/discussions.json
+ M .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/SUMMARY.md
+ M .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/SUMMARY.md
+ M .staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/SUMMARY.md
+ M .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/SUMMARY.md
+ M .staticeng/tasks/current.md
+ M .staticeng/tasks/discussions/DISCUSSION-002-deploy-litellm-cachecodecfix-image-to-fedora.md
+ M .staticeng/tasks/discussions/DISCUSSION-002-implement-chatgpt-multi-account-auth-profiles-in-litellm.md
+ M .staticeng/tasks/discussions/DISCUSSION-002-investigate-multi-account-chatgpt-subscription-auth-in-litellm.md
+?? .staticeng/evidences/TASK-2026-07-07-006-release-chatgpt-profiles-local-and-add-account2-models/
+?? .staticeng/tasks/todo/TASK-2026-07-07-006-release-chatgpt-profiles-local-and-add-account2-models.md
+
+pre_release_image_observed=docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707
+pre_release_digest=docker.staticduo.com/litellm@sha256:23f346521079a27dfeb9039e73dc2328c268ec50d44e11dc662c33d78a006d86
+rollback_tag_created=docker.staticduo.com/litellm:rollback-20260708-003315

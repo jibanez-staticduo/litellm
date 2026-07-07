@@ -1,0 +1,752 @@
+> Fetching fork and upstream remotes
+From github.com:jibanez-staticduo/litellm
+ * branch                  main       -> FETCH_HEAD
+From https://github.com/BerriAI/litellm
+ * branch                  main       -> FETCH_HEAD
+> Skipping upstream merge by request
+> Building docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-chatgptprofiles-20260708 from /tmp/opencode/litellm-release-chatgptprofiles-20260708
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 4.88kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 ...
+
+#3 [auth] docker/dockerfile:pull token for registry-1.docker.io
+#3 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 0.7s
+
+#4 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#4 CACHED
+
+#5 [internal] load metadata for docker.io/library/node:20.18-alpine3.20@sha256:3488b10bf958af7125a176419d2d8a9937d895bf124012aae811651988d2ffe6
+#5 DONE 0.0s
+
+#6 [internal] load metadata for cgr.dev/chainguard/wolfi-base@sha256:c61ac6919b811ea53c4782d69f1fe05218ba3c25d53f01b6ab7892e621bd4370
+#6 DONE 0.6s
+
+#7 [internal] load metadata for ghcr.io/astral-sh/uv:0.11.7@sha256:240fb85ab0f263ef12f492d8476aa3a2e4e1e333f7d67fbdd923d00a506a516a
+#7 DONE 0.6s
+
+#8 [internal] load .dockerignore
+#8 transferring context: 782B done
+#8 DONE 0.0s
+
+#9 [builder  1/16] FROM cgr.dev/chainguard/wolfi-base@sha256:c61ac6919b811ea53c4782d69f1fe05218ba3c25d53f01b6ab7892e621bd4370
+#9 DONE 0.0s
+
+#10 [uvbin 1/1] FROM ghcr.io/astral-sh/uv:0.11.7@sha256:240fb85ab0f263ef12f492d8476aa3a2e4e1e333f7d67fbdd923d00a506a516a
+#10 DONE 0.0s
+
+#11 [ui-builder 1/6] FROM docker.io/library/node:20.18-alpine3.20@sha256:3488b10bf958af7125a176419d2d8a9937d895bf124012aae811651988d2ffe6
+#11 DONE 0.0s
+
+#12 [internal] load build context
+#12 transferring context: 89.65MB 1.0s done
+#12 DONE 1.0s
+
+#13 [builder  4/16] COPY --from=uvbin /uvx /usr/local/bin/uvx
+#13 CACHED
+
+#14 [builder  2/16] WORKDIR /app
+#14 CACHED
+
+#15 [builder  3/16] COPY --from=uvbin /uv /usr/local/bin/uv
+#15 CACHED
+
+#16 [ui-builder 2/6] WORKDIR /ui
+#16 CACHED
+
+#17 [builder  5/16] RUN apk add --no-cache     bash     gcc     python3     python3-dev     rust     openssl     openssl-dev     nodejs     npm     libsndfile
+#17 CACHED
+
+#18 [ui-builder 3/6] COPY ui/litellm-dashboard/package.json ui/litellm-dashboard/package-lock.json ./
+#18 DONE 0.1s
+
+#19 [builder  6/16] COPY pyproject.toml uv.lock ./
+#19 DONE 0.1s
+
+#20 [builder  7/16] COPY enterprise/pyproject.toml enterprise/
+#20 DONE 0.0s
+
+#21 [builder  8/16] COPY litellm-proxy-extras/pyproject.toml litellm-proxy-extras/
+#21 DONE 0.0s
+
+#22 [builder  9/16] RUN uv sync --frozen --no-install-project --no-install-workspace --no-default-groups --no-editable     --extra proxy     --extra proxy-runtime     --extra extra_proxy     --extra semantic-router     --python python3
+#22 0.529 Using CPython 3.13.14 interpreter at: /usr/bin/python3
+#22 0.529 Creating virtual environment at: .venv
+#22 0.742 Downloading grpcio (6.4MiB)
+#22 0.743 Downloading numpy (15.9MiB)
+#22 0.743 Downloading cryptography (4.5MiB)
+#22 0.744 Downloading hf-xet (4.3MiB)
+#22 0.745 Downloading pyroscope-io (3.3MiB)
+#22 0.746 Downloading openai (1.1MiB)
+#22 0.746 Downloading botocore (14.3MiB)
+#22 0.747 Downloading soundfile (1.1MiB)
+#22 0.748 Downloading tiktoken (1.1MiB)
+#22 0.751 Downloading granian (6.6MiB)
+#22 0.752 Downloading uvloop (4.5MiB)
+#22 0.752 Downloading pydantic-core (2.0MiB)
+#22 0.753 Downloading pygments (1.2MiB)
+#22 0.754 Downloading tokenizers (3.2MiB)
+#22 0.754 Downloading aiohttp (1.7MiB)
+#22 0.755 Downloading ddtrace (6.1MiB)
+#22 0.755 Downloading google-cloud-aiplatform (7.8MiB)
+#22 0.756 Downloading pynacl (1.3MiB)
+#22 0.756 Downloading polars-runtime-32 (43.6MiB)
+#22 1.680  Downloaded soundfile
+#22 1.716  Downloaded tiktoken
+#22 1.903  Downloaded pynacl
+#22 1.961  Downloaded aiohttp
+#22 2.027  Downloaded pydantic-core
+#22 2.064  Downloaded pygments
+#22 2.207    Building ml-dtypes==0.4.1
+#22 2.286  Downloaded tokenizers
+#22 2.334  Downloaded pyroscope-io
+#22 2.482  Downloaded hf-xet
+#22 2.541  Downloaded uvloop
+#22 2.608  Downloaded cryptography
+#22 2.777  Downloaded openai
+#22 2.788  Downloaded granian
+#22 2.801  Downloaded grpcio
+#22 2.829  Downloaded ddtrace
+#22 3.245  Downloaded google-cloud-aiplatform
+#22 3.691  Downloaded numpy
+#22 3.734  Downloaded polars-runtime-32
+#22 3.799  Downloaded botocore
+#22 ...
+
+#23 [ui-builder 4/6] RUN --mount=type=cache,target=/root/.npm npm ci --prefer-offline
+#23 1.812 npm warn EBADENGINE Unsupported engine {
+#23 1.812 npm warn EBADENGINE   package: '@csstools/color-helpers@6.0.2',
+#23 1.812 npm warn EBADENGINE   required: { node: '>=20.19.0' },
+#23 1.812 npm warn EBADENGINE   current: { node: 'v20.18.3', npm: '10.8.2' }
+#23 1.812 npm warn EBADENGINE }
+#23 1.812 npm warn EBADENGINE Unsupported engine {
+#23 1.812 npm warn EBADENGINE   package: '@csstools/css-calc@3.2.0',
+#23 1.812 npm warn EBADENGINE   required: { node: '>=20.19.0' },
+#23 1.812 npm warn EBADENGINE   current: { node: 'v20.18.3', npm: '10.8.2' }
+#23 1.812 npm warn EBADENGINE }
+#23 1.813 npm warn EBADENGINE Unsupported engine {
+#23 1.813 npm warn EBADENGINE   package: '@csstools/css-color-parser@4.1.0',
+#23 1.813 npm warn EBADENGINE   required: { node: '>=20.19.0' },
+#23 1.813 npm warn EBADENGINE   current: { node: 'v20.18.3', npm: '10.8.2' }
+#23 1.813 npm warn EBADENGINE }
+#23 1.813 npm warn EBADENGINE Unsupported engine {
+#23 1.813 npm warn EBADENGINE   package: '@csstools/css-parser-algorithms@4.0.0',
+#23 1.813 npm warn EBADENGINE   required: { node: '>=20.19.0' },
+#23 1.813 npm warn EBADENGINE   current: { node: 'v20.18.3', npm: '10.8.2' }
+#23 1.813 npm warn EBADENGINE }
+#23 1.813 npm warn EBADENGINE Unsupported engine {
+#23 1.813 npm warn EBADENGINE   package: '@csstools/css-tokenizer@4.0.0',
+#23 1.813 npm warn EBADENGINE   required: { node: '>=20.19.0' },
+#23 1.813 npm warn EBADENGINE   current: { node: 'v20.18.3', npm: '10.8.2' }
+#23 1.813 npm warn EBADENGINE }
+#23 1.814 npm warn EBADENGINE Unsupported engine {
+#23 1.814 npm warn EBADENGINE   package: '@exodus/bytes@1.15.0',
+#23 1.814 npm warn EBADENGINE   required: { node: '^20.19.0 || ^22.12.0 || >=24.0.0' },
+#23 1.814 npm warn EBADENGINE   current: { node: 'v20.18.3', npm: '10.8.2' }
+#23 1.814 npm warn EBADENGINE }
+#23 1.815 npm warn EBADENGINE Unsupported engine {
+#23 1.815 npm warn EBADENGINE   package: 'eslint-visitor-keys@5.0.1',
+#23 1.815 npm warn EBADENGINE   required: { node: '^20.19.0 || ^22.13.0 || >=24' },
+#23 1.815 npm warn EBADENGINE   current: { node: 'v20.18.3', npm: '10.8.2' }
+#23 1.815 npm warn EBADENGINE }
+#23 1.818 npm warn EBADENGINE Unsupported engine {
+#23 1.818 npm warn EBADENGINE   package: 'entities@8.0.0',
+#23 1.818 npm warn EBADENGINE   required: { node: '>=20.19.0' },
+#23 1.818 npm warn EBADENGINE   current: { node: 'v20.18.3', npm: '10.8.2' }
+#23 1.818 npm warn EBADENGINE }
+#23 1.819 npm warn EBADENGINE Unsupported engine {
+#23 1.819 npm warn EBADENGINE   package: 'html-encoding-sniffer@6.0.0',
+#23 1.819 npm warn EBADENGINE   required: { node: '^20.19.0 || ^22.12.0 || >=24.0.0' },
+#23 1.819 npm warn EBADENGINE   current: { node: 'v20.18.3', npm: '10.8.2' }
+#23 1.819 npm warn EBADENGINE }
+#23 1.819 npm warn EBADENGINE Unsupported engine {
+#23 1.819 npm warn EBADENGINE   package: 'jsdom@27.4.0',
+#23 1.819 npm warn EBADENGINE   required: { node: '^20.19.0 || ^22.12.0 || >=24.0.0' },
+#23 1.819 npm warn EBADENGINE   current: { node: 'v20.18.3', npm: '10.8.2' }
+#23 1.819 npm warn EBADENGINE }
+#23 1.823 npm warn EBADENGINE Unsupported engine {
+#23 1.823 npm warn EBADENGINE   package: 'vite@7.3.5',
+#23 1.823 npm warn EBADENGINE   required: { node: '^20.19.0 || >=22.12.0' },
+#23 1.823 npm warn EBADENGINE   current: { node: 'v20.18.3', npm: '10.8.2' }
+#23 1.823 npm warn EBADENGINE }
+#23 8.622 npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+#23 16.80 
+#23 16.80 added 888 packages in 16s
+#23 DONE 17.6s
+
+#22 [builder  9/16] RUN uv sync --frozen --no-install-project --no-install-workspace --no-default-groups --no-editable     --extra proxy     --extra proxy-runtime     --extra extra_proxy     --extra semantic-router     --python python3
+#22 ...
+
+#24 [ui-builder 5/6] COPY ui/litellm-dashboard/ ./
+#24 DONE 0.2s
+
+#22 [builder  9/16] RUN uv sync --frozen --no-install-project --no-install-workspace --no-default-groups --no-editable     --extra proxy     --extra proxy-runtime     --extra extra_proxy     --extra semantic-router     --python python3
+#22 ...
+
+#25 [ui-builder 6/6] RUN npm run build
+#25 0.584 
+#25 0.584 > litellm-dashboard@0.1.0 build
+#25 0.584 > next build
+#25 0.584 
+#25 1.173 ▲ Next.js 16.2.6 (Turbopack)
+#25 1.173 - Environments: .env.production
+#25 1.173 
+#25 1.227   Creating an optimized production build ...
+#25 17.41 ✓ Compiled successfully in 15.9s
+#25 17.42   Running TypeScript ...
+#25 ...
+
+#22 [builder  9/16] RUN uv sync --frozen --no-install-project --no-install-workspace --no-default-groups --no-editable     --extra proxy     --extra proxy-runtime     --extra extra_proxy     --extra semantic-router     --python python3
+#22 46.63       Built ml-dtypes==0.4.1
+#22 46.66 Prepared 173 packages in 46.08s
+#22 47.46 Installed 173 packages in 803ms
+#22 47.46  + a2a-sdk==1.1.0
+#22 47.46  + aiofiles==24.1.0
+#22 47.46  + aiohappyeyeballs==2.6.1
+#22 47.46  + aiohttp==3.14.1
+#22 47.46  + aiosignal==1.4.0
+#22 47.46  + annotated-doc==0.0.4
+#22 47.46  + annotated-types==0.7.0
+#22 47.46  + anthropic==0.84.0
+#22 47.46  + anyio==4.13.0
+#22 47.46  + apscheduler==3.11.2
+#22 47.46  + asgiref==3.11.1
+#22 47.46  + attrs==26.1.0
+#22 47.46  + aurelio-sdk==0.0.19
+#22 47.46  + azure-ai-contentsafety==1.0.0
+#22 47.46  + azure-core==1.41.0
+#22 47.46  + azure-identity==1.25.2
+#22 47.46  + azure-keyvault-secrets==4.10.0
+#22 47.46  + azure-storage-blob==12.28.0
+#22 47.46  + azure-storage-file-datalake==12.20.0
+#22 47.46  + backoff==2.2.1
+#22 47.46  + boto3==1.43.1
+#22 47.46  + botocore==1.43.6
+#22 47.46  + bytecode==0.17.0
+#22 47.46  + certifi==2026.4.22
+#22 47.46  + cffi==2.0.0
+#22 47.46  + charset-normalizer==3.4.7
+#22 47.46  + click==8.3.3
+#22 47.46  + colorama==0.4.6
+#22 47.46  + coloredlogs==15.0.1
+#22 47.46  + colorlog==6.10.1
+#22 47.46  + croniter==6.2.2
+#22 47.46  + cryptography==48.0.1
+#22 47.46  + ddtrace==2.19.0
+#22 47.46  + deprecated==1.3.1
+#22 47.46  + detect-secrets==1.5.0
+#22 47.46  + distro==1.9.0
+#22 47.46  + dnspython==2.8.0
+#22 47.46  + docstring-parser==0.18.0
+#22 47.46  + email-validator==2.3.0
+#22 47.46  + envier==0.6.1
+#22 47.46  + expression==5.6.0
+#22 47.46  + fastapi==0.136.3
+#22 47.46  + fastapi-sso==0.19.0
+#22 47.46  + fastuuid==0.14.0
+#22 47.46  + filelock==3.29.0
+#22 47.46  + frozenlist==1.8.0
+#22 47.46  + fsspec==2026.4.0
+#22 47.46  + google-api-core==2.30.3
+#22 47.46  + google-auth==2.52.0
+#22 47.46  + google-cloud-aiplatform==1.133.0
+#22 47.46  + google-cloud-bigquery==3.30.0
+#22 47.46  + google-cloud-core==2.6.0
+#22 47.46  + google-cloud-iam==2.19.1
+#22 47.46  + google-cloud-kms==2.24.2
+#22 47.46  + google-cloud-resource-manager==1.17.0
+#22 47.46  + google-cloud-storage==3.10.1
+#22 47.46  + google-crc32c==1.8.0
+#22 47.46  + google-genai==1.37.0
+#22 47.46  + google-resumable-media==2.9.0
+#22 47.46  + googleapis-common-protos==1.75.0
+#22 47.46  + granian==2.7.4
+#22 47.46  + grpc-google-iam-v1==0.14.4
+#22 47.46  + grpcio==1.78.0
+#22 47.46  + grpcio-status==1.71.2
+#22 47.46  + gunicorn==23.0.0
+#22 47.46  + h11==0.16.0
+#22 47.46  + hf-xet==1.5.0
+#22 47.46  + httpcore==1.0.9
+#22 47.46  + httpx==0.28.1
+#22 47.46  + httpx-sse==0.4.3
+#22 47.46  + huggingface-hub==1.14.0
+#22 47.46  + humanfriendly==10.0
+#22 47.46  + idna==3.15
+#22 47.46  + importlib-metadata==8.5.0
+#22 47.46  + isodate==0.7.2
+#22 47.46  + jinja2==3.1.6
+#22 47.46  + jiter==0.14.0
+#22 47.46  + jmespath==1.1.0
+#22 47.46  + json-rpc==1.15.0
+#22 47.46  + jsonschema==4.26.0
+#22 47.46  + jsonschema-specifications==2025.9.1
+#22 47.46  + langfuse==2.59.7
+#22 47.46  + legacy-cgi==2.6.4
+#22 47.46  + llm-sandbox==0.3.39
+#22 47.46  + mangum==0.17.0
+#22 47.46  + markdown-it-py==4.2.0
+#22 47.46  + markupsafe==3.0.3
+#22 47.46  + mcp==1.26.0
+#22 47.46  + mdurl==0.1.2
+#22 47.46  + ml-dtypes==0.4.1
+#22 47.46  + msal==1.36.0
+#22 47.46  + msal-extensions==1.3.1
+#22 47.46  + multidict==6.7.1
+#22 47.46  + nodeenv==1.10.0
+#22 47.46  + numpy==2.4.4
+#22 47.46  + oauthlib==3.3.1
+#22 47.46  + openai==2.33.0
+#22 47.46  + opentelemetry-api==1.28.0
+#22 47.46  + opentelemetry-exporter-otlp==1.28.0
+#22 47.46  + opentelemetry-exporter-otlp-proto-common==1.28.0
+#22 47.46  + opentelemetry-exporter-otlp-proto-grpc==1.28.0
+#22 47.46  + opentelemetry-exporter-otlp-proto-http==1.28.0
+#22 47.46  + opentelemetry-instrumentation==0.49b0
+#22 47.46  + opentelemetry-instrumentation-asgi==0.49b0
+#22 47.46  + opentelemetry-instrumentation-fastapi==0.49b0
+#22 47.46  + opentelemetry-proto==1.28.0
+#22 47.46  + opentelemetry-sdk==1.28.0
+#22 47.46  + opentelemetry-semantic-conventions==0.49b0
+#22 47.46  + opentelemetry-util-http==0.49b0
+#22 47.46  + orjson==3.11.6
+#22 47.46  + packaging==26.2
+#22 47.46  + polars==1.38.1
+#22 47.46  + polars-runtime-32==1.38.1
+#22 47.46  + prisma==0.11.0
+#22 47.46  + prometheus-client==0.20.0
+#22 47.46  + propcache==0.5.2
+#22 47.46  + proto-plus==1.28.0
+#22 47.46  + protobuf==5.29.6
+#22 47.46  + pyasn1==0.6.3
+#22 47.46  + pyasn1-modules==0.4.2
+#22 47.46  + pycparser==3.0
+#22 47.46  + pydantic==2.13.4
+#22 47.46  + pydantic-core==2.46.4
+#22 47.46  + pydantic-settings==2.14.2
+#22 47.46  + pygments==2.20.0
+#22 47.46  + pyjwt==2.13.0
+#22 47.46  + pynacl==1.6.2
+#22 47.46  + pypdf==6.13.3
+#22 47.46  + pyroscope-io==0.8.16
+#22 47.46  + python-dateutil==2.9.0.post0
+#22 47.46  + python-dotenv==1.2.2
+#22 47.46  + python-multipart==0.0.32
+#22 47.46  + python-ulid==3.1.0
+#22 47.46  + pyyaml==6.0.3
+#22 47.46  + redis==5.3.1
+#22 47.46  + redisvl==0.4.1
+#22 47.46  + referencing==0.36.2
+#22 47.46  + regex==2026.5.9
+#22 47.46  + requests==2.34.0
+#22 47.46  + requests-toolbelt==1.0.0
+#22 47.46  + resend==2.23.0
+#22 47.46  + restrictedpython==8.1
+#22 47.46  + rich==13.9.4
+#22 47.46  + rpds-py==0.30.0
+#22 47.46  + rq==2.7.0
+#22 47.46  + s3transfer==0.17.0
+#22 47.46  + semantic-router==0.1.15
+#22 47.46  + sentry-sdk==2.21.0
+#22 47.46  + shellingham==1.5.4
+#22 47.46  + six==1.17.0
+#22 47.46  + sniffio==1.3.1
+#22 47.46  + soundfile==0.12.1
+#22 47.46  + sse-starlette==3.4.4
+#22 47.46  + starlette==1.3.1
+#22 47.46  + tabulate==0.9.0
+#22 47.46  + tenacity==8.5.0
+#22 47.46  + tiktoken==0.12.0
+#22 47.46  + tokenizers==0.23.1
+#22 47.46  + tomlkit==0.15.0
+#22 47.46  + tornado==6.5.7
+#22 47.46  + tqdm==4.67.3
+#22 47.46  + typer==0.25.1
+#22 47.46  + typing-extensions==4.15.0
+#22 47.46  + typing-inspection==0.4.2
+#22 47.46  + tzlocal==5.3.1
+#22 47.46  + urllib3==2.7.0
+#22 47.46  + uvicorn==0.33.0
+#22 47.46  + uvloop==0.21.0
+#22 47.46  + websockets==15.0.1
+#22 47.46  + wrapt==1.17.3
+#22 47.46  + xmltodict==1.0.4
+#22 47.46  + yarl==1.23.0
+#22 47.46  + zipp==3.23.1
+#22 DONE 48.0s
+
+#25 [ui-builder 6/6] RUN npm run build
+#25 ...
+
+#26 [builder 10/16] COPY . .
+#26 DONE 0.8s
+
+#25 [ui-builder 6/6] RUN npm run build
+#25 ...
+
+#27 [builder 11/16] RUN rm -rf litellm/proxy/_experimental/out
+#27 DONE 0.3s
+
+#25 [ui-builder 6/6] RUN npm run build
+#25 60.51   Finished TypeScript in 43s ...
+#25 60.52   Collecting page data using 11 workers ...
+#25 61.71   Generating static pages using 11 workers (0/48) ...
+#25 62.45   Generating static pages using 11 workers (12/48) 
+#25 62.69   Generating static pages using 11 workers (24/48) 
+#25 63.08   Generating static pages using 11 workers (36/48) 
+#25 63.36 ✓ Generating static pages using 11 workers (48/48) in 1647ms
+#25 63.37   Finalizing page optimization ...
+#25 63.45 
+#25 63.46 Route (app)
+#25 63.46 ┌ ○ /
+#25 63.46 ├ ○ /_not-found
+#25 63.46 ├ ○ /access-groups
+#25 63.46 ├ ○ /admin-panel
+#25 63.46 ├ ○ /agents
+#25 63.46 ├ ○ /api-keys
+#25 63.46 ├ ○ /api-reference
+#25 63.46 ├ ○ /budgets
+#25 63.46 ├ ○ /caching
+#25 63.46 ├ ○ /chat
+#25 63.46 ├ ○ /chat/api-keys
+#25 63.46 ├ ○ /chat/credentials
+#25 63.46 ├ ○ /chat/integrations
+#25 63.46 ├ ○ /chat/usage
+#25 63.46 ├ ○ /cost-tracking
+#25 63.46 ├ ○ /guardrails
+#25 63.46 ├ ○ /guardrails-monitor
+#25 63.46 ├ ○ /logging-and-alerts
+#25 63.46 ├ ○ /login
+#25 63.46 ├ ○ /logs
+#25 63.46 ├ ○ /mcp-servers
+#25 63.46 ├ ○ /mcp/oauth/callback
+#25 63.46 ├ ○ /memory
+#25 63.46 ├ ○ /model_hub
+#25 63.46 ├ ○ /model_hub_table
+#25 63.46 ├ ○ /model-hub-table
+#25 63.46 ├ ○ /models-and-endpoints
+#25 63.46 ├ ○ /old-usage
+#25 63.46 ├ ○ /onboarding
+#25 63.46 ├ ○ /organizations
+#25 63.46 ├ ○ /playground
+#25 63.46 ├ ○ /policies
+#25 63.46 ├ ○ /projects
+#25 63.46 ├ ○ /prompts
+#25 63.46 ├ ○ /router-settings
+#25 63.46 ├ ○ /search-tools
+#25 63.46 ├ ○ /skills
+#25 63.46 ├ ○ /tag-management
+#25 63.46 ├ ○ /teams
+#25 63.46 ├ ○ /tool-policies
+#25 63.46 ├ ○ /transform-request
+#25 63.46 ├ ○ /ui-theme
+#25 63.46 ├ ○ /usage
+#25 63.46 ├ ○ /users
+#25 63.46 ├ ○ /vector-stores
+#25 63.46 └ ○ /workflows
+#25 63.46 
+#25 63.46 
+#25 63.46 ○  (Static)  prerendered as static content
+#25 63.46 
+#25 63.60 npm notice
+#25 63.60 npm notice New major version of npm available! 10.8.2 -> 11.18.0
+#25 63.60 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.18.0
+#25 63.60 npm notice To update run: npm install -g npm@11.18.0
+#25 63.60 npm notice
+#25 DONE 63.7s
+
+#28 [builder 12/16] COPY --from=ui-builder /ui/out/. litellm/proxy/_experimental/out/
+#28 DONE 0.1s
+
+#29 [builder 13/16] RUN sed -i 's/\r$//' docker/build_admin_ui.sh && chmod +x docker/build_admin_ui.sh && ./docker/build_admin_ui.sh
+#29 0.209 
+#29 0.209 /app
+#29 0.209 Admin UI - using default LiteLLM UI
+#29 DONE 0.2s
+
+#30 [builder 14/16] RUN uv sync --frozen --no-default-groups --no-editable     --extra proxy     --extra proxy-runtime     --extra extra_proxy     --extra semantic-router     --python python3
+#30 0.437    Building litellm @ file:///app
+#30 0.446    Building litellm-enterprise @ file:///app/enterprise
+#30 0.446    Building litellm-proxy-extras @ file:///app/litellm-proxy-extras
+#30 1.041       Built litellm-proxy-extras @ file:///app/litellm-proxy-extras
+#30 1.055       Built litellm-enterprise @ file:///app/enterprise
+#30 64.49       Built litellm @ file:///app
+#30 64.67 Prepared 3 packages in 1m 04s
+#30 65.18 Installed 3 packages in 508ms
+#30 65.18  + litellm==1.92.0 (from file:///app)
+#30 65.18  + litellm-enterprise==0.1.47 (from file:///app/enterprise)
+#30 65.18  + litellm-proxy-extras==0.4.75 (from file:///app/litellm-proxy-extras)
+#30 DONE 65.7s
+
+#31 [builder 15/16] RUN prisma generate --schema=./schema.prisma
+#31 1.625 Installing Prisma CLI
+#31 6.225 prisma:warn Prisma doesn't know which engines to download for the Linux distro "wolfi". Falling back to Prisma engines built "debian".
+#31 6.225 Please report your experience by creating an issue at https://github.com/prisma/prisma/issues so we can add your distro to the list of known supported distros.
+#31 6.769 Prisma schema loaded from schema.prisma
+#31 6.797 prisma:warn Prisma doesn't know which engines to download for the Linux distro "wolfi". Falling back to Prisma engines built "debian".
+#31 6.797 Please report your experience by creating an issue at https://github.com/prisma/prisma/issues so we can add your distro to the list of known supported distros.
+#31 8.542 
+#31 8.542 Some types are disabled by default due to being incompatible with Mypy, it is highly recommended
+#31 8.542 to use Pyright instead and configure Prisma Python to use recursive types. To re-enable certain types:
+#31 8.542 
+#31 8.542 generator client {
+#31 8.542   provider             = "prisma-client-py"
+#31 8.542   recursive_type_depth = -1
+#31 8.542 }
+#31 8.542 
+#31 8.542 If you need to use Mypy, you can also disable this message by explicitly setting the default value:
+#31 8.542 
+#31 8.542 generator client {
+#31 8.542   provider             = "prisma-client-py"
+#31 8.542   recursive_type_depth = 5
+#31 8.542 }
+#31 8.542 
+#31 8.542 For more information see: https://prisma-client-py.readthedocs.io/en/stable/reference/limitations/#default-type-limitations
+#31 8.542 
+#31 8.542 
+#31 8.542 Warning: The binaryTargets option is not officially supported by Prisma Client Python.
+#31 9.139 
+#31 9.139 ✔ Generated Prisma Client Python (v0.11.0) to ./.venv/lib/python3.13/site-packages/prisma in 831ms
+#31 9.139 
+#31 DONE 9.3s
+
+#32 [builder 16/16] RUN sed -i 's/\r$//' docker/entrypoint.sh && chmod +x docker/entrypoint.sh &&     sed -i 's/\r$//' docker/prod_entrypoint.sh && chmod +x docker/prod_entrypoint.sh
+#32 DONE 0.3s
+
+#33 [runtime  2/11] RUN apk add --no-cache bash openssl tzdata nodejs python3 libsndfile
+#33 CACHED
+
+#34 [runtime  3/11] WORKDIR /app
+#34 CACHED
+
+#35 [runtime  4/11] COPY --from=builder /app/.venv /app/.venv
+#35 DONE 2.2s
+
+#36 [runtime  5/11] COPY --from=builder /app/docker /app/docker
+#36 DONE 0.0s
+
+#37 [runtime  6/11] COPY --from=builder /app/schema.prisma /app/schema.prisma
+#37 DONE 0.0s
+
+#38 [runtime  7/11] COPY --from=builder /app/litellm/proxy/prisma_migration.py /app/litellm/proxy/prisma_migration.py
+#38 DONE 0.0s
+
+#39 [runtime  8/11] COPY --from=builder /app/enterprise /app/enterprise
+#39 DONE 0.0s
+
+#40 [runtime  9/11] COPY --from=builder /root/.cache/prisma /root/.cache/prisma
+#40 DONE 0.1s
+
+#41 [runtime 10/11] COPY --from=builder /root/.cache/prisma-python /root/.cache/prisma-python
+#41 DONE 0.2s
+
+#42 [runtime 11/11] RUN find /app/.venv -type f -path "*/tornado/test/*" -delete &&     find /app/.venv -type d -path "*/tornado/test" -delete
+#42 0.578 find: /app/.venv/lib/python3.13/site-packages/tornado/test: Directory not empty
+#42 DONE 0.6s
+
+#43 exporting to image
+#43 exporting layers
+#43 exporting layers 3.3s done
+#43 writing image sha256:aa2f2b22013e834d96c5ddf436613dc92eee18e83d4f582c916e635cdfd15be6 done
+#43 naming to docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-chatgptprofiles-20260708 done
+#43 DONE 3.3s
+> Pushing docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-chatgptprofiles-20260708
+The push refers to repository [docker.staticduo.com/litellm]
+65d0956373a1: Preparing
+67a720acaaa6: Preparing
+0f61cb6207ce: Preparing
+100cf2161dd5: Preparing
+42ad4d992346: Preparing
+cb278944fa12: Preparing
+5228a1abccab: Preparing
+f7dcb05a8200: Preparing
+6ad7a5d70136: Preparing
+af34a8ac7d0c: Preparing
+b5c5932eb40b: Preparing
+b8195249dcd9: Preparing
+852a2b932582: Preparing
+90cfe0bd8cd6: Preparing
+66489d33a006: Preparing
+c51a24e0862e: Preparing
+caaccf89b866: Preparing
+d691fe338bf4: Preparing
+e4ec9eb458d8: Preparing
+469fc7229c4d: Preparing
+d4abef11f918: Preparing
+af34a8ac7d0c: Waiting
+b5c5932eb40b: Waiting
+b8195249dcd9: Waiting
+852a2b932582: Waiting
+90cfe0bd8cd6: Waiting
+66489d33a006: Waiting
+c51a24e0862e: Waiting
+caaccf89b866: Waiting
+d691fe338bf4: Waiting
+e4ec9eb458d8: Waiting
+cb278944fa12: Waiting
+d4abef11f918: Waiting
+5228a1abccab: Waiting
+f7dcb05a8200: Waiting
+6ad7a5d70136: Waiting
+42ad4d992346: Pushed
+65d0956373a1: Pushed
+5228a1abccab: Pushed
+cb278944fa12: Pushed
+6ad7a5d70136: Layer already exists
+af34a8ac7d0c: Layer already exists
+b5c5932eb40b: Layer already exists
+b8195249dcd9: Layer already exists
+852a2b932582: Layer already exists
+100cf2161dd5: Pushed
+90cfe0bd8cd6: Layer already exists
+66489d33a006: Layer already exists
+c51a24e0862e: Layer already exists
+caaccf89b866: Layer already exists
+d691fe338bf4: Layer already exists
+e4ec9eb458d8: Layer already exists
+469fc7229c4d: Layer already exists
+d4abef11f918: Layer already exists
+0f61cb6207ce: Pushed
+67a720acaaa6: Pushed
+f7dcb05a8200: Pushed
+staticduo-gpt-lazymcp-v1.92-replay-chatgptprofiles-20260708: digest: sha256:a9bb7c0865dd3b65c1065c87061c3ca6bbfc7d50033aeba28ad43b7b6bdd895f size: 4720
+> Pushing docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-latest
+The push refers to repository [docker.staticduo.com/litellm]
+65d0956373a1: Preparing
+67a720acaaa6: Preparing
+0f61cb6207ce: Preparing
+100cf2161dd5: Preparing
+42ad4d992346: Preparing
+cb278944fa12: Preparing
+5228a1abccab: Preparing
+f7dcb05a8200: Preparing
+6ad7a5d70136: Preparing
+af34a8ac7d0c: Preparing
+b5c5932eb40b: Preparing
+b8195249dcd9: Preparing
+852a2b932582: Preparing
+90cfe0bd8cd6: Preparing
+66489d33a006: Preparing
+c51a24e0862e: Preparing
+caaccf89b866: Preparing
+d691fe338bf4: Preparing
+e4ec9eb458d8: Preparing
+469fc7229c4d: Preparing
+d4abef11f918: Preparing
+b5c5932eb40b: Waiting
+caaccf89b866: Waiting
+d691fe338bf4: Waiting
+e4ec9eb458d8: Waiting
+b8195249dcd9: Waiting
+469fc7229c4d: Waiting
+852a2b932582: Waiting
+d4abef11f918: Waiting
+90cfe0bd8cd6: Waiting
+66489d33a006: Waiting
+c51a24e0862e: Waiting
+cb278944fa12: Waiting
+5228a1abccab: Waiting
+f7dcb05a8200: Waiting
+6ad7a5d70136: Waiting
+af34a8ac7d0c: Waiting
+42ad4d992346: Layer already exists
+67a720acaaa6: Layer already exists
+65d0956373a1: Layer already exists
+0f61cb6207ce: Layer already exists
+100cf2161dd5: Layer already exists
+cb278944fa12: Layer already exists
+5228a1abccab: Layer already exists
+af34a8ac7d0c: Layer already exists
+6ad7a5d70136: Layer already exists
+f7dcb05a8200: Layer already exists
+b5c5932eb40b: Layer already exists
+90cfe0bd8cd6: Layer already exists
+66489d33a006: Layer already exists
+b8195249dcd9: Layer already exists
+852a2b932582: Layer already exists
+c51a24e0862e: Layer already exists
+caaccf89b866: Layer already exists
+469fc7229c4d: Layer already exists
+d691fe338bf4: Layer already exists
+d4abef11f918: Layer already exists
+e4ec9eb458d8: Layer already exists
+staticduo-gpt-lazymcp-main-latest: digest: sha256:a9bb7c0865dd3b65c1065c87061c3ca6bbfc7d50033aeba28ad43b7b6bdd895f size: 4720
+> Tagging current deployed image docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707 as docker.staticduo.com/litellm:rollback-20260708-003315
+The push refers to repository [docker.staticduo.com/litellm]
+480d104eb0f0: Preparing
+af43c1321bbe: Preparing
+c30fdaa62a46: Preparing
+f459d0ae6850: Preparing
+a105a4992199: Preparing
+9aea5a97d4b4: Preparing
+5fd6c01da1d1: Preparing
+1ee5768c7b6e: Preparing
+6ad7a5d70136: Preparing
+af34a8ac7d0c: Preparing
+b5c5932eb40b: Preparing
+b8195249dcd9: Preparing
+852a2b932582: Preparing
+90cfe0bd8cd6: Preparing
+66489d33a006: Preparing
+c51a24e0862e: Preparing
+9aea5a97d4b4: Waiting
+caaccf89b866: Preparing
+5fd6c01da1d1: Waiting
+d691fe338bf4: Preparing
+1ee5768c7b6e: Waiting
+e4ec9eb458d8: Preparing
+6ad7a5d70136: Waiting
+469fc7229c4d: Preparing
+af34a8ac7d0c: Waiting
+d4abef11f918: Preparing
+b5c5932eb40b: Waiting
+b8195249dcd9: Waiting
+66489d33a006: Waiting
+c51a24e0862e: Waiting
+852a2b932582: Waiting
+caaccf89b866: Waiting
+90cfe0bd8cd6: Waiting
+d691fe338bf4: Waiting
+d4abef11f918: Waiting
+e4ec9eb458d8: Waiting
+469fc7229c4d: Waiting
+af43c1321bbe: Layer already exists
+c30fdaa62a46: Layer already exists
+a105a4992199: Layer already exists
+480d104eb0f0: Layer already exists
+f459d0ae6850: Layer already exists
+9aea5a97d4b4: Layer already exists
+af34a8ac7d0c: Layer already exists
+5fd6c01da1d1: Layer already exists
+6ad7a5d70136: Layer already exists
+1ee5768c7b6e: Layer already exists
+b5c5932eb40b: Layer already exists
+b8195249dcd9: Layer already exists
+c51a24e0862e: Layer already exists
+852a2b932582: Layer already exists
+66489d33a006: Layer already exists
+caaccf89b866: Layer already exists
+90cfe0bd8cd6: Layer already exists
+d691fe338bf4: Layer already exists
+469fc7229c4d: Layer already exists
+e4ec9eb458d8: Layer already exists
+d4abef11f918: Layer already exists
+rollback-20260708-003315: digest: sha256:23f346521079a27dfeb9039e73dc2328c268ec50d44e11dc662c33d78a006d86 size: 4720
+> Rollback image ready: set LITELLM_IMAGE=docker.staticduo.com/litellm:rollback-20260708-003315 and redeploy to roll back
+> Updating stack env
+> Deploying stack
+ litellm Pulling 
+ litellm Pulled 
+ Container litellm  Recreate
+ Container litellm  Recreated
+ Container litellm  Starting
+ Container litellm  Started
+> Skipping Fedora deploy by request
+> Done: docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-chatgptprofiles-20260708

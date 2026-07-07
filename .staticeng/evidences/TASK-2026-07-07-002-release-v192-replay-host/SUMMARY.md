@@ -21,13 +21,13 @@ Production is currently stable on `docker.staticduo.com/litellm:staticduo-gpt-la
 ## Acceptance Criteria Coverage
 
 - AC-1: PASS. Original release used the replay source line; retry ran from `/home/staticduo/git/litellm` `main` after pre-release fix commit `12d3455669c2cefc92b0bbf81f96c5357d400386`.
-- AC-2: PASS. Original image and retry image both built and pushed; retry image evidence is in `logs/15-release-cachecodecfix.log`.
+- AC-2: PASS. Original image and retry image both built and pushed; retry image evidence is in `.staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/15-release-cachecodecfix.log`.
 - AC-3: PASS. Original rollback tag `rollback-20260707-131635` was created during the failed attempt; retry rollback tag `rollback-20260707-134929` was created and pushed by the retry release script.
-- AC-4: PASS. Local stack now runs the retry image and `litellm` is healthy; see `logs/21-final-image-and-status.log` and `logs/22-final-container-inspect.log`.
-- AC-5: PASS. Fedora deploy was explicitly skipped in both attempts; retry evidence is in `logs/15-release-cachecodecfix.log`.
-- AC-6: PASS. Post-deploy verification includes container status, readiness, liveliness, recent log checks, and LazyMCP/MCP smoke; see `logs/18-container-health-endpoints.log`, `logs/20-spend-tracking-log-check.log`, and `logs/24-lazymcp-smoke.log`.
+- AC-4: PASS. Local stack now runs the retry image and `litellm` is healthy; see `.staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/21-final-image-and-status.log` and `.staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/22-final-container-inspect.log`.
+- AC-5: PASS. Fedora deploy was explicitly skipped in both attempts; retry evidence is in `.staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/15-release-cachecodecfix.log`.
+- AC-6: PASS. Post-deploy verification includes container status, readiness, liveliness, recent log checks, and LazyMCP/MCP smoke; see `.staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/18-container-health-endpoints.log`, `.staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/20-spend-tracking-log-check.log`, and `.staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/24-lazymcp-smoke.log`.
 - AC-7: PASS. The failed original deployment was rolled back. The retry is healthy, so no retry rollback was required; retry rollback path is `docker.staticduo.com/litellm:rollback-20260707-134929` if needed.
-- AC-8: PASS. Evidence logs are present under `logs/`.
+- AC-8: PASS. Evidence logs are present under `.staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/`.
 - AC-9: PASS. Final evidence/closure was committed and pushed in `a66a06f1dbf75b3a8e646011680522726de4deb9`; the worktree is clean.
 - AC-10: PASS. Evidence does not include `.env` contents, master keys, API keys, tokens, cookies, private keys, or session tokens.
 
@@ -60,11 +60,11 @@ No action required unless monitoring later shows a regression. If rollback is ne
 
 - Code fix: `litellm/proxy/proxy_server.py` now imports `CacheCodec` from `litellm.proxy.common_utils.cache_pydantic_utils`.
 - Regression coverage: `tests/test_litellm/proxy/proxy_server/test_spend_counters.py::test_update_cache_serializes_cached_user_and_team_spend` verifies cached user/team spend updates serialize into the cache pipeline, which would have failed when `CacheCodec` was missing from `proxy_server.py` module scope.
-- Static/import verification: `.venv/bin/python -m py_compile litellm/proxy/proxy_server.py` and a focused import assertion passed; see `logs/08-py-compile.log` and `logs/09-cachecodec-import-check.log`.
-- Targeted tests: `.venv/bin/python -m pytest tests/test_litellm/proxy/common_utils/test_cache_codec.py tests/test_litellm/proxy/proxy_server/test_spend_counters.py -q` passed with 63 tests; see `logs/11-targeted-pytest-cachecodec-and-spend.log`.
-- Targeted symbol lint: `.venv/bin/ruff check --select F401,F821 litellm/proxy/proxy_server.py tests/test_litellm/proxy/proxy_server/test_spend_counters.py` passed; see `logs/14-targeted-ruff-cachecodec-symbols.log`.
-- `make pre-commit` was attempted and failed on repository-wide ruff strict budget overage relative to `origin/litellm_internal_staging`; this appears pre-existing to the CacheCodec fix and is summarized in `logs/12-make-pre-commit-summary.log`.
-- `staticeng_validate` was attempted and failed on pre-existing broad CodeMap coverage issues; see `logs/25-staticeng-validate-summary.log`.
+- Static/import verification: `.venv/bin/python -m py_compile litellm/proxy/proxy_server.py` and a focused import assertion passed; see `.staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/08-py-compile.log` and `.staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/09-cachecodec-import-check.log`.
+- Targeted tests: `.venv/bin/python -m pytest tests/test_litellm/proxy/common_utils/test_cache_codec.py tests/test_litellm/proxy/proxy_server/test_spend_counters.py -q` passed with 63 tests; see `.staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/11-targeted-pytest-cachecodec-and-spend.log`.
+- Targeted symbol lint: `.venv/bin/ruff check --select F401,F821 litellm/proxy/proxy_server.py tests/test_litellm/proxy/proxy_server/test_spend_counters.py` passed; see `.staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/14-targeted-ruff-cachecodec-symbols.log`.
+- `make pre-commit` was attempted and failed on repository-wide ruff strict budget overage relative to `origin/litellm_internal_staging`; this appears pre-existing to the CacheCodec fix and is summarized in `.staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/12-make-pre-commit-summary.log`.
+- `staticeng_validate` was attempted and failed on pre-existing broad CodeMap coverage issues; see `.staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/25-staticeng-validate-summary.log`.
 
 ## Reopen Acceptance Criteria Coverage
 
