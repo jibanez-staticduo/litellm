@@ -1,0 +1,7 @@
+Corrected final rerun py_compile/import started: Tue Jul  7 10:15:58 AM UTC 2026
+
+$ python -m py_compile litellm/proxy/_experimental/mcp_server/mcp_server_manager.py litellm/proxy/_experimental/mcp_server/server.py litellm/proxy/proxy_server.py litellm/proxy/auth/user_api_key_auth.py litellm/proxy/auth/resolvers/store.py
+exit=0
+
+$ uv run --no-sync python -c "import litellm.proxy._experimental.mcp_server.mcp_server_manager; import litellm.proxy._experimental.mcp_server.server; import litellm.proxy.proxy_server; import litellm.proxy.auth.user_api_key_auth; import litellm.proxy.auth.resolvers.store"
+exit=0

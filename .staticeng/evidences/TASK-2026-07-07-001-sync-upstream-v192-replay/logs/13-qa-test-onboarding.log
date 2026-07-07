@@ -1,0 +1,438 @@
+EEEEEEEEEEEEEEEE                                                         [100%]
+==================================== ERRORS ====================================
+_________ ERROR at setup of test_claim_token_rejects_already_used_link _________
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:273: in get_code
+    code = _get_code(fullname)
+           ^^^^^^^^^^^^^^^^^^^
+E     File "/home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/mcp_server_manager.py", line 4016
+E       except Exception as e:
+E       ^^^^^^
+E   SyntaxError: invalid syntax
+---------------------------- Captured stdout setup -----------------------------
+[conftest] Module setup complete (worker: master)
+_ ERROR at setup of test_claim_token_rejects_concurrent_reuse_before_password_write _
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:273: in get_code
+    code = _get_code(fullname)
+           ^^^^^^^^^^^^^^^^^^^
+E     File "/home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/mcp_server_manager.py", line 4016
+E       except Exception as e:
+E       ^^^^^^
+E   SyntaxError: invalid syntax
+___________ ERROR at setup of test_claim_token_rejects_expired_link ____________
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:273: in get_code
+    code = _get_code(fullname)
+           ^^^^^^^^^^^^^^^^^^^
+E     File "/home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/mcp_server_manager.py", line 4016
+E       except Exception as e:
+E       ^^^^^^
+E   SyntaxError: invalid syntax
+_______ ERROR at setup of test_claim_token_rejects_invalid_bearer_token ________
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:273: in get_code
+    code = _get_code(fullname)
+           ^^^^^^^^^^^^^^^^^^^
+E     File "/home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/mcp_server_manager.py", line 4016
+E       except Exception as e:
+E       ^^^^^^
+E   SyntaxError: invalid syntax
+________ ERROR at setup of test_claim_token_rejects_mismatched_user_id _________
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:273: in get_code
+    code = _get_code(fullname)
+           ^^^^^^^^^^^^^^^^^^^
+E     File "/home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/mcp_server_manager.py", line 4016
+E       except Exception as e:
+E       ^^^^^^
+E   SyntaxError: invalid syntax
+_____ ERROR at setup of test_claim_token_rejects_missing_onboarding_token ______
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:273: in get_code
+    code = _get_code(fullname)
+           ^^^^^^^^^^^^^^^^^^^
+E     File "/home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/mcp_server_manager.py", line 4016
+E       except Exception as e:
+E       ^^^^^^
+E   SyntaxError: invalid syntax
+___________ ERROR at setup of test_claim_token_rejects_missing_user ____________
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:273: in get_code
+    code = _get_code(fullname)
+           ^^^^^^^^^^^^^^^^^^^
+E     File "/home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/mcp_server_manager.py", line 4016
+E       except Exception as e:
+E       ^^^^^^
+E   SyntaxError: invalid syntax
+_____ ERROR at setup of test_claim_token_rejects_wrong_onboarding_session ______
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:273: in get_code
+    code = _get_code(fullname)
+           ^^^^^^^^^^^^^^^^^^^
+E     File "/home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/mcp_server_manager.py", line 4016
+E       except Exception as e:
+E       ^^^^^^
+E   SyntaxError: invalid syntax
+_ ERROR at setup of test_claim_token_returns_session_when_final_invite_update_fails _
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:273: in get_code
+    code = _get_code(fullname)
+           ^^^^^^^^^^^^^^^^^^^
+E     File "/home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/mcp_server_manager.py", line 4016
+E       except Exception as e:
+E       ^^^^^^
+E   SyntaxError: invalid syntax
+_ ERROR at setup of test_claim_token_rolls_back_invite_when_password_update_raises _
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:273: in get_code
+    code = _get_code(fullname)
+           ^^^^^^^^^^^^^^^^^^^
+E     File "/home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/mcp_server_manager.py", line 4016
+E       except Exception as e:
+E       ^^^^^^
+E   SyntaxError: invalid syntax
+_ ERROR at setup of test_claim_token_rolls_back_invite_when_session_key_mint_fails _
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:273: in get_code
+    code = _get_code(fullname)
+           ^^^^^^^^^^^^^^^^^^^
+E     File "/home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/mcp_server_manager.py", line 4016
+E       except Exception as e:
+E       ^^^^^^
+E   SyntaxError: invalid syntax
+__ ERROR at setup of test_claim_token_sets_accepted_at_after_password_written __
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:273: in get_code
+    code = _get_code(fullname)
+           ^^^^^^^^^^^^^^^^^^^
+E     File "/home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/mcp_server_manager.py", line 4016
+E       except Exception as e:
+E       ^^^^^^
+E   SyntaxError: invalid syntax
+__________ ERROR at setup of test_get_token_rejects_already_used_link __________
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:273: in get_code
+    code = _get_code(fullname)
+           ^^^^^^^^^^^^^^^^^^^
+E     File "/home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/mcp_server_manager.py", line 4016
+E       except Exception as e:
+E       ^^^^^^
+E   SyntaxError: invalid syntax
+____________ ERROR at setup of test_get_token_rejects_expired_link _____________
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:273: in get_code
+    code = _get_code(fullname)
+           ^^^^^^^^^^^^^^^^^^^
+E     File "/home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/mcp_server_manager.py", line 4016
+E       except Exception as e:
+E       ^^^^^^
+E   SyntaxError: invalid syntax
+____________ ERROR at setup of test_get_token_rejects_missing_link _____________
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:273: in get_code
+    code = _get_code(fullname)
+           ^^^^^^^^^^^^^^^^^^^
+E     File "/home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/mcp_server_manager.py", line 4016
+E       except Exception as e:
+E       ^^^^^^
+E   SyntaxError: invalid syntax
+_ ERROR at setup of test_get_token_returns_onboarding_token_without_minting_ui_key _
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:273: in get_code
+    code = _get_code(fullname)
+           ^^^^^^^^^^^^^^^^^^^
+E     File "/home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/mcp_server_manager.py", line 4016
+E       except Exception as e:
+E       ^^^^^^
+E   SyntaxError: invalid syntax
+=========================== short test summary info ============================
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_already_used_link
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_concurrent_reuse_before_password_write
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_expired_link
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_invalid_bearer_token
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_mismatched_user_id
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_missing_onboarding_token
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_missing_user
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_wrong_onboarding_session
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_returns_session_when_final_invite_update_fails
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rolls_back_invite_when_password_update_raises
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rolls_back_invite_when_session_key_mint_fails
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_sets_accepted_at_after_password_written
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_get_token_rejects_already_used_link
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_get_token_rejects_expired_link
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_get_token_rejects_missing_link
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_get_token_returns_onboarding_token_without_minting_ui_key
+16 errors in 7.86s

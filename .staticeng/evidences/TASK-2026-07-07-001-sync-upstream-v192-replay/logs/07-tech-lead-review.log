@@ -1,0 +1,29 @@
+Tech Lead review: Tue Jul 7 2026
+
+Branch: sync-upstream-v1.92-replay
+HEAD: 1a2082ea12e21403581abfa52570d62f6dd04e38
+upstream/main: 79a6b8f7f0cdf8a7fa0bd4fbfda10120b3113aa2
+
+Checks performed:
+- git merge-base --is-ancestor upstream/main HEAD: pass
+- git log --oneline --reverse upstream/main..HEAD: 26 replayed commits, no merge commits
+- git ls-files -u: no unresolved index entries
+- git diff --check: pass
+- rg conflict-marker anchors: no real conflict markers found in source paths reviewed; matches are separator lines in existing files/logs
+- git ls-remote --heads origin sync-upstream-v1.92-replay: no remote branch found at review time
+- staticeng_validate: fail; existing/replayed StaticEng codemap coverage problems and stale links
+- targeted pytest command: failed at collection because Python environment is missing dependency `openai`
+
+Findings:
+1. Closure blocker: current task evidence and task file are untracked and no current-task SUMMARY.md is present, so an additional evidence/registry closure commit is needed before final push.
+2. Closure blocker: targeted QA evidence is incomplete. `08-qa-test-lazymcp.log` only contains `EE`; local reviewer rerun fails during import with `ModuleNotFoundError: No module named 'openai'`, so AC-7 is not satisfied yet.
+3. Closure blocker: branch is not pushed to origin at review time. Push is acceptable only after QA/evidence closure, and must target origin, not upstream.
+4. StaticEng validation fails with broad missing CodeMap/stale link errors. This should be repaired or explicitly escalated before closure.
+
+Conflict risk review notes:
+- Replay topology is correct: upstream/main is the merge-base and ancestor of HEAD; replay branch has 26 non-merge commits on top.
+- LazyMCP backend/UI surfaces are present in proxy routes, MCP server handler, Responses MCP handler, and dashboard MCP tab/connect UI.
+- Responses usage normalization is present in `OpenAIResponsesAPIConfig._normalize_streaming_response_usage` and Responses logging utilities.
+- Cached-user dict auth accessors are present in auth checks, route checks, and user_api_key_auth.
+- MCP stale/delete/null-map handling and spend-log NUL-byte sanitization are present by inspection.
+- Onboarding claim reservation/session/rollback behavior is present by inspection.

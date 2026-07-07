@@ -1,0 +1,79 @@
+QA verification started: Tue Jul  7 07:53:22 AM UTC 2026
+
+## Git/history checks
+$ git branch --show-current
+sync-upstream-v1.92-replay
+
+$ git rev-parse HEAD upstream/main origin/main main
+1a2082ea12e21403581abfa52570d62f6dd04e38
+79a6b8f7f0cdf8a7fa0bd4fbfda10120b3113aa2
+4f7364064d7163289dcb83ab57757164d4364fea
+4f7364064d7163289dcb83ab57757164d4364fea
+
+$ git merge-base HEAD upstream/main
+79a6b8f7f0cdf8a7fa0bd4fbfda10120b3113aa2
+
+$ git merge-base --is-ancestor upstream/main HEAD
+exit=0
+
+$ git rev-list --count upstream/main..HEAD
+26
+
+$ git log --oneline --merges upstream/main..HEAD
+
+$ git log --oneline --decorate upstream/main..HEAD
+1a2082ea12 (HEAD -> sync-upstream-v1.92-replay) chore: record staticeng closure artifacts
+af4b32646e chore: TASK-2026-06-12-003 commit staticeng artifacts
+8588e2eb07 chore: TASK-2026-06-12-002 record release evidence
+56eb678ff4 chore: TASK-2026-06-12-002 record commit evidence
+889ef9b703 fix: TASK-2026-06-12-002 release onboarding claim session
+81d761d5f9 fix: TASK-2026-06-11-001 make MCP delete robust
+36676164ca fix: TASK-2026-06-10-001 clean stale MCP delete refs
+783cdacbb2 fix: TASK-2026-06-08-003 handle null MCP tool maps
+0137dfef1f fix: TASK-2026-06-08-002 repair MCP and spend logs
+cc6580f2fd chore: migrate NomadWorks artifacts to StaticEng
+9c5ea99c53 docs: record auth dict deploy evidence
+a3436cd2af fix(auth): use cached user dict accessor
+c5fcd3a73b fix(auth): handle cached user dict limits
+c8f7098393 fix(auth): coerce cached key dicts in common checks
+289a1f3aae fix(proxy): restore pricing and MCP auth helpers
+1a7459f466 fix(auth): handle cached user dict roles
+da5c853a5f fix: sanitize spend log null bytes
+00479a8fa2 fix: accept chat usage in Responses logging utils
+6d640fe4e2 fix: normalize Responses streaming chat usage
+77de1b66fd fix: TASK-2026-05-29-001 handle dict response usage logging
+3e48fe7cfb fix(auth): handle cached user dict metadata
+4d7f2c1e7e feat: integrate private GPT and LazyMCP changes
+42f4a8f437 test: add inverse regression test for gpt-5-chat tool_choice opt-out
+d4de0bb40f chore(azure): remove now-redundant tool_choice workaround in AzureOpenAIGPT5Config
+de0944ded3 fix(azure_ai): respect tool_choice for models without explicit capability flag
+a7a5dd5a19 fix(gpt-5): respect tool_choice for models without explicit capability flag
+
+$ git ls-files -u
+
+$ git status --short --branch
+## sync-upstream-v1.92-replay...upstream/main [ahead 26]
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/01-pre-status.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/02-fetch-branch.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/03-cherry-pick.log
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/06-qa-git-history.log
+?? .staticeng/tasks/todo/TASK-2026-07-07-001-sync-upstream-v192-replay.md
+
+$ rg -n "^(<<<<<<<|=======|>>>>>>>)" --glob "!uv.lock" --glob "!*.snap" .
+./tests/logging_callback_tests/log.txt:1:============================= test session starts ==============================
+./tests/logging_callback_tests/log.txt:11:=============================== warnings summary ===============================
+./tests/logging_callback_tests/log.txt:21:======================== 1 passed, 2 warnings in 4.10s =========================
+./tests/litellm_utils_tests/log.txt:1:============================= test session starts ==============================
+./tests/litellm_utils_tests/log.txt:14:=============================== warnings summary ===============================
+./tests/litellm_utils_tests/log.txt:24:======================== 3 passed, 2 warnings in 0.92s =========================
+./tests/test_litellm/llms/databricks/test_databricks_partner_integration.py:3:=======================================================
+./tests/test_litellm/llms/databricks/test_databricks_e2e.py:3:====================================================
+./tests/eval_swe_bench.py:3:==================================
+./litellm/proxy/common_utils/performance_utils.md:114:==============================================================
+./litellm/proxy/_experimental/mcp_server/mcp_debug.py:3:========================
+./scripts/health_check/health_check_client_README.md:148:============================================================
+./scripts/health_check/health_check_client_README.md:161:============================================================
+./scripts/health_check/health_check_client_README.md:163:============================================================
+./scripts/health_check/health_check_client_README.md:167:============================================================
+./scripts/eval_compression.py:3:======================================
+rg_exit=0

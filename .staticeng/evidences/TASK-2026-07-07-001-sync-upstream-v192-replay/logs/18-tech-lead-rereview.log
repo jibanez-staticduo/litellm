@@ -1,0 +1,27 @@
+Tech Lead re-review: Tue Jul 7 2026
+
+Task: TASK-2026-07-07-001-sync-upstream-v192-replay
+Branch: sync-upstream-v1.92-replay
+HEAD before closure/fix commit: 1a2082ea12e21403581abfa52570d62f6dd04e38
+upstream/main: 79a6b8f7f0cdf8a7fa0bd4fbfda10120b3113aa2
+
+Checks performed:
+- Read task file including Reopen History and Developer post-implementation notes.
+- Inspected uncommitted diff in litellm/proxy/_experimental/mcp_server/mcp_server_manager.py.
+- Read reload_servers_from_database around lines 3960-4051.
+- Ran python -m py_compile for mcp_server_manager.py: pass.
+- Ran py_compile for mcp_server_manager.py, server.py, proxy_server.py, OpenAI responses transformation, auth_checks.py, and user_api_key_auth.py: pass.
+- Ran git diff --check: pass.
+- Ran git ls-files -u: no unresolved index entries.
+- Checked replay topology: upstream/main...HEAD remains 0 behind / 26 ahead.
+- Checked origin branch: git ls-remote --heads origin sync-upstream-v1.92-replay returned no remote branch.
+- Tried import/targeted pytest after syntax fix; collection now gets past syntax but local environment is missing dependency `expression`, so tests still need QA rerun in a synced environment.
+
+Findings:
+1. The syntax fix is correct by inspection and compile checks. It restores the per-server try/except scope and keeps unchanged-server reuse, changed/new-server rebuild, short-prefix carry-forward, and per-server exception logging.
+2. Closure is still blocked until the uncommitted syntax fix and current task evidence are committed. Pushing now would omit the fix because HEAD is still 1a2082ea12.
+3. Existing QA logs 09-13 and 14 are stale and still show the pre-fix SyntaxError. They should be rerun/replaced after the fix, or supplemented with post-fix logs.
+4. Post-fix targeted pytest/import validation is still not complete in this local environment because `expression` is missing. This appears environmental/dependency-sync related rather than a syntax regression, but AC-7 still needs passing QA evidence or an explicit infeasibility note.
+5. StaticEng validation should be escalated/reported rather than repaired automatically for this task. Prior failures are broad replayed/pre-existing CodeMap coverage and stale-link issues; applying repair would create large unrelated codemap churn outside this upstream replay closure scope.
+
+Push recommendation: Do not push yet. Push to origin is acceptable only after the fix/evidence closure commit and post-fix QA evidence are complete. Do not push to upstream.

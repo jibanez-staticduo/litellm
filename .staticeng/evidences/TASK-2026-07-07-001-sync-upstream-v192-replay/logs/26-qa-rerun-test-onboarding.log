@@ -1,0 +1,632 @@
+Command: PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest tests/test_litellm/proxy/auth/test_onboarding.py -p no:cacheprovider --tb=short -q
+EEEEEEEEEEEEEEEE                                                         [100%]
+==================================== ERRORS ====================================
+_________ ERROR at setup of test_claim_token_rejects_already_used_link _________
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+---------------------------- Captured stdout setup -----------------------------
+[conftest] Module setup complete (worker: master)
+_ ERROR at setup of test_claim_token_rejects_concurrent_reuse_before_password_write _
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+___________ ERROR at setup of test_claim_token_rejects_expired_link ____________
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+_______ ERROR at setup of test_claim_token_rejects_invalid_bearer_token ________
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+________ ERROR at setup of test_claim_token_rejects_mismatched_user_id _________
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+_____ ERROR at setup of test_claim_token_rejects_missing_onboarding_token ______
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+___________ ERROR at setup of test_claim_token_rejects_missing_user ____________
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+_____ ERROR at setup of test_claim_token_rejects_wrong_onboarding_session ______
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+_ ERROR at setup of test_claim_token_returns_session_when_final_invite_update_fails _
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+_ ERROR at setup of test_claim_token_rolls_back_invite_when_password_update_raises _
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+_ ERROR at setup of test_claim_token_rolls_back_invite_when_session_key_mint_fails _
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+__ ERROR at setup of test_claim_token_sets_accepted_at_after_password_written __
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+__________ ERROR at setup of test_get_token_rejects_already_used_link __________
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+____________ ERROR at setup of test_get_token_rejects_expired_link _____________
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+____________ ERROR at setup of test_get_token_rejects_missing_link _____________
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+_ ERROR at setup of test_get_token_returns_onboarding_token_without_minting_ui_key _
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:458: in setup
+    return super().setup()
+           ^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+=========================== short test summary info ============================
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_already_used_link
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_concurrent_reuse_before_password_write
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_expired_link
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_invalid_bearer_token
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_mismatched_user_id
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_missing_onboarding_token
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_missing_user
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rejects_wrong_onboarding_session
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_returns_session_when_final_invite_update_fails
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rolls_back_invite_when_password_update_raises
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_rolls_back_invite_when_session_key_mint_fails
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_claim_token_sets_accepted_at_after_password_written
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_get_token_rejects_already_used_link
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_get_token_rejects_expired_link
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_get_token_rejects_missing_link
+ERROR tests/test_litellm/proxy/auth/test_onboarding.py::test_get_token_returns_onboarding_token_without_minting_ui_key
+16 errors in 6.29s
+exit=1

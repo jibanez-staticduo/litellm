@@ -1,0 +1,10 @@
+Command: PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest tests/test_litellm/proxy/spend_tracking/test_spend_tracking_utils.py::test_sanitize_spend_log_payload_for_db_removes_nested_null_bytes tests/test_litellm/proxy/spend_tracking/test_spend_tracking_utils.py::test_sanitize_request_body_for_spend_logs_payload_removes_null_bytes -p no:cacheprovider --tb=short -q
+..                                                                       [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295
+  /home/staticduo/git/litellm/.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    self.loader.exec_module(module)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+2 passed, 1 warning in 4.70s
+exit=0

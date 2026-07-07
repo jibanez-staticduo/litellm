@@ -1,0 +1,80 @@
+Command: PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest tests/test_litellm/proxy/spend_tracking/test_spend_tracking_utils.py::test_sanitize_spend_log_payload_for_db_removes_nested_null_bytes tests/test_litellm/proxy/spend_tracking/test_spend_tracking_utils.py::test_sanitize_request_body_for_spend_logs_payload_removes_null_bytes -p no:cacheprovider --tb=short -q
+EE                                                                       [100%]
+==================================== ERRORS ====================================
+_ ERROR at setup of test_sanitize_request_body_for_spend_logs_payload_removes_null_bytes _
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+---------------------------- Captured stdout setup -----------------------------
+[conftest] Module setup complete (worker: master)
+_ ERROR at setup of test_sanitize_spend_log_payload_for_db_removes_nested_null_bytes _
+.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:730: in pytest_fixture_setup
+    return (yield)
+            ^^^^^
+tests/test_litellm/proxy/conftest.py:33: in _isolate_proxy_module_globals
+    from litellm.proxy import proxy_server
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+=========================== short test summary info ============================
+ERROR tests/test_litellm/proxy/spend_tracking/test_spend_tracking_utils.py::test_sanitize_request_body_for_spend_logs_payload_removes_null_bytes
+ERROR tests/test_litellm/proxy/spend_tracking/test_spend_tracking_utils.py::test_sanitize_spend_log_payload_for_db_removes_nested_null_bytes
+2 errors in 1.98s
+exit=1

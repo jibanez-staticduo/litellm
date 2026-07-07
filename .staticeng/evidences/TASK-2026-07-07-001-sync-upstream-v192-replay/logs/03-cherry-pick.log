@@ -1,0 +1,88 @@
+Tue Jul  7 05:52:26 AM UTC 2026
+===== cherry-pick e948c79358 =====
+Auto-merging litellm/llms/openai/chat/gpt_5_transformation.py
+[sync-upstream-v1.92-replay a7a5dd5a19] fix(gpt-5): respect tool_choice for models without explicit capability flag
+ Author: hybirdss <hybirds11@gmail.com>
+ Date: Thu Apr 9 04:36:21 2026 +0900
+ 2 files changed, 21 insertions(+), 3 deletions(-)
+## sync-upstream-v1.92-replay...upstream/main [ahead 1]
+?? .staticeng/
+===== cherry-pick 79cf8cd56c =====
+Auto-merging litellm/llms/azure_ai/chat/transformation.py
+Auto-merging tests/test_litellm/llms/azure_ai/chat/test_azure_ai_transformation.py
+[sync-upstream-v1.92-replay de0944ded3] fix(azure_ai): respect tool_choice for models without explicit capability flag
+ Author: hybirdss <hybirds11@gmail.com>
+ Date: Thu Apr 9 04:41:19 2026 +0900
+ 2 files changed, 32 insertions(+), 4 deletions(-)
+## sync-upstream-v1.92-replay...upstream/main [ahead 2]
+?? .staticeng/
+===== cherry-pick aa529ec8ef =====
+Auto-merging litellm/llms/azure/chat/gpt_5_transformation.py
+[sync-upstream-v1.92-replay d4de0bb40f] chore(azure): remove now-redundant tool_choice workaround in AzureOpenAIGPT5Config
+ Author: hybirdss <hybirds11@gmail.com>
+ Date: Thu Apr 9 04:49:40 2026 +0900
+ 2 files changed, 19 insertions(+), 5 deletions(-)
+## sync-upstream-v1.92-replay...upstream/main [ahead 3]
+?? .staticeng/
+===== cherry-pick e8eee37c16 =====
+[sync-upstream-v1.92-replay 42f4a8f437] test: add inverse regression test for gpt-5-chat tool_choice opt-out
+ Author: hybirdss <oinkm@naver.com>
+ Date: Sat Apr 11 05:27:36 2026 +0900
+ 1 file changed, 9 insertions(+)
+## sync-upstream-v1.92-replay...upstream/main [ahead 4]
+?? .staticeng/
+===== cherry-pick c567cf7920 =====
+Auto-merging litellm/llms/chatgpt/responses/transformation.py
+Auto-merging litellm/proxy/_experimental/mcp_server/mcp_server_manager.py
+CONFLICT (content): Merge conflict in litellm/proxy/_experimental/mcp_server/mcp_server_manager.py
+Auto-merging litellm/proxy/_experimental/mcp_server/server.py
+CONFLICT (content): Merge conflict in litellm/proxy/_experimental/mcp_server/server.py
+Auto-merging litellm/proxy/litellm_pre_call_utils.py
+CONFLICT (content): Merge conflict in litellm/proxy/litellm_pre_call_utils.py
+Auto-merging litellm/proxy/proxy_server.py
+CONFLICT (content): Merge conflict in litellm/proxy/proxy_server.py
+Auto-merging litellm/responses/main.py
+CONFLICT (content): Merge conflict in litellm/responses/main.py
+Auto-merging litellm/responses/mcp/chat_completions_handler.py
+CONFLICT (content): Merge conflict in litellm/responses/mcp/chat_completions_handler.py
+Auto-merging litellm/responses/mcp/litellm_proxy_mcp_handler.py
+CONFLICT (content): Merge conflict in litellm/responses/mcp/litellm_proxy_mcp_handler.py
+Auto-merging litellm/responses/mcp/mcp_streaming_iterator.py
+Auto-merging litellm/responses/utils.py
+Auto-merging tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py
+CONFLICT (content): Merge conflict in tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py
+Auto-merging tests/test_litellm/responses/mcp/test_litellm_proxy_mcp_handler.py
+Auto-merging ui/litellm-dashboard/next.config.mjs
+CONFLICT (content): Merge conflict in ui/litellm-dashboard/next.config.mjs
+Auto-merging ui/litellm-dashboard/src/components/mcp_tools/mcp_connect.tsx
+Auto-merging ui/litellm-dashboard/src/components/mcp_tools/mcp_servers.test.tsx
+Auto-merging ui/litellm-dashboard/src/components/mcp_tools/mcp_servers.tsx
+CONFLICT (content): Merge conflict in ui/litellm-dashboard/src/components/mcp_tools/mcp_servers.tsx
+error: could not apply c567cf7920... feat: integrate private GPT and LazyMCP changes
+hint: After resolving the conflicts, mark them with
+hint: "git add/rm <pathspec>", then run
+hint: "git cherry-pick --continue".
+hint: You can instead skip this commit with "git cherry-pick --skip".
+hint: To abort and get back to the state before "git cherry-pick",
+hint: run "git cherry-pick --abort".
+## sync-upstream-v1.92-replay...upstream/main [ahead 4]
+M  litellm/llms/chatgpt/responses/transformation.py
+UU litellm/proxy/_experimental/mcp_server/mcp_server_manager.py
+UU litellm/proxy/_experimental/mcp_server/server.py
+UU litellm/proxy/litellm_pre_call_utils.py
+UU litellm/proxy/proxy_server.py
+UU litellm/responses/main.py
+UU litellm/responses/mcp/chat_completions_handler.py
+UU litellm/responses/mcp/litellm_proxy_mcp_handler.py
+M  litellm/responses/mcp/mcp_streaming_iterator.py
+M  litellm/responses/utils.py
+M  litellm/types/proxy/litellm_pre_call_utils.py
+M  tests/test_litellm/llms/chatgpt/responses/test_chatgpt_responses_transformation.py
+UU tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py
+M  tests/test_litellm/responses/mcp/test_litellm_proxy_mcp_handler.py
+UU ui/litellm-dashboard/next.config.mjs
+M  ui/litellm-dashboard/src/components/mcp_tools/mcp_connect.tsx
+M  ui/litellm-dashboard/src/components/mcp_tools/mcp_servers.test.tsx
+UU ui/litellm-dashboard/src/components/mcp_tools/mcp_servers.tsx
+?? .staticeng/
+STOPPED_ON_CONFLICT_OR_EMPTY c567cf7920 status=1

@@ -1,0 +1,49 @@
+Command: PYTHONDONTWRITEBYTECODE=1 uv run --no-sync pytest tests/test_litellm/llms/chatgpt/responses/test_chatgpt_responses_transformation.py tests/test_litellm/proxy/spend_tracking/test_spend_management_endpoints.py::TestSpendLogsPayload::test_spend_logs_payload_success_log_with_api_base -p no:cacheprovider --tb=short -q
+ERROR: found no collectors for /home/staticduo/git/litellm/tests/test_litellm/proxy/spend_tracking/test_spend_management_endpoints.py::TestSpendLogsPayload::test_spend_logs_payload_success_log_with_api_base
+
+
+==================================== ERRORS ====================================
+_ ERROR collecting tests/test_litellm/proxy/spend_tracking/test_spend_management_endpoints.py _
+ImportError while importing test module '/home/staticduo/git/litellm/tests/test_litellm/proxy/spend_tracking/test_spend_management_endpoints.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+tests/test_litellm/proxy/spend_tracking/test_spend_management_endpoints.py:20: in <module>
+    import litellm.proxy.proxy_server as ps
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/proxy_server.py:255: in <module>
+    from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/rest_endpoints.py:70: in <module>
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/mcp_server_manager.py:61: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/__init__.py:15: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.resolver import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/resolver.py:35: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.token_exchanger import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/token_exchanger.py:40: in <module>
+    from litellm.proxy._experimental.mcp_server.outbound_credentials.types import (
+.venv/lib/python3.12/site-packages/ddtrace/internal/module.py:295: in _exec_module
+    self.loader.exec_module(module)
+litellm/proxy/_experimental/mcp_server/outbound_credentials/types.py:33: in <module>
+    from expression import case, tag, tagged_union
+E   ModuleNotFoundError: No module named 'expression'
+=========================== short test summary info ============================
+ERROR tests/test_litellm/proxy/spend_tracking/test_spend_management_endpoints.py
+1 error in 1.61s
+exit=4

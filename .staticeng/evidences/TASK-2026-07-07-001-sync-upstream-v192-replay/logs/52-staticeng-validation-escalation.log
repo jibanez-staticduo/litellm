@@ -1,0 +1,7 @@
+StaticEng validation status: non-green, reported/escalated.
+
+`staticeng_validate` was run during closure and still fails with broad StaticEng CodeMap and stale-link issues, including broken links in `.staticeng/codemap.yml` and missing CodeMaps across many source directories.
+
+Tech Lead reviewed this as pre-existing/replayed StaticEng metadata scope. Applying `staticeng_repair` would create large unrelated CodeMap churn outside TASK-2026-07-07-001-sync-upstream-v192-replay, so the validation failure is recorded here as an explicit closure risk rather than repaired in this replay task.
+
+No product/source verification failures remain after final targeted QA. See final QA logs 41 through 50 and Tech Lead review log 42.

@@ -1,0 +1,20 @@
+Syntax/import checks started: Tue Jul  7 07:58:03 AM UTC 2026
+
+$ python -m py_compile litellm/proxy/_experimental/mcp_server/mcp_server_manager.py
+  File "litellm/proxy/_experimental/mcp_server/mcp_server_manager.py", line 4016
+    except Exception as e:
+    ^^^^^^
+SyntaxError: invalid syntax
+exit=1
+
+$ python -m py_compile litellm/proxy/proxy_server.py
+exit=0
+
+$ uv run --no-sync python -c "import litellm.proxy._experimental.mcp_server.mcp_server_manager"
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "/home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/mcp_server_manager.py", line 4016
+    except Exception as e:
+    ^^^^^^
+SyntaxError: invalid syntax
+exit=1

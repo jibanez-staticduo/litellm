@@ -1,0 +1,22 @@
+Tue Jul  7 05:49:10 AM UTC 2026
+## sync-upstream-v1.92
+ M .staticeng/.config/runtime/discussions.json
+ M .staticeng/tasks/current.md
+?? .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/
+?? .staticeng/tasks/todo/TASK-2026-07-07-001-sync-upstream-v192-replay.md
+origin	git@github.com:jibanez-staticduo/litellm.git (fetch)
+origin	git@github.com:jibanez-staticduo/litellm.git (push)
+upstream	https://github.com/BerriAI/litellm (fetch)
+upstream	https://github.com/BerriAI/litellm (push)
+sync-upstream-v1.92
+4f7364064d7163289dcb83ab57757164d4364fea
+4f7364064d chore: record staticeng closure artifacts
+795e280a1c chore: TASK-2026-06-12-003 commit staticeng artifacts
+50c1450db4 chore: TASK-2026-06-12-002 record release evidence
+3d814838ae chore: TASK-2026-06-12-002 record commit evidence
+89cb8d2916 fix: TASK-2026-06-12-002 release onboarding claim session
+b4dd9e0613 fix: TASK-2026-06-11-001 make MCP delete robust
+218bd20690 merge: update staticduo production main from upstream
+067be69f8f fix: TASK-2026-06-10-001 clean stale MCP delete refs
+343e453c2a Merge pull request #30076 from BerriAI/litellm_hotfix_fable_5_cost_map
+7f57a7a068 Add Claude Fable 5 cost map entries as a data-only hotfix
