@@ -1,0 +1,9 @@
+ active_key_count | active_team_key_count | active_key_with_object_permission_count | active_route_restricted_key_count 
+------------------+-----------------------+-----------------------------------------+-----------------------------------
+                0 |                     0 |                                       0 |                                 0
+(1 row)
+
+ team_id | active_key_count 
+---------+------------------
+(0 rows)
+

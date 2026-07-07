@@ -1,0 +1,5 @@
+               team_id                | team_alias | active_key_count | route_restricted_active_key_count | active_key_aliases 
+--------------------------------------+------------+------------------+-----------------------------------+--------------------
+ 49cfd117-ef74-4eec-b26e-2d2ff083f5be | StaticTeam |                0 |                                 0 | 
+(1 row)
+
