@@ -15,3 +15,4 @@
 | 2026-07-07 | TASK-2026-07-07-007-remove-defend-account2-model | none | pending-commit | Removed mistaken `defend-account2/gpt-5.5` deployment while preserving `defend/gpt-5.5` and ChatGPT account2 deployments. |
 | 2026-07-07 | TASK-2026-07-07-008-trigger-chatgpt-account2-login | none | pending-commit | Triggered account2 ChatGPT device-code login and returned transient auth details directly to the user without storing them. |
 | 2026-07-07 | TASK-2026-07-07-009-smoke-chatgpt-account2 | none | pending-commit | Attempted account2 ChatGPT smoke; request reached LiteLLM but failed with sanitized Responses parsing error. |
+| 2026-07-07 | TASK-2026-07-07-010-retry-chatgpt-account2-gpt55 | none | pending-commit | Retried account2 GPT-5.5 smoke; failure matched prior empty Responses item list parsing symptom. |
