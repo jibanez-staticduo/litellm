@@ -1,0 +1,3 @@
+timestamp=2026-07-08T01:48:46+02:00
+readiness_http_code=200 body_bytes=37
+liveliness_http_code=200 body_bytes=12

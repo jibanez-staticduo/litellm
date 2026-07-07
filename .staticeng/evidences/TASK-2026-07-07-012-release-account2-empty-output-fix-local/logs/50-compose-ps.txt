@@ -1,0 +1,2 @@
+NAME      IMAGE                                                                                                     COMMAND                  SERVICE   CREATED         STATUS                   PORTS
+litellm   docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-chatgptprofiles-emptyoutputfix-20260708   "/bin/sh /app/start-…"   litellm   4 minutes ago   Up 3 minutes (healthy)   4000/tcp
