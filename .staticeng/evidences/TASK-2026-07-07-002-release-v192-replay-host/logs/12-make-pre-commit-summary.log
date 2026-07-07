@@ -1,0 +1,7 @@
+make pre-commit was run after staging the pre-release fix and evidence.
+
+Result: failed in the repository-wide ruff strict budget gate before completion.
+
+Observed gate issue: repository-wide UP007 count is over the configured ceiling relative to origin/litellm_internal_staging. The reported files span many pre-existing upstream replay files and are not introduced by the CacheCodec import or focused regression test.
+
+Follow-up scoped checks were run instead for this release blocker: py_compile, focused proxy_server CacheCodec import assertion, targeted pytest, and targeted ruff F401/F821 symbol checks.

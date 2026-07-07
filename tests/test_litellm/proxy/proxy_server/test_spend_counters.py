@@ -1251,6 +1251,39 @@ async def test_update_cache_no_cached_entities_schedules_pipeline_flush(monkeypa
 
 
 @pytest.mark.asyncio
+async def test_update_cache_serializes_cached_user_and_team_spend(monkeypatch):
+    cached_values = {
+        "u1": ps.LiteLLM_UserTable(user_id="u1", spend=2.0),
+        "team_id:t1": ps.LiteLLM_TeamTableCachedObj(team_id="t1", spend=3.0),
+    }
+    fake_user_cache = MagicMock()
+
+    async def _get_cache(*, key, **_kwargs):
+        return cached_values.get(key)
+
+    fake_user_cache.async_get_cache = AsyncMock(side_effect=_get_cache)
+    fake_user_cache.async_set_cache_pipeline = AsyncMock()
+    monkeypatch.setattr(ps, "user_api_key_cache", fake_user_cache)
+
+    await ps.update_cache(
+        token=None,
+        user_id="u1",
+        end_user_id=None,
+        team_id="t1",
+        response_cost=1.5,
+        parent_otel_span=None,
+        tags=None,
+    )
+    await asyncio.sleep(0)
+
+    pipeline_kwargs = fake_user_cache.async_set_cache_pipeline.await_args.kwargs
+    cache_updates = dict(pipeline_kwargs["cache_list"])
+
+    assert cache_updates["u1"]["spend"] == 3.5
+    assert cache_updates["team_id:t1"]["spend"] == 4.5
+
+
+@pytest.mark.asyncio
 async def test_update_cache_user_cache_failure_invalid_state_is_swallowed(monkeypatch):
     """An inner _update_user_cache raising must not propagate — update_cache
     catches and logs, the public coroutine still completes normally."""
