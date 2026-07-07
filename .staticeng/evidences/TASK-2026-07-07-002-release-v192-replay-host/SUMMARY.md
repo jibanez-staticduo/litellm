@@ -28,7 +28,7 @@ Production is currently stable on `docker.staticduo.com/litellm:staticduo-gpt-la
 - AC-6: PASS. Post-deploy verification includes container status, readiness, liveliness, recent log checks, and LazyMCP/MCP smoke; see `logs/18-container-health-endpoints.log`, `logs/20-spend-tracking-log-check.log`, and `logs/24-lazymcp-smoke.log`.
 - AC-7: PASS. The failed original deployment was rolled back. The retry is healthy, so no retry rollback was required; retry rollback path is `docker.staticduo.com/litellm:rollback-20260707-134929` if needed.
 - AC-8: PASS. Evidence logs are present under `logs/`.
-- AC-9: PENDING until final evidence/closure commit is pushed; source worktree was clean before and immediately after the release retry.
+- AC-9: PASS. Final evidence/closure was committed and pushed in `a66a06f1dbf75b3a8e646011680522726de4deb9`; the worktree is clean.
 - AC-10: PASS. Evidence does not include `.env` contents, master keys, API keys, tokens, cookies, private keys, or session tokens.
 
 ## Blocker
@@ -54,7 +54,7 @@ Static source search confirms `proxy_server.py` uses `CacheCodec` but does not i
 
 ## Recommended Next Step
 
-Commit and push the final evidence/closure artifacts to `origin main`.
+No action required unless monitoring later shows a regression. If rollback is needed, use `docker.staticduo.com/litellm:rollback-20260707-134929`.
 
 ## Reopen Pre-Release Fix Verification
 
