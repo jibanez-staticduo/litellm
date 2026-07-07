@@ -1,0 +1,23 @@
+check_started_at=2026-07-07T16:10:44+02:00
+
+[compose-ps-litellm]
+NAME      IMAGE                                                                                    COMMAND                  SERVICE   CREATED          STATUS                             PORTS
+litellm   docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707   "/bin/sh /app/start-..."   litellm   43 seconds ago   Up 30 seconds (health: starting)   0.0.0.0:4000->4000/tcp, [::]:4000->4000/tcp
+
+[inspect]
+name=/litellm status=running health=starting image=docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707 image_id=sha256:23f346521079a27dfeb9039e73dc2328c268ec50d44e11dc662c33d78a006d86 started=2026-07-07T14:10:13.676451237Z
+
+[image-repodigests]
+docker.staticduo.com/litellm@sha256:23f346521079a27dfeb9039e73dc2328c268ec50d44e11dc662c33d78a006d86
+
+[readiness]
+attempt=5 status=pass body={"status":"healthy","db":"connected"}
+
+[liveliness]
+status=pass body="I'm alive!"
+
+[cachecodec-log-check]
+status=pass message=no post-deploy CacheCodec entries since 2026-07-07T14:10:13.676451237Z
+
+[recent-safe-log-tail]
+LiteLLM proxy initialized and served readiness/liveliness 200 OK. Log tail was inspected with token/API-key redaction. No CacheCodec is not defined entries were present.

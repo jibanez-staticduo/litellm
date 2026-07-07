@@ -1,0 +1,7 @@
+stack_dir_ok=/home/staticduo/docker/litellm
+compose_file_ok=/home/staticduo/docker/litellm/docker-compose.yaml
+env_has_LITELLM_IMAGE=yes
+previous_env_image=docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260612-onboarding-claim-session
+previous_running_image=docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260612-onboarding-claim-session
+previous_running_image_id=sha256:102158c62182f4db494be543dbb09580b4074dd69f87967a15e77ba3a5349a79
+previous_container_status=running healthy

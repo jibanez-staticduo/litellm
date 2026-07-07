@@ -1,0 +1,4 @@
+wait_started_at=2026-07-07T16:11:06+02:00
+attempt=1 health=healthy
+wait_finished_at=2026-07-07T16:11:06+02:00
+status=running health=healthy image=docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707 image_id=sha256:23f346521079a27dfeb9039e73dc2328c268ec50d44e11dc662c33d78a006d86 started=2026-07-07T14:10:13.676451237Z

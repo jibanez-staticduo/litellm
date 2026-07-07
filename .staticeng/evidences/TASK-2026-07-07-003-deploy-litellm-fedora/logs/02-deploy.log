@@ -1,0 +1,10 @@
+deploy_started_at=2026-07-07T16:09:54+02:00
+previous_env_image=docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260612-onboarding-claim-session
+previous_running_image=docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260612-onboarding-claim-session
+target_image=docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707
+pull_result=success
+up_result=success
+service_updated=litellm only
+deploy_finished_at=2026-07-07T16:10:13+02:00
+final_running_image=docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707
+final_image_id=sha256:23f346521079a27dfeb9039e73dc2328c268ec50d44e11dc662c33d78a006d86
