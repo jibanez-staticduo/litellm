@@ -1,0 +1,4 @@
+timestamp=2026-07-08T01:49:54+0200
+model=chatgpt/gpt-5.5 http_status=200 content_type=application/json body_bytes=2233 starts_json=true starts_sse=false
+model=chatgpt-account2/gpt-5.5 http_status=400 error_body_bytes=1865
+model=chatgpt-account2/gpt-5.4 http_status=400 error_body_bytes=1865
