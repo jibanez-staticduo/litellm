@@ -1,0 +1,34 @@
+./scripts/pre_commit_lint.sh
+pre-commit: NOTE - unstaged/untracked changes are included in these checks but
+  won't be in a commit of only your staged changes, so this result may differ from
+  CI. Stage everything you intend to commit (git add) for an accurate prediction:
+    .staticeng/.config/runtime/discussions.json
+    .staticeng/docs/scrs/current.md
+    .staticeng/tasks/current.md
+    litellm/litellm_core_utils/get_litellm_params.py
+    litellm/litellm_core_utils/get_llm_provider_logic.py
+    litellm/llms/chatgpt/authenticator.py
+    litellm/llms/chatgpt/chat/transformation.py
+    litellm/llms/chatgpt/responses/transformation.py
+    litellm/main.py
+    litellm/proxy/auth/auth_utils.py
+    litellm/types/router.py
+    litellm/types/utils.py
+    tests/test_litellm/llms/chatgpt/responses/test_chatgpt_responses_transformation.py
+    tests/test_litellm/llms/chatgpt/test_chatgpt_authenticator.py
+    tests/test_litellm/proxy/auth/test_auth_utils.py
+    .staticeng/docs/scrs/SCR-2026-07-07-001-chatgpt-auth-profiles.md
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/make-pre-commit-reopen.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/make-pre-commit.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/pytest-chatgpt-auth-profiles-reopen.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/pytest-chatgpt-auth-profiles.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/ruff-check-reopen.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/ruff-check-targeted.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/ruff-format-check-reopen.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/ruff-format-check-targeted.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/staticeng-repair-dry-run.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/staticeng-validate.log
+    .staticeng/tasks/todo/TASK-2026-07-07-005-implement-chatgpt-auth-profiles.md
+    tests/test_litellm/llms/chatgpt/chat/test_chatgpt_chat_transformation.py
+exit_code=0

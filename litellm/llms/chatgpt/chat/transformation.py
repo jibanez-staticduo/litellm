@@ -21,7 +21,6 @@ class ChatGPTConfig(OpenAIConfig):
         custom_llm_provider: str = "openai",
     ) -> None:
         super().__init__()
-        self.authenticator = Authenticator()
 
     def _get_openai_compatible_provider_info(
         self,
@@ -29,10 +28,12 @@ class ChatGPTConfig(OpenAIConfig):
         api_base: Optional[str],
         api_key: Optional[str],
         custom_llm_provider: str,
+        litellm_params: Optional[object] = None,
     ) -> Tuple[Optional[str], Optional[str], str]:
-        dynamic_api_base = self.authenticator.get_api_base()
+        authenticator = Authenticator(litellm_params)
+        dynamic_api_base = authenticator.get_api_base()
         try:
-            dynamic_api_key = self.authenticator.get_access_token()
+            dynamic_api_key = authenticator.get_access_token()
         except GetAccessTokenError as e:
             raise AuthenticationError(
                 model=model,
@@ -55,9 +56,11 @@ class ChatGPTConfig(OpenAIConfig):
             headers, model, messages, optional_params, litellm_params, api_key, api_base
         )
 
-        account_id = self.authenticator.get_account_id()
+        authenticator = Authenticator(litellm_params)
+        access_token = api_key or authenticator.get_access_token()
+        account_id = authenticator.get_account_id()
         session_id = ensure_chatgpt_session_id(litellm_params)
-        default_headers = get_chatgpt_default_headers(api_key or "", account_id, session_id)
+        default_headers = get_chatgpt_default_headers(access_token, account_id, session_id)
         return {**default_headers, **validated_headers}
 
     def post_stream_processing(self, stream: Any) -> Any:

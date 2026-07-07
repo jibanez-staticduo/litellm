@@ -1250,7 +1250,7 @@ class Message(SafeAttributeModel, OpenAIObject):
 
     def json(self, **kwargs):  # type: ignore
         try:
-            return self.model_dump()  # noqa
+            return self.model_dump()
         except Exception:
             # if using pydantic v1
             return self.dict()
@@ -1825,7 +1825,7 @@ class ModelResponseStream(ModelResponseBase):
 
     def json(self, **kwargs):  # type: ignore
         try:
-            return self.model_dump()  # noqa
+            return self.model_dump()
         except Exception:
             # if using pydantic v1
             return self.dict()
@@ -1924,7 +1924,7 @@ class ModelResponse(ModelResponseBase):
 
     def json(self, **kwargs):  # type: ignore
         try:
-            return self.model_dump()  # noqa
+            return self.model_dump()
         except Exception:
             # if using pydantic v1
             return self.dict()
@@ -2017,7 +2017,7 @@ class EmbeddingResponse(OpenAIObject):
 
     def json(self, **kwargs):  # type: ignore
         try:
-            return self.model_dump()  # noqa
+            return self.model_dump()
         except Exception:
             # if using pydantic v1
             return self.dict()
@@ -2068,7 +2068,7 @@ class TextChoices(OpenAIObject):
 
     def json(self, **kwargs):  # type: ignore
         try:
-            return self.model_dump()  # noqa
+            return self.model_dump()
         except Exception:
             # if using pydantic v1
             return self.dict()
@@ -2232,7 +2232,7 @@ class ImageObject(OpenAIImage):
 
     def json(self, **kwargs):  # type: ignore
         try:
-            return self.model_dump()  # noqa
+            return self.model_dump()
         except Exception:
             # if using pydantic v1
             return self.dict()
@@ -2338,7 +2338,7 @@ class ImageResponse(OpenAIImageResponse, BaseLiteLLMOpenAIResponseObject):
 
     def json(self, **kwargs):  # type: ignore
         try:
-            return self.model_dump()  # noqa
+            return self.model_dump()
         except Exception:
             # if using pydantic v1
             return self.dict()
@@ -2390,7 +2390,7 @@ class TranscriptionResponse(OpenAIObject):
 
     def json(self, **kwargs):  # type: ignore
         try:
-            return self.model_dump()  # noqa
+            return self.model_dump()
         except Exception:
             # if using pydantic v1
             return self.dict()
@@ -2447,7 +2447,7 @@ class AdapterCompletionStreamWrapper:
         except StopIteration:
             raise StopIteration
         except Exception as e:
-            print(f"AdapterCompletionStreamWrapper - {e}")  # noqa
+            print(f"AdapterCompletionStreamWrapper - {e}")  # noqa: T201
 
     async def __anext__(self):
         try:
@@ -3174,6 +3174,9 @@ all_litellm_params = (
         "order",
         "enable_json_schema_validation",
         "use_xai_oauth",
+        "chatgpt_auth_profile",
+        "chatgpt_token_dir",
+        "chatgpt_auth_file",
         "_litellm_rate_limit_descriptors",
         "_litellm_tpm_reserved_tokens",
         "_litellm_tpm_reserved_model",
@@ -3521,7 +3524,7 @@ class LiteLLMBatch(Batch):
 
     def json(self, **kwargs):  # type: ignore
         try:
-            return self.model_dump()  # noqa
+            return self.model_dump()
         except Exception:
             # if using pydantic v1
             return self.dict()
@@ -3554,7 +3557,7 @@ class LiteLLMRealtimeStreamLoggingObject(LiteLLMPydanticObjectBase):
 
     def json(self, **kwargs):  # type: ignore
         try:
-            return self.model_dump()  # noqa
+            return self.model_dump()
         except Exception:
             # if using pydantic v1
             return self.dict()

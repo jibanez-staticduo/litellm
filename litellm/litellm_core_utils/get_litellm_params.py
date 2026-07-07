@@ -37,6 +37,9 @@ OPTIONAL_KWARGS_KEYS = frozenset(
         "tpm",
         "rpm",
         "use_xai_oauth",
+        "chatgpt_auth_profile",
+        "chatgpt_token_dir",
+        "chatgpt_auth_file",
     }
 )
 
