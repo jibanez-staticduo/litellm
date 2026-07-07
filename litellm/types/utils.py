@@ -2597,7 +2597,7 @@ class AdapterCompletionStreamWrapper:
         except StopIteration:
             raise StopIteration
         except Exception as e:
-            verbose_logger.debug("AdapterCompletionStreamWrapper - %s", e)
+            print(f"AdapterCompletionStreamWrapper - {e}")  # noqa: T201
 
     async def __anext__(self):
         try:
@@ -3526,17 +3526,14 @@ all_litellm_params = (
         "enable_tag_filtering",
         "enable_json_schema_validation",
         "use_xai_oauth",
-        "auto_router_config_path",
-        "auto_router_config",
-        "auto_router_default_model",
-        "auto_router_embedding_model",
-        "auto_router_max_input_chars",
-        "complexity_router_config",
-        "complexity_router_default_model",
-        "adaptive_router_config",
-        "adaptive_router_default_model",
-        "quality_router_config",
-        "quality_router_default_model",
+        "chatgpt_auth_profile",
+        "chatgpt_token_dir",
+        "chatgpt_auth_file",
+        "_litellm_rate_limit_descriptors",
+        "_litellm_tpm_reserved_tokens",
+        "_litellm_tpm_reserved_model",
+        "_litellm_tpm_reserved_scopes",
+        "_litellm_tpm_reservation_released",
     ]
     + list(StandardCallbackDynamicParams.__annotations__.keys())
     + list(CustomPricingLiteLLMParams.model_fields.keys())

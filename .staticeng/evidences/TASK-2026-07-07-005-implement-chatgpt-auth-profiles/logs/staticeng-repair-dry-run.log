@@ -1,0 +1,10 @@
+Command/tool: staticeng_repair mode=dry-run team_mode=full
+Result: dry-run completed
+
+Repair would make broad unrelated StaticEng changes, including:
+- Create .staticeng/.config/staticeng.yaml
+- Normalize multiple existing discussion/evidence/task Markdown files
+- Remove broken links from .staticeng/codemap.yml
+- Create/update CodeMaps for many unrelated source directories across examples, docker, scripts, litellm, integrations, providers, tests, and more
+
+Decision: did not apply because the deterministic repair scope is much broader than TASK-2026-07-07-005 and would introduce large unrelated StaticEng artifacts.

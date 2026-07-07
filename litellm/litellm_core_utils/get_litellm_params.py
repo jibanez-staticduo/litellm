@@ -18,6 +18,12 @@ AWS_CREDENTIAL_KWARGS_KEYS: Final = frozenset(
         "aws_external_id",
         "aws_bedrock_runtime_endpoint",
         "aws_bedrock_project_id",
+        "tpm",
+        "rpm",
+        "use_xai_oauth",
+        "chatgpt_auth_profile",
+        "chatgpt_token_dir",
+        "chatgpt_auth_file",
     }
 )
 

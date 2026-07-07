@@ -32,7 +32,6 @@ from ..common_utils import (
 class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
     def __init__(self) -> None:
         super().__init__()
-        self.authenticator = Authenticator()
 
     @property
     def custom_llm_provider(self) -> LlmProviders:
@@ -44,8 +43,9 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
         model: str,
         litellm_params: GenericLiteLLMParams | None,
     ) -> dict:
+        authenticator = Authenticator(litellm_params)
         try:
-            access_token: Final = self.authenticator.get_access_token()
+            access_token = authenticator.get_access_token()
         except GetAccessTokenError as e:
             raise AuthenticationError(
                 model=model,
@@ -53,9 +53,9 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
                 message=str(e),
             )
 
-        account_id: Final = self.authenticator.get_account_id()
-        session_id: Final = ensure_chatgpt_session_id(litellm_params)
-        default_headers: Final = get_chatgpt_default_headers(access_token, account_id, session_id)
+        account_id = authenticator.get_account_id()
+        session_id = ensure_chatgpt_session_id(litellm_params)
+        default_headers = get_chatgpt_default_headers(access_token, account_id, session_id)
         return {**default_headers, **headers}
 
     def transform_responses_api_request(
@@ -230,14 +230,10 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
         completed_response._hidden_params["headers"] = raw_headers
 
     @staticmethod
-    def _build_completed_response(
-        response_payload: dict, accumulated_output_items: list
-    ) -> ResponsesAPIResponse:
+    def _build_completed_response(response_payload: dict, accumulated_output_items: list) -> ResponsesAPIResponse:
         response_payload = dict(response_payload)
         if "created_at" in response_payload:
-            response_payload["created_at"] = _safe_convert_created_field(
-                response_payload["created_at"]
-            )
+            response_payload["created_at"] = _safe_convert_created_field(response_payload["created_at"])
         if not response_payload.get("output") and accumulated_output_items:
             response_payload["output"] = accumulated_output_items
         try:
@@ -250,7 +246,8 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
         api_base: str | None,
         litellm_params: dict,
     ) -> str:
-        api_base = api_base or self.authenticator.get_api_base() or CHATGPT_API_BASE
+        authenticator = Authenticator(litellm_params)
+        api_base = api_base or authenticator.get_api_base() or CHATGPT_API_BASE
         api_base = api_base.rstrip("/")
         return f"{api_base}/responses"
 

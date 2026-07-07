@@ -1,0 +1,16 @@
+Command: make pre-commit
+Result: FAIL/TIMEOUT in PMA final pre-commit attempt after staging intended task files.
+
+Observed blockers were unrelated repo-wide checks against origin/litellm_internal_staging, not targeted ChatGPT auth profile files:
+- ruff errors in pre-existing/unrelated proxy files such as litellm/proxy/_experimental/mcp_server/mcp_server_manager.py, litellm/proxy/litellm_pre_call_utils.py, and litellm/proxy/proxy_server.py.
+- format check failures on unrelated files and deleted/missing paths such as litellm/a2a_protocol/providers/litellm_completion/*.py and litellm/proxy/health_endpoints/health_app_factory.py.
+- ruff strict budget failures across many unrelated files.
+- basedpyright phase was terminated when the command exceeded the 120s tool timeout.
+
+Targeted verification for this task remained green:
+- targeted pytest: 51 passed, 1 warning
+- targeted ruff format/check: pass
+- git diff --check: pass
+- critic re-review: no blocking findings
+
+Full terminal output was captured by the opencode tool session at /home/staticduo/.local/share/opencode/tool-output/tool_f3da7b6f000140KvRdGxQDLqAB and was not copied in full to avoid noisy unrelated logs.

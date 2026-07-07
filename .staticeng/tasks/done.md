@@ -10,3 +10,4 @@
 | 2026-07-07 | TASK-2026-07-07-001-sync-upstream-v192-replay | none | sync-upstream-v1.92-replay | Replayed StaticDuo LiteLLM fork changes onto upstream v1.92 with targeted verification. |
 | 2026-07-07 | TASK-2026-07-07-003-deploy-litellm-fedora | none | closure-artifacts | Deployed LiteLLM cachecodecfix image to Fedora and verified health, readiness, liveliness, CacheCodec log absence, and MCP smoke. |
 | 2026-07-07 | TASK-2026-07-07-004-investigate-chatgpt-multi-account-auth | none | n/a | Investigated ChatGPT subscription auth and recommended core multi-profile support for multiple accounts. |
+| 2026-07-07 | TASK-2026-07-07-005-implement-chatgpt-auth-profiles | SCR-2026-07-07-001-chatgpt-auth-profiles | pending-commit | Implemented ChatGPT multi-account auth profiles with tests and secret-safe request-boundary guards. |

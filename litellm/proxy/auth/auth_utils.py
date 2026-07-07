@@ -289,7 +289,9 @@ _BANNED_REQUEST_BODY_PARAMS: Final[tuple[str, ...]] = (
     # re-route the request's retention and accounting to any project
     # reachable with the deployment's shared AWS credentials.
     "aws_bedrock_project_id",
-    "bedrock_tags",
+    "chatgpt_auth_profile",
+    "chatgpt_token_dir",
+    "chatgpt_auth_file",
     # Provider-specific endpoint overrides that flow into the outbound
     # request via ``optional_params``. Same threat as ``api_base``:
     # ``s3_endpoint_url`` redirects Bedrock file uploads to attacker

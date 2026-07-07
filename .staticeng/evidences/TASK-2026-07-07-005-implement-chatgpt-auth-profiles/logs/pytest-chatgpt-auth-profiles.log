@@ -1,0 +1,19 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.0.3, pluggy-1.6.0
+rootdir: /home/staticduo/git/litellm
+configfile: pyproject.toml
+plugins: postgresql-7.0.2, respx-0.22.0, anyio-4.13.0, asyncio-1.3.0, recording-0.13.4, rerunfailures-15.1, requests-mock-1.12.1, cov-5.0.0, mock-3.15.1, xdist-3.8.0, timeout-2.4.0, ddtrace-2.19.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=session, asyncio_default_test_loop_scope=function
+collected 31 items
+
+tests/test_litellm/llms/chatgpt/test_chatgpt_authenticator.py .          [  3%]
+tests/test_litellm/llms/chatgpt/responses/test_chatgpt_responses_transformation.py . [  6%]
+                                                                         [  6%]
+tests/test_litellm/llms/chatgpt/chat/test_chatgpt_chat_transformation.py . [  9%]
+.                                                                        [ 12%]
+tests/test_litellm/llms/chatgpt/responses/test_chatgpt_responses_transformation.py . [ 16%]
+..................                                                       [ 74%]
+tests/test_litellm/llms/chatgpt/test_chatgpt_authenticator.py .......    [ 96%]
+tests/test_litellm/llms/chatgpt/responses/test_chatgpt_responses_transformation.py . [100%]
+
+============================== 31 passed in 1.20s ==============================

@@ -1,6 +1,7 @@
 import base64
 import json
 import os
+import re
 import time
 from typing import Any, Final
 
@@ -22,20 +23,70 @@ from .common_utils import (
     RefreshAccessTokenError,
 )
 
-TOKEN_EXPIRY_SKEW_SECONDS: Final = 60
-DEVICE_CODE_TIMEOUT_SECONDS: Final = 15 * 60
-DEVICE_CODE_COOLDOWN_SECONDS: Final = 5 * 60
-DEVICE_CODE_POLL_SLEEP_SECONDS: Final = 5
+TOKEN_EXPIRY_SKEW_SECONDS = 60
+DEVICE_CODE_TIMEOUT_SECONDS = 15 * 60
+DEVICE_CODE_COOLDOWN_SECONDS = 5 * 60
+DEVICE_CODE_POLL_SLEEP_SECONDS = 5
+_SAFE_AUTH_PROFILE_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 class Authenticator:
-    def __init__(self) -> None:
-        self.token_dir = os.getenv(
+    def __init__(self, litellm_params: Optional[object] = None) -> None:
+        self.token_dir = self._resolve_token_dir(litellm_params)
+        self.auth_file = self._resolve_auth_file(litellm_params)
+        self._ensure_token_dir()
+
+    def _resolve_token_dir(self, litellm_params: Optional[object]) -> str:
+        configured_token_dir = self._get_litellm_param(litellm_params, "chatgpt_token_dir")
+        if configured_token_dir:
+            return os.path.expanduser(str(configured_token_dir))
+        return os.getenv(
             "CHATGPT_TOKEN_DIR",
             os.path.expanduser("~/.config/litellm/chatgpt"),
         )
-        self.auth_file = os.path.join(self.token_dir, os.getenv("CHATGPT_AUTH_FILE", "auth.json"))
-        self._ensure_token_dir()
+
+    def _resolve_auth_file(self, litellm_params: Optional[object]) -> str:
+        configured_auth_file = self._get_litellm_param(litellm_params, "chatgpt_auth_file")
+        if configured_auth_file:
+            auth_file = os.path.expanduser(str(configured_auth_file))
+            if os.path.isabs(auth_file):
+                return auth_file
+            return os.path.join(self.token_dir, auth_file)
+
+        auth_profile = self._get_litellm_param(litellm_params, "chatgpt_auth_profile")
+        if auth_profile is not None:
+            profile_name = self._validate_auth_profile(auth_profile)
+            return os.path.join(self.token_dir, f"{profile_name}.json")
+
+        return os.path.join(self.token_dir, os.getenv("CHATGPT_AUTH_FILE", "auth.json"))
+
+    def _validate_auth_profile(self, auth_profile: object) -> str:
+        profile_name = str(auth_profile).strip()
+        if (
+            not profile_name
+            or profile_name in {".", ".."}
+            or os.path.isabs(profile_name)
+            or os.path.sep in profile_name
+            or (os.path.altsep is not None and os.path.altsep in profile_name)
+            or ".." in profile_name
+            or _SAFE_AUTH_PROFILE_PATTERN.fullmatch(profile_name) is None
+        ):
+            raise ValueError(
+                "chatgpt_auth_profile must be a logical profile name containing only letters, numbers, '_' or '-'"
+            )
+        profile_path = os.path.abspath(os.path.join(self.token_dir, f"{profile_name}.json"))
+        token_root = os.path.abspath(self.token_dir)
+        if os.path.commonpath((token_root, profile_path)) != token_root:
+            raise ValueError("chatgpt_auth_profile must resolve inside chatgpt_token_dir")
+        return profile_name
+
+    def _get_litellm_param(self, litellm_params: Optional[object], key: str) -> Optional[object]:
+        if litellm_params is None:
+            return None
+        getter = getattr(litellm_params, "get", None)
+        if callable(getter):
+            return getter(key)
+        return getattr(litellm_params, key, None)
 
     def get_api_base(self) -> str:
         return os.getenv("CHATGPT_API_BASE") or os.getenv("OPENAI_CHATGPT_API_BASE") or CHATGPT_API_BASE
@@ -79,8 +130,9 @@ class Authenticator:
         return derived
 
     def _ensure_token_dir(self) -> None:
-        if not os.path.exists(self.token_dir):
-            os.makedirs(self.token_dir, exist_ok=True)
+        auth_file_dir = os.path.dirname(self.auth_file)
+        if auth_file_dir and not os.path.exists(auth_file_dir):
+            os.makedirs(auth_file_dir, exist_ok=True)
 
     def _read_auth_file(self) -> dict[str, Any] | None:
         try:

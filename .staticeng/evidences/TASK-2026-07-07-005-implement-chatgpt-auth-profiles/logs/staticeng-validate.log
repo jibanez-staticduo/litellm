@@ -1,0 +1,10 @@
+Command/tool: staticeng_validate
+Result: FAIL
+
+Validation failed before task-specific closure due broad pre-existing StaticEng CodeMap/config debt, including broken .staticeng/codemap.yml links and many missing CodeMap files across unrelated source directories. Relevant examples:
+- .staticeng/codemap.yml links do not exist: Agents_Common.md, docs/core/agent_orchestration.md, docs/architecture/TECHNICAL_ARCHITECTURE.md
+- Rule of Local Knowledge violations in .staticeng/codemap.yml
+- Missing CodeMap entries across broad unrelated directories, including examples, docker, scripts, litellm, litellm/llms, and many provider subdirectories
+- Specific touched areas also lack CodeMaps: litellm/llms/chatgpt, litellm/llms/chatgpt/responses, litellm/llms/chatgpt/chat
+
+A repair dry-run was performed. Applying it would create/update a very large number of unrelated CodeMap/config artifacts, which is outside SCR scope.
