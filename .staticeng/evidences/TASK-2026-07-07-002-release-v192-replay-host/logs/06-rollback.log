@@ -1,0 +1,3 @@
+Rollback executed because new release logged CacheCodec NameError in spend tracking.
+Rollback image: docker.staticduo.com/litellm:rollback-20260707-131635
+Rollback command path: updated LITELLM_IMAGE in stack env without printing env contents, then docker compose up -d litellm.

@@ -1,0 +1,8 @@
+Post-deploy verification of new image before rollback
+New image: docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-20260707
+Observed issue: NameError: CacheCodec is not defined in spend tracking cache update paths. Budget enforcement may use stale spend values.
+
+Docker image inspect:
+id=sha256:201b6e3b60ce73d2bcc5bb49b5d7820126ba18eee4e7c823830634cc1fc4a94e repoDigests=["docker.staticduo.com/litellm@sha256:0fc09c92eb4706def0d3c8cd6f1c67ff4b4364ce9a6aa9af995b1bf244ed0363"] created=2026-07-07T13:20:08.046398147+02:00
+
+LazyMCP smoke (tool result recorded in PMA transcript): enabled true, visible_server_count 25, visible_tool_count 535, memory describe succeeded.
