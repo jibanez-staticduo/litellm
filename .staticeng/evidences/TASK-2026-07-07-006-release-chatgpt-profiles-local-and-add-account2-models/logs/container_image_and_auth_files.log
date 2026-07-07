@@ -1,0 +1,8 @@
+container=/litellm image=docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-chatgptprofiles-20260708 image_id=sha256:aa2f2b22013e834d96c5ddf436613dc92eee18e83d4f582c916e635cdfd15be6 health=healthy started=2026-07-07T22:40:39.828786479Z
+image_digest=["docker.staticduo.com/litellm@sha256:a9bb7c0865dd3b65c1065c87061c3ca6bbfc7d50033aeba28ad43b7b6bdd895f"]
+
+rollback_image=docker.staticduo.com/litellm:rollback-20260708-003315
+rollback_digest=docker.staticduo.com/litellm@sha256:23f346521079a27dfeb9039e73dc2328c268ec50d44e11dc662c33d78a006d86
+source_commit=6ccc6ae91940406cc6ce806eb2d9997c9e9dc39c
+auth_json_exists=yes
+account2_json_exists=no

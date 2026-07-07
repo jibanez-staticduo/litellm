@@ -1,0 +1,77 @@
+query-engine ac9d7041ed77bcc8a8dbd2ab6616b39013829574
+{
+  "inserted": [
+    {
+      "chatgpt_auth_profile": "account2",
+      "new_model_id": "94126f16-fdbb-48e7-9586-b8a1a68719d5",
+      "source_model_name": "chatgpt/gpt-5.3-codex",
+      "target_model_name": "chatgpt-account2/gpt-5.3-codex"
+    },
+    {
+      "chatgpt_auth_profile": "account2",
+      "new_model_id": "6bee3424-dbec-4584-908d-2ca491a0fa4a",
+      "source_model_name": "chatgpt/gpt-5.3-codex-spark",
+      "target_model_name": "chatgpt-account2/gpt-5.3-codex-spark"
+    },
+    {
+      "chatgpt_auth_profile": "account2",
+      "new_model_id": "bca138b1-8664-4c94-b862-1c793eeccde6",
+      "source_model_name": "chatgpt/gpt-5.4",
+      "target_model_name": "chatgpt-account2/gpt-5.4"
+    },
+    {
+      "chatgpt_auth_profile": "account2",
+      "new_model_id": "249910e2-fa44-49f9-941c-f9bbd1744c6e",
+      "source_model_name": "chatgpt/gpt-5.4-mini",
+      "target_model_name": "chatgpt-account2/gpt-5.4-mini"
+    },
+    {
+      "chatgpt_auth_profile": "account2",
+      "new_model_id": "af3805bc-aef2-4a0f-ba13-9e73b90698d3",
+      "source_model_name": "chatgpt/gpt-5.5",
+      "target_model_name": "chatgpt-account2/gpt-5.5"
+    },
+    {
+      "chatgpt_auth_profile": "account2",
+      "new_model_id": "7f239a33-28d4-4d6c-953d-ea8ed5dad661",
+      "source_model_name": "defend/gpt-5.5",
+      "target_model_name": "defend-account2/gpt-5.5"
+    }
+  ],
+  "method": "direct Prisma execute_raw insert into LiteLLM_ProxyModelTable",
+  "skipped": [],
+  "status": "ok",
+  "target_row_count": 6,
+  "target_rows": [
+    {
+      "blocked": false,
+      "chatgpt_auth_profile": "account2",
+      "model_name": "chatgpt-account2/gpt-5.3-codex"
+    },
+    {
+      "blocked": false,
+      "chatgpt_auth_profile": "account2",
+      "model_name": "chatgpt-account2/gpt-5.3-codex-spark"
+    },
+    {
+      "blocked": false,
+      "chatgpt_auth_profile": "account2",
+      "model_name": "chatgpt-account2/gpt-5.4"
+    },
+    {
+      "blocked": false,
+      "chatgpt_auth_profile": "account2",
+      "model_name": "chatgpt-account2/gpt-5.4-mini"
+    },
+    {
+      "blocked": false,
+      "chatgpt_auth_profile": "account2",
+      "model_name": "chatgpt-account2/gpt-5.5"
+    },
+    {
+      "blocked": false,
+      "chatgpt_auth_profile": "account2",
+      "model_name": "defend-account2/gpt-5.5"
+    }
+  ]
+}
