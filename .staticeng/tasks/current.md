@@ -1,7 +1,7 @@
 # Current Tasks (Backlog)
 
 ## Active Discussions
-- DISCUSSION-002: Deploy LiteLLM cachecodecfix image to Fedora
+- (None)
 
 ## Active
 - (None)
