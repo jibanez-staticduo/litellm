@@ -1,0 +1,12 @@
+exact_key_tool_count=516
+master_tool_count=548
+missing_from_exact_key_count=32
+extra_in_exact_key_count=0
+memory-neo4j_expand_neighbors exact_key=False master=True
+memory-neo4j_shortest_paths exact_key=False master=True
+memory-neo4j_read_cypher exact_key=True master=True
+memory-neo4j_write_cypher exact_key=True master=True
+neo4j-read_cypher exact_key=True master=True
+neo4j-write_cypher exact_key=True master=True
+missing_memory_related=memory-neo4j_expand_neighbors,memory-neo4j_shortest_paths
+missing_all=adguard-remove_rdns_filtering_rules,adguard-remove_rewrite_dns_record,google_workspace-manage_gmail_label,google_workspace-modify_gmail_message_labels,immich-immich.activities.delete,immich-immich.albums.assets.remove,immich-immich.albums.delete,immich-immich.assets.delete,immich-immich.shared_links.delete,immich-immich.tags.assets.remove,immich-immich.tags.delete,keycloak-delete-client,keycloak-delete-client-scope,keycloak-delete-client-scope-protocol-mapper,keycloak-delete-composite-roles,keycloak-delete-group,keycloak-delete-identity-provider,keycloak-delete-identity-provider-mapper,keycloak-delete-organization,keycloak-delete-protocol-mapper,keycloak-delete-realm,keycloak-delete-role,keycloak-delete-role-by-id,keycloak-delete-user,keycloak-manage-user-groups,keycloak-remove-organization-member,keycloak-remove-role-from-group,keycloak-remove-role-from-user,memory-neo4j_expand_neighbors,memory-neo4j_shortest_paths,syncthing-remove_device,syncthing-remove_folder

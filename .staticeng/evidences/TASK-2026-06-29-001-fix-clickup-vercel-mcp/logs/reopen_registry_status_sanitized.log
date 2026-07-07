@@ -1,0 +1,26 @@
+Reopen registry repair, sanitized
+
+Read-only SSH inspection first:
+- Host checked: fedora.
+- Authorized opencode_defend roots found at /home/staticduo/.config/opencode_defend and /home/staticduo/.local/share/opencode_defend.
+- Authorized ClickUp skill located at /home/staticduo/.config/opencode_defend/skills/clickup.
+- Remote ClickUp skill contained SKILL.md, query.mjs, api/ modules, lib/ modules, .env-example, and .env.
+- Remote ClickUp .env keys observed without values: CLICKUP_API_TOKEN, CLICKUP_TEAM_ID, CLICKUP_DEFAULT_LIST_ID, CLICKUP_USER_ID.
+- Remote opencode_defend config was readable; MCP config contains lazymcp and no direct ClickUp/Vercel entries.
+
+Applied local skill update:
+- Synced fedora:/home/staticduo/.config/opencode_defend/skills/clickup/ to /home/staticduo/.config/opencode/skills/clickup/ with rsync.
+- Local ClickUp skill now contains SKILL.md, query.mjs, .env, .env-example, and api/client.mjs.
+- Local ClickUp .env keys observed without values: CLICKUP_API_TOKEN, CLICKUP_TEAM_ID, CLICKUP_DEFAULT_LIST_ID, CLICKUP_USER_ID.
+
+Applied LiteLLM MCP registry changes:
+- Removed Vercel MCP using LiteLLM admin/API delete path. The admin wrapper reported server_id=vercel already absent, and final authenticated registry inspection showed no Vercel rows.
+- Recreated/updated ClickUp MCP registration from the authorized local skill env through the official LiteLLM /v1/mcp/server admin API from inside the litellm container, so token values were passed as environment/API payload and not printed.
+- ClickUp registration summary after write: alias=clickup, transport=stdio, command=npx, package=@hauptsache.net/clickup-mcp@latest, timeout=90, access_groups=opencode and defend.tech, allowed_tools_count=14.
+- Stored ClickUp registration env keys without values: CLICKUP_API_KEY, CLICKUP_MCP_MODE, CLICKUP_TEAM_ID, MAX_IMAGES, MAX_RESPONSE_SIZE_MB.
+
+Final authenticated registry inspection after restart:
+- ClickUp row present with alias=clickup, transport=stdio, command=npx, package=@hauptsache.net/clickup-mcp@latest, allowed_tools_count=14, env keys redacted.
+- Vercel row absent.
+
+No secrets, tokens, static headers, credential values, or raw env values are included in this evidence.

@@ -1,0 +1,14 @@
+endpoint=/v1/mcp/tools status=ok tool_count=548
+neo4j_expand_neighbors=False
+neo4j_shortest_paths=False
+memory-neo4j_expand_neighbors=True
+memory-neo4j_shortest_paths=True
+neo4j-neo4j_expand_neighbors=False
+neo4j-neo4j_shortest_paths=False
+memory-neo4j_read_cypher=True
+memory-neo4j_write_cypher=True
+neo4j-read_cypher=True
+neo4j-write_cypher=True
+memory_prefixed_count=18
+neo4j_prefixed_count=3
+sample_memory_tools=memory-find,memory-find-rating,memory-find2,memory-find_rating,memory-get_session_raw,memory-get_session_summary,memory-health,memory-list_environments,memory-list_sources,memory-metrics,memory-neo4j_expand_neighbors,memory-neo4j_get_schema,memory-neo4j_read_cypher,memory-neo4j_shortest_paths,memory-neo4j_write_cypher,memory-retry_pending_store_operations,memory-retry_store_operation,memory-store,neo4j-get_schema,neo4j-read_cypher,neo4j-write_cypher

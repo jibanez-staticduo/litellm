@@ -1,0 +1,32 @@
+Reopen verification, sanitized
+
+Verification commands/tools used:
+- ssh fedora read-only discovery for opencode_defend paths and ClickUp skill/env key names.
+- rsync from fedora ClickUp skill directory to local installed ClickUp skill directory.
+- LiteLLM admin MCP/API delete for Vercel MCP.
+- LiteLLM /v1/mcp/server admin API inside the litellm container for ClickUp MCP registration with token passed from environment and not printed.
+- docker restart litellm to clear in-memory MCP registry state after registry changes.
+- lazymcp_mcp_status.
+- lazymcp_mcp_describe() all servers.
+- lazymcp_mcp_describe(server="clickup").
+- lazymcp_mcp_describe(server="vercel").
+- Authenticated in-container GET /v1/mcp/server with sanitized field projection for ClickUp/Vercel.
+- docker logs --since verification window filtered for ClickUp/Vercel timeout/DNS/auth patterns.
+
+LazyMCP verification results after final restart:
+- lazymcp_mcp_status: mode=lazymcp, visible_server_count=25, visible_tool_count=540.
+- lazymcp_mcp_describe() all servers includes clickup with tool_count=13.
+- lazymcp_mcp_describe(server="clickup") returns usable tool metadata including getTaskById, addComment, updateTask, createTask, searchTasks, searchSpaces, getListInfo, updateListInfo, getTimeEntries, createTimeEntry, readDocument, updateDocumentPage, and createDocumentOrPage.
+- lazymcp_mcp_describe(server="vercel") returns: MCP server is not available for this request.
+- lazymcp_mcp_describe() all servers no longer lists vercel.
+
+Authenticated registry verification after final restart:
+- clickup: present; alias=clickup, transport=stdio, command=npx, args include @hauptsache.net/clickup-mcp@latest, env key names present with values redacted, allowed_tools_count=14.
+- vercel: absent.
+
+Log verification:
+- In the final one-minute post-restart verification window, no ClickUp timeout lines were observed.
+- In the final one-minute post-restart verification window, no vercel-mcp-compat DNS failure lines were observed.
+- A broader two-minute post-restart window showed ClickUp MCP startup lines only, plus unrelated errors for other MCP servers. No ClickUp timeout and no Vercel DNS failure were present.
+
+No secrets, tokens, static headers, credential values, or raw env values are included in this evidence.

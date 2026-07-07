@@ -1,0 +1,28 @@
+Verification, sanitized
+
+Commands/tools used:
+- lazymcp_mcp_describe(server="clickup")
+- lazymcp_mcp_describe(server="vercel")
+- docker logs --since <window> litellm | rg -i 'clickup|vercel|vercel-mcp-compat|Timeout while listing tools|Name or service not known|401 Unauthorized'
+- in-container authenticated GET /v1/mcp/server with redacted output filtering for clickup/vercel
+- in-container DNS/connectivity probe for official MCP hostnames
+
+Final lazymcp_mcp_describe results:
+- clickup: server metadata is visible but tools=[].
+- vercel: server metadata is visible but tools=[].
+
+Explanation for tools=[]:
+- Both official upstreams are remote OAuth MCP servers. Unauthenticated tools/list returns HTTP 401; usable tool metadata requires per-user OAuth authorization or a supported upstream-auth passthrough flow with a user token.
+- The task's safe mitigation was therefore to remove the broken ClickUp stdio registration that timed out and correct Vercel away from the dead vercel-mcp-compat DNS name to the official OAuth upstream.
+
+Final in-container authenticated registry view after restart:
+- clickup: no row returned by /v1/mcp/server.
+- vercel: registered at https://mcp.vercel.com with auth_type=oauth2 and delegate_auth_to_upstream=true.
+
+Final log check after restart and verification:
+- No repeated 'Timeout while listing tools from clickup' observed in the post-restart verification window.
+- No 'Name or service not known' for vercel-mcp-compat observed in the post-restart verification window.
+- Expected OAuth 401 entries may appear when unauthenticated discovery probes official ClickUp/Vercel endpoints.
+
+Connectivity probe:
+- Official MCP hostnames were checked from inside the litellm container. DNS/connectivity command produced no error output in the captured run; the earlier external documentation checks identified official endpoints as https://mcp.clickup.com/mcp and https://mcp.vercel.com.

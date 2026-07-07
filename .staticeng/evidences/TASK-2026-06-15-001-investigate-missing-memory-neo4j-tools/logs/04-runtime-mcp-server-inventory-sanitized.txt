@@ -1,0 +1,3 @@
+server_count=25
+server id=dbf6a1ae-f5c2-4bfa-ac24-2c6c29168348 name=Neo4j alias=neo4j allowed_tools_count=6 access_groups=memory_legacy allow_all_keys=False tool_allowlist_enforced=None transport=http
+server id=937e3e97-c5d7-4968-af73-831db0b810b7 name=Memory alias=memory allowed_tools_count=19 access_groups=opencode,memory,openclaw allow_all_keys=False tool_allowlist_enforced=True transport=http

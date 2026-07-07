@@ -1,0 +1,21 @@
+Sanitized registry diagnosis and actions
+
+Initial state observed via litellm_admin-list_mcp_servers:
+- clickup: transport=stdio, command=npx @hauptsache.net/clickup-mcp@latest, env contained ClickUp API credentials (redacted and not persisted in evidence), allowed_tools=[]; LazyMCP describe showed zero tools and LiteLLM logs showed tools/list timeouts.
+- vercel: transport=http, url=http://vercel-mcp-compat:8000/mcp, allowed_tools populated; LazyMCP describe showed zero tools and LiteLLM logs showed DNS failure for vercel-mcp-compat.
+
+Read-only external reference checks:
+- ClickUp official setup documentation reports remote MCP URL https://mcp.clickup.com/mcp and OAuth authentication.
+- Vercel official documentation reports remote MCP URL https://mcp.vercel.com and OAuth authentication.
+
+Applied actions through LiteLLM admin MCP where possible:
+- Updated vercel registration to url=https://mcp.vercel.com, transport=http, auth_type=oauth2, delegate_auth_to_upstream=true, available_on_public_internet=false, keeping existing Vercel allowed tool names. Upstream OAuth metadata was discovered by LiteLLM after update.
+- Attempted to update clickup to the official remote OAuth MCP URL. The admin update endpoint returned 404 for the stale ClickUp row after the original stdio registration was removed from the active DB view.
+- Recreated a minimal ClickUp remote OAuth registration with the same server_id through litellm_admin-create_mcp_server, then deleted it because unauthenticated LazyMCP discovery still produced OAuth 401 noise and there was no authenticated user OAuth credential available for tool discovery.
+- Restarted the litellm container to clear stale in-memory ClickUp registration state after the idempotent delete reported the ClickUp row absent.
+
+Final sanitized registry status:
+- vercel remains registered as official remote OAuth MCP: url=https://mcp.vercel.com, transport=http, auth_type=oauth2, delegate_auth_to_upstream=true, available_on_public_internet=false. Tool list remains unavailable until a user completes Vercel OAuth.
+- clickup is no longer returned by the authenticated in-container /v1/mcp/server API after restart. The external LazyMCP gateway still advertises the clickup alias with zero tools, apparently from gateway-visible cached metadata, but LiteLLM no longer has the original stdio timeout source active in the authenticated registry view.
+
+No secrets, tokens, static headers, credential values, or raw env values are included in this evidence.

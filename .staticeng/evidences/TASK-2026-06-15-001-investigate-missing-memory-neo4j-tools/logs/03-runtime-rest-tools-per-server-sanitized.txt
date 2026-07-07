@@ -1,0 +1,4 @@
+server_id=937e3e97-c5d7-4968-af73-831db0b810b7 tool_count=19 error=None
+find,find2,find_rating,get_session_raw,get_session_summary,health,list_environments,list_sources,memory-find_rating,memory_find_rating,metrics,neo4j_expand_neighbors,neo4j_get_schema,neo4j_read_cypher,neo4j_shortest_paths,neo4j_write_cypher,retry_pending_store_operations,retry_store_operation,store
+server_id=dbf6a1ae-f5c2-4bfa-ac24-2c6c29168348 tool_count=6 error=None
+get-schema,get_schema,read-cypher,read_cypher,write-cypher,write_cypher
