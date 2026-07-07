@@ -1,0 +1,37 @@
+## timestamp
+2026-07-07T13:11:29+02:00
+
+## source commit/branch
+/home/staticduo/git/litellm
+main
+29373e89c1c33624cfbcbc7ec432886bc278b8cc
+origin	git@github.com:jibanez-staticduo/litellm.git (fetch)
+origin	git@github.com:jibanez-staticduo/litellm.git (push)
+upstream	https://github.com/BerriAI/litellm (fetch)
+upstream	https://github.com/BerriAI/litellm (push)
+
+## git status
+ M .staticeng/.config/runtime/discussions.json
+ M .staticeng/tasks/current.md
+?? .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/
+?? .staticeng/tasks/todo/TASK-2026-07-07-002-release-v192-replay-host.md
+
+## release script exists
+executable: /home/staticduo/git/release-litellm.sh
+
+## docker version
+Docker version 26.1.0, build 9714adc
+Docker Compose version v2.26.1
+
+## compose ps /volume2/docker/litellm
+NAME                       IMAGE                                                                                       COMMAND                  SERVICE                    CREATED       STATUS                 PORTS
+litellm                    docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260612-onboarding-claim-session   "/bin/sh /app/start-…"   litellm                    3 weeks ago   Up 8 days (healthy)    4000/tcp
+litellm-admin-mcp          sha256:6437f49262dc3d37e5f8aff069ecd57bf3f1b14021abac7e041a583a9cf3c58a                     "python /app/server.…"   litellm-admin-mcp          3 weeks ago   Up 2 weeks (healthy)   
+litellm-admin-mcp-compat   sha256:2bef15be45e47e4dae234eaccb515f7c970f89a1fddc382ff9cc8a8741a67f76                     "python /app/server.…"   litellm-admin-mcp-compat   3 weeks ago   Up 2 weeks (healthy)   
+litellm-redis              redis:7.4-alpine                                                                            "docker-entrypoint.s…"   redis                      3 weeks ago   Up 2 weeks (healthy)   6379/tcp
+
+## current litellm container inspect
+name=/litellm status=running health=healthy image=docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260612-onboarding-claim-session image_id=sha256:2fe088e4abda03473a4ac7decd847050d28e4387b349c5c9cb464cbeafa42d08
+
+## current image inspect
+repo_tags=["docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260612-onboarding-claim-session","docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-latest"] repo_digests=["docker.staticduo.com/litellm@sha256:102158c62182f4db494be543dbb09580b4074dd69f87967a15e77ba3a5349a79"] id=sha256:2fe088e4abda03473a4ac7decd847050d28e4387b349c5c9cb464cbeafa42d08 created=2026-06-12T13:09:12.543031229+02:00
