@@ -1,13 +1,13 @@
 # Current Tasks (Backlog)
 
 ## 💬 Active Discussions
-- DISCUSSION-002: Release LiteLLM v1.92 replay on this host
+- (None)
 
 ## 🚀 Active
-- (None)
+- TASK-2026-07-07-002-release-v192-replay-host - Fix CacheCodec release blocker, retest, rebuild, and retry local release (`developer`)
 
 ## 📋 Todo
 - (None)
 
 ## 🛑 Blocked
-- TASK-2026-07-07-002-release-v192-replay-host - Release blocked by `CacheCodec` NameError in spend tracking cache paths; rolled back to healthy previous image
+- (None)

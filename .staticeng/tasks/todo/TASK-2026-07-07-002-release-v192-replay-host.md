@@ -3,8 +3,8 @@ task_id: TASK-2026-07-07-002-release-v192-replay-host
 complexity: standard
 track: implementation
 slice: qa
-status: blocked
-assigned_to: workflow_runner
+status: todo
+assigned_to: developer
 handoff_from: product_manager
 scr: none
 parent: TASK-2026-07-07-001-sync-upstream-v192-replay
@@ -119,3 +119,30 @@ Spend tracking - failed to update user/team spend in cache. Budget enforcement m
 The release was rolled back to `docker.staticduo.com/litellm:rollback-20260707-131635`. Rollback verification passed: container running, Docker health healthy, readiness `200 {"status":"healthy","db":"connected"}`, liveliness `200 "I'm alive!"`.
 
 Resolution needed: fix the missing `CacheCodec` import/availability in `litellm/proxy/proxy_server.py`, verify spend/cache behavior, then retry the release.
+
+## Reopen History
+
+- 2026-07-07: PMA reopened after user approved fixing, testing, rebuilding, and retrying the release. Scope remains the same release blocker. Do not use `workflow_runner` for this reopen. Assigned to `developer` for a minimal code fix plus targeted verification and local release retry.
+
+## Reopen Acceptance Criteria Addendum
+
+AC-11. `CacheCodec` is available in `litellm/proxy/proxy_server.py` spend tracking cache update paths without introducing broad refactors.
+
+AC-12. Targeted tests cover or exercise spend/cache behavior enough to catch the prior `NameError`.
+
+AC-13. Code fix and any pre-release StaticEng state are committed before retrying the release, because `/home/staticduo/git/release-litellm.sh` requires a clean source worktree.
+
+AC-14. Release retry uses a new image tag, not the previously failed tag. Use `staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707` unless there is a clear reason to choose another unique tag.
+
+AC-15. Release retry remains local-host-only: `--no-upstream-merge --no-fedora-deploy`, push only to `origin`, never to `upstream`.
+
+AC-16. If the retry succeeds, production ends on the new cachecodecfix image, healthy, with readiness DB connected and no new `CacheCodec is not defined` log entries after deployment. If it fails, rollback to the previous healthy image and report exact state.
+
+# Post Implementation Task Updates
+
+## Developer: Post Implementation Expectations
+
+- 2026-07-07 pre-release fix: Added the missing `CacheCodec` import to `litellm/proxy/proxy_server.py`.
+- Added focused regression coverage for cached user/team spend serialization in `tests/test_litellm/proxy/proxy_server/test_spend_counters.py`.
+- Pre-release verification passed: `py_compile`, focused `CacheCodec` import check, and targeted pytest (`test_cache_codec.py` plus `test_spend_counters.py`).
+- Next step: commit and push this pre-release fix/state to `origin main`, then run the local-host-only release retry from a clean source worktree with tag `staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707`.

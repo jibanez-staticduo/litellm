@@ -49,3 +49,21 @@ Static source search confirms `proxy_server.py` uses `CacheCodec` but does not i
 ## Recommended Next Step
 
 Fix the missing `CacheCodec` import/availability in `litellm/proxy/proxy_server.py`, run targeted spend/auth/cache tests, build a new image, and retry the local release.
+
+## Reopen Pre-Release Fix Verification
+
+- Code fix: `litellm/proxy/proxy_server.py` now imports `CacheCodec` from `litellm.proxy.common_utils.cache_pydantic_utils`.
+- Regression coverage: `tests/test_litellm/proxy/proxy_server/test_spend_counters.py::test_update_cache_serializes_cached_user_and_team_spend` verifies cached user/team spend updates serialize into the cache pipeline, which would have failed when `CacheCodec` was missing from `proxy_server.py` module scope.
+- Static/import verification: `.venv/bin/python -m py_compile litellm/proxy/proxy_server.py` and a focused import assertion passed; see `logs/08-py-compile.log` and `logs/09-cachecodec-import-check.log`.
+- Targeted tests: `.venv/bin/python -m pytest tests/test_litellm/proxy/common_utils/test_cache_codec.py tests/test_litellm/proxy/proxy_server/test_spend_counters.py -q` passed with 63 tests; see `logs/11-targeted-pytest-cachecodec-and-spend.log`.
+- Targeted symbol lint: `.venv/bin/ruff check --select F401,F821 litellm/proxy/proxy_server.py tests/test_litellm/proxy/proxy_server/test_spend_counters.py` passed; see `logs/14-targeted-ruff-cachecodec-symbols.log`.
+- `make pre-commit` was attempted and failed on repository-wide ruff strict budget overage relative to `origin/litellm_internal_staging`; this appears pre-existing to the CacheCodec fix and is summarized in `logs/12-make-pre-commit-summary.log`.
+
+## Reopen Acceptance Criteria Coverage
+
+- AC-11: PASS pre-release. `CacheCodec` is available in `proxy_server.py` spend tracking cache update paths via a minimal import.
+- AC-12: PASS pre-release. A focused regression now exercises cached user/team spend serialization through `update_cache`.
+- AC-13: PENDING. The code fix, pre-release task state, and evidence must be committed before retrying the release.
+- AC-14: PENDING. Retry must use `staticduo-gpt-lazymcp-v1.92-replay-cachecodecfix-20260707`.
+- AC-15: PENDING. Retry must remain local-host-only and push only to `origin`.
+- AC-16: PENDING. Final production state must be verified after retry or rollback.
