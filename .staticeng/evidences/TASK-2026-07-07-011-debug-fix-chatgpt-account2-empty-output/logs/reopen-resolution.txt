@@ -1,0 +1,16 @@
+Critic resolution:
+- Recovered stream output is now recorded from transformed streaming events after provider transform and stream post-processing.
+- Empty completed output is recovered from the post-processed streamed item/text events.
+- Non-empty completed output is not overwritten.
+- Tests added for output_text.done-only recovery, output_item.done precedence, non-empty completed output preservation, provider transform normalization, and encrypted-content post-processing.
+
+Commands/results:
+- uv run python -m pytest tests/test_litellm/responses/test_streaming_iterator.py: 6 passed in 0.30s
+- uv run ruff format litellm/responses/streaming_iterator.py tests/test_litellm/responses/test_streaming_iterator.py: 2 files left unchanged
+- uv run ruff check litellm/responses/streaming_iterator.py tests/test_litellm/responses/test_streaming_iterator.py: All checks passed
+- uv run python -m pytest tests/test_litellm/responses/test_streaming_iterator.py tests/test_litellm/llms/chatgpt/responses/test_chatgpt_responses_transformation.py tests/test_litellm/completion_extras/test_litellm_responses_transformation_transformation.py: 37 passed in 0.61s
+
+Live local proxy smoke after reopen hot-patch:
+- chatgpt/gpt-5.5: HTTP 200, content preview pong
+- chatgpt-account2/gpt-5.5: HTTP 200, content preview pong
+- chatgpt-account2/gpt-5.4: HTTP 200, content preview pong

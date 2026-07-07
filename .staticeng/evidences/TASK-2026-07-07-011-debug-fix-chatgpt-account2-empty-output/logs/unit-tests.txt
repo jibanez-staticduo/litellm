@@ -1,0 +1,7 @@
+Initial command: uv run python -m pytest tests/test_litellm/responses/test_streaming_iterator.py tests/test_litellm/llms/chatgpt/responses/test_chatgpt_responses_transformation.py tests/test_litellm/completion_extras/test_litellm_responses_transformation_transformation.py
+
+Result: 32 passed in 0.71s
+
+Reopen command: uv run ruff format litellm/responses/streaming_iterator.py tests/test_litellm/responses/test_streaming_iterator.py && uv run ruff check litellm/responses/streaming_iterator.py tests/test_litellm/responses/test_streaming_iterator.py && uv run python -m pytest tests/test_litellm/responses/test_streaming_iterator.py tests/test_litellm/llms/chatgpt/responses/test_chatgpt_responses_transformation.py tests/test_litellm/completion_extras/test_litellm_responses_transformation_transformation.py
+
+Result: 2 files left unchanged; All checks passed; 37 passed in 0.61s

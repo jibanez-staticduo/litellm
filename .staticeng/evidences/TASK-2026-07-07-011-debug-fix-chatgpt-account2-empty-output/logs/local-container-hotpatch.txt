@@ -1,0 +1,5 @@
+Local validation action only: copied the patched `litellm/responses/streaming_iterator.py` into the running local `litellm` container's installed package path and restarted that local container. The container returned to healthy state before live smoke tests.
+
+No Fedora deployment was performed.
+
+Reopen validation action: copied the revised `litellm/responses/streaming_iterator.py` into the same local container path, restarted the local container, waited until health returned to healthy, then reran the sanitized live smoke tests.

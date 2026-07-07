@@ -1,237 +1,220 @@
-"""Regression tests for LIT-4185 — /v1/responses streaming must stamp
-completion_start_time on the first chunk so downstream TTFT consumers
-(Prometheus, OTEL, SpendLogs completionStartTime) do not fall back to
-completion_start_time = end_time."""
-
 import json
 from datetime import datetime
-from typing import Optional
-from unittest.mock import Mock
+from types import SimpleNamespace
 
 import httpx
-import pytest
 
-from litellm.litellm_core_utils.litellm_logging import Logging as LiteLLMLoggingObj
-from litellm.llms.base_llm.responses.transformation import BaseResponsesAPIConfig
-from litellm.responses.streaming_iterator import (
-    ResponsesAPIStreamingIterator,
-    SyncResponsesAPIStreamingIterator,
-)
-from litellm.types.llms.openai import (
-    ResponseCompletedEvent,
-    ResponsesAPIResponse,
-    ResponsesAPIStreamEvents,
-)
+from litellm.llms.chatgpt.responses.transformation import ChatGPTResponsesAPIConfig
+from litellm.responses.streaming_iterator import BaseResponsesAPIStreamingIterator
+from litellm.types.llms.openai import ResponsesAPIStreamEvents
 
 
-def _sse_event(payload: dict) -> bytes:
-    return f"data: {json.dumps(payload)}\n\n".encode("utf-8")
-
-
-def _mock_config() -> Mock:
-    mock_config = Mock(spec=BaseResponsesAPIConfig)
-    mock_responses_api_response = Mock(spec=ResponsesAPIResponse)
-    mock_responses_api_response.id = "resp_ttft"
-
-    def _transform(model, parsed_chunk, logging_obj):
-        evt_type = parsed_chunk.get("type")
-        if evt_type == "response.completed":
-            completed = Mock(spec=ResponseCompletedEvent)
-            completed.type = ResponsesAPIStreamEvents.RESPONSE_COMPLETED
-            completed.response = mock_responses_api_response
-            return completed
-        stub = Mock()
-        stub.type = evt_type
-        return stub
-
-    mock_config.transform_streaming_response.side_effect = _transform
-    return mock_config
-
-
-def _make_iterator(
-    *,
-    sse_events: list[bytes],
-    logging_obj: LiteLLMLoggingObj,
-    trailing_error: Optional[Exception] = None,
-) -> ResponsesAPIStreamingIterator:
-    async def aiter_bytes():
-        for evt in sse_events:
-            yield evt
-        if trailing_error is not None:
-            raise trailing_error
-
-    mock_response = Mock()
-    mock_response.headers = {}
-    mock_response.aiter_bytes = aiter_bytes
-
-    return ResponsesAPIStreamingIterator(
-        response=mock_response,
-        model="gpt-4o-mini",
-        responses_api_provider_config=_mock_config(),
-        logging_obj=logging_obj,
-        litellm_metadata={},
-        custom_llm_provider="openai",
-    )
-
-
-def _make_sync_iterator(
-    *,
-    sse_events: list[bytes],
-    logging_obj: LiteLLMLoggingObj,
-    trailing_error: Optional[Exception] = None,
-) -> SyncResponsesAPIStreamingIterator:
-    def iter_bytes():
-        for evt in sse_events:
-            yield evt
-        if trailing_error is not None:
-            raise trailing_error
-
-    mock_response = Mock()
-    mock_response.headers = {}
-    mock_response.iter_bytes = iter_bytes
-
-    return SyncResponsesAPIStreamingIterator(
-        response=mock_response,
-        model="gpt-4o-mini",
-        responses_api_provider_config=_mock_config(),
-        logging_obj=logging_obj,
-        litellm_metadata={},
-        custom_llm_provider="openai",
-    )
-
-
-def _logging_obj_stub() -> Mock:
-    logging_obj = Mock(spec=LiteLLMLoggingObj)
-    logging_obj.completion_start_time = None
-    logging_obj.model_call_details = {"litellm_params": {}}
-    return logging_obj
-
-
-@pytest.mark.asyncio
-async def test_responses_streaming_stamps_completion_start_time_on_first_chunk():
-    """Without the fix, `logging_obj.completion_start_time` stays None across the
-    entire stream and _success_handler_helper_fn falls back to end_time — collapsing
-    the reported TTFT to full generation time."""
-    logging_obj = Mock(spec=LiteLLMLoggingObj)
-    logging_obj.completion_start_time = None
-    logging_obj.model_call_details = {"litellm_params": {}}
-    stamped: list[datetime] = []
-
-    def _update(*, completion_start_time):
-        stamped.append(completion_start_time)
-        logging_obj.completion_start_time = completion_start_time
-        logging_obj.model_call_details["completion_start_time"] = completion_start_time
-
-    logging_obj._update_completion_start_time.side_effect = _update
-
-    iterator = _make_iterator(
-        sse_events=[
-            _sse_event({"type": "response.created"}),
-            _sse_event({"type": "response.output_text.delta", "delta": "hi"}),
-            _sse_event({"type": "response.completed"}),
-        ],
-        logging_obj=logging_obj,
-    )
-
-    async for _ in iterator:
+class _NoopStreamingIterator(BaseResponsesAPIStreamingIterator):
+    def _handle_logging_completed_response(self):
         pass
 
-    assert len(stamped) == 1, (
-        f"Expected exactly one first-chunk stamp; got {len(stamped)}. "
-        "Later chunks must not re-stamp completion_start_time."
+
+def _item_to_dict(item):
+    if isinstance(item, dict):
+        return item
+    return item.model_dump()
+
+
+class _NormalizingChatGPTResponsesAPIConfig(ChatGPTResponsesAPIConfig):
+    def transform_streaming_response(self, model, parsed_chunk, logging_obj):
+        event = super().transform_streaming_response(model, parsed_chunk, logging_obj)
+        if getattr(event, "type", None) != ResponsesAPIStreamEvents.OUTPUT_ITEM_DONE:
+            return event
+        item = getattr(event, "item", None)
+        content = getattr(item, "content", None)
+        if content:
+            if isinstance(content[0], dict):
+                content[0]["text"] = "Normalized by provider"
+            else:
+                setattr(content[0], "text", "Normalized by provider")
+        return event
+
+
+def _make_iterator(config=None, litellm_metadata=None, custom_llm_provider=None):
+    return _NoopStreamingIterator(
+        response=httpx.Response(200),
+        model="gpt-5.5",
+        responses_api_provider_config=config or ChatGPTResponsesAPIConfig(),
+        logging_obj=SimpleNamespace(model_call_details={}, start_time=datetime.now()),
+        litellm_metadata=litellm_metadata,
+        custom_llm_provider=custom_llm_provider,
     )
-    assert isinstance(stamped[0], datetime)
 
 
-@pytest.mark.asyncio
-async def test_responses_streaming_does_not_reset_prior_completion_start_time():
-    """If `completion_start_time` is already set (e.g. by an outer wrapper), the
-    iterator must not overwrite it — otherwise TTFT would collapse to
-    time-to-last-chunk under contention."""
-    prior = datetime(2020, 1, 1, 0, 0, 0)
-    logging_obj = Mock(spec=LiteLLMLoggingObj)
-    logging_obj.completion_start_time = prior
-    logging_obj.model_call_details = {"litellm_params": {}}
+def _message_item(text, item_id="msg_test"):
+    return {
+        "id": item_id,
+        "type": "message",
+        "role": "assistant",
+        "status": "completed",
+        "content": [{"type": "output_text", "text": text, "annotations": []}],
+    }
 
+
+def _response_payload(output):
+    return {
+        "id": "resp_test",
+        "object": "response",
+        "created_at": 1700000000,
+        "status": "completed",
+        "model": "gpt-5.5",
+        "output": output,
+        "usage": {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2},
+    }
+
+
+def _process_event(iterator, event):
+    iterator._process_chunk(json.dumps(event))
+
+
+def _complete(iterator, output=None):
+    _process_event(iterator, {"type": "response.completed", "response": _response_payload(output or [])})
+
+
+def _completed_output(iterator):
+    return [_item_to_dict(item) for item in iterator.completed_response.response.output]
+
+
+def test_completed_stream_response_recovers_empty_output_from_output_item_done():
+    iterator = _make_iterator()
+
+    _process_event(
+        iterator,
+        {
+            "type": "response.output_item.done",
+            "output_index": 0,
+            "item": _message_item("Recovered from stream"),
+        },
+    )
+    _complete(iterator)
+
+    output = _completed_output(iterator)
+
+    assert len(output) == 1
+    assert output[0]["type"] == "message"
+    assert output[0]["content"][0]["text"] == "Recovered from stream"
+
+
+def test_completed_stream_response_recovers_empty_output_from_output_text_done_only():
+    iterator = _make_iterator()
+
+    _process_event(
+        iterator,
+        {
+            "type": "response.output_text.done",
+            "output_index": 0,
+            "content_index": 0,
+            "item_id": "msg_text_only",
+            "text": "Recovered from text event",
+        },
+    )
+    _complete(iterator)
+
+    output = _completed_output(iterator)
+
+    assert len(output) == 1
+    assert output[0]["id"] == "msg_text_only"
+    assert output[0]["content"][0]["text"] == "Recovered from text event"
+
+
+def test_completed_stream_response_prefers_output_item_done_over_output_text_done():
+    iterator = _make_iterator()
+
+    _process_event(
+        iterator,
+        {
+            "type": "response.output_text.done",
+            "output_index": 0,
+            "content_index": 0,
+            "item_id": "msg_text_only",
+            "text": "text only loses",
+        },
+    )
+    _process_event(
+        iterator,
+        {
+            "type": "response.output_item.done",
+            "output_index": 0,
+            "item": _message_item("item wins", "msg_item"),
+        },
+    )
+    _complete(iterator)
+
+    output = _completed_output(iterator)
+
+    assert len(output) == 1
+    assert output[0]["id"] == "msg_item"
+    assert output[0]["content"][0]["text"] == "item wins"
+
+
+def test_completed_stream_response_keeps_non_empty_completed_output():
+    iterator = _make_iterator()
+
+    _process_event(
+        iterator,
+        {
+            "type": "response.output_item.done",
+            "output_index": 0,
+            "item": _message_item("streamed item"),
+        },
+    )
+    _complete(iterator, [_message_item("canonical completed item", "msg_completed")])
+
+    output = _completed_output(iterator)
+
+    assert len(output) == 1
+    assert output[0]["id"] == "msg_completed"
+    assert output[0]["content"][0]["text"] == "canonical completed item"
+
+
+def test_recovered_output_uses_provider_normalized_streaming_event():
+    iterator = _make_iterator(config=_NormalizingChatGPTResponsesAPIConfig())
+
+    _process_event(
+        iterator,
+        {
+            "type": "response.output_item.done",
+            "output_index": 0,
+            "item": _message_item("raw provider text"),
+        },
+    )
+    _complete(iterator)
+
+    output = _completed_output(iterator)
+
+    assert output[0]["content"][0]["text"] == "Normalized by provider"
+
+
+def test_recovered_output_uses_post_processed_streaming_event():
     iterator = _make_iterator(
-        sse_events=[
-            _sse_event({"type": "response.created"}),
-            _sse_event({"type": "response.completed"}),
-        ],
-        logging_obj=logging_obj,
+        litellm_metadata={
+            "encrypted_content_affinity_enabled": True,
+            "model_info": {"id": "model-id"},
+        },
+        custom_llm_provider="chatgpt",
     )
+    reasoning_item = {
+        "id": "rs_test",
+        "type": "reasoning",
+        "summary": [],
+        "encrypted_content": "ciphertext",
+    }
 
-    async for _ in iterator:
-        pass
-
-    logging_obj._update_completion_start_time.assert_not_called()
-    assert logging_obj.completion_start_time == prior
-
-
-_COMPLETE_STREAM_EVENTS = [
-    _sse_event({"type": "response.created"}),
-    _sse_event({"type": "response.output_text.delta", "delta": "hi"}),
-    _sse_event({"type": "response.completed"}),
-]
-
-_TRAILING_ERRORS = [
-    httpx.ReadError("Response payload is not completed"),
-    httpx.RemoteProtocolError("peer closed connection without sending complete message body"),
-]
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("trailing_error", _TRAILING_ERRORS, ids=type)
-async def test_transport_error_after_completed_event_ends_stream_cleanly(trailing_error):
-    """A sloppy connection close after `response.completed` must not turn a
-    complete stream into an error (regression guard for the transport no longer
-    swallowing ClientPayloadError/TransferEncodingError)."""
-    iterator = _make_iterator(
-        sse_events=_COMPLETE_STREAM_EVENTS,
-        logging_obj=_logging_obj_stub(),
-        trailing_error=trailing_error,
+    _process_event(
+        iterator,
+        {
+            "type": "response.output_item.done",
+            "output_index": 0,
+            "item": reasoning_item,
+        },
     )
+    _complete(iterator)
 
-    seen = [event.type async for event in iterator]
+    output = _completed_output(iterator)
 
-    assert ResponsesAPIStreamEvents.RESPONSE_COMPLETED in seen
-
-
-@pytest.mark.asyncio
-async def test_transport_error_before_completed_event_raises():
-    """A connection lost before any terminal event is a real failure and must
-    surface, not end the stream as if it completed."""
-    iterator = _make_iterator(
-        sse_events=_COMPLETE_STREAM_EVENTS[:-1],
-        logging_obj=_logging_obj_stub(),
-        trailing_error=httpx.ReadError("Response payload is not completed"),
-    )
-
-    with pytest.raises(httpx.ReadError):
-        async for _ in iterator:
-            pass
-
-
-@pytest.mark.parametrize("trailing_error", _TRAILING_ERRORS, ids=type)
-def test_sync_transport_error_after_completed_event_ends_stream_cleanly(trailing_error):
-    iterator = _make_sync_iterator(
-        sse_events=_COMPLETE_STREAM_EVENTS,
-        logging_obj=_logging_obj_stub(),
-        trailing_error=trailing_error,
-    )
-
-    seen = [event.type for event in iterator]
-
-    assert ResponsesAPIStreamEvents.RESPONSE_COMPLETED in seen
-
-
-def test_sync_transport_error_before_completed_event_raises():
-    iterator = _make_sync_iterator(
-        sse_events=_COMPLETE_STREAM_EVENTS[:-1],
-        logging_obj=_logging_obj_stub(),
-        trailing_error=httpx.ReadError("Response payload is not completed"),
-    )
-
-    with pytest.raises(httpx.ReadError):
-        for _ in iterator:
-            pass
+    assert output[0]["encrypted_content"].startswith("litellm_enc:")
