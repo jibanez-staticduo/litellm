@@ -1,0 +1,29 @@
+Post-removal LiteLLM API model inspection and health checks. `GET /model/info` output is filtered to relevant model names only.
+
+{
+  "api_model_info": {
+    "status_code": 200,
+    "removed_model_visible": false,
+    "visible_expected": [
+      "chatgpt-account2/gpt-5.3-codex",
+      "chatgpt-account2/gpt-5.3-codex-spark",
+      "chatgpt-account2/gpt-5.4",
+      "chatgpt-account2/gpt-5.4-mini",
+      "chatgpt-account2/gpt-5.5",
+      "defend/gpt-5.5"
+    ],
+    "missing_expected": [],
+    "note": "GET /model/info redacts sensitive litellm params; chatgpt_auth_profile verified by direct DB inspection."
+  },
+  "health": {
+    "/health/readiness": {
+      "status_code": 200,
+      "body_preview": "{\"status\":\"healthy\",\"db\":\"connected\"}"
+    },
+    "/health/liveliness": {
+      "status_code": 200,
+      "body_preview": "\"I'm alive!\""
+    }
+  },
+  "no_live_chatgpt_invocation": true
+}

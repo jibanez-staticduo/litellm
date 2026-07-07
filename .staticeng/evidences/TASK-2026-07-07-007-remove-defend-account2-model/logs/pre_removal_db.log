@@ -1,0 +1,46 @@
+Direct DB pre-removal inspection, filtered to the target model, preserved model, and required account2 ChatGPT deployments only.
+
+[
+    {
+        "blocked": null,
+        "model_id": "94126f16-fdbb-48e7-9586-b8a1a68719d5",
+        "model_name": "chatgpt-account2/gpt-5.3-codex",
+        "chatgpt_auth_profile": "account2"
+    },
+    {
+        "blocked": null,
+        "model_id": "6bee3424-dbec-4584-908d-2ca491a0fa4a",
+        "model_name": "chatgpt-account2/gpt-5.3-codex-spark",
+        "chatgpt_auth_profile": "account2"
+    },
+    {
+        "blocked": null,
+        "model_id": "bca138b1-8664-4c94-b862-1c793eeccde6",
+        "model_name": "chatgpt-account2/gpt-5.4",
+        "chatgpt_auth_profile": "account2"
+    },
+    {
+        "blocked": null,
+        "model_id": "249910e2-fa44-49f9-941c-f9bbd1744c6e",
+        "model_name": "chatgpt-account2/gpt-5.4-mini",
+        "chatgpt_auth_profile": "account2"
+    },
+    {
+        "blocked": null,
+        "model_id": "af3805bc-aef2-4a0f-ba13-9e73b90698d3",
+        "model_name": "chatgpt-account2/gpt-5.5",
+        "chatgpt_auth_profile": "account2"
+    },
+    {
+        "blocked": null,
+        "model_id": "7f239a33-28d4-4d6c-953d-ea8ed5dad661",
+        "model_name": "defend-account2/gpt-5.5",
+        "chatgpt_auth_profile": "account2"
+    },
+    {
+        "blocked": null,
+        "model_id": "67c996f8-38d7-4406-833b-601735d8a364",
+        "model_name": "defend/gpt-5.5",
+        "chatgpt_auth_profile": null
+    }
+]
