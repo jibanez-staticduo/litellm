@@ -16,3 +16,4 @@
 | 2026-07-07 | TASK-2026-07-07-008-trigger-chatgpt-account2-login | none | pending-commit | Triggered account2 ChatGPT device-code login and returned transient auth details directly to the user without storing them. |
 | 2026-07-07 | TASK-2026-07-07-009-smoke-chatgpt-account2 | none | pending-commit | Attempted account2 ChatGPT smoke; request reached LiteLLM but failed with sanitized Responses parsing error. |
 | 2026-07-07 | TASK-2026-07-07-010-retry-chatgpt-account2-gpt55 | none | pending-commit | Retried account2 GPT-5.5 smoke; failure matched prior empty Responses item list parsing symptom. |
+| 2026-07-07 | TASK-2026-07-07-011-debug-fix-chatgpt-account2-empty-output | none | pending-commit | Fixed Responses streaming iterator recovery for ChatGPT empty completed output and validated account2 live smoke by hotpatch. |

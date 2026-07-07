@@ -27,6 +27,10 @@ from litellm.litellm_core_utils.llm_response_utils.response_metadata import (
 from litellm.litellm_core_utils.thread_pool_executor import executor
 from litellm.llms.base_llm.responses.transformation import BaseResponsesAPIConfig
 from litellm.responses.utils import ResponsesAPIRequestUtils
+from litellm.responses.sse_output_recovery import (
+    record_output_item_chunk,
+    record_output_text_chunk,
+)
 from litellm.types.llms.openai import ResponsesAPIStreamEvents
 from litellm.types.utils import CallTypes
 from litellm.utils import async_post_call_success_deployment_hook
@@ -78,6 +82,8 @@ class BaseResponsesAPIStreamingIterator:
         self._completed_response_cache_hit: Optional[bool] = None
         self._persist_completed_response_before_logging = True
         self._stream_created_time: float = time.time()
+        self._streamed_output_items: Dict[int, Dict[str, Any]] = {}
+        self._streamed_text_only_items: Dict[int, Dict[str, Any]] = {}
 
         # track request context for hooks
         self.litellm_metadata = litellm_metadata
@@ -100,6 +106,62 @@ class BaseResponsesAPIStreamingIterator:
         self._hidden_params["additional_headers"] = process_response_headers(
             self.response.headers or {}
         )  # GUARANTEE OPENAI HEADERS IN RESPONSE
+
+    @staticmethod
+    def _get_stream_event_field(stream_event: Any, field: str) -> Any:
+        if isinstance(stream_event, dict):
+            return stream_event.get(field)
+        return getattr(stream_event, field, None)
+
+    @classmethod
+    def _to_stream_output_value(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            return {key: cls._to_stream_output_value(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [cls._to_stream_output_value(item) for item in value]
+        model_dump = getattr(value, "model_dump", None)
+        if callable(model_dump):
+            return cls._to_stream_output_value(model_dump())
+        return value
+
+    def _record_completed_output_item(self, stream_event: Any) -> None:
+        event_type = self._get_stream_event_field(stream_event, "type")
+        if event_type == ResponsesAPIStreamEvents.OUTPUT_ITEM_DONE:
+            item = self._to_stream_output_value(self._get_stream_event_field(stream_event, "item"))
+            if not isinstance(item, dict):
+                return
+            record_output_item_chunk(
+                {
+                    "item": item,
+                    "output_index": self._get_stream_event_field(stream_event, "output_index"),
+                },
+                self._streamed_output_items,
+            )
+            return
+        if event_type == ResponsesAPIStreamEvents.OUTPUT_TEXT_DONE:
+            record_output_text_chunk(
+                {
+                    "text": self._get_stream_event_field(stream_event, "text"),
+                    "output_index": self._get_stream_event_field(stream_event, "output_index"),
+                    "content_index": self._get_stream_event_field(stream_event, "content_index"),
+                    "item_id": self._get_stream_event_field(stream_event, "item_id"),
+                    "annotations": self._to_stream_output_value(
+                        self._get_stream_event_field(stream_event, "annotations")
+                    ),
+                },
+                self._streamed_output_items,
+                self._streamed_text_only_items,
+            )
+
+    def _attach_streamed_output_to_completed_response(self, completed_chunk: Any) -> None:
+        response_obj = getattr(completed_chunk, "response", None)
+        if response_obj is None or getattr(response_obj, "output", None):
+            return
+        merged_items: Dict[int, Dict[str, Any]] = {**self._streamed_text_only_items}
+        merged_items.update(self._streamed_output_items)
+        if not merged_items:
+            return
+        setattr(response_obj, "output", [item for _, item in sorted(merged_items.items())])
 
     def _check_max_streaming_duration(self) -> None:
         """Raise litellm.Timeout if the stream has exceeded LITELLM_MAX_STREAMING_DURATION_SECONDS."""
@@ -218,6 +280,8 @@ class BaseResponsesAPIStreamingIterator:
                                     )
                                     setattr(item, "encrypted_content", wrapped_content)
 
+                self._record_completed_output_item(openai_responses_api_chunk)
+
                 # Store the completed response (also for incomplete/failed so logging still fires)
                 _chunk_type = getattr(openai_responses_api_chunk, "type", None)
                 openai_types = _get_openai_response_types()
@@ -226,6 +290,8 @@ class BaseResponsesAPIStreamingIterator:
                     openai_types.ResponsesAPIStreamEvents.RESPONSE_INCOMPLETE,
                     openai_types.ResponsesAPIStreamEvents.RESPONSE_FAILED,
                 ):
+                    if _chunk_type == openai_types.ResponsesAPIStreamEvents.RESPONSE_COMPLETED:
+                        self._attach_streamed_output_to_completed_response(openai_responses_api_chunk)
                     self.completed_response = openai_responses_api_chunk
                     # Add cost to usage object if include_cost_in_streaming_usage is True
                     if litellm.include_cost_in_streaming_usage and self.logging_obj is not None:

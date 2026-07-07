@@ -1,7 +1,7 @@
 # Current Tasks (Backlog)
 
 ## Active Discussions
-- (None)
+- DISCUSSION-004: Debug and fix ChatGPT account2 empty Responses output
 
 ## Active
 - (None)
