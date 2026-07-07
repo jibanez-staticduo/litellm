@@ -23,7 +23,7 @@ Deployed the known-good LiteLLM image to the Fedora stack at `/home/staticduo/do
 - AC-6: PASS. LazyMCP tooling status and memory server describe passed locally, and Fedora `/v1/mcp/tools` returned HTTP 200 using an in-session key read that did not print secret values. See `logs/05-lazymcp-smoke.log`.
 - AC-7: PASS. Evidence packet exists with `SUMMARY.md` and safe logs under `.staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/`.
 - AC-8: PASS. Task is moved to `.staticeng/tasks/done/`, and `.staticeng/tasks/current.md` is updated to no active/blocked tasks.
-- AC-9: PASS pending final commit/push. Closure artifacts are prepared for commit and push to `origin main` only.
+- AC-9: PASS. Closure artifacts were committed and pushed to `origin main` only in `6ccbc2e680`.
 - AC-10: PASS. Evidence logs contain only safe status, image, digest, and endpoint metadata. No `.env` contents, master keys, API keys, tokens, cookies, private keys, or session tokens are logged.
 
 ## Rollback Path
