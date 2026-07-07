@@ -1,0 +1,8 @@
+git status --short before closure commit:
+ M .staticeng/.config/runtime/discussions.json
+ M .staticeng/tasks/current.md
+ M .staticeng/tasks/done.md
+?? .staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/
+?? .staticeng/tasks/done/TASK-2026-07-07-003-deploy-litellm-fedora.md
+
+Only StaticEng runtime/task/evidence closure artifacts were intended for the deployment commit.

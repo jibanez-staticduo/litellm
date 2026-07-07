@@ -1,0 +1,7 @@
+staticeng_validate_result=fail
+
+StaticEng validation was run after closure artifacts were created. It failed on pre-existing repository-wide StaticEng/CodeMap debt unrelated to this Fedora deployment, including broken links in `.staticeng/codemap.yml` and missing codemap.yml files across many source directories.
+
+staticeng_repair dry-run was also run as required by StaticEng guidance. It proposed broad deterministic repairs, including creating many codemap.yml files across the repository, which was outside the deployment task scope and not applied.
+
+Deployment-specific evidence and task closure artifacts were still created and verified. No source code or product documentation changed.

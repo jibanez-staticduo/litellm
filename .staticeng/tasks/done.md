@@ -8,3 +8,4 @@
 | 2026-06-15 | TASK-2026-06-15-001-investigate-missing-memory-neo4j-tools | none | n/a | Investigated why OpenCode key could not see Memory Neo4j navigation tools in `/v1/mcp/tools`. |
 | 2026-06-29 | TASK-2026-06-29-001-fix-clickup-vercel-mcp | none | n/a | Restored ClickUp MCP discovery using Fedora opencode_defend auth and removed Vercel MCP from this LiteLLM instance. |
 | 2026-07-07 | TASK-2026-07-07-001-sync-upstream-v192-replay | none | sync-upstream-v1.92-replay | Replayed StaticDuo LiteLLM fork changes onto upstream v1.92 with targeted verification. |
+| 2026-07-07 | TASK-2026-07-07-003-deploy-litellm-fedora | none | closure-artifacts | Deployed LiteLLM cachecodecfix image to Fedora and verified health, readiness, liveliness, CacheCodec log absence, and MCP smoke. |

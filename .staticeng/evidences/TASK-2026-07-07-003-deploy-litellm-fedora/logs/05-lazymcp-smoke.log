@@ -1,0 +1,17 @@
+local_lazymcp_tooling_status_smoke=pass
+enabled=true
+mode=lazymcp
+visible_server_count=25
+visible_tool_count=535
+route_restricted=false
+memory_server_describe_smoke=pass
+
+fedora_mcp_smoke_started_at=2026-07-07T16:11:50+02:00
+fedora_mcp_endpoint=/v1/mcp/tools
+fedora_mcp_status=pass
+fedora_mcp_http_status=200
+fedora_mcp_response_bytes=195187
+fedora_mcp_contains_mcp_shape=True
+fedora_mcp_smoke_finished_at=2026-07-07T16:11:52+02:00
+
+No secret values were printed. The Fedora smoke read the master key inside the SSH session and only logged non-secret status/size metadata.
