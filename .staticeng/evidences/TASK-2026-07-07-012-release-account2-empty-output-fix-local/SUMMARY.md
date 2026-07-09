@@ -28,14 +28,14 @@ All smokes used `/v1/responses` with sanitized output only.
 - `chatgpt-account2/gpt-5.4`: HTTP 200, sanitized preview `pong`
 
 ## Logs
-- `logs/00-preflight.txt`
-- `logs/10-release.log`
-- `logs/20-post-deploy-health.txt`
-- `logs/30-readiness-liveliness.txt`
-- `logs/40-live-responses-smokes.txt`
-- `logs/41-responses-format-probe.txt`
-- `logs/42-responses-complex-input-format-probe.txt`
-- `logs/50-compose-ps.txt`
+- `.staticeng/evidences/TASK-2026-07-07-012-release-account2-empty-output-fix-local/logs/00-preflight.txt`
+- `.staticeng/evidences/TASK-2026-07-07-012-release-account2-empty-output-fix-local/logs/10-release.log`
+- `.staticeng/evidences/TASK-2026-07-07-012-release-account2-empty-output-fix-local/logs/20-post-deploy-health.txt`
+- `.staticeng/evidences/TASK-2026-07-07-012-release-account2-empty-output-fix-local/logs/30-readiness-liveliness.txt`
+- `.staticeng/evidences/TASK-2026-07-07-012-release-account2-empty-output-fix-local/logs/40-live-responses-smokes.txt`
+- `.staticeng/evidences/TASK-2026-07-07-012-release-account2-empty-output-fix-local/logs/41-responses-format-probe.txt`
+- `.staticeng/evidences/TASK-2026-07-07-012-release-account2-empty-output-fix-local/logs/42-responses-complex-input-format-probe.txt`
+- `.staticeng/evidences/TASK-2026-07-07-012-release-account2-empty-output-fix-local/logs/50-compose-ps.txt`
 
 ## Notes
 - The release was run from a temporary detached clean worktree under `/tmp/opencode/litellm-release-account2-empty-output-fix` to preserve unrelated changes in the main repository worktree; the temporary worktree was removed after release.

@@ -35,15 +35,15 @@ This path removed the database row and updated the in-memory router without a re
 - AC-2: Passed. `defend/gpt-5.5` remains present in direct DB inspection and `/model/info`.
 - AC-3: Passed. The required `chatgpt-account2/gpt-5.3-codex`, `chatgpt-account2/gpt-5.3-codex-spark`, `chatgpt-account2/gpt-5.4`, `chatgpt-account2/gpt-5.4-mini`, and `chatgpt-account2/gpt-5.5` rows remain present with `chatgpt_auth_profile = account2` in the database.
 - AC-4: Passed. LiteLLM readiness, liveliness, and Docker health checks passed after removal.
-- AC-5: Passed. Evidence packet exists at `.staticeng/evidences/TASK-2026-07-07-007-remove-defend-account2-model/` with this `SUMMARY.md` and safe logs under `logs/`.
+- AC-5: Passed. Evidence packet exists at `.staticeng/evidences/TASK-2026-07-07-007-remove-defend-account2-model/` with this `SUMMARY.md` and safe logs under `.staticeng/evidences/TASK-2026-07-07-007-remove-defend-account2-model/logs/`.
 
 ## Logs
 
-- `logs/pre_removal_db.log`
-- `logs/removal.log`
-- `logs/post_removal_db.log`
-- `logs/post_removal_api_health.log`
-- `logs/container_health.log`
+- `.staticeng/evidences/TASK-2026-07-07-007-remove-defend-account2-model/logs/pre_removal_db.log`
+- `.staticeng/evidences/TASK-2026-07-07-007-remove-defend-account2-model/logs/removal.log`
+- `.staticeng/evidences/TASK-2026-07-07-007-remove-defend-account2-model/logs/post_removal_db.log`
+- `.staticeng/evidences/TASK-2026-07-07-007-remove-defend-account2-model/logs/post_removal_api_health.log`
+- `.staticeng/evidences/TASK-2026-07-07-007-remove-defend-account2-model/logs/container_health.log`
 
 ## Notes and risks
 
