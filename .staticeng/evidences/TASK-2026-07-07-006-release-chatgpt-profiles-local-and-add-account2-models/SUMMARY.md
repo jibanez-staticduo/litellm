@@ -46,16 +46,16 @@ Added models:
 - AC-4: Passed. Six account2 deployments exist in the database and have `chatgpt_auth_profile = account2`.
 - AC-5: Passed. Account2 deployments are visible through `/model/info` after restart.
 - AC-6: Passed. No ChatGPT login or live ChatGPT invocation was performed; `account2.json` remains absent.
-- AC-7: Passed. Evidence packet includes this summary and safe logs under `logs/`.
+- AC-7: Passed. Evidence packet includes this summary and safe logs under `.staticeng/evidences/TASK-2026-07-07-006-release-chatgpt-profiles-local-and-add-account2-models/logs/`.
 
 ## Logs
 
-- `logs/preflight_and_rollback.log`
-- `logs/release_build_deploy.log`
-- `logs/container_image_and_auth_files.log`
-- `logs/db_mutation.log`
-- `logs/restart_after_db_mutation.log`
-- `logs/final_verification.log`
+- `.staticeng/evidences/TASK-2026-07-07-006-release-chatgpt-profiles-local-and-add-account2-models/logs/preflight_and_rollback.log`
+- `.staticeng/evidences/TASK-2026-07-07-006-release-chatgpt-profiles-local-and-add-account2-models/logs/release_build_deploy.log`
+- `.staticeng/evidences/TASK-2026-07-07-006-release-chatgpt-profiles-local-and-add-account2-models/logs/container_image_and_auth_files.log`
+- `.staticeng/evidences/TASK-2026-07-07-006-release-chatgpt-profiles-local-and-add-account2-models/logs/db_mutation.log`
+- `.staticeng/evidences/TASK-2026-07-07-006-release-chatgpt-profiles-local-and-add-account2-models/logs/restart_after_db_mutation.log`
+- `.staticeng/evidences/TASK-2026-07-07-006-release-chatgpt-profiles-local-and-add-account2-models/logs/final_verification.log`
 
 ## Notes and risks
 
