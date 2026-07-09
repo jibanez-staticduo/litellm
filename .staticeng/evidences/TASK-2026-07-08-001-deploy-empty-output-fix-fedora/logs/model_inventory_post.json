@@ -1,0 +1,127 @@
+{
+  "count": 9,
+  "deployment_ids": [
+    "38db2832-da1b-42ab-92b6-a1491580921e",
+    "b175303a-eb59-43e4-ad65-22c42a98c649",
+    "bec7946b-341a-4332-8de3-fa3c4bf99eb7",
+    "deepseek-v4-flash-fp8-mtp",
+    "ecefda30-2a35-42eb-94b0-35a3fce4eda8",
+    "minimax-m3-v0-nvfp4-reap50",
+    "qwen3-embedding-8b",
+    "qwen3-reranker-4b",
+    "qwen3.6-27b-aeon-ultimate-uncensored-multimodal-nvfp4-mtp"
+  ],
+  "deployments": [
+    {
+      "index": 5,
+      "litellm_params": {
+        "model": "chatgpt/gpt-5.3-codex"
+      },
+      "model_info": {
+        "id": "b175303a-eb59-43e4-ad65-22c42a98c649",
+        "mode": "responses"
+      },
+      "model_name": "chatgpt/gpt-5.3-codex"
+    },
+    {
+      "index": 2,
+      "litellm_params": {
+        "model": "chatgpt/gpt-5.4"
+      },
+      "model_info": {
+        "id": "38db2832-da1b-42ab-92b6-a1491580921e",
+        "mode": "responses"
+      },
+      "model_name": "chatgpt/gpt-5.4"
+    },
+    {
+      "index": 4,
+      "litellm_params": {
+        "model": "chatgpt/gpt-5.4-mini"
+      },
+      "model_info": {
+        "id": "ecefda30-2a35-42eb-94b0-35a3fce4eda8",
+        "mode": "responses"
+      },
+      "model_name": "chatgpt/gpt-5.4-mini"
+    },
+    {
+      "index": 6,
+      "litellm_params": {
+        "model": "chatgpt/gpt-5.5"
+      },
+      "model_info": {
+        "id": "bec7946b-341a-4332-8de3-fa3c4bf99eb7",
+        "mode": "responses"
+      },
+      "model_name": "chatgpt/gpt-5.5"
+    },
+    {
+      "index": 1,
+      "litellm_params": {
+        "model": "hosted_vllm/deepseek-ai/DeepSeek-V4-Flash"
+      },
+      "model_info": {
+        "id": "deepseek-v4-flash-fp8-mtp",
+        "mode": "chat"
+      },
+      "model_name": "deepseek-v4-flash-fp8-mtp"
+    },
+    {
+      "index": 0,
+      "litellm_params": {
+        "model": "hosted_vllm/sparkarena/Minimax-M3-v0-NVFP4-REAP50"
+      },
+      "model_info": {
+        "id": "minimax-m3-v0-nvfp4-reap50",
+        "mode": "chat"
+      },
+      "model_name": "minimax-m3-v0-nvfp4-reap50"
+    },
+    {
+      "index": 7,
+      "litellm_params": {
+        "model": "litellm_proxy/qwen3-embedding-8b"
+      },
+      "model_info": {
+        "id": "qwen3-embedding-8b",
+        "mode": "embedding"
+      },
+      "model_name": "qwen3-embedding-8b"
+    },
+    {
+      "index": 8,
+      "litellm_params": {
+        "model": "litellm_proxy/qwen3-reranker-4b"
+      },
+      "model_info": {
+        "id": "qwen3-reranker-4b",
+        "mode": "rerank"
+      },
+      "model_name": "qwen3-reranker-4b"
+    },
+    {
+      "index": 3,
+      "litellm_params": {
+        "model": "litellm_proxy/qwen3.6-27b-aeon-ultimate-uncensored-multimodal-nvfp4-mtp"
+      },
+      "model_info": {
+        "id": "qwen3.6-27b-aeon-ultimate-uncensored-multimodal-nvfp4-mtp",
+        "mode": "chat"
+      },
+      "model_name": "qwen3.6-27b-aeon-ultimate-uncensored-multimodal-nvfp4-mtp"
+    }
+  ],
+  "endpoint": "/model/info",
+  "model_name_counts": {
+    "chatgpt/gpt-5.3-codex": 1,
+    "chatgpt/gpt-5.4": 1,
+    "chatgpt/gpt-5.4-mini": 1,
+    "chatgpt/gpt-5.5": 1,
+    "deepseek-v4-flash-fp8-mtp": 1,
+    "minimax-m3-v0-nvfp4-reap50": 1,
+    "qwen3-embedding-8b": 1,
+    "qwen3-reranker-4b": 1,
+    "qwen3.6-27b-aeon-ultimate-uncensored-multimodal-nvfp4-mtp": 1
+  }
+}
