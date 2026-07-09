@@ -18,3 +18,4 @@
 | 2026-07-07 | TASK-2026-07-07-010-retry-chatgpt-account2-gpt55 | none | pending-commit | Retried account2 GPT-5.5 smoke; failure matched prior empty Responses item list parsing symptom. |
 | 2026-07-07 | TASK-2026-07-07-011-debug-fix-chatgpt-account2-empty-output | none | fe302bf88d | Fixed Responses streaming iterator recovery for ChatGPT empty completed output and validated account2 live smoke by hotpatch. |
 | 2026-07-08 | TASK-2026-07-07-012-release-account2-empty-output-fix-local | none | pending-commit | Built and deployed local/NAS LiteLLM empty output fix image, captured rollback, and verified health plus three Responses smokes. |
+| 2026-07-09 | TASK-2026-07-08-001-deploy-empty-output-fix-fedora | none | pending-commit | Deployed empty-output fix image to Fedora while preserving all 9 model deployments and verifying health/admin APIs. |

@@ -4,7 +4,7 @@
 - (None)
 
 ## Active
-- TASK-2026-07-08-001-deploy-empty-output-fix-fedora
+- (None)
 
 ## Todo
 - (None)

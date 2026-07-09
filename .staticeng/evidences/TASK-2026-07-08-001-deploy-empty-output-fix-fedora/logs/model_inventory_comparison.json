@@ -1,0 +1,39 @@
+{
+  "result": "pass",
+  "comparison_basis": [
+    "count",
+    "model_name_counts",
+    "deployment_ids"
+  ],
+  "pre_count": 9,
+  "post_count": 9,
+  "counts_match": true,
+  "model_name_counts_match": true,
+  "deployment_ids_match": true,
+  "lost_model_names": [],
+  "added_model_names": [],
+  "lost_deployment_ids": [],
+  "added_deployment_ids": [],
+  "matched_model_names": [
+    "chatgpt/gpt-5.3-codex",
+    "chatgpt/gpt-5.4",
+    "chatgpt/gpt-5.4-mini",
+    "chatgpt/gpt-5.5",
+    "deepseek-v4-flash-fp8-mtp",
+    "minimax-m3-v0-nvfp4-reap50",
+    "qwen3-embedding-8b",
+    "qwen3-reranker-4b",
+    "qwen3.6-27b-aeon-ultimate-uncensored-multimodal-nvfp4-mtp"
+  ],
+  "matched_deployment_ids": [
+    "38db2832-da1b-42ab-92b6-a1491580921e",
+    "b175303a-eb59-43e4-ad65-22c42a98c649",
+    "bec7946b-341a-4332-8de3-fa3c4bf99eb7",
+    "deepseek-v4-flash-fp8-mtp",
+    "ecefda30-2a35-42eb-94b0-35a3fce4eda8",
+    "minimax-m3-v0-nvfp4-reap50",
+    "qwen3-embedding-8b",
+    "qwen3-reranker-4b",
+    "qwen3.6-27b-aeon-ultimate-uncensored-multimodal-nvfp4-mtp"
+  ]
+}
