@@ -1,0 +1,74 @@
+{
+  "errors": [],
+  "instance": "local",
+  "method": "LiteLLM admin API POST /model/new",
+  "operations": [
+    {
+      "chatgpt_auth_profile": null,
+      "deployment_id": "11dbce7b-4e39-44f3-b1d8-1cb3c0c96c3e",
+      "model_name": "chatgpt/gpt-5.6-sol",
+      "provider_model": "chatgpt/gpt-5.6-sol",
+      "status": "created",
+      "template": "chatgpt/gpt-5.5"
+    },
+    {
+      "chatgpt_auth_profile": null,
+      "deployment_id": "0e6d94e2-f671-4468-869c-e69c4bfd31b9",
+      "model_name": "chatgpt/gpt-5.6-terra",
+      "provider_model": "chatgpt/gpt-5.6-terra",
+      "status": "created",
+      "template": "chatgpt/gpt-5.5"
+    },
+    {
+      "chatgpt_auth_profile": null,
+      "deployment_id": "de9b9b2a-c8b2-4677-b400-8e1565fdc5fc",
+      "model_name": "chatgpt/gpt-5.6-luna",
+      "provider_model": "chatgpt/gpt-5.6-luna",
+      "status": "created",
+      "template": "chatgpt/gpt-5.5"
+    },
+    {
+      "chatgpt_auth_profile": "account2",
+      "deployment_id": "59183bd1-161a-4545-b3e4-d4141f62a886",
+      "model_name": "chatgpt-account2/gpt-5.6-sol",
+      "provider_model": "chatgpt/gpt-5.6-sol",
+      "status": "created",
+      "template": "chatgpt-account2/gpt-5.5"
+    },
+    {
+      "chatgpt_auth_profile": "account2",
+      "deployment_id": "9fd9104f-8724-486c-823a-421adad55aa3",
+      "model_name": "chatgpt-account2/gpt-5.6-terra",
+      "provider_model": "chatgpt/gpt-5.6-terra",
+      "status": "created",
+      "template": "chatgpt-account2/gpt-5.5"
+    },
+    {
+      "chatgpt_auth_profile": "account2",
+      "deployment_id": "4366d087-59ed-4421-8ccd-ed692f5faf90",
+      "model_name": "chatgpt-account2/gpt-5.6-luna",
+      "provider_model": "chatgpt/gpt-5.6-luna",
+      "status": "created",
+      "template": "chatgpt-account2/gpt-5.5"
+    }
+  ],
+  "post_chatgpt_names": [
+    "chatgpt-account2/gpt-5.3-codex",
+    "chatgpt-account2/gpt-5.3-codex-spark",
+    "chatgpt-account2/gpt-5.4",
+    "chatgpt-account2/gpt-5.4-mini",
+    "chatgpt-account2/gpt-5.5",
+    "chatgpt-account2/gpt-5.6-luna",
+    "chatgpt-account2/gpt-5.6-sol",
+    "chatgpt-account2/gpt-5.6-terra",
+    "chatgpt/gpt-5.3-codex",
+    "chatgpt/gpt-5.3-codex-spark",
+    "chatgpt/gpt-5.4",
+    "chatgpt/gpt-5.4-mini",
+    "chatgpt/gpt-5.5",
+    "chatgpt/gpt-5.6-luna",
+    "chatgpt/gpt-5.6-sol",
+    "chatgpt/gpt-5.6-terra"
+  ],
+  "timestamp_utc": "2026-07-10T08:11:11.109514Z"
+}

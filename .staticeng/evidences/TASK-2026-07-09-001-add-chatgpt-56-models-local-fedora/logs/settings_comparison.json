@@ -1,0 +1,126 @@
+{
+  "fedora": [
+    {
+      "differences": {
+        "provider_model": [
+          "chatgpt/gpt-5.5",
+          "chatgpt/gpt-5.6-sol"
+        ]
+      },
+      "model_name": "chatgpt/gpt-5.6-sol",
+      "template": "chatgpt/gpt-5.5"
+    },
+    {
+      "differences": {
+        "provider_model": [
+          "chatgpt/gpt-5.5",
+          "chatgpt/gpt-5.6-sol"
+        ]
+      },
+      "model_name": "chatgpt-account2/gpt-5.6-sol",
+      "template": "chatgpt-account2/gpt-5.5"
+    },
+    {
+      "differences": {
+        "provider_model": [
+          "chatgpt/gpt-5.5",
+          "chatgpt/gpt-5.6-terra"
+        ]
+      },
+      "model_name": "chatgpt/gpt-5.6-terra",
+      "template": "chatgpt/gpt-5.5"
+    },
+    {
+      "differences": {
+        "provider_model": [
+          "chatgpt/gpt-5.5",
+          "chatgpt/gpt-5.6-terra"
+        ]
+      },
+      "model_name": "chatgpt-account2/gpt-5.6-terra",
+      "template": "chatgpt-account2/gpt-5.5"
+    },
+    {
+      "differences": {
+        "provider_model": [
+          "chatgpt/gpt-5.5",
+          "chatgpt/gpt-5.6-luna"
+        ]
+      },
+      "model_name": "chatgpt/gpt-5.6-luna",
+      "template": "chatgpt/gpt-5.5"
+    },
+    {
+      "differences": {
+        "provider_model": [
+          "chatgpt/gpt-5.5",
+          "chatgpt/gpt-5.6-luna"
+        ]
+      },
+      "model_name": "chatgpt-account2/gpt-5.6-luna",
+      "template": "chatgpt-account2/gpt-5.5"
+    }
+  ],
+  "local": [
+    {
+      "differences": {
+        "provider_model": [
+          "chatgpt/gpt-5.5",
+          "chatgpt/gpt-5.6-sol"
+        ]
+      },
+      "model_name": "chatgpt/gpt-5.6-sol",
+      "template": "chatgpt/gpt-5.5"
+    },
+    {
+      "differences": {
+        "provider_model": [
+          "chatgpt/gpt-5.5",
+          "chatgpt/gpt-5.6-sol"
+        ]
+      },
+      "model_name": "chatgpt-account2/gpt-5.6-sol",
+      "template": "chatgpt-account2/gpt-5.5"
+    },
+    {
+      "differences": {
+        "provider_model": [
+          "chatgpt/gpt-5.5",
+          "chatgpt/gpt-5.6-terra"
+        ]
+      },
+      "model_name": "chatgpt/gpt-5.6-terra",
+      "template": "chatgpt/gpt-5.5"
+    },
+    {
+      "differences": {
+        "provider_model": [
+          "chatgpt/gpt-5.5",
+          "chatgpt/gpt-5.6-terra"
+        ]
+      },
+      "model_name": "chatgpt-account2/gpt-5.6-terra",
+      "template": "chatgpt-account2/gpt-5.5"
+    },
+    {
+      "differences": {
+        "provider_model": [
+          "chatgpt/gpt-5.5",
+          "chatgpt/gpt-5.6-luna"
+        ]
+      },
+      "model_name": "chatgpt/gpt-5.6-luna",
+      "template": "chatgpt/gpt-5.5"
+    },
+    {
+      "differences": {
+        "provider_model": [
+          "chatgpt/gpt-5.5",
+          "chatgpt/gpt-5.6-luna"
+        ]
+      },
+      "model_name": "chatgpt-account2/gpt-5.6-luna",
+      "template": "chatgpt-account2/gpt-5.5"
+    }
+  ]
+}

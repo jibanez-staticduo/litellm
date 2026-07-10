@@ -1,0 +1,104 @@
+{
+  "errors": [],
+  "instance": "fedora",
+  "method": "LiteLLM admin API POST /model/new",
+  "operations": [
+    {
+      "chatgpt_auth_profile": null,
+      "deployment_id": "9007ab1c-7948-4f63-a1b9-8874f678aabf",
+      "model_name": "chatgpt/gpt-5.6-sol",
+      "provider_model": "chatgpt/gpt-5.6-sol",
+      "status": "created",
+      "template": "chatgpt/gpt-5.5"
+    },
+    {
+      "chatgpt_auth_profile": null,
+      "deployment_id": "47b69a87-b626-40ea-84d4-b9496172bed0",
+      "model_name": "chatgpt/gpt-5.6-terra",
+      "provider_model": "chatgpt/gpt-5.6-terra",
+      "status": "created",
+      "template": "chatgpt/gpt-5.5"
+    },
+    {
+      "chatgpt_auth_profile": null,
+      "deployment_id": "00267b5a-b158-4065-a847-cdad6eca6ee5",
+      "model_name": "chatgpt/gpt-5.6-luna",
+      "provider_model": "chatgpt/gpt-5.6-luna",
+      "status": "created",
+      "template": "chatgpt/gpt-5.5"
+    },
+    {
+      "chatgpt_auth_profile": "account2",
+      "deployment_id": "8895fb7d-267f-48f1-a9ad-3a1d353312a5",
+      "model_name": "chatgpt-account2/gpt-5.3-codex",
+      "provider_model": "chatgpt/gpt-5.3-codex",
+      "status": "created",
+      "template": "chatgpt/gpt-5.3-codex"
+    },
+    {
+      "chatgpt_auth_profile": "account2",
+      "deployment_id": "72571693-87ff-47cf-8727-5ccee7e601b0",
+      "model_name": "chatgpt-account2/gpt-5.4",
+      "provider_model": "chatgpt/gpt-5.4",
+      "status": "created",
+      "template": "chatgpt/gpt-5.4"
+    },
+    {
+      "chatgpt_auth_profile": "account2",
+      "deployment_id": "4bf47616-18a7-40dc-8098-7044951c8816",
+      "model_name": "chatgpt-account2/gpt-5.4-mini",
+      "provider_model": "chatgpt/gpt-5.4-mini",
+      "status": "created",
+      "template": "chatgpt/gpt-5.4-mini"
+    },
+    {
+      "chatgpt_auth_profile": "account2",
+      "deployment_id": "b10b00a9-d61b-4b07-9041-be4be2f2be94",
+      "model_name": "chatgpt-account2/gpt-5.5",
+      "provider_model": "chatgpt/gpt-5.5",
+      "status": "created",
+      "template": "chatgpt/gpt-5.5"
+    },
+    {
+      "chatgpt_auth_profile": "account2",
+      "deployment_id": "379612d9-8932-478f-b55e-c18d01d98461",
+      "model_name": "chatgpt-account2/gpt-5.6-luna",
+      "provider_model": "chatgpt/gpt-5.6-luna",
+      "status": "created",
+      "template": "chatgpt-account2/gpt-5.5"
+    },
+    {
+      "chatgpt_auth_profile": "account2",
+      "deployment_id": "01f0b5f0-bfa5-41e2-9588-432b7075800b",
+      "model_name": "chatgpt-account2/gpt-5.6-sol",
+      "provider_model": "chatgpt/gpt-5.6-sol",
+      "status": "created",
+      "template": "chatgpt-account2/gpt-5.5"
+    },
+    {
+      "chatgpt_auth_profile": "account2",
+      "deployment_id": "ef9e15b5-c976-4f30-83cb-1770f739c35b",
+      "model_name": "chatgpt-account2/gpt-5.6-terra",
+      "provider_model": "chatgpt/gpt-5.6-terra",
+      "status": "created",
+      "template": "chatgpt-account2/gpt-5.5"
+    }
+  ],
+  "post_chatgpt_names": [
+    "chatgpt-account2/gpt-5.3-codex",
+    "chatgpt-account2/gpt-5.4",
+    "chatgpt-account2/gpt-5.4-mini",
+    "chatgpt-account2/gpt-5.5",
+    "chatgpt-account2/gpt-5.6-luna",
+    "chatgpt-account2/gpt-5.6-sol",
+    "chatgpt-account2/gpt-5.6-terra",
+    "chatgpt/gpt-5.3-codex",
+    "chatgpt/gpt-5.4",
+    "chatgpt/gpt-5.4-mini",
+    "chatgpt/gpt-5.5",
+    "chatgpt/gpt-5.6-luna",
+    "chatgpt/gpt-5.6-sol",
+    "chatgpt/gpt-5.6-terra"
+  ],
+  "timestamp_utc": "2026-07-10T08:11:39.470245Z"
+}

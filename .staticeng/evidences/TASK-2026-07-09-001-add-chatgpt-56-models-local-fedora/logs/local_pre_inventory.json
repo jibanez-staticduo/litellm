@@ -1,0 +1,207 @@
+{
+  "chatgpt_count": 10,
+  "chatgpt_models": [
+    {
+      "access_via_team_ids": [
+        "49cfd117-ef74-4eec-b26e-2d2ff083f5be",
+        "b3362ae8-66d9-4938-84e4-da7f7419f1b5"
+      ],
+      "blocked": null,
+      "chatgpt_auth_profile": "********",
+      "deployment_id": "94126f16-fdbb-48e7-9586-b8a1a68719d5",
+      "direct_access": true,
+      "disable_background_health_check": true,
+      "input_cost_per_token": null,
+      "max_input_tokens": 262144,
+      "max_output_tokens": 128000,
+      "mode": "responses",
+      "model_name": "chatgpt-account2/gpt-5.3-codex",
+      "output_cost_per_token": null,
+      "provider": "chatgpt",
+      "provider_model": "chatgpt/gpt-5.3-codex",
+      "settings_hash": "d47c5c1c43e8d521"
+    },
+    {
+      "access_via_team_ids": [
+        "49cfd117-ef74-4eec-b26e-2d2ff083f5be",
+        "b3362ae8-66d9-4938-84e4-da7f7419f1b5"
+      ],
+      "blocked": null,
+      "chatgpt_auth_profile": "********",
+      "deployment_id": "6bee3424-dbec-4584-908d-2ca491a0fa4a",
+      "direct_access": true,
+      "disable_background_health_check": true,
+      "input_cost_per_token": 1.75e-06,
+      "max_input_tokens": 128000,
+      "max_output_tokens": 32000,
+      "mode": "responses",
+      "model_name": "chatgpt-account2/gpt-5.3-codex-spark",
+      "output_cost_per_token": 1.4e-05,
+      "provider": "chatgpt",
+      "provider_model": "chatgpt/gpt-5.3-codex-spark",
+      "settings_hash": "50b0977f1977619e"
+    },
+    {
+      "access_via_team_ids": [
+        "49cfd117-ef74-4eec-b26e-2d2ff083f5be",
+        "b3362ae8-66d9-4938-84e4-da7f7419f1b5"
+      ],
+      "blocked": null,
+      "chatgpt_auth_profile": "********",
+      "deployment_id": "bca138b1-8664-4c94-b862-1c793eeccde6",
+      "direct_access": true,
+      "disable_background_health_check": true,
+      "input_cost_per_token": 2.5e-06,
+      "max_input_tokens": 1050000,
+      "max_output_tokens": 128000,
+      "mode": "responses",
+      "model_name": "chatgpt-account2/gpt-5.4",
+      "output_cost_per_token": 1.5e-05,
+      "provider": "chatgpt",
+      "provider_model": "chatgpt/gpt-5.4",
+      "settings_hash": "2d6ba586b170669e"
+    },
+    {
+      "access_via_team_ids": [
+        "49cfd117-ef74-4eec-b26e-2d2ff083f5be",
+        "b3362ae8-66d9-4938-84e4-da7f7419f1b5"
+      ],
+      "blocked": null,
+      "chatgpt_auth_profile": "********",
+      "deployment_id": "249910e2-fa44-49f9-941c-f9bbd1744c6e",
+      "direct_access": true,
+      "disable_background_health_check": true,
+      "input_cost_per_token": 7.5e-07,
+      "max_input_tokens": null,
+      "max_output_tokens": null,
+      "mode": "responses",
+      "model_name": "chatgpt-account2/gpt-5.4-mini",
+      "output_cost_per_token": 4.5e-06,
+      "provider": "chatgpt",
+      "provider_model": "chatgpt/gpt-5.4-mini",
+      "settings_hash": "1d3bd7a9f63c94c3"
+    },
+    {
+      "access_via_team_ids": [
+        "49cfd117-ef74-4eec-b26e-2d2ff083f5be",
+        "b3362ae8-66d9-4938-84e4-da7f7419f1b5"
+      ],
+      "blocked": null,
+      "chatgpt_auth_profile": "********",
+      "deployment_id": "af3805bc-aef2-4a0f-ba13-9e73b90698d3",
+      "direct_access": true,
+      "disable_background_health_check": true,
+      "input_cost_per_token": 5e-06,
+      "max_input_tokens": 1050000,
+      "max_output_tokens": 128000,
+      "mode": "responses",
+      "model_name": "chatgpt-account2/gpt-5.5",
+      "output_cost_per_token": 3e-05,
+      "provider": "chatgpt",
+      "provider_model": "chatgpt/gpt-5.5",
+      "settings_hash": "3172c69a5498db25"
+    },
+    {
+      "access_via_team_ids": [
+        "49cfd117-ef74-4eec-b26e-2d2ff083f5be",
+        "b3362ae8-66d9-4938-84e4-da7f7419f1b5"
+      ],
+      "blocked": null,
+      "chatgpt_auth_profile": null,
+      "deployment_id": "72c9e569-3317-4412-ba67-566e172b295d",
+      "direct_access": true,
+      "disable_background_health_check": true,
+      "input_cost_per_token": null,
+      "max_input_tokens": 262144,
+      "max_output_tokens": 128000,
+      "mode": "responses",
+      "model_name": "chatgpt/gpt-5.3-codex",
+      "output_cost_per_token": null,
+      "provider": "chatgpt",
+      "provider_model": "chatgpt/gpt-5.3-codex",
+      "settings_hash": "0c9220b42df3b7c0"
+    },
+    {
+      "access_via_team_ids": [
+        "49cfd117-ef74-4eec-b26e-2d2ff083f5be",
+        "b3362ae8-66d9-4938-84e4-da7f7419f1b5"
+      ],
+      "blocked": null,
+      "chatgpt_auth_profile": null,
+      "deployment_id": "847df783-5d2a-44a7-afdd-d4eb2f1dec5a",
+      "direct_access": true,
+      "disable_background_health_check": true,
+      "input_cost_per_token": 1.75e-06,
+      "max_input_tokens": 128000,
+      "max_output_tokens": 32000,
+      "mode": "responses",
+      "model_name": "chatgpt/gpt-5.3-codex-spark",
+      "output_cost_per_token": 1.4e-05,
+      "provider": "chatgpt",
+      "provider_model": "chatgpt/gpt-5.3-codex-spark",
+      "settings_hash": "840d83545152cdd9"
+    },
+    {
+      "access_via_team_ids": [
+        "49cfd117-ef74-4eec-b26e-2d2ff083f5be",
+        "b3362ae8-66d9-4938-84e4-da7f7419f1b5"
+      ],
+      "blocked": null,
+      "chatgpt_auth_profile": null,
+      "deployment_id": "c836fdfa-f8a2-4757-a620-e4aaeb17cbd5",
+      "direct_access": true,
+      "disable_background_health_check": true,
+      "input_cost_per_token": 2.5e-06,
+      "max_input_tokens": 1050000,
+      "max_output_tokens": 128000,
+      "mode": "responses",
+      "model_name": "chatgpt/gpt-5.4",
+      "output_cost_per_token": 1.5e-05,
+      "provider": "chatgpt",
+      "provider_model": "chatgpt/gpt-5.4",
+      "settings_hash": "fad6cc09e22cc017"
+    },
+    {
+      "access_via_team_ids": [
+        "49cfd117-ef74-4eec-b26e-2d2ff083f5be",
+        "b3362ae8-66d9-4938-84e4-da7f7419f1b5"
+      ],
+      "blocked": null,
+      "chatgpt_auth_profile": null,
+      "deployment_id": "13ddb368-7b4e-450c-988c-fb1beeab13e2",
+      "direct_access": true,
+      "disable_background_health_check": true,
+      "input_cost_per_token": 7.5e-07,
+      "max_input_tokens": null,
+      "max_output_tokens": null,
+      "mode": "responses",
+      "model_name": "chatgpt/gpt-5.4-mini",
+      "output_cost_per_token": 4.5e-06,
+      "provider": "chatgpt",
+      "provider_model": "chatgpt/gpt-5.4-mini",
+      "settings_hash": "ec9963ff0d45572f"
+    },
+    {
+      "access_via_team_ids": [
+        "49cfd117-ef74-4eec-b26e-2d2ff083f5be",
+        "b3362ae8-66d9-4938-84e4-da7f7419f1b5"
+      ],
+      "blocked": null,
+      "chatgpt_auth_profile": null,
+      "deployment_id": "a3f32da9-4633-445e-af57-2c85faad3c4a",
+      "direct_access": true,
+      "disable_background_health_check": true,
+      "input_cost_per_token": 5e-06,
+      "max_input_tokens": 1050000,
+      "max_output_tokens": 128000,
+      "mode": "responses",
+      "model_name": "chatgpt/gpt-5.5",
+      "output_cost_per_token": 3e-05,
+      "provider": "chatgpt",
+      "provider_model": "chatgpt/gpt-5.5",
+      "settings_hash": "0e000700cef94368"
+    }
+  ],
+  "instance": "local",
+  "total_model_info_count": 20
+}

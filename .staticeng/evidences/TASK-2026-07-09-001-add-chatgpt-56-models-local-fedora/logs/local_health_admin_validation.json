@@ -1,0 +1,36 @@
+{
+  "instance": "local",
+  "timestamp_utc": "2026-07-10T08:12:37.877195Z",
+  "validation": {
+    "/health/readiness": {
+      "bytes": 37,
+      "http_status": 200
+    },
+    "/model/info": {
+      "bytes": 116622,
+      "chatgpt_count": 16,
+      "http_status": 200,
+      "required_present": {
+        "chatgpt-account2/gpt-5.6-luna": true,
+        "chatgpt-account2/gpt-5.6-sol": true,
+        "chatgpt-account2/gpt-5.6-terra": true,
+        "chatgpt/gpt-5.6-luna": true,
+        "chatgpt/gpt-5.6-sol": true,
+        "chatgpt/gpt-5.6-terra": true
+      }
+    },
+    "/v1/models": {
+      "bytes": 3302,
+      "chatgpt_count": 16,
+      "http_status": 200,
+      "required_present": {
+        "chatgpt-account2/gpt-5.6-luna": true,
+        "chatgpt-account2/gpt-5.6-sol": true,
+        "chatgpt-account2/gpt-5.6-terra": true,
+        "chatgpt/gpt-5.6-luna": true,
+        "chatgpt/gpt-5.6-sol": true,
+        "chatgpt/gpt-5.6-terra": true
+      }
+    }
+  }
+}
