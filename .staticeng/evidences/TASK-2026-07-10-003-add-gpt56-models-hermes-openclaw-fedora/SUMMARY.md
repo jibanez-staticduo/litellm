@@ -26,7 +26,7 @@ Fedora Hermes and OpenClaw now expose all six requested LiteLLM-backed GPT-5.6 m
 - AC-6 PASS: YAML/JSON parse, `hermes config check`, `hermes doctor`, `openclaw config validate`, native gateway status, and systemd health checks passed
 - AC-7 PASS: backups and rollback commands are recorded without config contents
 - AC-8 PASS: no account2 authentication or completion/inference calls were performed
-- AC-9 PASS: this evidence packet contains `SUMMARY.md` and sanitized `logs/`
+- AC-9 PASS: this evidence packet contains `SUMMARY.md` and sanitized `.staticeng/evidences/TASK-2026-07-10-003-add-gpt56-models-hermes-openclaw-fedora/logs/`
 
 ## Operational Details
 
@@ -60,7 +60,7 @@ Hermes doctor continues to report pre-existing non-blocking setup/provider warni
 
 ## Rollback
 
-Exact commands are in `logs/rollback.txt`. Restore each mode-`0600` backup over its config, validate, restart the corresponding user service, and run the native gateway status command.
+Exact commands are in `.staticeng/evidences/TASK-2026-07-10-003-add-gpt56-models-hermes-openclaw-fedora/logs/rollback.txt`. Restore each mode-`0600` backup over its config, validate, restart the corresponding user service, and run the native gateway status command.
 
 ## Recommended Next Step
 
