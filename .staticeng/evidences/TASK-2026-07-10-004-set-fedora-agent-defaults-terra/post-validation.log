@@ -1,0 +1,16 @@
+YAML parse: pass
+JSON parse: pass
+Hermes config check: pass (exit 0)
+Hermes doctor: pass (exit 0)
+Hermes doctor notes: config version 23 current; gateway service checks passed; optional provider/tool configuration warnings remain
+OpenClaw config validate: pass (exit 0)
+Hermes default: chatgpt/gpt-5.6-terra
+OpenClaw primary: litellm/chatgpt/gpt-5.6-terra
+Hermes unrelated settings preserved: true
+OpenClaw unrelated settings preserved: true
+OpenClaw catalog preserved: true
+OpenClaw fallbacks preserved: true
+OpenClaw providers: 2 before, 2 after
+OpenClaw catalog models: 19 before, 19 after
+Hermes config mode: 0600
+OpenClaw config mode: 0600
