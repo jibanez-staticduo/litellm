@@ -1,0 +1,22 @@
+Task: TASK-2026-07-10-003-add-gpt56-models-hermes-openclaw-fedora
+Host: fedora
+Inspection was restricted to non-secret fields and service status.
+
+Hermes config: /home/staticduo/.hermes/config.yaml
+Hermes provider: openclaw-litellm
+Hermes base URL: https://litellm.staticduo.com/v1
+Hermes default: chatgpt/gpt-5.5
+Hermes provider model count: 18
+Hermes gateway: active/running
+Hermes native config check before update: exit 0
+Hermes doctor before update: exit 0 with pre-existing non-blocking warnings
+
+OpenClaw config: /home/staticduo/.openclaw/openclaw.json
+OpenClaw provider: litellm
+OpenClaw base URL: https://litellm.staticduo.com/v1
+OpenClaw default: litellm/chatgpt/gpt-5.5
+OpenClaw provider catalog count: 12
+OpenClaw selectable catalog count: 18
+OpenClaw gateway: active/running
+
+No API key values, auth data, environment dumps, full configs, sessions, or user messages were inspected or recorded.
