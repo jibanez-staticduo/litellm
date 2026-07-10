@@ -1,0 +1,83 @@
+{
+  "chatgpt_count": 4,
+  "chatgpt_models": [
+    {
+      "access_via_team_ids": [
+        "e16bb1eb-e81c-4ac4-9a66-0b0e2d3036c6"
+      ],
+      "blocked": null,
+      "chatgpt_auth_profile": null,
+      "deployment_id": "b175303a-eb59-43e4-ad65-22c42a98c649",
+      "direct_access": true,
+      "disable_background_health_check": true,
+      "input_cost_per_token": null,
+      "max_input_tokens": 262144,
+      "max_output_tokens": 128000,
+      "mode": "responses",
+      "model_name": "chatgpt/gpt-5.3-codex",
+      "output_cost_per_token": null,
+      "provider": "chatgpt",
+      "provider_model": "chatgpt/gpt-5.3-codex",
+      "settings_hash": "29e3311e17a7960b"
+    },
+    {
+      "access_via_team_ids": [
+        "e16bb1eb-e81c-4ac4-9a66-0b0e2d3036c6"
+      ],
+      "blocked": null,
+      "chatgpt_auth_profile": null,
+      "deployment_id": "38db2832-da1b-42ab-92b6-a1491580921e",
+      "direct_access": true,
+      "disable_background_health_check": true,
+      "input_cost_per_token": 2.5e-06,
+      "max_input_tokens": 1050000,
+      "max_output_tokens": 128000,
+      "mode": "responses",
+      "model_name": "chatgpt/gpt-5.4",
+      "output_cost_per_token": 1.5e-05,
+      "provider": "chatgpt",
+      "provider_model": "chatgpt/gpt-5.4",
+      "settings_hash": "59b5bc08762d3030"
+    },
+    {
+      "access_via_team_ids": [
+        "e16bb1eb-e81c-4ac4-9a66-0b0e2d3036c6"
+      ],
+      "blocked": null,
+      "chatgpt_auth_profile": null,
+      "deployment_id": "ecefda30-2a35-42eb-94b0-35a3fce4eda8",
+      "direct_access": true,
+      "disable_background_health_check": true,
+      "input_cost_per_token": 7.5e-07,
+      "max_input_tokens": null,
+      "max_output_tokens": null,
+      "mode": "responses",
+      "model_name": "chatgpt/gpt-5.4-mini",
+      "output_cost_per_token": 4.5e-06,
+      "provider": "chatgpt",
+      "provider_model": "chatgpt/gpt-5.4-mini",
+      "settings_hash": "b0e8ecaed8e223b3"
+    },
+    {
+      "access_via_team_ids": [
+        "e16bb1eb-e81c-4ac4-9a66-0b0e2d3036c6"
+      ],
+      "blocked": null,
+      "chatgpt_auth_profile": null,
+      "deployment_id": "bec7946b-341a-4332-8de3-fa3c4bf99eb7",
+      "direct_access": true,
+      "disable_background_health_check": true,
+      "input_cost_per_token": 5e-06,
+      "max_input_tokens": 1050000,
+      "max_output_tokens": 128000,
+      "mode": "responses",
+      "model_name": "chatgpt/gpt-5.5",
+      "output_cost_per_token": 3e-05,
+      "provider": "chatgpt",
+      "provider_model": "chatgpt/gpt-5.5",
+      "settings_hash": "bfeb60645b543199"
+    }
+  ],
+  "instance": "fedora",
+  "total_model_info_count": 9
+}
