@@ -1,0 +1,17 @@
+Rollback commands for Fedora
+
+Hermes:
+cp -p /home/staticduo/.hermes/config.yaml.bak.TASK-2026-07-10-003.20260710T152203Z /home/staticduo/.hermes/config.yaml
+chmod 600 /home/staticduo/.hermes/config.yaml
+hermes config check
+systemctl --user restart hermes-gateway.service
+hermes gateway status
+
+OpenClaw:
+cp -p /home/staticduo/.openclaw/openclaw.json.bak.TASK-2026-07-10-003.20260710T152203Z /home/staticduo/.openclaw/openclaw.json
+chmod 600 /home/staticduo/.openclaw/openclaw.json
+openclaw config validate
+systemctl --user restart openclaw-gateway.service
+openclaw gateway status
+
+Run these commands on SSH host alias `fedora`. The backup files remain on Fedora with mode 0600.

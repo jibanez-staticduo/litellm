@@ -1,0 +1,48 @@
+Task: TASK-2026-07-10-003-add-gpt56-models-hermes-openclaw-fedora
+Host: fedora
+
+Backups (mode 0600):
+/home/staticduo/.hermes/config.yaml.bak.TASK-2026-07-10-003.20260710T152203Z
+/home/staticduo/.openclaw/openclaw.json.bak.TASK-2026-07-10-003.20260710T152203Z
+
+Target model IDs present in both catalogs:
+chatgpt/gpt-5.6-sol
+chatgpt/gpt-5.6-terra
+chatgpt/gpt-5.6-luna
+chatgpt-account2/gpt-5.6-sol
+chatgpt-account2/gpt-5.6-terra
+chatgpt-account2/gpt-5.6-luna
+
+Hermes:
+YAML parse: PASS
+Native `hermes config check`: PASS (exit 0)
+Native `hermes doctor`: PASS (exit 0; pre-existing non-blocking setup/provider warnings remain)
+Base URL: https://litellm.staticduo.com/v1
+Default preserved: chatgpt/gpt-5.5
+Provider model count: 18 -> 24
+All six targets present: PASS
+Pre-existing model set is a subset of post-update set: PASS
+Config mode: 0600
+
+OpenClaw:
+JSON parse: PASS
+Native `openclaw config validate`: PASS (exit 0)
+Base URL: https://litellm.staticduo.com/v1
+Default preserved: litellm/chatgpt/gpt-5.5
+Provider catalog count: 12 -> 18
+Selectable catalog count: 18 -> 24
+All six targets present in provider catalog: PASS
+All six targets selectable as `litellm/<model-id>`: PASS
+Pre-existing provider and selectable sets are subsets of post-update sets: PASS
+Config mode: 0600
+
+Restart and health:
+Restart occurred: yes, to load catalog changes in both long-running gateways
+Hermes gateway PID changed: true
+OpenClaw gateway PID changed: true
+Hermes systemd state after restart: active/running
+OpenClaw systemd state after restart: active/running
+Native `hermes gateway status`: PASS (exit 0)
+Native `openclaw gateway status`: PASS (exit 0)
+
+No authentication or completion/inference calls were performed.
