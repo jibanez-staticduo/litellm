@@ -20,3 +20,4 @@
 | 2026-07-08 | TASK-2026-07-07-012-release-account2-empty-output-fix-local | none | pending-commit | Built and deployed local/NAS LiteLLM empty output fix image, captured rollback, and verified health plus three Responses smokes. |
 | 2026-07-09 | TASK-2026-07-08-001-deploy-empty-output-fix-fedora | none | pending-commit | Deployed empty-output fix image to Fedora while preserving all 9 model deployments and verifying health/admin APIs. |
 | 2026-07-10 | TASK-2026-07-09-001-add-chatgpt-56-models-local-fedora | none | pending-commit | Added ChatGPT gpt-5.6 sol/terra/luna aliases locally and on Fedora, including account2 model registrations for later auth. |
+| 2026-07-10 | TASK-2026-07-10-001-set-chatgpt-56-pricing | none | pending-commit | Set official GPT-5.6 Sol/Terra/Luna pricing on local/NAS and Fedora default/account2 aliases. |
