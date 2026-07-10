@@ -38,9 +38,9 @@ Only these pricing fields were updated through `/model/update`: `litellm_params.
 - fedora: non-pricing sanitized `/model/info` fields preserved for all target aliases excluding the two cost fields: PASS
 
 ## Logs
-- `logs/local_update_verify.json`
-- `logs/fedora_update_verify.json`
-- `logs/combined_verification.json`
+- `.staticeng/evidences/TASK-2026-07-10-001-set-chatgpt-56-pricing/logs/local_update_verify.json`
+- `.staticeng/evidences/TASK-2026-07-10-001-set-chatgpt-56-pricing/logs/fedora_update_verify.json`
+- `.staticeng/evidences/TASK-2026-07-10-001-set-chatgpt-56-pricing/logs/combined_verification.json`
 
 ## Open Risks
 - No completion or ChatGPT auth calls were run by request, so this validates admin metadata and health only.

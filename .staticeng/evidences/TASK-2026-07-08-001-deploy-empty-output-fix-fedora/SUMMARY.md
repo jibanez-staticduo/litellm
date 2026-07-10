@@ -14,22 +14,22 @@ Fedora LiteLLM was deployed to `docker.staticduo.com/litellm:staticduo-gpt-lazym
 
 ## Acceptance criteria coverage
 
-- AC-1: Passed. Previous image and digest captured in `logs/preflight.md`
-- AC-2: Passed. Secret-safe pre-deploy inventory captured in `logs/model_inventory_pre.json`
-- AC-3: Passed. Running container uses the target image and digest; see `logs/health_and_smoke.md`
-- AC-4: Passed. Docker health is healthy; `/health/liveliness` and `/health/readiness` returned HTTP 200; see `logs/health_and_smoke.md`
-- AC-5: Passed. Pre and post inventories both have 9 deployments. Model name counts and deployment IDs match exactly; see `logs/model_inventory_comparison.json`
+- AC-1: Passed. Previous image and digest captured in `.staticeng/evidences/TASK-2026-07-08-001-deploy-empty-output-fix-fedora/logs/preflight.md`
+- AC-2: Passed. Secret-safe pre-deploy inventory captured in `.staticeng/evidences/TASK-2026-07-08-001-deploy-empty-output-fix-fedora/logs/model_inventory_pre.json`
+- AC-3: Passed. Running container uses the target image and digest; see `.staticeng/evidences/TASK-2026-07-08-001-deploy-empty-output-fix-fedora/logs/health_and_smoke.md`
+- AC-4: Passed. Docker health is healthy; `/health/liveliness` and `/health/readiness` returned HTTP 200; see `.staticeng/evidences/TASK-2026-07-08-001-deploy-empty-output-fix-fedora/logs/health_and_smoke.md`
+- AC-5: Passed. Pre and post inventories both have 9 deployments. Model name counts and deployment IDs match exactly; see `.staticeng/evidences/TASK-2026-07-08-001-deploy-empty-output-fix-fedora/logs/model_inventory_comparison.json`
 - AC-6: Passed. Admin/API validation succeeded: `/model/info` returned HTTP 200 with 9 entries and `/v1/models` returned HTTP 200 with 9 entries. No paid/provider completion smoke was run because admin and model-info validation covered the deploy without sending traffic to external or private model providers
-- AC-7: Passed. Evidence packet contains this summary and logs under `logs/`
+- AC-7: Passed. Evidence packet contains this summary and logs under `.staticeng/evidences/TASK-2026-07-08-001-deploy-empty-output-fix-fedora/logs/`
 
 ## Files
 
-- `logs/preflight.md`
-- `logs/deploy.md`
-- `logs/health_and_smoke.md`
-- `logs/model_inventory_pre.json`
-- `logs/model_inventory_post.json`
-- `logs/model_inventory_comparison.json`
+- `.staticeng/evidences/TASK-2026-07-08-001-deploy-empty-output-fix-fedora/logs/preflight.md`
+- `.staticeng/evidences/TASK-2026-07-08-001-deploy-empty-output-fix-fedora/logs/deploy.md`
+- `.staticeng/evidences/TASK-2026-07-08-001-deploy-empty-output-fix-fedora/logs/health_and_smoke.md`
+- `.staticeng/evidences/TASK-2026-07-08-001-deploy-empty-output-fix-fedora/logs/model_inventory_pre.json`
+- `.staticeng/evidences/TASK-2026-07-08-001-deploy-empty-output-fix-fedora/logs/model_inventory_post.json`
+- `.staticeng/evidences/TASK-2026-07-08-001-deploy-empty-output-fix-fedora/logs/model_inventory_comparison.json`
 
 ## Secret safety
 
