@@ -1,0 +1,7 @@
+Hermes restart: pass (exit 0)
+OpenClaw restart: pass (exit 0)
+Hermes systemd state: active/running
+OpenClaw systemd state: active/running
+Hermes native gateway status: pass (exit 0); user gateway service running
+OpenClaw native gateway status: pass (exit 0); runtime active/running, last exit 0
+No authentication or inference/completion calls were made

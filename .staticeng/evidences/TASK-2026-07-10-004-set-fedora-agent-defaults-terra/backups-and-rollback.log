@@ -1,0 +1,14 @@
+Hermes backup: /home/staticduo/.hermes/config.yaml.bak-terra-20260710T235442+0200
+Hermes backup mode: 0600
+OpenClaw backup: /home/staticduo/.openclaw/openclaw.json.bak-terra-20260710T235442+0200
+OpenClaw backup mode: 0600
+
+Rollback commands (run on fedora):
+install -m 600 /home/staticduo/.hermes/config.yaml.bak-terra-20260710T235442+0200 /home/staticduo/.hermes/config.yaml
+install -m 600 /home/staticduo/.openclaw/openclaw.json.bak-terra-20260710T235442+0200 /home/staticduo/.openclaw/openclaw.json
+hermes config check
+/usr/bin/node /home/staticduo/openclaw/dist/index.js config validate
+systemctl --user restart hermes-gateway.service
+systemctl --user restart openclaw-gateway.service
+hermes gateway status
+/usr/bin/node /home/staticduo/openclaw/dist/index.js gateway status

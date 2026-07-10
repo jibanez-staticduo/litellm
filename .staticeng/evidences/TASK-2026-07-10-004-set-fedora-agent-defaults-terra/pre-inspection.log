@@ -1,0 +1,13 @@
+Host: fedora
+Hermes config: /home/staticduo/.hermes/config.yaml
+Hermes config mode: 0600
+Hermes default: chatgpt/gpt-5.5
+Hermes model section keys: base_url, default, provider
+OpenClaw config: /home/staticduo/.openclaw/openclaw.json
+OpenClaw config mode: 0600
+OpenClaw primary: litellm/chatgpt/gpt-5.5
+OpenClaw fallbacks: 1
+OpenClaw providers: 2
+OpenClaw catalog models: 19
+Hermes gateway: active/running
+OpenClaw gateway: active/running
