@@ -23,3 +23,5 @@
 | 2026-07-10 | TASK-2026-07-10-001-set-chatgpt-56-pricing | none | pending-commit | Set official GPT-5.6 Sol/Terra/Luna pricing on local/NAS and Fedora default/account2 aliases. |
 | 2026-07-10 | TASK-2026-07-10-003-add-gpt56-models-hermes-openclaw-fedora | none | pending-commit | Added six GPT-5.6 LiteLLM models to Fedora Hermes and OpenClaw while preserving GPT-5.5 defaults. |
 | 2026-07-10 | TASK-2026-07-10-004-set-fedora-agent-defaults-terra | none | pending-commit | Changed Fedora Hermes and OpenClaw defaults from GPT-5.5 to GPT-5.6 Terra with backups and validation. |
+| 2026-07-11 | TASK-2026-07-11-001-investigate-chatgpt-multiaccount-routing | none | pending-commit | Identified fallback identity mutation and race-prone account-specific device auth as root causes of multiaccount routing confusion. |
+| 2026-07-11 | TASK-2026-07-11-002-fix-multiaccount-routing-oauth | none | pending-commit | Fixed multiaccount routing identity, profile isolation, OAuth single-flight, retry suppression, and structured observability. |

@@ -1,4 +1,6 @@
 from enum import Enum
+import hashlib
+from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 import litellm
@@ -17,6 +19,10 @@ if TYPE_CHECKING:
     LitellmRouter = _Router
 else:
     LitellmRouter = Any
+
+_router_fallback_identity: ContextVar[Optional[Tuple[object, object]]] = ContextVar(
+    "router_fallback_identity", default=None
+)
 
 
 def _check_stripped_model_group(model_group: str, fallback_key: str) -> bool:
@@ -82,6 +88,55 @@ def get_fallback_model_group(fallbacks: List[Any], model_group: str) -> Tuple[Op
     return fallback_model_group, generic_fallback_idx
 
 
+def _chatgpt_auth_profiles(litellm_router: LitellmRouter, model_group: object) -> Optional[frozenset[str]]:
+    if not isinstance(model_group, str):
+        return None
+    deployments = litellm_router.get_model_list(model_name=model_group) or []
+    identities = []
+    for deployment in deployments:
+        if not isinstance(deployment, dict):
+            continue
+        params = deployment.get("litellm_params") or {}
+        physical_model = params.get("model")
+        provider = params.get("custom_llm_provider")
+        is_chatgpt = provider == "chatgpt" or (
+            isinstance(physical_model, str) and physical_model.startswith("chatgpt/")
+        )
+        if is_chatgpt:
+            identities.append(str(params.get("chatgpt_auth_profile") or "default"))
+    return frozenset(identities)
+
+
+def _is_cross_profile_fallback(
+    litellm_router: LitellmRouter, source_model_group: str, target_model_group: object
+) -> bool:
+    source_profiles = _chatgpt_auth_profiles(litellm_router, source_model_group)
+    target_profiles = _chatgpt_auth_profiles(litellm_router, target_model_group)
+    if source_profiles is None or target_profiles is None:
+        return True
+    if not source_profiles and not target_profiles:
+        return False
+    if not source_profiles or not target_profiles:
+        return True
+    return len(source_profiles) != 1 or len(target_profiles) != 1 or source_profiles != target_profiles
+
+
+def get_internal_router_fallback_identity() -> Optional[Tuple[object, object]]:
+    return _router_fallback_identity.get()
+
+
+def validate_chatgpt_model_group_profiles(deployments: List[Dict[str, Any]], model_group: str) -> None:
+    profiles = frozenset(
+        str(params.get("chatgpt_auth_profile") or "default")
+        for deployment in deployments
+        for params in ((deployment.get("litellm_params") or {}),)
+        if params.get("custom_llm_provider") == "chatgpt"
+        or (isinstance(params.get("model"), str) and params["model"].startswith("chatgpt/"))
+    )
+    if len(profiles) > 1:
+        raise ValueError(f"ChatGPT model group {model_group!r} contains mixed authentication profiles")
+
+
 async def run_async_fallback(
     *args: Tuple[Any],
     litellm_router: LitellmRouter,
@@ -120,37 +175,81 @@ async def run_async_fallback(
 
     error_from_fallbacks = original_exception
     fallback_errors = (get_fallback_error_info(original_exception),)
+    logical_model_group = kwargs.get("logical_model_group", original_model_group)
+    requested_model = kwargs.get("original_requested_model", logical_model_group)
+    base_kwargs = dict(kwargs)
 
-    for mg in fallback_model_group:
+    for attempt, mg in enumerate(fallback_model_group, start=1):
         if mg == original_model_group:
             continue
+        target_model_group = mg if isinstance(mg, str) else mg.get("model")
+        if not getattr(litellm_router, "allow_chatgpt_cross_profile_fallback", False) and _is_cross_profile_fallback(
+            litellm_router, logical_model_group, target_model_group
+        ):
+            verbose_router_logger.warning(
+                "router_fallback_denied logical_model_group=%s current_model_group=%s reason=chatgpt_cross_profile",
+                mask_sensitive_structure(logical_model_group),
+                mask_sensitive_structure(target_model_group),
+            )
+            continue
+        attempt_kwargs = dict(base_kwargs)
         try:
-            # LOGGING
-            kwargs = litellm_router.log_retry(kwargs=kwargs, e=original_exception)
-            verbose_router_logger.info(f"Falling back to model_group = {mask_sensitive_structure(mg)}")
+            attempt_kwargs = litellm_router.log_retry(kwargs=attempt_kwargs, e=original_exception)
             if isinstance(mg, str):
-                kwargs["model"] = mg
+                attempt_kwargs["model"] = mg
             elif isinstance(mg, dict):
-                kwargs.update(mg)
-            kwargs.setdefault("metadata", {}).update(
-                {"model_group": kwargs.get("model", None)}
-            )  # update model_group used, if fallbacks are done
-            fallback_depth = fallback_depth + 1
-            kwargs["fallback_depth"] = fallback_depth
-            kwargs["max_fallbacks"] = max_fallbacks
+                attempt_kwargs.update(mg)
+            current_model_group = attempt_kwargs.get("model")
+            metadata = dict(attempt_kwargs.get("metadata") or {})
+            metadata.update(
+                {
+                    "model_group": current_model_group,
+                    "logical_model_group": logical_model_group,
+                    "original_requested_model": requested_model,
+                    "fallback_source_model_group": original_model_group,
+                    "fallback_attempt": attempt,
+                    "fallback_reason": type(original_exception).__name__,
+                }
+            )
+            attempt_kwargs["metadata"] = metadata
+            attempt_kwargs["logical_model_group"] = logical_model_group
+            attempt_kwargs["original_requested_model"] = requested_model
+            attempt_kwargs.pop("_router_fallback_identity", None)
+            current_fallback_depth = fallback_depth + 1
+            attempt_kwargs["fallback_depth"] = current_fallback_depth
+            attempt_kwargs["max_fallbacks"] = max_fallbacks
             if include_fallback_errors:
-                kwargs["include_fallback_errors"] = include_fallback_errors
-            response = await litellm_router.async_function_with_fallbacks(*args, **kwargs)
+                attempt_kwargs["include_fallback_errors"] = include_fallback_errors
+            verbose_router_logger.info(
+                "router_fallback request_id_hash=%s requested_model=%s logical_model_group=%s current_model_group=%s "
+                "selected_profile=%s deployment_prefix=%s attempt=%s fallback_source=%s fallback_reason=%s",
+                hashlib.sha256(
+                    str(metadata.get("request_id") or metadata.get("litellm_call_id") or "").encode()
+                ).hexdigest()[:12],
+                mask_sensitive_structure(requested_model),
+                mask_sensitive_structure(logical_model_group),
+                mask_sensitive_structure(current_model_group),
+                next(iter(_chatgpt_auth_profiles(litellm_router, current_model_group) or ("none",))),
+                str(metadata.get("deployment_id") or "none")[:8],
+                attempt,
+                mask_sensitive_structure(original_model_group),
+                type(original_exception).__name__,
+            )
+            identity_token = _router_fallback_identity.set((requested_model, logical_model_group))
+            try:
+                response = await litellm_router.async_function_with_fallbacks(*args, **attempt_kwargs)
+            finally:
+                _router_fallback_identity.reset(identity_token)
             verbose_router_logger.info("Successful fallback b/w models.")
             response = add_fallback_headers_to_response(
                 response=response,
-                attempted_fallbacks=fallback_depth,
+                attempted_fallbacks=current_fallback_depth,
                 fallback_errors=(list(fallback_errors) if include_fallback_errors else None),
             )
             # callback for successfull_fallback_event():
             await log_success_fallback_event(
                 original_model_group=original_model_group,
-                kwargs=kwargs,
+                kwargs=attempt_kwargs,
                 original_exception=original_exception,
             )
             return response
@@ -159,7 +258,7 @@ async def run_async_fallback(
             fallback_errors = fallback_errors + (get_fallback_error_info(e),)
             await log_failure_fallback_event(
                 original_model_group=original_model_group,
-                kwargs=kwargs,
+                kwargs=attempt_kwargs,
                 original_exception=original_exception,
             )
     raise error_from_fallbacks

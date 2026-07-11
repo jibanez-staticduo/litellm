@@ -47,11 +47,13 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
         try:
             access_token = authenticator.get_access_token()
         except GetAccessTokenError as e:
-            raise AuthenticationError(
+            auth_error = AuthenticationError(
                 model=model,
                 llm_provider="chatgpt",
                 message=str(e),
             )
+            auth_error.is_non_retryable_interactive_auth = True
+            raise auth_error
 
         account_id = authenticator.get_account_id()
         session_id = ensure_chatgpt_session_id(litellm_params)

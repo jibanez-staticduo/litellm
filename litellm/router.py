@@ -117,7 +117,9 @@ from litellm.router_utils.cooldown_handlers import (
 from litellm.router_utils.fallback_event_handlers import (
     _check_non_standard_fallback_format,
     get_fallback_model_group,
+    get_internal_router_fallback_identity,
     run_async_fallback,
+    validate_chatgpt_model_group_profiles,
 )
 from litellm.router_utils.get_retry_from_policy import (
     get_num_retries_from_retry_policy as _get_num_retries_from_retry_policy,
@@ -317,6 +319,7 @@ class Router:
         health_check_staleness_threshold: Optional[int] = None,
         health_check_ignore_transient_errors: bool = False,
         enable_weighted_failover: bool = False,
+        allow_chatgpt_cross_profile_fallback: bool = False,
     ) -> None:
         """
         Initialize the Router class with the given parameters for caching, reliability, and routing strategy.
@@ -510,6 +513,9 @@ class Router:
         self.disable_cooldowns = disable_cooldowns
         self.enable_health_check_routing = enable_health_check_routing
         self.enable_weighted_failover = enable_weighted_failover
+        if type(allow_chatgpt_cross_profile_fallback) is not bool:
+            raise TypeError("allow_chatgpt_cross_profile_fallback must be a bool")
+        self.allow_chatgpt_cross_profile_fallback = allow_chatgpt_cross_profile_fallback
         self.health_check_ignore_transient_errors = health_check_ignore_transient_errors
         _staleness = health_check_staleness_threshold or (
             DEFAULT_HEALTH_CHECK_INTERVAL * DEFAULT_HEALTH_CHECK_STALENESS_MULTIPLIER
@@ -5976,6 +5982,7 @@ class Router:
         original_exception = e
         fallback_model_group = None
         original_model_group: Optional[str] = kwargs.get("model")  # type: ignore
+        logical_model_group: Optional[str] = kwargs.get("logical_model_group", original_model_group)
         fallback_failure_exception_str = ""
 
         if disable_fallbacks is True or original_model_group is None:
@@ -6028,7 +6035,7 @@ class Router:
                 else:
                     external_fallback_group, generic_idx = get_fallback_model_group(
                         fallbacks=fallbacks,
-                        model_group=cast(str, model_group),
+                        model_group=cast(str, logical_model_group or model_group),
                     )
                     if external_fallback_group is None and generic_idx is not None:
                         external_fallback_group = fallbacks[generic_idx]["*"]
@@ -6163,7 +6170,7 @@ class Router:
                     generic_fallback_idx,
                 ) = get_fallback_model_group(
                     fallbacks=fallbacks,  # if fallbacks = [{"gpt-3.5-turbo": ["claude-3-haiku"]}]
-                    model_group=cast(str, model_group),
+                    model_group=cast(str, logical_model_group or model_group),
                 )
                 ## if none, check for generic fallback
                 if fallback_model_group is None and generic_fallback_idx is not None:
@@ -6225,6 +6232,13 @@ class Router:
         If it fails after num_retries, fall back to another model group
         """
         model_group: Optional[str] = kwargs.get("model")
+        kwargs.pop("_router_fallback_identity", None)
+        internal_identity = get_internal_router_fallback_identity()
+        if internal_identity is not None:
+            kwargs["original_requested_model"], kwargs["logical_model_group"] = internal_identity
+        else:
+            kwargs["original_requested_model"] = model_group
+            kwargs["logical_model_group"] = model_group
         include_fallback_errors = kwargs.get("include_fallback_errors", False) is True
         disable_fallbacks: Optional[bool] = kwargs.pop("disable_fallbacks", False)
         fallbacks: Optional[List] = kwargs.get("fallbacks", self.fallbacks)
@@ -6352,6 +6366,10 @@ class Router:
         except Exception as e:
             current_attempt = None
             original_exception = e
+            # Interactive device authentication is never retryable. This must
+            # take precedence over deployment and model-group retry policies.
+            if getattr(original_exception, "is_non_retryable_interactive_auth", False):
+                raise
             deployment_num_retries = getattr(e, "num_retries", None)
 
             if deployment_num_retries is not None and isinstance(deployment_num_retries, int):
@@ -6439,6 +6457,8 @@ class Router:
                     # Always track the latest error so we raise the most
                     # recent exception instead of the first one.
                     original_exception = e
+                    if getattr(original_exception, "is_non_retryable_interactive_auth", False):
+                        raise
 
                     ## LOGGING
                     kwargs = self.log_retry(kwargs=kwargs, e=e)
@@ -6550,6 +6570,8 @@ class Router:
             - there are no healthy deployments in the same model group
         """
         _num_healthy_deployments = 0
+        if getattr(error, "is_non_retryable_interactive_auth", False):
+            raise error
         if healthy_deployments is not None and isinstance(healthy_deployments, list):
             _num_healthy_deployments = len(healthy_deployments)
 
@@ -10182,6 +10204,8 @@ class Router:
                 )
             return healthy_deployments
 
+        validate_chatgpt_model_group_profiles(healthy_deployments, model)
+
         # Health-check-based filtering (before cooldown)
         healthy_deployments = await self._async_filter_health_check_unhealthy_deployments(
             healthy_deployments=healthy_deployments,
@@ -10319,6 +10343,7 @@ class Router:
             )
             if isinstance(healthy_deployments, dict):
                 return healthy_deployments
+            validate_chatgpt_model_group_profiles(healthy_deployments, model)
 
             # When encrypted content affinity pins to a specific deployment,
             if request_kwargs.get("_encrypted_content_affinity_pinned") and len(healthy_deployments) == 1:
@@ -10326,20 +10351,21 @@ class Router:
 
             start_time = time.time()
             if strategy == "simple-shuffle":
-                return simple_shuffle(
+                deployment = simple_shuffle(
                     llm_router_instance=self,
                     healthy_deployments=healthy_deployments,
                     model=model,
                 )
-            deployment = await self._select_deployment_async(
-                strategy=strategy,
-                selector=strategy_selector,
-                model=model,
-                healthy_deployments=healthy_deployments,  # type: ignore
-                messages=messages,
-                input=input,
-                request_kwargs=request_kwargs,
-            )
+            else:
+                deployment = await self._select_deployment_async(
+                    strategy=strategy,
+                    selector=strategy_selector,
+                    model=model,
+                    healthy_deployments=healthy_deployments,  # type: ignore
+                    messages=messages,
+                    input=input,
+                    request_kwargs=request_kwargs,
+                )
             if deployment is None:
                 exception = await async_raise_no_deployment_exception(
                     litellm_router_instance=self,
@@ -10350,6 +10376,7 @@ class Router:
             verbose_router_logger.info(
                 f"get_available_deployment for model: {model}, Selected deployment: {self.print_deployment(deployment)} for model: {model}"
             )
+            self._log_selected_deployment(model, deployment, request_kwargs)
 
             end_time = time.time()
             _duration = end_time - start_time
@@ -10603,6 +10630,7 @@ class Router:
                 )
             return healthy_deployments
 
+        validate_chatgpt_model_group_profiles(healthy_deployments, model)
         parent_otel_span: Optional[Span] = _get_parent_otel_span_from_kwargs(request_kwargs)
 
         # Health-check-based filtering (before cooldown)
@@ -10668,20 +10696,21 @@ class Router:
         if strategy == "simple-shuffle":
             # if users pass rpm or tpm, we do a random weighted pick - based on rpm/tpm
             ############## Check 'weight' param set for weighted pick #################
-            return simple_shuffle(
+            deployment = simple_shuffle(
                 llm_router_instance=self,
                 healthy_deployments=healthy_deployments,
                 model=model,
             )
-        deployment = self._select_deployment_sync(
-            strategy=strategy,
-            selector=strategy_selector,
-            model=model,
-            healthy_deployments=healthy_deployments,  # type: ignore
-            messages=messages,
-            input=input,
-            request_kwargs=request_kwargs,
-        )
+        else:
+            deployment = self._select_deployment_sync(
+                strategy=strategy,
+                selector=strategy_selector,
+                model=model,
+                healthy_deployments=healthy_deployments,  # type: ignore
+                messages=messages,
+                input=input,
+                request_kwargs=request_kwargs,
+            )
 
         if deployment is None:
             verbose_router_logger.info(f"get_available_deployment for model: {model}, No deployment available")
@@ -10699,7 +10728,33 @@ class Router:
         verbose_router_logger.info(
             f"get_available_deployment for model: {model}, Selected deployment: {self.print_deployment(deployment)} for model: {model}"
         )
+        self._log_selected_deployment(model, deployment, request_kwargs or {})
         return deployment
+
+    def _log_selected_deployment(self, model: str, deployment: Dict, request_kwargs: Dict) -> None:
+        metadata = request_kwargs.get("metadata") or request_kwargs.get("litellm_metadata") or {}
+        params = deployment.get("litellm_params") or {}
+        deployment_id = str((deployment.get("model_info") or {}).get("id") or "none")
+        profile = (
+            str(params.get("chatgpt_auth_profile") or "default")
+            if str(params.get("model", "")).startswith("chatgpt/")
+            else "none"
+        )
+        verbose_router_logger.info(
+            "router_selected request_id_hash=%s requested_model=%s logical_model_group=%s current_model_group=%s "
+            "selected_profile=%s deployment_prefix=%s attempt=%s fallback_source=%s fallback_reason=%s",
+            hashlib.sha256(
+                str(metadata.get("request_id") or metadata.get("litellm_call_id") or "").encode()
+            ).hexdigest()[:12],
+            request_kwargs.get("original_requested_model", model),
+            request_kwargs.get("logical_model_group", model),
+            model,
+            profile,
+            deployment_id[:8],
+            metadata.get("fallback_attempt", 0),
+            metadata.get("fallback_source_model_group", "none"),
+            metadata.get("fallback_reason", "initial_selection"),
+        )
 
     def get_available_deployment_for_pass_through(
         self,

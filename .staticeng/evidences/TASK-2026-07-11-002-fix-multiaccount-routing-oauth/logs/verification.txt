@@ -1,0 +1,72 @@
+ruff format: PASS
+ruff check: PASS
+git diff --check: PASS
+uv focused pytest: PASS; 33 passed
+uv ruff format check: PASS
+uv ruff check: PASS
+mapped pytest: PASS; 38 passed, 4 existing resource warnings
+git diff --check: PASS
+make pre-commit: PASS; warned that unstaged/untracked files are included
+final combined focused/mapped pytest: PASS; 73 passed, 4 existing resource warnings
+final ruff format check: PASS
+final ruff check: PASS
+final git diff --check: PASS
+final make pre-commit: PASS; unstaged/untracked inclusion warning only
+mandatory named tests executed:
+- test_multiprocess_device_auth_single_flight: PASS
+- test_multiprocess_account_id_merge_preserves_refreshed_token: PASS
+- test_router_sync_mixed_chatgpt_group_fails_before_selection: PASS
+- test_router_async_mixed_chatgpt_group_fails_before_selection: PASS
+- test_router_sync_selected_log_has_authoritative_profile_and_deployment: PASS
+- test_router_interactive_auth_error_is_not_retried_for_chat_or_responses[chat]: PASS
+- test_router_interactive_auth_error_is_not_retried_for_chat_or_responses[responses]: PASS
+latest focused suite: PASS; 42 passed, 5 multiprocessing fork deprecation warnings
+latest mapped suite: PASS; 38 passed, 4 existing resource warnings
+latest ruff format/check: PASS
+latest git diff --check: PASS
+latest make pre-commit: PASS; unstaged/untracked inclusion warning only
+retry-policy precedence regression tests:
+- test_async_function_with_retries_interactive_auth_overrides_retry_policy[chat]: PASS
+- test_async_function_with_retries_interactive_auth_overrides_retry_policy[responses]: PASS
+These execute Router.async_function_with_retries with num_retries=3, an applicable AuthenticationError retry policy, configured fallback, and exactly one transformation/auth acquisition.
+post-fix focused suite: PASS; 44 passed, 5 multiprocessing fork deprecation warnings
+post-fix mapped suite: PASS; 38 passed, 4 existing resource warnings
+post-fix ruff format/check: PASS
+post-fix git diff --check: PASS
+post-fix make pre-commit: PASS; unstaged/untracked inclusion warning only
+portability tests:
+- test_windows_locking_path_uses_msvcrt: PASS
+- test_auth_write_without_directory_fsync_support: PASS
+authoritative final focused suite: PASS; 46 passed, 5 multiprocessing fork deprecation warnings
+authoritative final mapped suite: PASS; 38 passed, 4 existing async resource warnings
+authoritative final ruff format/check: PASS
+authoritative final git diff --check: PASS
+authoritative final make pre-commit: PASS; unstaged/untracked inclusion warning only
+Windows completion tests:
+- test_windows_write_path_without_fchmod: PASS
+- Windows multiprocessing selects spawn; POSIX selects fork
+latest authoritative focused suite: PASS; 47 passed, 5 Linux fork deprecation warnings
+latest authoritative mapped suite: PASS; 38 passed, 4 existing async resource warnings
+latest authoritative ruff format/check: PASS
+latest authoritative git diff --check: PASS
+latest authoritative make pre-commit: PASS; unstaged/untracked inclusion warning only
+token directory permission tests:
+- test_existing_token_directory_mode_is_preserved: PASS
+- test_new_token_directory_gets_restrictive_mode: PASS
+final authoritative focused suite: PASS; 49 passed, 5 Linux fork deprecation warnings
+final authoritative mapped suite: PASS; 38 passed, 4 existing async resource warnings
+final authoritative ruff format/check: PASS
+final authoritative git diff --check: PASS
+final authoritative make pre-commit: PASS; unstaged/untracked inclusion warning only
+reopen 4 focused pytest: PASS; 35 passed
+reopen 4 mapped pytest: PASS; 38 passed, 4 existing resource warnings
+reopen 4 ruff format/check: PASS after formatting one changed file
+reopen 4 git diff --check: PASS
+reopen 4 make pre-commit: PASS; unstaged/untracked inclusion warning only
+final sync source inspection: validate_chatgpt_model_group_profiles is called immediately after sync common checks and before health/cooldown/selection
+final async source inspection: validate_chatgpt_model_group_profiles is called after healthy deployment resolution and before affinity/selection
+final focused pytest: PASS; 35 passed
+final mapped pytest: PASS; 38 passed, 4 existing resource warnings
+final ruff format/check: PASS
+final git diff --check: PASS
+final make pre-commit: PASS; unstaged/untracked inclusion warning only

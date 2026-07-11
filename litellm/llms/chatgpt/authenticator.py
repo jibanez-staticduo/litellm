@@ -2,8 +2,20 @@ import base64
 import json
 import os
 import re
+import tempfile
+import threading
 import time
 from typing import Any, Dict, Optional
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - Windows
+    fcntl = None  # type: ignore[assignment]
+
+try:
+    import msvcrt
+except ImportError:  # pragma: no cover - POSIX
+    msvcrt = None  # type: ignore[assignment]
 
 import httpx
 
@@ -20,6 +32,7 @@ from .common_utils import (
     CHATGPT_OAUTH_TOKEN_URL,
     GetAccessTokenError,
     GetDeviceCodeError,
+    InteractiveAuthError,
     RefreshAccessTokenError,
 )
 
@@ -28,6 +41,23 @@ DEVICE_CODE_TIMEOUT_SECONDS = 15 * 60
 DEVICE_CODE_COOLDOWN_SECONDS = 5 * 60
 DEVICE_CODE_POLL_SLEEP_SECONDS = 5
 _SAFE_AUTH_PROFILE_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
+_AUTH_LOCKS: Dict[str, threading.RLock] = {}
+_AUTH_LOCKS_GUARD = threading.Lock()
+
+
+def _lock_auth_file(lock_file: Any) -> None:
+    if fcntl is not None:
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+        return
+    if msvcrt is not None:
+        lock_file.seek(0)
+        if lock_file.read(1) == "":
+            lock_file.write("0")
+            lock_file.flush()
+        lock_file.seek(0)
+        msvcrt.locking(lock_file.fileno(), msvcrt.LK_LOCK, 1)
+        return
+    raise RuntimeError("No supported cross-process file locking mechanism")
 
 
 class Authenticator:
@@ -92,6 +122,15 @@ class Authenticator:
         return os.getenv("CHATGPT_API_BASE") or os.getenv("OPENAI_CHATGPT_API_BASE") or CHATGPT_API_BASE
 
     def get_access_token(self) -> str:
+        with _AUTH_LOCKS_GUARD:
+            auth_lock = _AUTH_LOCKS.setdefault(os.path.realpath(self.auth_file), threading.RLock())
+        with auth_lock:
+            with open(f"{self.auth_file}.lock", "a+") as lock_file:
+                os.chmod(lock_file.name, 0o600)
+                _lock_auth_file(lock_file)
+                return self._get_access_token_locked()
+
+    def _get_access_token_locked(self) -> str:
         auth_data = self._read_auth_file()
         if auth_data:
             access_token = auth_data.get("access_token")
@@ -111,28 +150,36 @@ class Authenticator:
             if token:
                 return token
 
-        tokens = self._login_device_code()
+        try:
+            tokens = self._login_device_code()
+        except (GetDeviceCodeError, GetAccessTokenError) as exc:
+            raise InteractiveAuthError(message="Interactive ChatGPT authentication failed", status_code=401) from exc
         return tokens["access_token"]
 
     def get_account_id(self) -> Optional[str]:
-        auth_data = self._read_auth_file()
-        if not auth_data:
-            return None
-        account_id = auth_data.get("account_id")
-        if account_id:
-            return account_id
-        id_token = auth_data.get("id_token")
-        access_token = auth_data.get("access_token")
-        derived = self._extract_account_id(id_token or access_token)
-        if derived:
-            auth_data["account_id"] = derived
-            self._write_auth_file(auth_data)
-        return derived
+        with _AUTH_LOCKS_GUARD:
+            auth_lock = _AUTH_LOCKS.setdefault(os.path.realpath(self.auth_file), threading.RLock())
+        with auth_lock:
+            with open(f"{self.auth_file}.lock", "a+") as lock_file:
+                os.chmod(lock_file.name, 0o600)
+                _lock_auth_file(lock_file)
+                auth_data = self._read_auth_file()
+                if not auth_data:
+                    return None
+                account_id = auth_data.get("account_id")
+                if account_id:
+                    return account_id
+                derived = self._extract_account_id(auth_data.get("id_token") or auth_data.get("access_token"))
+                if derived:
+                    latest_auth_data = self._read_auth_file() or auth_data
+                    self._write_auth_file({**latest_auth_data, "account_id": derived})
+                return derived
 
     def _ensure_token_dir(self) -> None:
         auth_file_dir = os.path.dirname(self.auth_file)
         if auth_file_dir and not os.path.exists(auth_file_dir):
-            os.makedirs(auth_file_dir, exist_ok=True)
+            os.makedirs(auth_file_dir, mode=0o700, exist_ok=True)
+            os.chmod(auth_file_dir, 0o700)
 
     def _read_auth_file(self) -> Optional[Dict[str, Any]]:
         try:
@@ -145,11 +192,35 @@ class Authenticator:
             return None
 
     def _write_auth_file(self, data: Dict[str, Any]) -> None:
+        temporary_path: Optional[str] = None
         try:
-            with open(self.auth_file, "w") as f:
+            auth_file_dir = os.path.dirname(self.auth_file) or "."
+            file_descriptor, temporary_path = tempfile.mkstemp(prefix=".chatgpt-auth-", dir=auth_file_dir)
+            if hasattr(os, "fchmod"):
+                os.fchmod(file_descriptor, 0o600)
+            else:  # pragma: no cover - Windows
+                os.chmod(temporary_path, 0o600)
+            with os.fdopen(file_descriptor, "w") as f:
                 json.dump(data, f)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(temporary_path, self.auth_file)
+            directory_flag = getattr(os, "O_DIRECTORY", None)
+            if directory_flag is not None:
+                directory_fd = os.open(auth_file_dir, directory_flag)
+                try:
+                    os.fsync(directory_fd)
+                finally:
+                    os.close(directory_fd)
+            temporary_path = None
         except IOError as exc:
             verbose_logger.error("Failed to write ChatGPT auth file: %s", exc)
+        finally:
+            if temporary_path is not None:
+                try:
+                    os.unlink(temporary_path)
+                except OSError:
+                    pass
 
     def _is_token_expired(self, auth_data: Dict[str, Any], access_token: str) -> bool:
         expires_at = auth_data.get("expires_at")
