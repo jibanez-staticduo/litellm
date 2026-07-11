@@ -133,6 +133,10 @@ class GetAccessTokenError(ChatGPTAuthError):
     pass
 
 
+class InteractiveAuthError(GetAccessTokenError):
+    pass
+
+
 class RefreshAccessTokenError(ChatGPTAuthError):
     pass
 

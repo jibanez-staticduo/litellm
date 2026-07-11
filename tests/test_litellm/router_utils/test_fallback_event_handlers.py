@@ -3,6 +3,12 @@ from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
+from unittest.mock import AsyncMock, Mock, patch
+
+from litellm import Router
+from litellm.llms.chatgpt.chat.transformation import ChatGPTConfig
+from litellm.llms.chatgpt.common_utils import InteractiveAuthError
+from litellm.llms.chatgpt.responses.transformation import ChatGPTResponsesAPIConfig
 
 import litellm
 from litellm.router_utils.cooldown_handlers import mark_advisor_orchestration_failure
@@ -12,6 +18,7 @@ from litellm.router_utils.fallback_event_handlers import (
     fallback_attempt_key,
     get_fallback_model_group,
     run_async_fallback,
+    validate_chatgpt_model_group_profiles,
 )
 
 
@@ -27,6 +34,9 @@ class FakeRouter:
     async def async_function_with_fallbacks(self, *args, **kwargs):
         return StreamingWrapper()
 
+    def get_model_list(self, model_name):
+        return []
+
 
 class AlwaysFailRouter:
     def log_retry(self, kwargs, e):
@@ -34,6 +44,9 @@ class AlwaysFailRouter:
 
     async def async_function_with_fallbacks(self, *args, **kwargs):
         raise RuntimeError("fallback model also failed")
+
+    def get_model_list(self, model_name):
+        return []
 
 
 @pytest.mark.asyncio
@@ -101,6 +114,9 @@ class RecordingRouter:
         self.received_kwargs = kwargs
         return StreamingWrapper()
 
+    def get_model_list(self, model_name):
+        return []
+
 
 @pytest.mark.asyncio
 async def test_run_async_fallback_forwards_include_fallback_errors_to_nested_call():
@@ -149,347 +165,93 @@ async def test_run_async_fallback_skips_original_model_group():
     assert response._hidden_params["additional_headers"]["x-litellm-attempted-fallbacks"] == 1
 
 
-class AttemptRecordingRouter:
-    def __init__(self):
-        self.attempted_model_groups = []
-        self.received_kwargs = None
-
-    def log_retry(self, kwargs, e):
-        return kwargs
-
-    async def async_function_with_fallbacks(self, *args, **kwargs):
-        self.attempted_model_groups.append(kwargs.get("model"))
-        self.received_kwargs = kwargs
-        return StreamingWrapper()
-
-
-async def _acreate_batch(*args, **kwargs):
-    raise AssertionError("only used for its __name__")
-
-
 @pytest.mark.asyncio
-async def test_run_async_fallback_keeps_uploaded_file_requests_in_their_model_group():
-    """An input_file_id only exists under the credentials of the group it was uploaded
-    to, so a cross-group fallback can only fail with the wrong provider's error."""
-    router = AttemptRecordingRouter()
-    owning_provider_error = RuntimeError("openai connection error")
-
-    with pytest.raises(RuntimeError, match="openai connection error"):
-        await run_async_fallback(
-            litellm_router=router,
-            fallback_model_group=["azure-group"],
-            original_model_group="openai-group",
-            original_exception=owning_provider_error,
-            max_fallbacks=3,
-            fallback_depth=0,
-            model="openai-group",
-            input_file_id="file-owned-by-openai",
-            original_function=_acreate_batch,
-        )
-
-    assert router.attempted_model_groups == []
-
-
-@pytest.mark.asyncio
-async def test_run_async_fallback_keeps_fine_tuning_requests_in_their_model_group():
-    router = AttemptRecordingRouter()
-
-    with pytest.raises(RuntimeError, match="openai connection error"):
-        await run_async_fallback(
-            litellm_router=router,
-            fallback_model_group=["azure-group"],
-            original_model_group="openai-group",
-            original_exception=RuntimeError("openai connection error"),
-            max_fallbacks=3,
-            fallback_depth=0,
-            model="openai-group",
-            training_file="file-owned-by-openai",
-        )
-
-    assert router.attempted_model_groups == []
-
-
-@pytest.mark.asyncio
-async def test_run_async_fallback_allows_same_model_group_retry_for_uploaded_file_requests():
-    """Order-based fallbacks stay inside the owning group, so they must still run."""
-    router = AttemptRecordingRouter()
-
-    await run_async_fallback(
-        litellm_router=router,
-        fallback_model_group=[{"model": "openai-group", "_target_order": 2}],
-        original_model_group="openai-group",
-        original_exception=RuntimeError("first deployment failed"),
-        max_fallbacks=3,
-        fallback_depth=0,
-        model="openai-group",
-        input_file_id="file-owned-by-openai",
-        original_function=_acreate_batch,
-    )
-
-    assert router.attempted_model_groups == ["openai-group"]
-
-
-@pytest.mark.asyncio
-async def test_run_async_fallback_still_crosses_model_groups_without_an_uploaded_file():
-    router = AttemptRecordingRouter()
-
-    await run_async_fallback(
-        litellm_router=router,
-        fallback_model_group=["azure-group"],
-        original_model_group="openai-group",
-        original_exception=RuntimeError("openai connection error"),
-        max_fallbacks=3,
-        fallback_depth=0,
-        model="openai-group",
-    )
-
-    assert router.attempted_model_groups == ["azure-group"]
-
-
-@pytest.mark.asyncio
-async def test_run_async_fallback_handles_explicitly_none_metadata():
-    """/v1/batches always sets `metadata`, and sets it to None when the caller sent
-    none, so setdefault() on it hands back None instead of a dict."""
-    router = AttemptRecordingRouter()
-
-    await run_async_fallback(
-        litellm_router=router,
-        fallback_model_group=["azure-group"],
-        original_model_group="openai-group",
-        original_exception=RuntimeError("openai connection error"),
-        max_fallbacks=3,
-        fallback_depth=0,
-        model="openai-group",
-        metadata=None,
-    )
-
-    assert router.received_kwargs["metadata"] == {"model_group": "azure-group"}
-
-
-@pytest.mark.asyncio
-async def test_run_async_fallback_records_batch_model_group_outside_provider_metadata():
-    """`metadata` on a batch request is forwarded to the provider and stored on the
-    batch, so the router's own model_group belongs in litellm_metadata."""
-    router = AttemptRecordingRouter()
-
-    await run_async_fallback(
-        litellm_router=router,
-        fallback_model_group=[{"model": "openai-group", "_target_order": 2}],
-        original_model_group="openai-group",
-        original_exception=RuntimeError("first deployment failed"),
-        max_fallbacks=3,
-        fallback_depth=0,
-        model="openai-group",
-        input_file_id="file-owned-by-openai",
-        metadata={"caller": "nightly-job"},
-        litellm_metadata={"model_group": "openai-group"},
-        original_function=_acreate_batch,
-    )
-
-    assert router.received_kwargs["metadata"] == {"caller": "nightly-job"}
-    assert router.received_kwargs["litellm_metadata"]["model_group"] == "openai-group"
-
-
-class RecordingFailRouter:
-    def __init__(self):
-        self.attempted_models = []
-
-    def log_retry(self, kwargs, e):
-        return kwargs
-
-    async def async_function_with_fallbacks(self, *args, **kwargs):
-        self.attempted_models.append(kwargs.get("model"))
-        raise RuntimeError("fallback model also failed")
-
-
-@pytest.mark.asyncio
-async def test_run_async_fallback_skips_model_group_already_attempted():
-    """A fallback graph that loops back on itself must not re-attempt a model group that
-    already failed for this request. Every group in a cycle fails identically, so
-    revisiting one multiplies the work and the error output without any chance of
-    succeeding."""
-    router = RecordingFailRouter()
-
-    with pytest.raises(RuntimeError, match="original failed"):
-        await run_async_fallback(
-            litellm_router=router,
-            fallback_model_group=["already-attempted"],
-            original_model_group="primary-model",
-            original_exception=RuntimeError("original failed"),
-            max_fallbacks=3,
-            fallback_depth=0,
-            attempted_targets=AttemptedFallbackTargets(frozenset({"already-attempted"})),
-        )
-
-    assert router.attempted_models == []
-
-
-@pytest.mark.asyncio
-async def test_run_async_fallback_attempts_a_repeated_target_once():
-    router = RecordingFailRouter()
-
-    with pytest.raises(RuntimeError, match="fallback model also failed"):
-        await run_async_fallback(
-            litellm_router=router,
-            fallback_model_group=["fallback-model", "fallback-model", "other-model"],
-            original_model_group="primary-model",
-            original_exception=RuntimeError("original failed"),
-            max_fallbacks=5,
-            fallback_depth=0,
-        )
-
-    assert router.attempted_models == ["fallback-model", "other-model"]
-
-
-@pytest.mark.asyncio
-async def test_run_async_fallback_forwards_attempted_model_groups_to_nested_call():
-    """The nested call is where the next hop of the walk decides what to skip, so the
-    accumulated set has to reach it, carrying both the group that just failed and the
-    target being attempted."""
+async def test_run_async_fallback_preserves_caller_and_logical_identity():
     router = RecordingRouter()
+    metadata = {"model_group": "primary-model", "request_id": "safe-id"}
+    request_kwargs = {"model": "primary-model", "metadata": metadata}
 
     await run_async_fallback(
         litellm_router=router,
         fallback_model_group=["fallback-model"],
         original_model_group="primary-model",
-        original_exception=RuntimeError("original failed"),
+        original_exception=RuntimeError("failed"),
         max_fallbacks=3,
         fallback_depth=0,
-        attempted_targets=AttemptedFallbackTargets(frozenset({"earlier-model"})),
+        **request_kwargs,
     )
 
-    assert router.received_kwargs["attempted_targets"].keys == frozenset(
-        {"earlier-model", "primary-model", "fallback-model"}
-    )
+    assert request_kwargs == {"model": "primary-model", "metadata": metadata}
+    assert router.received_kwargs["model"] == "fallback-model"
+    assert router.received_kwargs["metadata"] == {
+        "model_group": "fallback-model",
+        "request_id": "safe-id",
+        "logical_model_group": "primary-model",
+        "original_requested_model": "primary-model",
+        "fallback_source_model_group": "primary-model",
+        "fallback_attempt": 1,
+        "fallback_reason": "RuntimeError",
+    }
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "entry",
-    [
-        {"model": "primary-model", "_target_order": 2},
-        {"model": "primary-model", "_excluded_deployment_ids": ["dep-1"]},
-    ],
+    "source_profile,target_profile,expected_model",
+    [(None, "account2", None), ("account2", None, None), ("same", "same", "account2-model")],
 )
-async def test_run_async_fallback_still_retargets_the_same_group_via_dict_entry(entry):
-    """Order-based fallback and weighted intra-group failover both re-target the group that
-    just failed, selecting a different set of deployments inside it. Those entries are dicts
-    rather than plain names and must survive a guard that skips already-attempted names."""
-    router = RecordingRouter()
+async def test_run_async_fallback_cross_profile_is_denied(source_profile, target_profile, expected_model):
+    class ProfileRouter(RecordingRouter):
+        def get_model_list(self, model_name):
+            profile = source_profile if model_name == "regular-model" else target_profile
+            params = {"model": "chatgpt/gpt-5.6-sol"}
+            if profile is not None:
+                params["chatgpt_auth_profile"] = profile
+            return [{"litellm_params": params}]
 
+    router = ProfileRouter()
+    if expected_model:
+        await run_async_fallback(
+            litellm_router=router,
+            fallback_model_group=["account2-model"],
+            original_model_group="regular-model",
+            original_exception=RuntimeError("failed"),
+            max_fallbacks=3,
+            fallback_depth=0,
+        )
+    else:
+        with pytest.raises(RuntimeError, match="failed"):
+            await run_async_fallback(
+                litellm_router=router,
+                fallback_model_group=["account2-model"],
+                original_model_group="regular-model",
+                original_exception=RuntimeError("failed"),
+                max_fallbacks=3,
+                fallback_depth=0,
+            )
+
+    received_model = None if router.received_kwargs is None else router.received_kwargs["model"]
+    assert received_model == expected_model
+
+
+@pytest.mark.asyncio
+async def test_run_async_fallback_preserves_non_copyable_values_by_identity():
+    class NonCopyable:
+        def __deepcopy__(self, memo):
+            raise AssertionError("must not deepcopy opaque request values")
+
+    opaque = NonCopyable()
+    router = RecordingRouter()
     await run_async_fallback(
         litellm_router=router,
-        fallback_model_group=[entry],
+        fallback_model_group=["fallback-model"],
         original_model_group="primary-model",
-        original_exception=RuntimeError("original failed"),
+        original_exception=RuntimeError("failed"),
         max_fallbacks=3,
         fallback_depth=0,
-        attempted_targets=AttemptedFallbackTargets(frozenset({"primary-model"})),
+        client=opaque,
     )
 
-    assert router.received_kwargs["model"] == "primary-model"
-
-
-@pytest.mark.asyncio
-async def test_run_async_fallback_skips_a_repeated_dict_target():
-    """A client-side fallback list names its targets with dicts, and that list is re-walked
-    at every level of the recursion, so an entry that carries no request override has to be
-    recognised as the same attempt as the bare name."""
-    router = RecordingFailRouter()
-
-    with pytest.raises(RuntimeError, match="original failed"):
-        await run_async_fallback(
-            litellm_router=router,
-            fallback_model_group=[{"model": "already-attempted"}],
-            original_model_group="primary-model",
-            original_exception=RuntimeError("original failed"),
-            max_fallbacks=3,
-            fallback_depth=0,
-            attempted_targets=AttemptedFallbackTargets(frozenset({"already-attempted"})),
-        )
-
-    assert router.attempted_models == []
-
-
-@pytest.mark.asyncio
-async def test_run_async_fallback_attempts_a_repeated_dict_target_once():
-    router = RecordingFailRouter()
-    entry = {"model": "fallback-model", "messages": [{"role": "user", "content": "shorter"}]}
-
-    with pytest.raises(RuntimeError, match="fallback model also failed"):
-        await run_async_fallback(
-            litellm_router=router,
-            fallback_model_group=[entry, entry, {"model": "other-model"}],
-            original_model_group="primary-model",
-            original_exception=RuntimeError("original failed"),
-            max_fallbacks=5,
-            fallback_depth=0,
-        )
-
-    assert router.attempted_models == ["fallback-model", "other-model"]
-
-
-@pytest.mark.asyncio
-async def test_run_async_fallback_keeps_a_request_override_distinct_from_the_bare_name():
-    """The documented use of the client-side form is to retry a group with different request
-    params, so an entry carrying an override must survive even when the bare name of that
-    same group has already been attempted."""
-    router = RecordingFailRouter()
-
-    with pytest.raises(RuntimeError, match="fallback model also failed"):
-        await run_async_fallback(
-            litellm_router=router,
-            fallback_model_group=[
-                {"model": "already-attempted", "messages": [{"role": "user", "content": "shorter"}]}
-            ],
-            original_model_group="primary-model",
-            original_exception=RuntimeError("original failed"),
-            max_fallbacks=3,
-            fallback_depth=0,
-            attempted_targets=AttemptedFallbackTargets(frozenset({"already-attempted"})),
-        )
-
-    assert router.attempted_models == ["already-attempted"]
-
-
-@pytest.mark.parametrize(
-    "target, expected",
-    [
-        ("group-a", "group-a"),
-        ({"model": "group-a"}, "group-a"),
-        (None, None),
-        (["group-a"], None),
-    ],
-)
-def test_fallback_attempt_key_identity(target, expected):
-    """A bare name and a `{"model": name}` entry are the same attempt. A shape with no
-    usable identity returns None and is never skipped, so an unrecognised entry keeps
-    today's behaviour rather than being silently dropped."""
-    assert fallback_attempt_key(target) == expected
-
-
-def test_fallback_attempt_key_gives_a_param_only_entry_its_own_identity():
-    """An entry with no `model` re-targets the group currently being attempted with
-    different request params, so it is a distinct attempt and still needs an identity."""
-    key = fallback_attempt_key({"messages": [{"role": "user", "content": "shorter"}]})
-
-    assert key is not None
-    assert key != fallback_attempt_key({"messages": [{"role": "user", "content": "other"}]})
-
-
-def test_fallback_attempt_key_separates_overrides_from_the_bare_name():
-    bare = fallback_attempt_key("group-a")
-    override = fallback_attempt_key({"model": "group-a", "messages": [{"role": "user", "content": "x"}]})
-    other_override = fallback_attempt_key({"model": "group-a", "messages": [{"role": "user", "content": "y"}]})
-    order_retarget = fallback_attempt_key({"model": "group-a", "_target_order": 2})
-
-    assert len({bare, override, other_override, order_retarget}) == 4
-
-
-def test_fallback_attempt_key_is_stable_across_key_order():
-    assert fallback_attempt_key({"model": "group-a", "_target_order": 2}) == fallback_attempt_key(
-        {"_target_order": 2, "model": "group-a"}
-    )
+    assert router.received_kwargs["client"] is opaque
 
 
 def test_get_fallback_model_group_does_not_mutate_fallbacks():
@@ -503,298 +265,156 @@ def test_get_fallback_model_group_does_not_mutate_fallbacks():
     assert fallbacks == [{"gpt-3.5-turbo": ["claude-3-haiku"]}, "gpt-4o-mini"]
 
 
-class TestTriggerCooldownForFailedDeployment:
-    def test_calls_set_cooldown_deployments_with_stamped_deployment_id(self):
-        mock_router = MagicMock()
-        mock_router.cooldown_time = 60.0
-        mock_router.get_model_info.return_value = None
-
-        exc = litellm.RateLimitError("Rate limit", "openai", "gpt-4")
-        exc.failed_deployment_id = "fallback-deployment"
-
-        with patch("litellm.router_utils.fallback_event_handlers._set_cooldown_deployments") as mock_set_cooldown:
-            _trigger_cooldown_for_failed_deployment(litellm_router=mock_router, kwargs={}, exception=exc)
-
-            mock_set_cooldown.assert_called_once()
-            call_kwargs = mock_set_cooldown.call_args[1]
-            assert call_kwargs["deployment"] == "fallback-deployment"
-            assert call_kwargs["original_exception"] is exc
-
-    def test_does_not_trust_caller_supplied_metadata_bucket(self):
-        """A metadata bucket can't reliably be told apart from a caller-supplied
-        one without knowing this call's function_name, so a client with
-        permission to set metadata must not be able to get an arbitrary
-        deployment cooled down by forging a deployment_model_name marker."""
-        mock_router = MagicMock()
-        mock_router.cooldown_time = 60.0
-        mock_router.get_model_info.return_value = None
-
-        exc = litellm.RateLimitError("Rate limit", "openai", "gpt-4")
-        kwargs = {
-            "metadata": {
-                "model_info": {"id": "attacker-chosen-deployment"},
-                "deployment_model_name": "gpt-4",
+def test_mixed_chatgpt_model_group_fails_closed_before_selection():
+    deployments = [
+        {"litellm_params": {"model": "chatgpt/gpt-5.6-sol"}},
+        {
+            "litellm_params": {
+                "model": "chatgpt/gpt-5.6-sol",
+                "chatgpt_auth_profile": "account2",
             }
-        }
+        },
+    ]
 
-        with patch("litellm.router_utils.fallback_event_handlers._set_cooldown_deployments") as mock_set_cooldown:
-            _trigger_cooldown_for_failed_deployment(litellm_router=mock_router, kwargs=kwargs, exception=exc)
-
-            mock_set_cooldown.assert_not_called()
-
-    def test_increments_failure_counter_before_cooldown_check(self):
-        """The fallback path must feed the same per-minute failure counter the
-        primary path uses, or repeated fallback failures never accumulate
-        toward the default percent-fail-rate cooldown threshold."""
-        mock_router = MagicMock()
-        mock_router.cooldown_time = 60.0
-        mock_router.get_model_info.return_value = None
-
-        exc = litellm.RateLimitError("Rate limit", "openai", "gpt-4")
-        exc.failed_deployment_id = "fallback-deployment"
-
-        with (
-            patch("litellm.router_utils.fallback_event_handlers._set_cooldown_deployments") as mock_set_cooldown,
-            patch(
-                "litellm.router_utils.fallback_event_handlers.increment_deployment_failures_for_current_minute"
-            ) as mock_increment,
-        ):
-            _trigger_cooldown_for_failed_deployment(litellm_router=mock_router, kwargs={}, exception=exc)
-
-            mock_increment.assert_called_once_with(
-                litellm_router_instance=mock_router, deployment_id="fallback-deployment"
-            )
-            mock_set_cooldown.assert_called_once()
-
-    def test_no_op_when_deployment_id_missing(self):
-        mock_router = MagicMock()
-
-        with patch("litellm.router_utils.fallback_event_handlers._set_cooldown_deployments") as mock_set_cooldown:
-            _trigger_cooldown_for_failed_deployment(
-                litellm_router=mock_router, kwargs={}, exception=RuntimeError("no metadata")
-            )
-
-            mock_set_cooldown.assert_not_called()
-
-    def test_skipped_for_advisor_orchestration_failure(self):
-        mock_router = MagicMock()
-        mock_router.cooldown_time = 60.0
-        mock_router.get_model_info.return_value = None
-
-        exc = litellm.RateLimitError("Rate limit", "openai", "gpt-4")
-        exc.failed_deployment_id = "fallback-deployment"
-        mark_advisor_orchestration_failure(exc)
-
-        with patch("litellm.router_utils.fallback_event_handlers._set_cooldown_deployments") as mock_set_cooldown:
-            _trigger_cooldown_for_failed_deployment(litellm_router=mock_router, kwargs={}, exception=exc)
-
-            mock_set_cooldown.assert_not_called()
-
-    def test_uses_deployment_litellm_params_cooldown_time_override(self):
-        mock_router = MagicMock()
-        mock_router.cooldown_time = 300.0
-        mock_router.get_model_info.return_value = {"litellm_params": {"cooldown_time": 30.0}}
-
-        exc = litellm.RateLimitError("Rate limit", "openai", "gpt-4")
-        exc.failed_deployment_id = "fallback-deployment"
-
-        with patch("litellm.router_utils.fallback_event_handlers._set_cooldown_deployments") as mock_set_cooldown:
-            _trigger_cooldown_for_failed_deployment(litellm_router=mock_router, kwargs={}, exception=exc)
-
-            call_kwargs = mock_set_cooldown.call_args[1]
-            assert call_kwargs["time_to_cooldown"] == 30.0
-
-    def test_uses_response_header_when_no_deployment_config(self):
-        """Precedence must match Router.deployment_callback_on_failure's primary
-        path: deployment config, then the response's Retry-After header, then the
-        router default."""
-        mock_router = MagicMock()
-        mock_router.cooldown_time = 60.0
-        mock_router.get_model_info.return_value = {"litellm_params": {}}
-
-        exc = RuntimeError("upstream error")
-        exc.failed_deployment_id = "fallback-deployment"
-        exc.litellm_response_headers = httpx.Headers({"retry-after": "45"})
-
-        with patch("litellm.router_utils.fallback_event_handlers._set_cooldown_deployments") as mock_set_cooldown:
-            _trigger_cooldown_for_failed_deployment(litellm_router=mock_router, kwargs={}, exception=exc)
-
-            call_kwargs = mock_set_cooldown.call_args[1]
-            assert call_kwargs["time_to_cooldown"] == 45
-
-    def test_silently_catches_exceptions(self):
-        mock_router = MagicMock()
-        mock_router.cooldown_time = 60.0
-        mock_router.get_model_info.return_value = None
-
-        exc = RuntimeError("upstream error")
-        exc.failed_deployment_id = "fallback-deployment"
-
-        with patch(
-            "litellm.router_utils.fallback_event_handlers._set_cooldown_deployments",
-            side_effect=RuntimeError("cooldown error"),
-        ):
-            _trigger_cooldown_for_failed_deployment(litellm_router=mock_router, kwargs={}, exception=exc)
-
-    def test_skips_request_scoped_404_on_generic_api_call(self):
-        """A generic API call (files/batches/threads/rerank/...) forwards a caller-supplied
-        resource id, so a 404 there means "that id doesn't exist", not "this deployment is
-        unhealthy". Without this guard, a single bad id would 404 every deployment in the
-        fallback chain and cool all of them down from one request."""
-        mock_router = MagicMock()
-        mock_router.cooldown_time = 60.0
-        mock_router.get_model_info.return_value = None
-
-        exc = litellm.NotFoundError("not found", "openai", "gpt-4")
-        exc.failed_deployment_id = "fallback-deployment"
-
-        with (
-            patch("litellm.router_utils.fallback_event_handlers._set_cooldown_deployments") as mock_set_cooldown,
-            patch(
-                "litellm.router_utils.fallback_event_handlers.increment_deployment_failures_for_current_minute"
-            ) as mock_increment,
-        ):
-            _trigger_cooldown_for_failed_deployment(
-                litellm_router=mock_router,
-                kwargs={"original_generic_function": MagicMock()},
-                exception=exc,
-            )
-
-            mock_set_cooldown.assert_not_called()
-            mock_increment.assert_not_called()
-
-    def test_still_cools_down_404_outside_generic_api_call(self):
-        """The request-scoped-404 guard is scoped to generic API calls only: a 404 on a
-        regular completion fallback (no original_generic_function in kwargs) must still
-        cool down the deployment as before."""
-        mock_router = MagicMock()
-        mock_router.cooldown_time = 60.0
-        mock_router.get_model_info.return_value = None
-
-        exc = litellm.NotFoundError("not found", "openai", "gpt-4")
-        exc.failed_deployment_id = "fallback-deployment"
-
-        with patch("litellm.router_utils.fallback_event_handlers._set_cooldown_deployments") as mock_set_cooldown:
-            _trigger_cooldown_for_failed_deployment(litellm_router=mock_router, kwargs={}, exception=exc)
-
-            mock_set_cooldown.assert_called_once()
-
-    def test_skips_client_side_timeout_408(self):
-        """The proxy's x-litellm-timeout header lets a caller set an arbitrarily short
-        timeout, which litellm.Timeout reports as status 408 regardless of the
-        deployment's actual health. Without this guard, a caller could force a 408 on
-        every deployment in the fallback chain from a single request."""
-        mock_router = MagicMock()
-        mock_router.cooldown_time = 60.0
-        mock_router.get_model_info.return_value = None
-
-        exc = litellm.Timeout(message="timeout", model="gpt-4", llm_provider="openai")
-        exc.failed_deployment_id = "fallback-deployment"
-
-        with (
-            patch("litellm.router_utils.fallback_event_handlers._set_cooldown_deployments") as mock_set_cooldown,
-            patch(
-                "litellm.router_utils.fallback_event_handlers.increment_deployment_failures_for_current_minute"
-            ) as mock_increment,
-        ):
-            _trigger_cooldown_for_failed_deployment(
-                litellm_router=mock_router,
-                kwargs={"client_side_timeout": True},
-                exception=exc,
-            )
-
-            mock_set_cooldown.assert_not_called()
-            mock_increment.assert_not_called()
-
-    def test_still_cools_down_408_without_client_side_timeout_flag(self):
-        """The client-side-timeout guard is scoped to caller-supplied timeouts only: a
-        408 that did not come from x-litellm-timeout (no client_side_timeout in kwargs)
-        must still cool down the deployment as before."""
-        mock_router = MagicMock()
-        mock_router.cooldown_time = 60.0
-        mock_router.get_model_info.return_value = None
-
-        exc = litellm.Timeout(message="timeout", model="gpt-4", llm_provider="openai")
-        exc.failed_deployment_id = "fallback-deployment"
-
-        with patch("litellm.router_utils.fallback_event_handlers._set_cooldown_deployments") as mock_set_cooldown:
-            _trigger_cooldown_for_failed_deployment(litellm_router=mock_router, kwargs={}, exception=exc)
-
-            mock_set_cooldown.assert_called_once()
+    with pytest.raises(ValueError, match="mixed authentication profiles"):
+        validate_chatgpt_model_group_profiles(deployments, "regular-model")
 
 
-class TestRunAsyncFallbackTriggersCooldown:
-    class RouterWithLoggingKwarg:
-        def __init__(self):
-            self.cooldown_time = 60.0
+def _mixed_profile_router():
+    router = Router.__new__(Router)
+    deployments = [
+        {"litellm_params": {"model": "chatgpt/gpt-5.6-sol"}},
+        {
+            "litellm_params": {
+                "model": "chatgpt/gpt-5.6-sol",
+                "chatgpt_auth_profile": "account2",
+            }
+        },
+    ]
+    router._common_checks_available_deployment = Mock(return_value=("mixed", deployments))
+    router.routing_strategy = "simple-shuffle"
+    router.async_pre_routing_hook = AsyncMock(return_value=None)
+    router._get_routing_context = Mock(return_value=("simple-shuffle", None))
+    router.async_get_healthy_deployments = AsyncMock(return_value=deployments)
+    return router
 
-        def log_retry(self, kwargs, e):
-            return kwargs
 
-        def get_model_info(self, id):
-            return None
+def test_router_sync_mixed_chatgpt_group_fails_before_selection():
+    with pytest.raises(ValueError, match="mixed authentication profiles"):
+        _mixed_profile_router().get_available_deployment(model="mixed", request_kwargs={})
 
-        async def async_function_with_fallbacks(self, *args, **kwargs):
-            raise RuntimeError("fallback model also failed")
 
-    def _logging_obj(self, has_logged_async_failure: bool) -> MagicMock:
-        logging_obj = MagicMock()
-        logging_obj.model_call_details = {"has_logged_async_failure": has_logged_async_failure}
-        return logging_obj
+@pytest.mark.asyncio
+async def test_router_async_mixed_chatgpt_group_fails_before_selection():
+    with pytest.raises(ValueError, match="mixed authentication profiles"):
+        await _mixed_profile_router().async_get_available_deployment(model="mixed", request_kwargs={})
 
-    @pytest.mark.asyncio
-    async def test_triggers_cooldown_when_has_logged_async_failure_is_true(self):
-        with patch(
-            "litellm.router_utils.fallback_event_handlers._trigger_cooldown_for_failed_deployment"
-        ) as mock_trigger:
-            with pytest.raises(RuntimeError, match="fallback model also failed"):
-                await run_async_fallback(
-                    litellm_router=self.RouterWithLoggingKwarg(),
-                    fallback_model_group=["fallback-model"],
-                    original_model_group="primary-model",
-                    original_exception=RuntimeError("original request failed"),
-                    max_fallbacks=3,
-                    fallback_depth=0,
-                    litellm_logging_obj=self._logging_obj(has_logged_async_failure=True),
+
+def test_router_sync_selected_log_has_authoritative_profile_and_deployment(caplog):
+    router = Router.__new__(Router)
+    deployment = {
+        "litellm_params": {"model": "chatgpt/gpt-5.6-sol"},
+        "model_info": {"id": "deadbeefcafebabe"},
+    }
+    router._common_checks_available_deployment = Mock(return_value=("regular", [deployment]))
+    router._filter_health_check_unhealthy_deployments = Mock(return_value=[deployment])
+    router._filter_cooldown_deployments = Mock(return_value=[deployment])
+    router._filter_blocked_deployments = Mock(return_value=[deployment])
+    router.cooldown_cache = Mock()
+    router.get_model_ids = Mock(return_value=[])
+    router.enable_health_check_routing = False
+    router.allowed_fails_policy = None
+    router.enable_pre_call_checks = False
+    router.routing_strategy = "simple-shuffle"
+    router._get_routing_context = Mock(return_value=("simple-shuffle", None))
+    with caplog.at_level("INFO", logger="LiteLLM Router"):
+        router.get_available_deployment(model="regular", request_kwargs={"metadata": {"request_id": "raw-secret-id"}})
+    event = next(record.message for record in caplog.records if "router_selected" in record.message)
+    assert "selected_profile=default" in event
+    assert "deployment_prefix=deadbeef" in event
+    assert "raw-secret-id" not in event
+
+
+@pytest.mark.parametrize("surface", ["chat", "responses"])
+def test_router_interactive_auth_error_is_not_retried_for_chat_or_responses(surface):
+    router = Router.__new__(Router)
+    acquisition = Mock(side_effect=InteractiveAuthError(message="safe auth failure", status_code=401))
+    with patch("litellm.llms.chatgpt.authenticator.Authenticator.get_access_token", acquisition):
+        with pytest.raises(Exception) as caught:
+            if surface == "chat":
+                ChatGPTConfig()._get_openai_compatible_provider_info(
+                    model="gpt-5.6-sol",
+                    api_base=None,
+                    api_key=None,
+                    custom_llm_provider="chatgpt",
                 )
+            else:
+                ChatGPTResponsesAPIConfig().validate_environment(headers={}, model="gpt-5.6-sol", litellm_params=None)
 
-            mock_trigger.assert_called_once()
+    assert getattr(caught.value, "is_non_retryable_interactive_auth", False) is True
+    with pytest.raises(type(caught.value)):
+        router.should_retry_this_error(
+            error=caught.value,
+            healthy_deployments=[{}, {}],
+            all_deployments=[{}, {}],
+            regular_fallbacks=["fallback"],
+        )
+    assert acquisition.call_count == 1
 
-    @pytest.mark.asyncio
-    async def test_does_not_trigger_cooldown_when_has_logged_async_failure_is_false(self):
-        """This is the exact dead-code scenario the bug fix addresses: before it,
-        the normal failure callback runs for the first attempt in a fallback chain
-        (has_logged_async_failure is still False at that point), so no explicit
-        trigger is needed there."""
-        with patch(
-            "litellm.router_utils.fallback_event_handlers._trigger_cooldown_for_failed_deployment"
-        ) as mock_trigger:
-            with pytest.raises(RuntimeError, match="fallback model also failed"):
-                await run_async_fallback(
-                    litellm_router=self.RouterWithLoggingKwarg(),
-                    fallback_model_group=["fallback-model"],
-                    original_model_group="primary-model",
-                    original_exception=RuntimeError("original request failed"),
-                    max_fallbacks=3,
-                    fallback_depth=0,
-                    litellm_logging_obj=self._logging_obj(has_logged_async_failure=False),
-                )
 
-            mock_trigger.assert_not_called()
+@pytest.mark.asyncio
+@pytest.mark.parametrize("surface", ["chat", "responses"])
+async def test_async_function_with_retries_interactive_auth_overrides_retry_policy(surface):
+    router = Router.__new__(Router)
+    router.fallbacks = [{"chatgpt-group": ["fallback"]}]
+    router.context_window_fallbacks = []
+    router.content_policy_fallbacks = []
+    router.model_group_retry_policy = {"chatgpt-group": {"AuthenticationErrorRetries": 3}}
+    router.retry_policy = None
+    router.num_retries = 3
+    router.get_model_list = Mock(return_value=[{}, {}])
+    acquisition = Mock(side_effect=InteractiveAuthError(message="safe auth failure", status_code=401))
 
-    @pytest.mark.asyncio
-    async def test_does_not_trigger_cooldown_when_no_logging_obj_present(self):
-        with patch(
-            "litellm.router_utils.fallback_event_handlers._trigger_cooldown_for_failed_deployment"
-        ) as mock_trigger:
-            with pytest.raises(RuntimeError, match="fallback model also failed"):
-                await run_async_fallback(
-                    litellm_router=self.RouterWithLoggingKwarg(),
-                    fallback_model_group=["fallback-model"],
-                    original_model_group="primary-model",
-                    original_exception=RuntimeError("original request failed"),
-                    max_fallbacks=3,
-                    fallback_depth=0,
-                )
+    def provider_call(**kwargs):
+        if surface == "chat":
+            return ChatGPTConfig()._get_openai_compatible_provider_info(
+                model="gpt-5.6-sol",
+                api_base=None,
+                api_key=None,
+                custom_llm_provider="chatgpt",
+            )
+        return ChatGPTResponsesAPIConfig().validate_environment(headers={}, model="gpt-5.6-sol", litellm_params=None)
 
-            mock_trigger.assert_not_called()
+    with patch("litellm.llms.chatgpt.authenticator.Authenticator.get_access_token", acquisition):
+        with pytest.raises(Exception) as caught:
+            await router.async_function_with_retries(
+                original_function=provider_call,
+                model="chatgpt-group",
+                num_retries=3,
+                metadata={"model_group": "chatgpt-group"},
+            )
+
+    assert getattr(caught.value, "is_non_retryable_interactive_auth", False) is True
+    assert acquisition.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_fallback_dict_cannot_spoof_immutable_identity():
+    router = RecordingRouter()
+    await run_async_fallback(
+        litellm_router=router,
+        fallback_model_group=[
+            {
+                "model": "fallback-model",
+                "logical_model_group": "spoofed",
+                "original_requested_model": "spoofed",
+            }
+        ],
+        original_model_group="primary-model",
+        original_exception=RuntimeError("failed"),
+        max_fallbacks=3,
+        fallback_depth=0,
+    )
+
+    assert router.received_kwargs["logical_model_group"] == "primary-model"
+    assert router.received_kwargs["original_requested_model"] == "primary-model"

@@ -1,0 +1,3 @@
+run_async_fallback assigned the result of log_retry back to shared kwargs, changed kwargs[model], updated the existing metadata mapping, and incremented fallback_depth in place. Nested attempts therefore observed the physical fallback group as their apparent original identity
+
+Authenticator performed cooldown read/check/request/write without coordination and wrote JSON directly to the final auth path, allowing concurrent device requests and partially visible files

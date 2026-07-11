@@ -35,11 +35,13 @@ class ChatGPTConfig(OpenAIConfig):
         try:
             dynamic_api_key = authenticator.get_access_token()
         except GetAccessTokenError as e:
-            raise AuthenticationError(
+            auth_error = AuthenticationError(
                 model=model,
                 llm_provider=custom_llm_provider,
                 message=str(e),
             )
+            auth_error.is_non_retryable_interactive_auth = True
+            raise auth_error
         return dynamic_api_base, dynamic_api_key, custom_llm_provider
 
     def validate_environment(

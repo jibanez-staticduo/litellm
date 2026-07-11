@@ -1,0 +1,5 @@
+router_fallback request_id_hash=0123456789ab requested_model=chatgpt/gpt-5.6-sol logical_model_group=chatgpt/gpt-5.6-sol current_model_group=chatgpt-backup/gpt-5.6-sol selected_profile=default deployment_prefix=none attempt=1 fallback_source=chatgpt/gpt-5.6-sol fallback_reason=AuthenticationError
+
+Values are representative and synthetic. No raw request ID, token, header, prompt, response, device URL, or device code is included.
+
+router_selected request_id_hash=0123456789ab requested_model=chatgpt/gpt-5.6-sol logical_model_group=chatgpt/gpt-5.6-sol current_model_group=chatgpt/gpt-5.6-sol selected_profile=default deployment_prefix=deadbeef attempt=0 fallback_source=none fallback_reason=initial_selection
