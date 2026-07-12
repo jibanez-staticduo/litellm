@@ -1,0 +1,16 @@
+{
+  "image": "docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-multiaccount-routingfix-20260711",
+  "image_id": "sha256:0fd2463546d5ff893abf90174ea433fef470bec83cac11565dddb2385ea94d52",
+  "status": "running",
+  "health": "healthy",
+  "readiness_http": 200,
+  "liveliness_http": 200,
+  "inventory_pre_count": 26,
+  "inventory_post_count": 26,
+  "inventory_exact_match": true,
+  "deployment_names_and_ids_sha256": "preserved-by-exact-sorted-comparison",
+  "auth_files": [
+    {"name": "auth.json", "present_pre": true, "present_post": true, "mode_pre": "777", "mode_post": "777", "mtime_unchanged": true},
+    {"name": "account2.json", "present_pre": true, "present_post": true, "mode_pre": "777", "mode_post": "777", "mtime_unchanged": true}
+  ]
+}

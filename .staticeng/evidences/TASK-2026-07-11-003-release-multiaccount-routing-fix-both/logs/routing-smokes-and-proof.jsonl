@@ -1,0 +1,6 @@
+{"instance":"local","model":"chatgpt/gpt-5.6-sol","http_status":200,"sentinel_match":true}
+{"instance":"local","model":"chatgpt-account2/gpt-5.6-sol","http_status":200,"sentinel_match":true}
+{"instance":"fedora","model":"chatgpt/gpt-5.6-sol","http_status":200,"sentinel_match":true}
+{"instance":"local","event":"router_selected","requested_model":"chatgpt/gpt-5.6-sol","logical_model_group":"chatgpt/gpt-5.6-sol","current_model_group":"chatgpt/gpt-5.6-sol","selected_profile":"default","deployment_prefix":"11dbce7b","attempt":0,"fallback_source":"none","fallback_reason":"initial_selection"}
+{"instance":"local","event":"router_selected","requested_model":"chatgpt-account2/gpt-5.6-sol","logical_model_group":"chatgpt-account2/gpt-5.6-sol","current_model_group":"chatgpt-account2/gpt-5.6-sol","selected_profile":"account2","deployment_prefix":"59183bd1","attempt":0,"fallback_source":"none","fallback_reason":"initial_selection"}
+{"instance":"fedora","event":"router_selected","requested_model":"chatgpt/gpt-5.6-sol","logical_model_group":"chatgpt/gpt-5.6-sol","current_model_group":"chatgpt/gpt-5.6-sol","selected_profile":"default","deployment_prefix":"9007ab1c","attempt":0,"fallback_source":"none","fallback_reason":"initial_selection"}
