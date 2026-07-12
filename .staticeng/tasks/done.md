@@ -26,3 +26,4 @@
 | 2026-07-11 | TASK-2026-07-11-001-investigate-chatgpt-multiaccount-routing | none | pending-commit | Identified fallback identity mutation and race-prone account-specific device auth as root causes of multiaccount routing confusion. |
 | 2026-07-11 | TASK-2026-07-11-002-fix-multiaccount-routing-oauth | none | pending-commit | Fixed multiaccount routing identity, profile isolation, OAuth single-flight, retry suppression, and structured observability. |
 | 2026-07-11 | TASK-2026-07-11-003-release-multiaccount-routing-fix-both | none | pending-commit | Released multiaccount routing fix to local/NAS and Fedora with exact inventory preservation and routing proof. |
+| 2026-07-12 | TASK-2026-07-12-001-remove-fedora-account2-models | none | pending-commit | Removed all Fedora account2 deployments and matching OpenCode LiteLLM plugin overrides. |

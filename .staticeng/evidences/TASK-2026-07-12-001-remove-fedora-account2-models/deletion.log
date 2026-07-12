@@ -1,0 +1,11 @@
+Endpoint: POST /model/delete
+Payload field: exact deployment ID
+Credentials: omitted
+
+8895fb7d-267f-48f1-a9ad-3a1d353312a5 deleted; the initial request completed before a local shell assignment error prevented HTTP status capture. A repeated request returned HTTP 400 because the deployment no longer existed. Post-inventory confirms removal.
+72571693-87ff-47cf-8727-5ccee7e601b0 HTTP 200
+4bf47616-18a7-40dc-8098-7044951c8816 HTTP 200
+b10b00a9-d61b-4b07-9041-be4be2f2be94 HTTP 200
+379612d9-8932-478f-b55e-c18d01d98461 HTTP 200
+01f0b5f0-bfa5-41e2-9588-432b7075800b HTTP 200
+ef9e15b5-c976-4f30-83cb-1770f739c35b HTTP 200
