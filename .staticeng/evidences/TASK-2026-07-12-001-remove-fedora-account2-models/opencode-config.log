@@ -1,0 +1,32 @@
+Config path: /home/staticduo/.config/opencode/opencode.json
+Plugin catalog: plugin[4] @staticeng/opencode-litellm options.overrides
+Backup path: /home/staticduo/.config/opencode/opencode.json.backup-20260712T074223Z-remove-account2
+Backup mode: 0600
+
+Removed override keys:
+chatgpt-account2/gpt-5.3-codex
+chatgpt-account2/gpt-5.4
+chatgpt-account2/gpt-5.4-mini
+chatgpt-account2/gpt-5.5
+chatgpt-account2/gpt-5.6-luna
+chatgpt-account2/gpt-5.6-sol
+chatgpt-account2/gpt-5.6-terra
+
+Remaining account2 override count: 0
+Non-target override digest before: abba1754dfa002b7b875915620565e4cef21c36ececb213ac5d2e062ee0d87b5
+Non-target override digest after:  abba1754dfa002b7b875915620565e4cef21c36ececb213ac5d2e062ee0d87b5
+Config excluding override catalog digest before: 31bae769503bbee2f29162bb7de5dd0e512a18664f4a2ae204c2c16e2303f0fe
+Config excluding override catalog digest after:  31bae769503bbee2f29162bb7de5dd0e512a18664f4a2ae204c2c16e2303f0fe
+Preservation result: PASS
+
+jq JSON validation: PASS
+opencode debug config exit 0: PASS
+OpenCode version: 1.17.18
+Restart performed: no
+Restart status: not required for inactive future processes; existing OpenCode sessions must be restarted by their owner to load config-time changes
+
+Rollback commands:
+ssh fedora
+install -o staticduo -g staticduo -m 0644 /home/staticduo/.config/opencode/opencode.json.backup-20260712T074223Z-remove-account2 /home/staticduo/.config/opencode/opencode.json
+jq -e . /home/staticduo/.config/opencode/opencode.json >/dev/null
+opencode debug config >/dev/null

@@ -1,0 +1,24 @@
+Source: Fedora LiteLLM GET /model/info
+Captured fields: model_name and deployment ID only
+Total deployments: 19
+Target deployments: 7
+
+chatgpt-account2/gpt-5.3-codex 8895fb7d-267f-48f1-a9ad-3a1d353312a5
+chatgpt-account2/gpt-5.4 72571693-87ff-47cf-8727-5ccee7e601b0
+chatgpt-account2/gpt-5.4-mini 4bf47616-18a7-40dc-8098-7044951c8816
+chatgpt-account2/gpt-5.5 b10b00a9-d61b-4b07-9041-be4be2f2be94
+chatgpt-account2/gpt-5.6-luna 379612d9-8932-478f-b55e-c18d01d98461
+chatgpt-account2/gpt-5.6-sol 01f0b5f0-bfa5-41e2-9588-432b7075800b
+chatgpt-account2/gpt-5.6-terra ef9e15b5-c976-4f30-83cb-1770f739c35b
+chatgpt/gpt-5.3-codex b175303a-eb59-43e4-ad65-22c42a98c649
+chatgpt/gpt-5.4 38db2832-da1b-42ab-92b6-a1491580921e
+chatgpt/gpt-5.4-mini ecefda30-2a35-42eb-94b0-35a3fce4eda8
+chatgpt/gpt-5.5 bec7946b-341a-4332-8de3-fa3c4bf99eb7
+chatgpt/gpt-5.6-luna 00267b5a-b158-4065-a847-cdad6eca6ee5
+chatgpt/gpt-5.6-sol 9007ab1c-7948-4f63-a1b9-8874f678aabf
+chatgpt/gpt-5.6-terra 47b69a87-b626-40ea-84d4-b9496172bed0
+deepseek-v4-flash-fp8-mtp deepseek-v4-flash-fp8-mtp
+minimax-m3-v0-nvfp4-reap50 minimax-m3-v0-nvfp4-reap50
+qwen3-embedding-8b qwen3-embedding-8b
+qwen3-reranker-4b qwen3-reranker-4b
+qwen3.6-27b-aeon-ultimate-uncensored-multimodal-nvfp4-mtp qwen3.6-27b-aeon-ultimate-uncensored-multimodal-nvfp4-mtp
