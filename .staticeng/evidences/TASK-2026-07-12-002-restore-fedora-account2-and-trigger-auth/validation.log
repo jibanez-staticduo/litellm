@@ -1,0 +1,69 @@
+Fedora LiteLLM deployment count: 19
+Fedora account2 deployment count: 7
+All 12 pre-existing deployment name/ID pairs preserved: PASS
+
+Direct database validation after safe decryption in process:
+chatgpt-account2/gpt-5.3-codex profile account2, physical model/settings/pricing match regular: PASS
+chatgpt-account2/gpt-5.4 profile account2, physical model/settings/pricing match regular: PASS
+chatgpt-account2/gpt-5.4-mini profile account2, physical model/settings/pricing match regular: PASS
+chatgpt-account2/gpt-5.5 profile account2, physical model/settings/pricing match regular: PASS
+chatgpt-account2/gpt-5.6-luna profile account2, physical model/settings/pricing match regular: PASS
+chatgpt-account2/gpt-5.6-sol profile account2, physical model/settings/pricing match regular: PASS
+chatgpt-account2/gpt-5.6-terra profile account2, physical model/settings/pricing match regular: PASS
+
+/model/info HTTP 200
+/v1/models HTTP 200
+/health/readiness HTTP 200
+/health/liveliness HTTP 200
+Docker litellm state: running
+Docker litellm health: healthy
+
+OpenCode account2 override count: 7
+Each account2 override equals its matching regular override after required id/name adaptation: PASS
+All pre-existing override entries preserved exactly: PASS
+All config outside the override catalog preserved exactly: PASS
+Backup mode 0600: PASS
+JSON parse validation: PASS
+opencode debug config: PASS
+
+Auth trigger and transient device-auth details are intentionally excluded from this evidence packet
+
+Post-auth minimal smoke (2026-07-13 UTC):
+Endpoint: Fedora local LiteLLM /v1/chat/completions
+Requested model: chatgpt-account2/gpt-5.6-sol
+Request count: 1
+HTTP status: 200
+Exact harmless sentinel match: PASS
+Response model: chatgpt-account2/gpt-5.6-sol
+Structured selected deployment from request-scoped container logs: chatgpt-account2/gpt-5.6-sol
+Structured selected profile: unavailable in response headers and request-scoped logs
+Provider API base prefix: https://chatgpt.com/backend-api/codex
+New device-code/auth prompt in request-scoped container logs: NO
+Secrets, auth contents, account ID, proxy key, response body, and response identifiers: omitted
+
+QA dual-account smoke (2026-07-13T10:38Z UTC):
+Execution: exactly one harmless request per public model; no retries
+
+Requested model: chatgpt/gpt-5.6-sol
+Exact sentinel: QA_REGULAR_SOL_713_A
+HTTP status: 429
+Exact sentinel match: FAIL; no successful completion body
+Selected public deployment from request-scoped logs: chatgpt/gpt-5.6-sol
+Configured physical provider prefix: chatgpt/
+Backend API prefix: unavailable in the failed request's sanitized headers/logs
+Structured selected profile: unavailable in sanitized headers/logs
+New device-code/auth prompt: NO
+Sanitized failure classification: rate limit
+
+Requested model: chatgpt-account2/gpt-5.6-sol
+Exact sentinel: QA_ACCOUNT2_SOL_713_B
+HTTP status: 200
+Exact sentinel match: PASS
+Response model: chatgpt-account2/gpt-5.6-sol
+Selected public deployment: chatgpt-account2/gpt-5.6-sol
+Configured physical provider prefix: chatgpt/
+Backend API prefix from request-scoped logs: https://chatgpt.com/backend-api/codex
+Structured selected profile: unavailable in sanitized headers/logs; validated deployment profile remains account2
+New device-code/auth prompt: NO
+
+Secrets, headers, auth contents, proxy key, response bodies, response identifiers, and raw logs: omitted

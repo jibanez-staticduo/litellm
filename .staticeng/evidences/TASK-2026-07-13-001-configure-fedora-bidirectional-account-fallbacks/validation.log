@@ -1,0 +1,43 @@
+Fedora LiteLLM restart: healthy
+Persistent policy: allow_chatgpt_cross_profile_fallback=true
+Live policy: allow_chatgpt_cross_profile_fallback=true
+Persistent general fallback rule count: 19
+Live general fallback rule count: 19
+Pair source rule count: 14
+Bidirectional first-fallback checks passed: 7/7 pairs
+Existing fallback rules preserved: yes
+Existing secondary fallbacks for chatgpt/gpt-5.4 and chatgpt/gpt-5.5 preserved: yes
+Unrelated fallback order preserved: yes
+Request/admin router field exposes policy: no
+Credential or auth-file mutation: none
+YAML or .env edits: none
+Live forced-failure test: not run; no safe in-process injection surface is exposed
+
+QA natural failover probe (2026-07-13T10:52Z UTC):
+Requested/logical group: chatgpt/gpt-5.6-sol
+Request count: exactly 1; no manual retry
+Initial current group: chatgpt/gpt-5.6-sol
+Initial selected profile: default
+Initial deployment prefix: 9007ab1c
+Initial attempt/reason: 0 / initial selection
+Natural primary result: success
+Fallback/current group: none; fallback was not needed
+Fallback selected profile: none
+Fallback deployment prefix: none
+Observed fallback attempt/reason: none
+Final HTTP status: 200
+Exact harmless sentinel: PASS
+Interpretation: PASS for regular primary; natural forward failover was not exercised because the regular primary recovered
+Account2 primary follow-up request: not made; prior same-day account2 HTTP 200 evidence remains available and this probe returned HTTP 200
+New device-code/auth prompt: NO
+
+Post-probe live read-only check:
+Live policy reported by /router/settings current_values: true
+Live exact Sol forward rule: present
+Live exact Sol reverse rule: present
+Reverse live forced failure: not run; no natural account2 failure occurred
+Reverse coverage basis: symmetric exact DB-backed/live rules plus existing automated cross-profile/identity tests
+
+Targeted automated-test command:
+python -m pytest -q tests/test_litellm/router_utils/test_fallback_event_handlers.py -k 'preserves_caller_and_logical_identity or cross_profile_is_denied'
+Result: SETUP BLOCKED; local environment lacks the openai Python dependency

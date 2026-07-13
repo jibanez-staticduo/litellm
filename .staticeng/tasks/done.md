@@ -27,3 +27,5 @@
 | 2026-07-11 | TASK-2026-07-11-002-fix-multiaccount-routing-oauth | none | pending-commit | Fixed multiaccount routing identity, profile isolation, OAuth single-flight, retry suppression, and structured observability. |
 | 2026-07-11 | TASK-2026-07-11-003-release-multiaccount-routing-fix-both | none | pending-commit | Released multiaccount routing fix to local/NAS and Fedora with exact inventory preservation and routing proof. |
 | 2026-07-12 | TASK-2026-07-12-001-remove-fedora-account2-models | none | pending-commit | Removed all Fedora account2 deployments and matching OpenCode LiteLLM plugin overrides. |
+| 2026-07-13 | TASK-2026-07-12-002-restore-fedora-account2-and-trigger-auth | none | pending-commit | Restored and authenticated Fedora account2 models plus OpenCode overrides. |
+| 2026-07-13 | TASK-2026-07-13-001-configure-fedora-bidirectional-account-fallbacks | none | pending-commit | Configured DB-backed bidirectional fallbacks between all Fedora regular/account2 ChatGPT pairs. |
