@@ -1,0 +1,33 @@
+Fedora client configuration
+- Hermes removed 8 stale catalog entries; default remains chatgpt/gpt-5.6-terra
+- OpenClaw removed 5 stale catalog entries; primary remains litellm/chatgpt/gpt-5.6-terra
+- Hermes config check passed
+- OpenClaw config validation passed
+- Both user gateway services restarted and are active
+- Post-change comparison against live LiteLLM model inventory: zero stale Hermes entries; zero stale OpenClaw entries
+
+NAS router configuration
+- DB-backed router_settings num_retries changed from 3 to 1
+- allowed_fails remains 1
+- cooldown_time remains 30 seconds
+- All 8 fallback rules and their order are unchanged
+- LiteLLM restart was required because live runtime did not absorb the direct DB update
+- Container is running and healthy after restart; restart counter remains 0 because this was an explicit restart
+- Live /router/settings reports num_retries 1
+
+LazyMCP
+- Post-change status call succeeded
+- Gateway enabled; 24 visible servers and 535 visible tools
+- No registry, discovery, or current-client auth change was required
+
+Bounded post-change traffic window
+- Fedora: no ProxyModelNotFoundError or unavailable-model request in the measured 30-minute window
+- NAS: no 507 and no LazyMCP 500 in the measured 30-minute window
+- NAS still had 7 HTTP 429 and 7 HTTP 503 chat requests from provider availability/rate-limit pressure
+- Fedora had 12 HTTP 403 chat requests; this is separate caller authorization noise and was not modified
+- Existing traffic was present, so no additional Sol smoke requests were sent
+
+Code/release decision
+- No reproducible application code defect remains
+- No app code, image, model deployment, credential, MCP registry row, or model content changed
+- No upstream replay or new image is justified by this task
