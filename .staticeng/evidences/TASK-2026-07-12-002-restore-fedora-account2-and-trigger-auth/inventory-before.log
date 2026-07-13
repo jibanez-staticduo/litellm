@@ -1,0 +1,24 @@
+Source: Fedora LiteLLM GET /model/info and Fedora OpenCode structured config inspection
+Captured fields: sanitized deployment names/IDs and override presence/digests only
+
+LiteLLM deployment count: 12
+LiteLLM account2 deployment count: 0
+
+chatgpt/gpt-5.3-codex b175303a-eb59-43e4-ad65-22c42a98c649
+chatgpt/gpt-5.4 38db2832-da1b-42ab-92b6-a1491580921e
+chatgpt/gpt-5.4-mini ecefda30-2a35-42eb-94b0-35a3fce4eda8
+chatgpt/gpt-5.5 bec7946b-341a-4332-8de3-fa3c4bf99eb7
+chatgpt/gpt-5.6-luna 00267b5a-b158-4065-a847-cdad6eca6ee5
+chatgpt/gpt-5.6-sol 9007ab1c-7948-4f63-a1b9-8874f678aabf
+chatgpt/gpt-5.6-terra 47b69a87-b626-40ea-84d4-b9496172bed0
+deepseek-v4-flash-fp8-mtp deepseek-v4-flash-fp8-mtp
+minimax-m3-v0-nvfp4-reap50 minimax-m3-v0-nvfp4-reap50
+qwen3-embedding-8b qwen3-embedding-8b
+qwen3-reranker-4b qwen3-reranker-4b
+qwen3.6-27b-aeon-ultimate-uncensored-multimodal-nvfp4-mtp qwen3.6-27b-aeon-ultimate-uncensored-multimodal-nvfp4-mtp
+
+OpenCode plugin index: 4
+OpenCode override count: 15
+OpenCode account2 override count: 0
+All seven matching regular override keys present: PASS
+Regular values inspected structurally; credentials and values omitted

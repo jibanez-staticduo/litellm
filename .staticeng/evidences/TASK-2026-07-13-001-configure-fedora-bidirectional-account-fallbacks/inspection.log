@@ -1,0 +1,11 @@
+Fedora service: litellm container healthy before change
+Admin API inventory: GET /model/info, GET /router/settings, POST /fallback, GET/DELETE /fallback/{model}
+Persistent table: LiteLLM_Config, param_name=router_settings, JSON object
+Matching model pairs discovered: 7
+Existing general fallback rules: 7
+Existing cross-profile policy: absent
+Router constructor accepts allow_chatgpt_cross_profile_fallback: yes
+Startup DB merge reaches Router constructor: yes
+Router.update_settings supports policy: no; policy requires restart after DB persistence
+Request-level router settings permit policy: no
+No safe admin or client failure-injection endpoint found

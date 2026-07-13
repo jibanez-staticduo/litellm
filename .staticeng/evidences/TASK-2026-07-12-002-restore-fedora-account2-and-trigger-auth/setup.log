@@ -1,0 +1,34 @@
+LiteLLM mutation method: idempotent POST /model/new through the Fedora local admin API
+Credentials and request bodies: omitted
+Source: each matching regular chatgpt/* deployment
+Target: corresponding chatgpt-account2/* public alias
+Physical provider model retained: PASS
+chatgpt_auth_profile set to account2: PASS
+
+chatgpt-account2/gpt-5.3-codex HTTP 200
+chatgpt-account2/gpt-5.4 HTTP 200
+chatgpt-account2/gpt-5.4-mini HTTP 200
+chatgpt-account2/gpt-5.5 HTTP 200
+chatgpt-account2/gpt-5.6-luna HTTP 200
+chatgpt-account2/gpt-5.6-sol HTTP 200
+chatgpt-account2/gpt-5.6-terra HTTP 200
+
+OpenCode config: /home/staticduo/.config/opencode/opencode.json
+Plugin: plugin[4] @staticeng/opencode-litellm options.overrides
+Backup: /home/staticduo/.config/opencode/opencode.json.backup-20260713T085402Z-restore-account2
+Backup mode: 0600
+Updated config mode: 0600
+Edit method: parsed JSON, deep-copy matching regular values, adapt id/name only when equal to the regular public key, fsync, atomic replace
+Added account2 override count: 7
+No code, image, auth file, or login state was modified
+
+Post-auth verification setup (2026-07-13 UTC):
+Auth file inspected inside the Fedora LiteLLM container without printing contents
+Auth file present: PASS
+Auth file mtime UTC: 2026-07-13T09:05:52.306273Z
+Auth file mode 0600: PASS
+Auth file JSON object: PASS
+Required access token key present and non-empty: PASS
+Required refresh token key present and non-empty: PASS
+Required account ID key present and non-empty: PASS
+Auth values, account ID, proxy key, request authorization, and response identifiers: omitted
