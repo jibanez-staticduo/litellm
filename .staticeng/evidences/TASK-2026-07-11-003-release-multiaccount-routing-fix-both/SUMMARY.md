@@ -50,10 +50,10 @@ The first local deployment was reverted by the `updatedockers` stack. With expli
 
 ## Evidence Files
 
-- `logs/release-and-rollback.md`
-- `logs/local-verification.json`
-- `logs/fedora-verification.json`
-- `logs/routing-smokes-and-proof.jsonl`
-- `logs/updatedockers-control.md`
+- `.staticeng/evidences/TASK-2026-07-11-003-release-multiaccount-routing-fix-both/logs/release-and-rollback.md`
+- `.staticeng/evidences/TASK-2026-07-11-003-release-multiaccount-routing-fix-both/logs/local-verification.json`
+- `.staticeng/evidences/TASK-2026-07-11-003-release-multiaccount-routing-fix-both/logs/fedora-verification.json`
+- `.staticeng/evidences/TASK-2026-07-11-003-release-multiaccount-routing-fix-both/logs/routing-smokes-and-proof.jsonl`
+- `.staticeng/evidences/TASK-2026-07-11-003-release-multiaccount-routing-fix-both/logs/updatedockers-control.md`
 
 No application code, model database/configuration, or credential content was modified. No commit was created.
