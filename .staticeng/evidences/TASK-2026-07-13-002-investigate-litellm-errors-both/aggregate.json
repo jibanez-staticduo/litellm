@@ -1,0 +1,170 @@
+{
+  "window_utc": {
+    "captured_at": "2026-07-14T00:15:00+02:00",
+    "windows": ["6h", "30m"]
+  },
+  "instances": {
+    "local_nas": {
+      "container": {
+        "image": "docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-multiaccount-routingfix-20260711",
+        "image_id_prefix": "0fd2463546d5",
+        "status": "running",
+        "health": "healthy",
+        "restart_count": 0,
+        "started_at": "2026-07-12T07:04:05.906778199Z",
+        "oom_killed": false,
+        "readiness_http": 200,
+        "liveliness_http": 200
+      },
+      "six_hours": {
+        "log_lines": 35964,
+        "line_pattern_counts": {
+          "error": 1425,
+          "warning": 12,
+          "traceback": 614,
+          "rate_limit": 120,
+          "auth_or_device": 96,
+          "fallback": 1932,
+          "router_validation": 0,
+          "db": 0,
+          "cache_or_redis": 0,
+          "responses_parse": 0,
+          "client_cancel": 6,
+          "timeout": 0,
+          "oom": 0
+        },
+        "http_error_requests": {
+          "POST /v1/chat/completions 429": 24,
+          "POST /v1/chat/completions 500": 1,
+          "POST /v1/chat/completions 503": 34,
+          "POST /v1/chat/completions 507": 4,
+          "POST /lazymcp 500": 6,
+          "GET /lazymcp 500": 2,
+          "GET OAuth discovery route 404": 4
+        },
+        "exception_mentions": {
+          "ServiceUnavailableError": 1234,
+          "ChatgptException": 476,
+          "MaskedHTTPStatusError": 312,
+          "BaseLLMException": 312,
+          "InternalServerError": 108,
+          "RouterRateLimitError": 96,
+          "APIError": 144,
+          "KeyNotFoundError": 64,
+          "ConnectError": 12,
+          "CancelledError": 6
+        },
+        "sol_error_line_mentions": {
+          "chatgpt/gpt-5.6-sol": 392,
+          "chatgpt-account2/gpt-5.6-sol": 40
+        }
+      },
+      "thirty_minutes": {
+        "log_lines": 25783,
+        "line_pattern_counts": {
+          "error": 1196,
+          "warning": 12,
+          "traceback": 514,
+          "rate_limit": 115,
+          "auth_or_device": 96,
+          "fallback": 1622,
+          "router_validation": 0,
+          "db": 0,
+          "cache_or_redis": 0,
+          "responses_parse": 0,
+          "client_cancel": 6,
+          "timeout": 0,
+          "oom": 0
+        },
+        "http_error_requests": {
+          "POST /v1/chat/completions 429": 17,
+          "POST /v1/chat/completions 503": 24,
+          "POST /v1/chat/completions 507": 4,
+          "POST /lazymcp 500": 6,
+          "GET /lazymcp 500": 1,
+          "GET OAuth discovery route 404": 2
+        }
+      },
+      "sol_smokes": {
+        "chatgpt/gpt-5.6-sol": {"requests": 1, "http_status": 200, "sentinel_match": true},
+        "chatgpt-account2/gpt-5.6-sol": {"requests": 1, "http_status": 200, "sentinel_match": true},
+        "new_device_auth_observed": false
+      }
+    },
+    "fedora": {
+      "container": {
+        "image": "docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.92-replay-multiaccount-routingfix-20260711",
+        "image_id_prefix": "ca28db906704",
+        "status": "running",
+        "health": "healthy",
+        "restart_count": 0,
+        "started_at": "2026-07-13T10:48:25.200267683Z",
+        "oom_killed": false,
+        "readiness_http": 200,
+        "liveliness_http": 200
+      },
+      "six_hours": {
+        "log_lines": 2905,
+        "line_pattern_counts": {
+          "error": 108,
+          "warning": 9,
+          "traceback": 88,
+          "rate_limit": 0,
+          "auth_or_device": 30,
+          "fallback": 0,
+          "router_validation": 0,
+          "db": 0,
+          "cache_or_redis": 0,
+          "responses_parse": 0,
+          "client_cancel": 12,
+          "timeout": 18,
+          "oom": 0
+        },
+        "http_error_requests": {"POST /v1/chat/completions 400": 19},
+        "exception_mentions": {
+          "ProxyModelNotFoundError": 76,
+          "HTTPStatusError": 30,
+          "MCPUpstreamAuthError": 12,
+          "CancelledError": 12,
+          "LoggingError": 8,
+          "ValueError": 16
+        },
+        "sol_error_line_mentions": {
+          "chatgpt/gpt-5.6-sol": 0,
+          "chatgpt-account2/gpt-5.6-sol": 0
+        }
+      },
+      "thirty_minutes": {
+        "log_lines": 606,
+        "line_pattern_counts": {
+          "error": 32,
+          "warning": 3,
+          "traceback": 30,
+          "rate_limit": 0,
+          "auth_or_device": 10,
+          "fallback": 0,
+          "router_validation": 0,
+          "db": 0,
+          "cache_or_redis": 0,
+          "responses_parse": 0,
+          "client_cancel": 4,
+          "timeout": 6,
+          "oom": 0
+        },
+        "http_error_requests": {"POST /v1/chat/completions 400": 4}
+      },
+      "sol_smokes": {
+        "chatgpt/gpt-5.6-sol": {"requests": 1, "http_status": 200, "sentinel_match": true},
+        "chatgpt-account2/gpt-5.6-sol": {"requests": 1, "http_status": 200, "sentinel_match": true},
+        "new_device_auth_observed": false
+      }
+    }
+  },
+  "upstream": {
+    "fetched_ref": "upstream/main",
+    "commit": "10d5804b3ef4",
+    "deployed_fork_head": "960e343ef297",
+    "notable_responses_fixes": ["249a999506", "2f0cdb35bf"],
+    "sync_required_before_any_new_release": true
+  }
+}

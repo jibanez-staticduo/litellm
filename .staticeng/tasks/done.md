@@ -29,3 +29,5 @@
 | 2026-07-12 | TASK-2026-07-12-001-remove-fedora-account2-models | none | pending-commit | Removed all Fedora account2 deployments and matching OpenCode LiteLLM plugin overrides. |
 | 2026-07-13 | TASK-2026-07-12-002-restore-fedora-account2-and-trigger-auth | none | pending-commit | Restored and authenticated Fedora account2 models plus OpenCode overrides. |
 | 2026-07-13 | TASK-2026-07-13-001-configure-fedora-bidirectional-account-fallbacks | none | pending-commit | Configured DB-backed bidirectional fallbacks between all Fedora regular/account2 ChatGPT pairs. |
+| 2026-07-13 | TASK-2026-07-13-002-investigate-litellm-errors-both | none | pending-commit | Categorized NAS provider/fallback pressure and Fedora invalid-model/MCP errors; confirmed all Sol models operational. |
+| 2026-07-14 | TASK-2026-07-14-001-fix-litellm-operational-errors | none | pending-commit | Cleaned stale Fedora client catalogs and bounded NAS DB retries; no code release required. |

@@ -1,0 +1,37 @@
+Fedora invalid-model attribution
+- Exact unavailable names observed in sanitized LiteLLM errors: qwen3; deepseek_v4_flash
+- Source application category: other/unattributed. Safe proxy logs contained no OpenClaw, Hermes, or OpenCode marker, so no identity inference was made
+- Hermes catalog had 8 names absent from the live Fedora LiteLLM catalog
+- OpenClaw catalog had 5 names absent from the live Fedora LiteLLM catalog
+- OpenCode defaults and plugin overrides referenced live models; no OpenCode change was required
+
+NAS 507 attribution
+- Route: POST /v1/chat/completions
+- Requests in parent 6h window: 4
+- Class: upstream ChatGPT HTTP 507 Insufficient Storage, mapped through ChatgptException
+- Policy category: provider capacity/storage response; not LiteLLM budget, spend, quota, or client limit
+- No budget/spend-limit exception class was present
+
+NAS LazyMCP 500 attribution
+- Route: GET and POST /lazymcp
+- Requests in parent 6h window: 8
+- Class: KeyNotFoundError from MCP proxy-key authentication before MCP initialize/tool dispatch
+- Sub-operation: authentication/context preparation; no upstream MCP server sub-operation was reached
+- Current OpenCode LazyMCP client has an enabled URL and configured auth headers
+- Current LazyMCP status succeeds and exposes the registry, so the failures are stale/invalid caller credentials rather than registry discovery incompatibility
+
+NAS router settings before change
+- num_retries: 3
+- allowed_fails: 1
+- cooldown_time: 30 seconds
+- retry_policy: unset
+- fallback rules: 8, preserved exactly
+- No NAS explicit regular/account2 fallback pair existed to modify
+
+Fedora router settings inspected only
+- num_retries: 3
+- allowed_fails: 1
+- cooldown_time: 30 seconds
+- retry_policy: unset
+- fallback rules: 19
+- All 14 explicit bidirectional regular/account2 pair rules remained present
