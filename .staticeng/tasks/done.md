@@ -32,3 +32,7 @@
 | 2026-07-13 | TASK-2026-07-13-002-investigate-litellm-errors-both | none | pending-commit | Categorized NAS provider/fallback pressure and Fedora invalid-model/MCP errors; confirmed all Sol models operational. |
 | 2026-07-14 | TASK-2026-07-14-001-fix-litellm-operational-errors | none | pending-commit | Cleaned stale Fedora client catalogs and bounded NAS DB retries; no code release required. |
 | 2026-07-16 | TASK-2026-07-14-002-reauth-account2-create-account3-nas | none | pending-commit | Added and authenticated NAS account3 deployments while preserving account2 and unrelated settings. |
+| 2026-07-16 | TASK-2026-07-16-001-investigate-fedora-litellm-routing-errors | none | pending-commit | Confirmed Fedora ChatGPT auth cooldown and stale Qwen alias failures; context overflow was not reproduced. |
+| 2026-07-16 | TASK-2026-07-16-002-repair-fedora-litellm-routing-errors | none | pending-commit | Removed the stale Qwen request source through the NAS-authoritative OpenCode config and verified Fedora ChatGPT profiles healthy. |
+| 2026-07-16 | TASK-2026-07-16-004-clean-staticeng-repair-side-effects | none | pending-commit | Removed incomplete generated CodeMaps and restored the curated root CodeMap. |
+| 2026-07-16 | TASK-2026-07-16-003-review-litellm-repair-finalization | none | pending-commit | Authorized selective closure commits after cleanup removed incomplete CodeMap side effects. |

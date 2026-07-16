@@ -1,0 +1,10 @@
+litellm/router_utils/cooldown_handlers.py:164-173 documents cooldown triggers
+litellm/router_utils/cooldown_handlers.py:268-290 applies deployment cooldown
+litellm/router_utils/cooldown_handlers.py:375-389 uses one per-deployment failure counter; cooldown begins when updated_fails > allowed_fails
+litellm/router.py:6004-6009 excludes context errors from order-based/general preprocessing
+litellm/router.py:6093-6115 selects explicit context_window_fallbacks when configured
+litellm/router.py:6117-6129 defaults a context error to general fallbacks when no context fallback is set
+litellm/router.py:6582-6584 raises context errors into fallback handling when context fallbacks exist
+litellm/types/router.py:504-518 has exception-specific allowed-fail fields, but no ContextWindowExceededErrorAllowedFails field
+litellm/proxy/management_endpoints/fallback_management_endpoints.py:41-180 persists fallback types through POST /fallback
+live Fedora config: num_retries=3, allowed_fails=1, cooldown_time=30, cross-profile fallback allowed

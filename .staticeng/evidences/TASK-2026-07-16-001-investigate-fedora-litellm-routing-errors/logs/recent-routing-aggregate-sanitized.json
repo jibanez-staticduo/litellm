@@ -1,0 +1,25 @@
+{
+  "window": "36h ending 2026-07-16T15:13+02:00",
+  "total_log_lines": 247369,
+  "http_error_requests": {
+    "POST /v1/chat/completions 401": 2,
+    "POST /v1/chat/completions 400": 2316,
+    "POST /v1/chat/completions 429": 107
+  },
+  "request_timestamps": {
+    "first_chat_401": "2026-07-15T04:54:57.425720920Z",
+    "last_chat_401": "2026-07-15T04:55:19.193099784Z",
+    "first_invalid_alias": "2026-07-15T04:55:29.145492854Z",
+    "last_invalid_alias": "2026-07-16T13:14:23.848553796Z"
+  },
+  "repeated_line_mentions": {
+    "invalid_alias": 9264,
+    "ProxyModelNotFoundError_associated": 9264,
+    "fallback": 8344,
+    "cooldown": 1988,
+    "router_exhaustion": 1560,
+    "ChatgptException_401_associated": 431,
+    "ContextWindowExceeded_or_equivalent": 0
+  },
+  "interpretation": "Line mentions include nested tracebacks and fallback frames and are not unique requests. No prompt, response, identity, address, request ID, header, or credential was retained."
+}

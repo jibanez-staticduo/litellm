@@ -1,0 +1,33 @@
+{
+  "runtime_model_count": 19,
+  "runtime_model_names": [
+    "chatgpt-account2/gpt-5.3-codex",
+    "chatgpt-account2/gpt-5.4",
+    "chatgpt-account2/gpt-5.4-mini",
+    "chatgpt-account2/gpt-5.5",
+    "chatgpt-account2/gpt-5.6-luna",
+    "chatgpt-account2/gpt-5.6-sol",
+    "chatgpt-account2/gpt-5.6-terra",
+    "chatgpt/gpt-5.3-codex",
+    "chatgpt/gpt-5.4",
+    "chatgpt/gpt-5.4-mini",
+    "chatgpt/gpt-5.5",
+    "chatgpt/gpt-5.6-luna",
+    "chatgpt/gpt-5.6-sol",
+    "chatgpt/gpt-5.6-terra",
+    "deepseek-v4-flash-fp8-mtp",
+    "minimax-m3-v0-nvfp4-reap50",
+    "qwen3-embedding-8b",
+    "qwen3-reranker-4b",
+    "qwen3.6-27b-aeon-ultimate-uncensored-multimodal-nvfp4-mtp"
+  ],
+  "requested_alias": "qwen3.6-35b-a3b-uncensored-nvfp4",
+  "requested_alias_present_at_runtime": false,
+  "fedora_opencode_catalog_contains_requested_alias": true,
+  "fedora_opencode_catalog_contains_valid_nearby_qwen": true,
+  "fedora_opencode_defaults": {
+    "model": "LiteLLM/chatgpt/gpt-5.5",
+    "small_model": "LiteLLM/chatgpt/gpt-5.4-mini"
+  },
+  "fedora_openclaw_default": "litellm/chatgpt/gpt-5.6-terra"
+}
