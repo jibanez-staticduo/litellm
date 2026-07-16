@@ -1,0 +1,13 @@
+Scope: NAS/local litellm.staticduo.com only
+/model/info HTTP status: 200
+Pre-change deployment count: 26
+Pre-change account2 deployment count: 8
+Pre-change account3 deployment count: 0
+Account2 public deployments inventoried: gpt-5.3-codex, gpt-5.3-codex-spark, gpt-5.4, gpt-5.4-mini, gpt-5.5, gpt-5.6-luna, gpt-5.6-sol, gpt-5.6-terra
+OpenCode config used: /home/staticduo/.config/opencode/opencode.json
+OpenCode plugin: @staticeng/opencode-litellm
+Pre-change account2 override count: 7
+Pre-change account3 override count: 0
+OpenCode config parse: PASS
+OpenCode resolved config validation: PASS
+Secrets, auth values, request payloads, headers, account identifiers, and response contents: omitted

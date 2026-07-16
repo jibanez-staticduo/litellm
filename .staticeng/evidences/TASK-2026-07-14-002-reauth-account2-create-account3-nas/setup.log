@@ -1,0 +1,31 @@
+LiteLLM mutation method: idempotent POST /model/new through the NAS admin API
+Source: each current chatgpt-account2/* deployment
+Target: corresponding chatgpt-account3/* public alias
+Physical provider model retained: PASS
+Full non-identity settings, metadata, and pricing retained: PASS
+chatgpt_auth_profile selected as account3: PASS
+Created account3 deployment count: 8
+
+OpenCode config: /home/staticduo/.config/opencode/opencode.json
+Plugin: @staticeng/opencode-litellm overrides
+Backup created: PASS
+Backup mode: 0600
+Edit method: parsed JSON, deep-copy account2 override values, adapt public id/name, fsync, atomic replace
+Added account3 override count: 7
+No code, image, Fedora state, or credential contents were read or exposed
+
+Account2 credential-state inspection:
+Auth file present: PASS
+Auth file non-empty: PASS
+Auth file mtime UTC: 2026-07-07T23:06:06Z
+Lock file present: PASS
+Lock file mtime UTC: 2026-07-12T07:05:30Z
+Credential values and auth contents: not read or emitted
+Invalid account2 auth backup: /app/data/chatgpt-auth/account2.invalidated-20260714T112601Z.json.bak
+Invalid account2 auth backup mode: 0600
+Rotation method: atomic same-directory rename, directory fsync, no deletion
+
+Account3 credential-state inspection:
+Auth file present before trigger: NO
+
+Transient auth details are intentionally excluded from this evidence packet
