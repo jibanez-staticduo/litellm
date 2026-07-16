@@ -1,0 +1,71 @@
+Post-change /model/info HTTP status: 200
+Post-change deployment count: 34
+Account2 deployment count: 8
+Account3 deployment count: 8
+All 26 pre-existing deployments preserved: PASS
+Each account3 physical provider model matches account2: PASS
+Each account3 non-identity setting, metadata field, and pricing field matches account2: PASS
+Each account3 deployment selects auth profile account3: PASS
+
+LiteLLM admin health HTTP status: 200
+LiteLLM readiness HTTP status: 200
+LiteLLM database status: connected
+
+OpenCode account2 override count: 7
+OpenCode account3 override count: 7
+Each account3 override matches account2 after public id/name adaptation: PASS
+JSON parse validation: PASS
+opencode debug config: PASS
+Backup mode 0600: PASS
+
+Account2 requested inference count: 1
+Account2 requested model: chatgpt-account2/gpt-5.6-sol
+Account2 HTTP status: 401
+Sanitized failure classification: provider-invalidated OAuth token
+Credential rotation to force reauth: authorized and performed by atomic same-directory rename
+Invalid account2 auth backup: /app/data/chatgpt-auth/account2.invalidated-20260714T112601Z.json.bak
+Invalid account2 auth backup mode 0600: PASS
+Account2 direct auth-state invocation count: 1
+Account2 new device-flow inference request count after rotation: 1
+Account2 new device flow started: PASS
+Account2 inference result after rotation: timed out awaiting incomplete device authorization
+
+Account3 direct device-flow invocation count: 1
+Account3 device flow started: PASS
+Account3 requested inference count: 1
+Account3 inference result: timed out awaiting incomplete device authorization
+Retries: 0
+Login completion: NOT PERFORMED
+
+Transient device URL/code, auth contents, tokens, keys, request payloads, headers, account identifiers, responses, and session identifiers: omitted
+
+Post-auth verification UTC date: 2026-07-14
+Post-auth verification scope: NAS/local only
+Post-auth retries: 0
+
+Account2 auth file present: PASS
+Account2 auth file mtime UTC: 2026-07-14T11:28:42.522306Z
+Account2 auth file mode 0600: PASS
+Account2 auth file is a JSON object: PASS
+Account2 required non-empty field presence: access_token=PASS, refresh_token=PASS, id_token=PASS, expires_at=PASS, account_id=PASS
+Account2 post-auth inference count: 1
+Account2 post-auth model: chatgpt-account2/gpt-5.6-sol
+Account2 post-auth HTTP status: 200
+Account2 exact sentinel match: PASS
+Account2 selected public response model: chatgpt-account2/gpt-5.6-sol
+Account2 configured auth profile: account2
+
+Account3 auth file present: PASS
+Account3 auth file mtime UTC: 2026-07-14T11:31:20.311234Z
+Account3 auth file mode 0600: PASS
+Account3 auth file is a JSON object: PASS
+Account3 required non-empty field presence: access_token=PASS, refresh_token=PASS, id_token=PASS, expires_at=PASS, account_id=PASS
+Account3 post-auth inference count: 1
+Account3 post-auth model: chatgpt-account3/gpt-5.6-sol
+Account3 post-auth HTTP status: 200
+Account3 exact sentinel match: PASS
+Account3 selected public response model: chatgpt-account3/gpt-5.6-sol
+Account3 configured auth profile: account3
+
+New device-code prompt during post-auth verification: NO
+Post-auth auth contents, token values, proxy key, headers, account identifiers, response bodies, response identifiers, device URLs, and device codes: omitted
