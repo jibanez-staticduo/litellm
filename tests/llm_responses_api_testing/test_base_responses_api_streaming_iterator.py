@@ -637,9 +637,16 @@ class TestBaseResponsesAPIStreamingIterator:
             assert result.type == ResponsesAPIStreamEvents.RESPONSE_INCOMPLETE
             assert iterator.completed_response == result
 
-            # Success handler should have been called (via _handle_logging_completed_response)
             mock_create_task.assert_called_once()
-            mock_executor.submit.assert_called_once()
+            mock_logging_obj.dispatch_success_handlers.assert_called_once_with(
+                mock_incomplete_event,
+                start_time=iterator.start_time,
+                end_time=mock_logging_obj.dispatch_success_handlers.call_args.kwargs["end_time"],
+                cache_hit=None,
+                prefer_async_handlers=True,
+            )
+            mock_create_task.call_args.args[0].close()
+            mock_executor.submit.assert_not_called()
 
             # Failure handlers should NOT have been called
             mock_logging_obj.async_failure_handler.assert_not_called()
