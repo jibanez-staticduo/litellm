@@ -946,8 +946,11 @@ class LLMCachingHandler:
         from litellm.litellm_core_utils.core_helpers import (
             _get_parent_otel_span_from_kwargs,
         )
+        from litellm.responses.streaming_iterator import BaseResponsesAPIStreamingIterator
 
         if litellm.cache is None:
+            return
+        if isinstance(result, (BaseResponsesAPIStreamingIterator, CustomStreamWrapper)):
             return
 
         new_kwargs = kwargs.copy()

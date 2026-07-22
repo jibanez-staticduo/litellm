@@ -44,6 +44,12 @@ class ResponsesToCompletionBridgeHandler:
         return isinstance(result, CustomStreamWrapper) and result.custom_llm_provider == "cached_response"
 
     @staticmethod
+    def _disable_inner_stream_success_logging(result: Any) -> None:
+        disable_success_logging = getattr(result, "disable_success_logging", None)
+        if callable(disable_success_logging):
+            disable_success_logging()
+
+    @staticmethod
     def _coerce_response_object(
         response_obj: Any,
         hidden_params: Optional[dict],
@@ -191,6 +197,8 @@ class ResponsesToCompletionBridgeHandler:
             **request_data,
         )
 
+        self._disable_inner_stream_success_logging(result)
+
         from litellm.types.utils import ModelResponse
 
         stream = self._resolve_stream_flag(optional_params, litellm_params)
@@ -280,6 +288,8 @@ class ResponsesToCompletionBridgeHandler:
             **request_data,
             aresponses=True,
         )
+
+        self._disable_inner_stream_success_logging(result)
 
         from litellm.types.utils import ModelResponse
 
