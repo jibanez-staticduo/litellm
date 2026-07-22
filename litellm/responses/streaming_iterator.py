@@ -464,6 +464,7 @@ class BaseResponsesAPIStreamingIterator:
                 end_time=end_time,
                 cache_hit=self._completed_response_cache_hit,
             )
+
             executor.submit(
                 self.logging_obj.success_handler,
                 result=logging_response,
