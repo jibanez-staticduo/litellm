@@ -7,39 +7,62 @@ import pytest
 
 sys.path.insert(0, os.path.abspath("../../.."))
 
+import litellm
+from litellm.caching.caching_handler import LLMCachingHandler
 from litellm.completion_extras.litellm_responses_transformation.handler import (
     ResponsesToCompletionBridgeHandler,
 )
 from litellm.litellm_core_utils.litellm_logging import Logging as LiteLLMLogging
 from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
+from litellm.responses.streaming_iterator import BaseResponsesAPIStreamingIterator
 from litellm.types.utils import ModelResponse
 
 
 def test_is_preformatted_cached_chat_stream_true():
     stream = MagicMock(spec=CustomStreamWrapper)
     stream.custom_llm_provider = "cached_response"
-    assert (
-        ResponsesToCompletionBridgeHandler._is_preformatted_cached_chat_stream(stream)
-        is True
-    )
+    assert ResponsesToCompletionBridgeHandler._is_preformatted_cached_chat_stream(stream) is True
 
 
 def test_is_preformatted_cached_chat_stream_false_wrong_provider():
     stream = MagicMock(spec=CustomStreamWrapper)
     stream.custom_llm_provider = "openai"
-    assert (
-        ResponsesToCompletionBridgeHandler._is_preformatted_cached_chat_stream(stream)
-        is False
-    )
+    assert ResponsesToCompletionBridgeHandler._is_preformatted_cached_chat_stream(stream) is False
 
 
 def test_is_preformatted_cached_chat_stream_false_wrong_type():
     assert (
-        ResponsesToCompletionBridgeHandler._is_preformatted_cached_chat_stream(
-            {"object": "chat.completion.chunk"}
-        )
+        ResponsesToCompletionBridgeHandler._is_preformatted_cached_chat_stream({"object": "chat.completion.chunk"})
         is False
     )
+
+
+def test_disable_inner_stream_success_logging():
+    stream = MagicMock()
+
+    ResponsesToCompletionBridgeHandler._disable_inner_stream_success_logging(stream)
+
+    stream.disable_success_logging.assert_called_once_with()
+
+
+@pytest.mark.asyncio
+async def test_async_cache_skips_responses_stream_iterator():
+    cache = MagicMock()
+    caching_handler = LLMCachingHandler(
+        original_function=MagicMock(),
+        request_kwargs={},
+        start_time=datetime.now(),
+    )
+    stream = object.__new__(BaseResponsesAPIStreamingIterator)
+
+    with patch.object(litellm, "cache", cache):
+        await caching_handler.async_set_cache(
+            result=stream,
+            original_function=MagicMock(),
+            kwargs={},
+        )
+
+    cache.async_add_cache.assert_not_called()
 
 
 def _bridge_kwargs(stream: bool):
@@ -175,6 +198,39 @@ async def test_acompletion_skips_rewrapping_preformatted_cached_chat_stream():
 
     post.assert_called_once()
     assert result is stream
+
+
+@pytest.mark.asyncio
+async def test_acompletion_disables_inner_stream_success_logging():
+    inner_stream = MagicMock()
+    bridge = ResponsesToCompletionBridgeHandler()
+
+    async def completion_stream():
+        if False:
+            yield None
+
+    with (
+        patch.object(
+            bridge.transformation_handler,
+            "transform_request",
+            return_value={"model": "gpt-5.4", "input": "hi"},
+        ),
+        patch("litellm.aresponses", new=AsyncMock(return_value=inner_stream)),
+        patch.object(
+            bridge.transformation_handler,
+            "get_model_response_iterator",
+            return_value=completion_stream(),
+        ),
+        patch.object(
+            bridge,
+            "_apply_post_stream_processing",
+            side_effect=lambda s, *a, **kw: s,
+        ),
+    ):
+        result = await bridge.acompletion(**_bridge_kwargs(stream=True))
+
+    assert isinstance(result, CustomStreamWrapper)
+    inner_stream.disable_success_logging.assert_called_once_with()
 
 
 @pytest.mark.asyncio

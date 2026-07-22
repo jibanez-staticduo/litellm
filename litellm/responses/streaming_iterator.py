@@ -169,7 +169,8 @@ class BaseResponsesAPIStreamingIterator:
         self._generated_content = ""
         self._completed_response_cached = False
         self._completed_response_logged = False
-        self._completed_response_cache_hit: bool | None = None
+        self._success_logging_enabled = True
+        self._completed_response_cache_hit: Optional[bool] = None
         self._persist_completed_response_before_logging = True
         self._stream_created_time: float = time.time()
         self._streamed_output_items: Dict[int, Dict[str, Any]] = {}
@@ -195,6 +196,9 @@ class BaseResponsesAPIStreamingIterator:
         self._hidden_params["additional_headers"] = process_response_headers(
             self.response.headers or {}
         )  # GUARANTEE OPENAI HEADERS IN RESPONSE
+
+    def disable_success_logging(self) -> None:
+        self._success_logging_enabled = False
 
     @staticmethod
     def _get_stream_event_field(stream_event: Any, field: str) -> Any:
@@ -425,7 +429,7 @@ class BaseResponsesAPIStreamingIterator:
             raise
 
     def _log_completed_response(self, *, is_async: bool) -> None:
-        if self._completed_response_logged:
+        if self._completed_response_logged or not self._success_logging_enabled:
             return
         self._completed_response_logged = True
 
