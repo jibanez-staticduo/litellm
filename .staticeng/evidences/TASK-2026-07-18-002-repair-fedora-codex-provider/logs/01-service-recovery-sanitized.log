@@ -1,0 +1,44 @@
+task_id=TASK-2026-07-18-002-repair-fedora-codex-provider
+host=fedora
+scope=start_only_codex_optima_service
+
+[before]
+codex_optima_state=inactive
+codex_optima_substate=dead
+codex_optima_result=success
+last_exec_stop=2026-07-18T02:41:39+02:00
+last_exec_code=killed
+last_exec_status=15/TERM
+port_34160_listeners=0
+litellm_container_id=07f2bfc52cfb
+litellm_container_health=healthy
+
+[action]
+command=systemctl --user start codex-optima.service
+other_services_started_explicitly=0
+configuration_files_edited=0
+credential_files_edited=0
+containers_restarted=0
+codex_app_server_restart_requested=0
+
+[after]
+started_at=2026-07-18T08:38:59+02:00
+codex_optima_state=active
+codex_optima_substate=running
+codex_optima_result=success
+codex_optima_main_pid=3658091
+listener_process_pid=3658191
+listener_address=127.0.0.1:34160
+listener_count=1
+service_restart_count=0
+model_catalog_synced=true
+model_catalog_stale=false
+model_count=14
+
+[prior_sigterm_read_only_review]
+stop_at=2026-07-18T02:41:39+02:00
+journal_event=Stopping then Stopped codex-optima.service
+classification=clean_external_SIGTERM_stop
+initiator=not_identified_in_available_user_journal
+
+sanitization=No environment values, credentials, authorization data, prompts, responses, or raw request bodies included

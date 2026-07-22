@@ -4,7 +4,7 @@
 - (None)
 
 ## Active
-- (None)
+- TASK-2026-07-14-003-trigger-nas-account2-reauth
 
 ## Todo
 - (None)

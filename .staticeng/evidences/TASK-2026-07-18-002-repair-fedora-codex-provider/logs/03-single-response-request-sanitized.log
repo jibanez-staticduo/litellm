@@ -1,0 +1,34 @@
+task_id=TASK-2026-07-18-002-repair-fedora-codex-provider
+endpoint=http://127.0.0.1:34160/model-provider/v1/responses
+method=POST
+api_surface=Responses
+
+[request_controls]
+auth_helper=/home/staticduo/.local/libexec/codex-optima-litellm-token
+auth_helper_used=true
+auth_value_printed=false
+request_count=1
+client_retries=0
+requested_num_retries=0
+timeout_seconds=180
+max_output_tokens=16
+prompt_content_printed=false
+request_body_retained=false
+
+[result]
+http_status=200
+content_type=text/event-stream
+stream_completed=true
+elapsed_ms=3406
+response_content_printed=false
+response_body_retained=false
+
+[litellm_access]
+timestamp_utc=2026-07-18T06:42:35.786323769Z
+source=litellm_container_access_log
+method=POST
+path=/v1/responses
+http_status=200
+correlation=Access timestamp and status fall within the bounded request execution window
+
+sanitization=No token, authorization header, prompt, response content, request body, response body, or model output included
