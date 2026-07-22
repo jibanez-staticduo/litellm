@@ -123,6 +123,32 @@ async def test_acompletion_returns_cached_model_response_directly():
     assert result is cached
 
 
+@pytest.mark.asyncio
+async def test_acompletion_chatgpt_uses_internal_stream_and_restores_outer_logging():
+    cached = ModelResponse(id="chatcmpl-chatgpt-nonstream", model="gpt-5.6-luna")
+    bridge = ResponsesToCompletionBridgeHandler()
+    kwargs = _bridge_kwargs(stream=False)
+    kwargs["custom_llm_provider"] = "chatgpt"
+    logging_obj = kwargs["logging_obj"]
+    logging_obj.call_type = "acompletion"
+
+    with (
+        patch.object(
+            bridge.transformation_handler,
+            "transform_request",
+            return_value={"model": "gpt-5.6-luna", "input": []},
+        ),
+        patch("litellm.aresponses", new=AsyncMock(return_value=cached)) as aresponses,
+    ):
+        result = await bridge.acompletion(**kwargs)
+
+    assert result is cached
+    assert aresponses.call_args.kwargs["stream"] is True
+    assert logging_obj.call_type == "acompletion"
+    assert logging_obj.stream is False
+    assert logging_obj.model_call_details["litellm_params"]["stream"] is False
+
+
 def test_completion_skips_rewrapping_preformatted_cached_chat_stream():
     """Streaming bridge cache hit returning CustomStreamWrapper(cached_response) -> bridge skips re-wrapping."""
     stream = MagicMock(spec=CustomStreamWrapper)

@@ -50,6 +50,14 @@ class ResponsesToCompletionBridgeHandler:
             disable_success_logging()
 
     @staticmethod
+    def _restore_outer_logging_context(logging_obj: "LiteLLMLoggingObj", call_type: str, stream: bool) -> None:
+        logging_obj.call_type = call_type
+        logging_obj.stream = stream
+        litellm_params = logging_obj.model_call_details.get("litellm_params")
+        if isinstance(litellm_params, dict):
+            litellm_params["stream"] = stream
+
+    @staticmethod
     def _coerce_response_object(
         response_obj: Any,
         hidden_params: Optional[dict],
@@ -172,6 +180,8 @@ class ResponsesToCompletionBridgeHandler:
         model_response = validated_kwargs["model_response"]
         logging_obj = validated_kwargs["logging_obj"]
         custom_llm_provider = validated_kwargs["custom_llm_provider"]
+        outer_call_type = logging_obj.call_type
+        outer_stream = bool(logging_obj.stream)
         if kwargs.get("stream") is True and "stream" not in optional_params:
             optional_params = {**optional_params, "stream": True}
 
@@ -193,6 +203,8 @@ class ResponsesToCompletionBridgeHandler:
         # than adding an explicit kwarg) avoids the duplicate-keyword
         # TypeError that would otherwise fire on the real bridge path.
         request_data["custom_llm_provider"] = custom_llm_provider
+        if custom_llm_provider == "chatgpt":
+            request_data["stream"] = True
         result = responses(
             **request_data,
         )
@@ -202,6 +214,8 @@ class ResponsesToCompletionBridgeHandler:
         from litellm.types.utils import ModelResponse
 
         stream = self._resolve_stream_flag(optional_params, litellm_params)
+        if not stream:
+            self._restore_outer_logging_context(logging_obj, outer_call_type, outer_stream)
         if isinstance(result, ResponsesAPIResponse):
             return self.transformation_handler.transform_response(
                 model=model,
@@ -262,6 +276,8 @@ class ResponsesToCompletionBridgeHandler:
         model_response = validated_kwargs["model_response"]
         logging_obj = validated_kwargs["logging_obj"]
         custom_llm_provider = validated_kwargs["custom_llm_provider"]
+        outer_call_type = logging_obj.call_type
+        outer_stream = bool(logging_obj.stream)
         if kwargs.get("stream") is True and "stream" not in optional_params:
             optional_params = {**optional_params, "stream": True}
 
@@ -284,6 +300,8 @@ class ResponsesToCompletionBridgeHandler:
         # keyword TypeError when `sanitized_litellm_params` already
         # carries `custom_llm_provider`.
         request_data["custom_llm_provider"] = custom_llm_provider
+        if custom_llm_provider == "chatgpt":
+            request_data["stream"] = True
         result = await aresponses(
             **request_data,
             aresponses=True,
@@ -294,6 +312,8 @@ class ResponsesToCompletionBridgeHandler:
         from litellm.types.utils import ModelResponse
 
         stream = self._resolve_stream_flag(optional_params, litellm_params)
+        if not stream:
+            self._restore_outer_logging_context(logging_obj, outer_call_type, outer_stream)
         if isinstance(result, ResponsesAPIResponse):
             return self.transformation_handler.transform_response(
                 model=model,
