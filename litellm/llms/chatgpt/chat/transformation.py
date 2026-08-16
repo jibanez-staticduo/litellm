@@ -28,8 +28,8 @@ class ChatGPTConfig(OpenAIConfig):
         api_base: str | None,
         api_key: str | None,
         custom_llm_provider: str,
-        litellm_params: Optional[object] = None,
-    ) -> Tuple[Optional[str], Optional[str], str]:
+        litellm_params: object | None = None,
+    ) -> tuple[str | None, str | None, str]:
         authenticator = Authenticator(litellm_params)
         dynamic_api_base = authenticator.get_api_base()
         try:

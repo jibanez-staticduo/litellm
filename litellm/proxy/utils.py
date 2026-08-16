@@ -28,6 +28,7 @@ from litellm.constants import (
     SPEND_LOG_WRITE_BATCH_MAX_BYTES,
 )
 from litellm.proxy._types import (
+    DB_CONNECTION_ERROR_TYPES,
     DB_RETRY_SAFE_ERROR_TYPES,
     CommonProxyErrors,
     ProxyErrorTypes,
@@ -35,6 +36,8 @@ from litellm.proxy._types import (
     SpendLogsMetadata,
     SpendLogsPayload,
 )
+
+MAX_SPEND_LOG_ISOLATION_ATTEMPTS_PER_BATCH: Final = 256
 from litellm.proxy.spend_tracking.spend_log_error_logger import spend_log_error
 from litellm.types.guardrails import GuardrailEventHooks
 from litellm.types.proxy.model_listing import ModelInfoResponse
@@ -5757,12 +5760,10 @@ async def dequeue_spend_logs(prisma_client: PrismaClient, limit: int) -> list[di
 class ProxyUpdateSpend:
     @staticmethod
     async def _create_spend_logs_batch_with_isolation(
-        prisma_client: PrismaClient, batch_with_dates: List[Dict[str, Any]]
+        prisma_client: PrismaClient, batch_with_dates: list[dict[str, Any]]
     ) -> None:
         try:
-            await prisma_client.db.litellm_spendlogs.create_many(
-                data=batch_with_dates, skip_duplicates=True
-            )
+            await prisma_client.db.litellm_spendlogs.create_many(data=batch_with_dates, skip_duplicates=True)
             return
         except DB_CONNECTION_ERROR_TYPES:
             raise
@@ -5780,16 +5781,13 @@ class ProxyUpdateSpend:
             successful_inserts = 0
             for entry in batch_with_dates:
                 try:
-                    await prisma_client.db.litellm_spendlogs.create_many(
-                        data=[entry], skip_duplicates=True
-                    )
+                    await prisma_client.db.litellm_spendlogs.create_many(data=[entry], skip_duplicates=True)
                     successful_inserts += 1
                 except DB_CONNECTION_ERROR_TYPES:
                     raise
                 except Exception as entry_error:
                     spend_log_error(
-                        "Spend tracking - failed to insert spend log entry. "
-                        "request_id=%s, error=%s",
+                        "Spend tracking - failed to insert spend log entry. request_id=%s, error=%s",
                         entry.get("request_id") or entry.get("id"),
                         str(entry_error),
                         exc=entry_error,

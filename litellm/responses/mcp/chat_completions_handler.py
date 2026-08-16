@@ -6,7 +6,7 @@ from typing import Any, Final, cast
 from litellm.responses.mcp.litellm_proxy_mcp_handler import (
     LiteLLM_Proxy_MCP_Handler,
 )
-from litellm.responses.mcp.request_context import MCPRequestContext
+from litellm.responses.utils import ResponsesAPIRequestUtils
 from litellm.types.utils import ModelResponse
 from litellm.utils import CustomStreamWrapper
 
@@ -109,13 +109,9 @@ async def acompletion_with_mcp(
         )
 
     # Extract user_api_key_auth from metadata or kwargs
-    user_api_key_auth = kwargs.get("user_api_key_auth") or (
-        (kwargs.get("metadata", {}) or {}).get("user_api_key_auth")
-    )
+    user_api_key_auth = kwargs.get("user_api_key_auth") or ((kwargs.get("metadata", {}) or {}).get("user_api_key_auth"))
     request_tags = LiteLLM_Proxy_MCP_Handler._get_parent_request_tags(kwargs)
-    client_ip = ResponsesAPIRequestUtils.get_verified_mcp_client_ip(
-        kwargs.get("secret_fields")
-    )
+    client_ip = ResponsesAPIRequestUtils.get_verified_mcp_client_ip(kwargs.get("secret_fields"))
 
     # Extract MCP auth headers before fetching tools (needed for dynamic auth)
     (

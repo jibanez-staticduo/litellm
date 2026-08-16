@@ -14,6 +14,11 @@ class _NoopStreamingIterator(BaseResponsesAPIStreamingIterator):
         pass
 
 
+class _LoggingStub(SimpleNamespace):
+    def _update_completion_start_time(self, completion_start_time):
+        self.completion_start_time = completion_start_time
+
+
 def _item_to_dict(item):
     if isinstance(item, dict):
         return item
@@ -40,7 +45,11 @@ def _make_iterator(config=None, litellm_metadata=None, custom_llm_provider=None)
         response=httpx.Response(200),
         model="gpt-5.5",
         responses_api_provider_config=config or ChatGPTResponsesAPIConfig(),
-        logging_obj=SimpleNamespace(model_call_details={}, start_time=datetime.now()),
+        logging_obj=_LoggingStub(
+            completion_start_time=None,
+            model_call_details={},
+            start_time=datetime.now(),
+        ),
         litellm_metadata=litellm_metadata,
         custom_llm_provider=custom_llm_provider,
     )

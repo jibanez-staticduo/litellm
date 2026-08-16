@@ -41,7 +41,6 @@ from pydantic import (
 )
 from typing_extensions import Required, TypedDict
 
-from litellm._logging import verbose_logger
 from litellm._uuid import uuid
 from litellm.types.llms.base import (
     BaseLiteLLMOpenAIResponseObject,

@@ -60,6 +60,9 @@ class SensitiveDataMasker:
                 f"{value_str[: self.visible_prefix]}{self.mask_char * masked_length}{value_str[-self.visible_suffix :]}"
             )
 
+    def mask_value(self, value: str) -> str:
+        return self._mask_value(value)
+
     def is_sensitive_key(self, key: str, excluded_keys: set[str] | None = None) -> bool:
         # Check if key is in excluded_keys first (exact match)
         if excluded_keys and key in excluded_keys:

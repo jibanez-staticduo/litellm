@@ -1,5 +1,5 @@
 import re
-from typing import List, Optional, Union
+from typing import Final
 
 from fastapi import HTTPException, Request, status
 
@@ -16,9 +16,11 @@ from litellm.proxy._types import (
 from .auth_checks_organization import _user_is_org_admin
 
 
-def _get_user_object_value(
-    user_obj: Optional[Union[LiteLLM_UserTable, dict]], field: str
-):
+def _is_string(value: object) -> bool:
+    return isinstance(value, str)
+
+
+def _get_user_object_value(user_obj: LiteLLM_UserTable | dict | None, field: str):
     if user_obj is None:
         return None
     if isinstance(user_obj, dict):
@@ -208,11 +210,11 @@ class RouteChecks:
         # Use SensitiveDataMasker with custom configuration for user_id
         masker: Final = SensitiveDataMasker(visible_prefix=6, visible_suffix=2, mask_char="*")
 
-        return masker._mask_value(user_id)
+        return masker.mask_value(user_id)
 
     @staticmethod
     def _raise_admin_only_route_exception(
-        user_obj: Optional[Union[LiteLLM_UserTable, dict]],
+        user_obj: LiteLLM_UserTable | dict | None,
         route: str,
     ) -> None:
         """
@@ -238,8 +240,8 @@ class RouteChecks:
 
     @staticmethod
     def non_proxy_admin_allowed_routes_check(
-        user_obj: Optional[Union[LiteLLM_UserTable, dict]],
-        _user_role: Optional[LitellmUserRoles],
+        user_obj: LiteLLM_UserTable | dict | None,
+        _user_role: LitellmUserRoles | None,
         route: str,
         request: Request,
         valid_token: UserAPIKeyAuth,
@@ -362,8 +364,7 @@ class RouteChecks:
             - True: if route is an OpenAI route
             - False: if route is not an OpenAI route
         """
-        # Ensure route is a string before performing checks
-        if not isinstance(route, str):
+        if not _is_string(route):
             return False
 
         if route in LiteLLMRoutes.openai_routes.value:
@@ -670,8 +671,6 @@ class RouteChecks:
         """
         metadata: Final = user_api_key_dict.metadata
         team_metadata: Final = user_api_key_dict.team_metadata or {}
-        if metadata is None and team_metadata is None:
-            return False
         if "allowed_passthrough_routes" not in metadata and "allowed_passthrough_routes" not in team_metadata:
             return False
         if (

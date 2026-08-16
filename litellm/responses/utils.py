@@ -972,7 +972,7 @@ class ResponsesAPIRequestUtils:
 
         # Extract headers from secret_fields which contains the original request headers
         raw_headers_from_request: dict[str, str] | None = None
-        if secret_fields and isinstance(secret_fields, dict):
+        if secret_fields:
             raw_headers_from_request = secret_fields.get("raw_headers")
 
         # Extract MCP-specific headers using MCPRequestHandler methods
@@ -1022,7 +1022,7 @@ class ResponsesAPIRequestUtils:
 
     @staticmethod
     def get_verified_mcp_client_ip(
-        secret_fields: Optional[Dict[str, Any]],
+        secret_fields: dict[str, Any] | None,
     ) -> str:
         """Return the verified MCP client IP or a fail-closed sentinel.
 
@@ -1031,7 +1031,7 @@ class ResponsesAPIRequestUtils:
         hidden instead of bypassing filtering.
         """
 
-        if secret_fields and isinstance(secret_fields, dict):
+        if secret_fields:
             client_ip = secret_fields.get("mcp_client_ip")
             if isinstance(client_ip, str) and client_ip.strip():
                 return client_ip.strip()
@@ -1039,6 +1039,12 @@ class ResponsesAPIRequestUtils:
 
 
 class ResponseAPILoggingUtils:
+    @staticmethod
+    def transform_response_api_usage_to_chat_usage(
+        usage_input: Mapping[str, object] | ResponseAPIUsage | Usage | None,
+    ) -> Usage:
+        return ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(usage_input)
+
     @staticmethod
     def _normalize_chat_usage_to_response_api_usage(usage: dict) -> dict:
         if "input_tokens" in usage and "output_tokens" in usage:
@@ -1049,22 +1055,14 @@ class ResponseAPILoggingUtils:
         normalized_usage = dict(usage)
         normalized_usage["input_tokens"] = usage["prompt_tokens"]
         normalized_usage["output_tokens"] = usage["completion_tokens"]
-        if (
-            "input_tokens_details" not in normalized_usage
-            and "prompt_tokens_details" in usage
-        ):
+        if "input_tokens_details" not in normalized_usage and "prompt_tokens_details" in usage:
             normalized_usage["input_tokens_details"] = usage["prompt_tokens_details"]
-        if (
-            "output_tokens_details" not in normalized_usage
-            and "completion_tokens_details" in usage
-        ):
-            normalized_usage["output_tokens_details"] = usage[
-                "completion_tokens_details"
-            ]
+        if "output_tokens_details" not in normalized_usage and "completion_tokens_details" in usage:
+            normalized_usage["output_tokens_details"] = usage["completion_tokens_details"]
         return normalized_usage
 
     @staticmethod
-    def _is_response_api_usage(usage: Union[dict, ResponseAPIUsage]) -> bool:
+    def _is_response_api_usage(usage: dict | ResponseAPIUsage) -> bool:
         """returns True if usage is from OpenAI Response API"""
         if isinstance(usage, ResponseAPIUsage):
             return True

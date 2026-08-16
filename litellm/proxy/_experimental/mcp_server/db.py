@@ -4,7 +4,7 @@ import hashlib
 import json
 from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, Final, TypedDict, cast
 
 from litellm._logging import verbose_proxy_logger
 from litellm._uuid import uuid
@@ -735,9 +735,7 @@ async def delete_mcp_server_from_virtualkey():
     """
 
 
-def _get_mcp_tool_permissions_without_server(
-    mcp_tool_permissions: Any, server_id: str
-) -> Tuple[Any, bool]:
+def _get_mcp_tool_permissions_without_server(mcp_tool_permissions: Any, server_id: str) -> tuple[Any, bool]:
     if mcp_tool_permissions is None:
         return mcp_tool_permissions, False
 
@@ -759,14 +757,12 @@ def _get_mcp_tool_permissions_without_server(
     return safe_dumps(updated_permissions), True
 
 
-async def cleanup_mcp_server_references(
-    prisma_client: PrismaClient, server_id: str
-) -> bool:
+async def cleanup_mcp_server_references(prisma_client: PrismaClient, server_id: str) -> bool:
     object_permission_records = await prisma_client.db.litellm_objectpermissiontable.find_many()
 
     cleaned_references = False
     for object_permission in object_permission_records:
-        update_data: Dict[str, Any] = {}
+        update_data: dict[str, Any] = {}
         mcp_servers = object_permission.mcp_servers
         if isinstance(mcp_servers, list) and server_id in mcp_servers:
             update_data["mcp_servers"] = [s for s in mcp_servers if s != server_id]
@@ -790,8 +786,10 @@ async def cleanup_mcp_server_references(
 
 
 async def delete_mcp_server(
-    prisma_client: PrismaClient, server_id: str
-) -> Optional[LiteLLM_MCPServerTable]:
+    prisma_client: PrismaClient,
+    server_id: str,
+    invalidate_token_cache: Callable[[str, str], Awaitable[None]] | None = None,
+) -> LiteLLM_MCPServerTable | None:
     """
     Delete the mcp server from the db by server_id
 
@@ -844,14 +842,17 @@ async def delete_mcp_server(
                     e,
                 )
         if credential_user_ids:
+            token_cache_invalidator: Final[Callable[[str, str], Awaitable[None]]]
             if invalidate_token_cache is None:
                 from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
                     global_mcp_server_manager,
                 )
 
-                invalidate_token_cache = global_mcp_server_manager.invalidate_user_oauth_token_cache
+                token_cache_invalidator = global_mcp_server_manager.invalidate_user_oauth_token_cache
+            else:
+                token_cache_invalidator = invalidate_token_cache
             for user_id in credential_user_ids:
-                await invalidate_token_cache(user_id, server_id)
+                await token_cache_invalidator(user_id, server_id)
     return deleted_server
 
 

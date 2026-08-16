@@ -19,14 +19,20 @@ from mcp.types import (
 )
 
 from litellm.proxy._types import (
-    LiteLLM_ObjectPermissionTable,
     LiteLLM_MCPServerTable,
+    LiteLLM_ObjectPermissionTable,
     MCPTransport,
     UserAPIKeyAuth,
 )
 from litellm.responses.utils import ResponsesAPIRequestUtils
 from litellm.types.mcp import MCPAuth
 from litellm.types.mcp_server.mcp_server_manager import MCPServer
+
+
+def _rendered_log_message(call):
+    message = str(call.args[0])
+    values = call.args[1:]
+    return message % values if values else message
 
 
 def _parse_mcp_text_result(result):
@@ -42,9 +48,7 @@ def test_lazymcp_root_trailing_slash_does_not_redirect(monkeypatch):
         assert scope["path"] == "/lazymcp"
         return Response("ok", media_type="text/event-stream")
 
-    monkeypatch.setattr(
-        "litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response
-    )
+    monkeypatch.setattr("litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response)
 
     response = TestClient(app).get("/lazymcp/", follow_redirects=False)
 
@@ -61,9 +65,7 @@ def test_lazymcp_root_without_trailing_slash_still_routes(monkeypatch):
         assert scope["path"] == "/lazymcp"
         return Response("ok", media_type="text/event-stream")
 
-    monkeypatch.setattr(
-        "litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response
-    )
+    monkeypatch.setattr("litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response)
 
     response = TestClient(app).get("/lazymcp", follow_redirects=False)
 
@@ -214,9 +216,7 @@ async def test_lazymcp_lists_only_gateway_tools_and_describes_visible_servers():
         gateway_tools = _get_lazymcp_gateway_tools("catalog")
         catalog = await _lazymcp_describe({})
         server_detail = await _lazymcp_describe({"server": "memory"})
-        tool_detail = await _lazymcp_describe(
-            {"server": "memory", "tool": "memory-search"}
-        )
+        tool_detail = await _lazymcp_describe({"server": "memory", "tool": "memory-search"})
         legacy_tool_detail = await _lazymcp_describe(
             {
                 "server": "memory",
@@ -314,9 +314,7 @@ async def test_lazymcp_call_uses_unavailable_server_error_when_server_missing():
         "litellm.proxy._experimental.mcp_server.server._get_lazymcp_allowed_servers",
         AsyncMock(return_value=[]),
     ):
-        result = await _lazymcp_call(
-            {"server": "missing", "tool": "tool", "arguments": {}}
-        )
+        result = await _lazymcp_call({"server": "missing", "tool": "tool", "arguments": {}})
 
     payload = json.loads(result.content[0].text)
     assert payload["error"] == "MCP server is not available for this request."
@@ -338,9 +336,7 @@ def test_lazymcp_cache_get_set_and_invalidate_paths(monkeypatch):
         raising=False,
     )
 
-    assert asyncio.run(mcp_server_module._lazymcp_cache_get("lazymcp:catalog:abc")) == {
-        "cached": True
-    }
+    assert asyncio.run(mcp_server_module._lazymcp_cache_get("lazymcp:catalog:abc")) == {"cached": True}
     asyncio.run(mcp_server_module._lazymcp_cache_set("lazymcp:catalog:abc", {"x": 1}))
     fake_cache.async_set_cache.assert_awaited_once_with(
         key="lazymcp:catalog:abc",
@@ -438,9 +434,7 @@ async def test_lazymcp_lifespan_initializes_and_shuts_down(monkeypatch):
     async def fake_shutdown():
         events.append("shutdown")
 
-    monkeypatch.setattr(
-        mcp_server_module, "initialize_session_managers", fake_initialize
-    )
+    monkeypatch.setattr(mcp_server_module, "initialize_session_managers", fake_initialize)
     monkeypatch.setattr(mcp_server_module, "shutdown_session_managers", fake_shutdown)
 
     async with mcp_server_module.lifespan(object()):
@@ -517,9 +511,7 @@ async def test_lazymcp_tool_call_dispatches_and_handles_errors(monkeypatch):
     assert json.loads(describe_result.content[0].text) == {"ok": "describe"}
     assert json.loads(status_result.content[0].text) == {"ok": "status"}
     assert call_result is delegated_result
-    assert json.loads(unknown_result.content[0].text) == {
-        "error": "Unknown LazyMCP tool."
-    }
+    assert json.loads(unknown_result.content[0].text) == {"error": "Unknown LazyMCP tool."}
 
     monkeypatch.setattr(
         mcp_server_module,
@@ -541,8 +533,9 @@ async def test_lazymcp_toolset_route_sets_scope_and_streams(monkeypatch):
         return types.SimpleNamespace(toolset_id=f"toolset-{toolset_name}")
 
     async def fake_stream_response(_handle_fn, scope, _receive):
-        from litellm.proxy._experimental.mcp_server.server import _mcp_active_toolset_id
         from starlette.responses import Response
+
+        from litellm.proxy._experimental.mcp_server.server import _mcp_active_toolset_id
 
         assert scope["path"] == "/lazymcp"
         assert _mcp_active_toolset_id.get() == "toolset-dev"
@@ -553,9 +546,7 @@ async def test_lazymcp_toolset_route_sets_scope_and_streams(monkeypatch):
         "litellm.proxy._experimental.mcp_server.mcp_server_manager.global_mcp_server_manager.get_toolset_by_name_cached",
         fake_get_toolset,
     )
-    monkeypatch.setattr(
-        "litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response
-    )
+    monkeypatch.setattr("litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response)
 
     response = TestClient(app).get("/toolset/dev/lazymcp", follow_redirects=False)
 
@@ -571,9 +562,7 @@ def test_lazymcp_root_route_streams_without_redirect(monkeypatch):
         assert scope["path"] == "/lazymcp"
         return Response("ok", media_type="text/event-stream")
 
-    monkeypatch.setattr(
-        "litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response
-    )
+    monkeypatch.setattr("litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response)
 
     response = TestClient(app).get("/lazymcp", follow_redirects=False)
 
@@ -586,9 +575,7 @@ def test_lazymcp_root_route_returns_500_on_unexpected_error(monkeypatch):
     async def fake_stream_response(_handle_fn, _scope, _receive):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(
-        "litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response
-    )
+    monkeypatch.setattr("litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response)
 
     response = TestClient(app).get("/lazymcp", follow_redirects=False)
 
@@ -604,8 +591,9 @@ async def test_lazymcp_dynamic_route_handles_toolset_and_fallback(monkeypatch):
         return types.SimpleNamespace(toolset_id=f"toolset-{toolset_name}")
 
     async def fake_stream_response(_handle_fn, scope, _receive):
-        from litellm.proxy._experimental.mcp_server.server import _mcp_active_toolset_id
         from starlette.responses import Response
+
+        from litellm.proxy._experimental.mcp_server.server import _mcp_active_toolset_id
 
         assert scope["path"] == "/lazymcp"
         assert _mcp_active_toolset_id.get() == "toolset-dev"
@@ -624,9 +612,7 @@ async def test_lazymcp_dynamic_route_handles_toolset_and_fallback(monkeypatch):
         "litellm.proxy._experimental.mcp_server.mcp_server_manager.global_mcp_server_manager.get_toolset_by_name_cached",
         fake_get_toolset,
     )
-    monkeypatch.setattr(
-        "litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response
-    )
+    monkeypatch.setattr("litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response)
 
     response = TestClient(app).get("/lazymcp/dev", follow_redirects=False)
 
@@ -658,9 +644,7 @@ def test_lazymcp_dynamic_route_falls_back_for_non_toolset(monkeypatch):
         "litellm.proxy._experimental.mcp_server.mcp_server_manager.global_mcp_server_manager.get_toolset_by_name_cached",
         fake_get_toolset,
     )
-    monkeypatch.setattr(
-        "litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response
-    )
+    monkeypatch.setattr("litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response)
 
     response = TestClient(app).get("/lazymcp/github", follow_redirects=False)
 
@@ -813,16 +797,8 @@ def test_lazymcp_summary_helpers_sanitize_and_summarize():
 
 
 def test_verified_mcp_client_ip_returns_value_or_fail_closed():
-    assert (
-        ResponsesAPIRequestUtils.get_verified_mcp_client_ip(
-            {"mcp_client_ip": " 10.0.0.8 "}
-        )
-        == "10.0.0.8"
-    )
-    assert (
-        ResponsesAPIRequestUtils.get_verified_mcp_client_ip({})
-        == "__invalid_mcp_client_ip__"
-    )
+    assert ResponsesAPIRequestUtils.get_verified_mcp_client_ip({"mcp_client_ip": " 10.0.0.8 "}) == "10.0.0.8"
+    assert ResponsesAPIRequestUtils.get_verified_mcp_client_ip({}) == "__invalid_mcp_client_ip__"
 
 
 @pytest.mark.asyncio
@@ -868,9 +844,7 @@ async def test_lazymcp_listing_uses_stored_oauth_when_request_header_missing():
 
     assert tools == [tool]
     oauth_mock.assert_awaited_once()
-    assert list_tools_mock.await_args.kwargs["extra_headers"] == {
-        "Authorization": "Bearer stored-user-token"
-    }
+    assert list_tools_mock.await_args.kwargs["extra_headers"] == {"Authorization": "Bearer stored-user-token"}
 
 
 @pytest.mark.asyncio
@@ -914,9 +888,7 @@ async def test_lazymcp_toolset_scope_applies_once_for_non_admin_key():
         return auth.model_copy(update={"object_permission": updated_op})
 
     async def fake_get_allowed_mcp_servers(user_api_key_auth):
-        scoped_auth_seen["mcp_toolsets_after_scope"] = (
-            user_api_key_auth.object_permission.mcp_toolsets
-        )
+        scoped_auth_seen["mcp_toolsets_after_scope"] = user_api_key_auth.object_permission.mcp_toolsets
         return ["server-id"]
 
     token = _mcp_active_toolset_id.set("toolset-123")
@@ -2082,9 +2054,7 @@ async def test_get_tools_from_mcp_servers_handles_all_servers_failing():
             assert result.outcomes["failing2"].tag == "internal"
 
             # Verify failure logging for both servers
-            rendered_exceptions = [
-                _rendered_log_message(c) for c in mock_logger.exception.call_args_list if c.args
-            ]
+            rendered_exceptions = [_rendered_log_message(c) for c in mock_logger.exception.call_args_list if c.args]
             assert (
                 "Error getting tools from server failing_server1: Server failing_server1 connection failed"
                 in rendered_exceptions
@@ -5229,11 +5199,12 @@ async def test_get_tools_from_mcp_servers_logs_list_tools_to_spendlogs_when_enab
     Ensure list-tools logging path calls `async_success_handler` when enabled.
     """
     try:
+        from mcp.types import Tool as MCPTool
+
         from litellm.proxy._experimental.mcp_server.server import (
             _get_tools_from_mcp_servers,
         )
         from litellm.proxy._types import UserAPIKeyAuth
-        from mcp.types import Tool as MCPTool
     except ImportError:
         pytest.skip("MCP server not available")
 
@@ -6434,13 +6405,17 @@ async def test_delegate_bad_token_gets_connect_time_401():
     server = _delegate_auth_mcp_server()
     scope = _delegate_scope([(b"authorization", b"Bearer bogus-token")])
 
-    with _patch_delegate_resolver(server, "delegate_test"), patch(
-        "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
-        new=AsyncMock(return_value=[server]),
-    ), patch(
-        "litellm.proxy._experimental.mcp_server.server._probe_upstream_auth",
-        new=AsyncMock(return_value=(401, 'Bearer realm="upstream", error="invalid_token"')),
-    ) as probe:
+    with (
+        _patch_delegate_resolver(server, "delegate_test"),
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
+            new=AsyncMock(return_value=[server]),
+        ),
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._probe_upstream_auth",
+            new=AsyncMock(return_value=(401, 'Bearer realm="upstream", error="invalid_token"')),
+        ) as probe,
+    ):
         with pytest.raises(HTTPException) as exc_info:
             await _check_passthrough_upstream_auth(
                 scope=scope,
@@ -6452,7 +6427,9 @@ async def test_delegate_bad_token_gets_connect_time_401():
     assert exc_info.value.status_code == 401
     challenge = exc_info.value.headers["www-authenticate"]
     assert 'error="invalid_token"' in challenge
-    assert 'resource_metadata="http://localhost:4000/.well-known/oauth-protected-resource/mcp/delegate_test"' in challenge
+    assert (
+        'resource_metadata="http://localhost:4000/.well-known/oauth-protected-resource/mcp/delegate_test"' in challenge
+    )
     probe.assert_awaited_once()
     probe_url, probe_auth = probe.call_args.args
     assert probe_url == "http://upstream:9401/mcp"
@@ -6470,13 +6447,17 @@ async def test_delegate_valid_token_passes_preflight():
     server = _delegate_auth_mcp_server()
     scope = _delegate_scope([(b"authorization", b"Bearer good-token")])
 
-    with _patch_delegate_resolver(server, "delegate_test"), patch(
-        "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
-        new=AsyncMock(return_value=[server]),
-    ), patch(
-        "litellm.proxy._experimental.mcp_server.server._probe_upstream_auth",
-        new=AsyncMock(return_value=(200, None)),
-    ) as probe:
+    with (
+        _patch_delegate_resolver(server, "delegate_test"),
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
+            new=AsyncMock(return_value=[server]),
+        ),
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._probe_upstream_auth",
+            new=AsyncMock(return_value=(200, None)),
+        ) as probe,
+    ):
         await _check_passthrough_upstream_auth(
             scope=scope,
             user_api_key_auth=UserAPIKeyAuth(),
@@ -6500,12 +6481,16 @@ async def test_delegate_valid_token_forbidden_returns_403():
     server = _delegate_auth_mcp_server()
     scope = _delegate_scope([(b"authorization", b"Bearer scoped-out-token")])
 
-    with _patch_delegate_resolver(server, "delegate_test"), patch(
-        "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
-        new=AsyncMock(return_value=[server]),
-    ), patch(
-        "litellm.proxy._experimental.mcp_server.server._probe_upstream_auth",
-        new=AsyncMock(return_value=(403, None)),
+    with (
+        _patch_delegate_resolver(server, "delegate_test"),
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
+            new=AsyncMock(return_value=[server]),
+        ),
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._probe_upstream_auth",
+            new=AsyncMock(return_value=(403, None)),
+        ),
     ):
         with pytest.raises(HTTPException) as exc_info:
             await _check_passthrough_upstream_auth(
@@ -6531,13 +6516,17 @@ async def test_delegate_tokenless_request_not_probed():
     server = _delegate_auth_mcp_server()
     scope = _delegate_scope([(b"content-type", b"application/json")])
 
-    with _patch_delegate_resolver(server, "delegate_test"), patch(
-        "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
-        new=AsyncMock(return_value=[server]),
-    ), patch(
-        "litellm.proxy._experimental.mcp_server.server._probe_upstream_auth",
-        new=AsyncMock(return_value=(401, None)),
-    ) as probe:
+    with (
+        _patch_delegate_resolver(server, "delegate_test"),
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
+            new=AsyncMock(return_value=[server]),
+        ),
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._probe_upstream_auth",
+            new=AsyncMock(return_value=(401, None)),
+        ) as probe,
+    ):
         await _check_passthrough_upstream_auth(
             scope=scope,
             user_api_key_auth=UserAPIKeyAuth(),
@@ -6560,13 +6549,17 @@ async def test_delegate_preflight_skipped_on_multi_server_routes():
     servers = [_delegate_auth_mcp_server("delegate-1"), _delegate_auth_mcp_server("delegate-2")]
     scope = _delegate_scope([(b"authorization", b"Bearer bogus-token")])
 
-    with _patch_delegate_resolver(servers[0], "delegate_test", "other_server"), patch(
-        "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
-        new=AsyncMock(return_value=servers),
-    ), patch(
-        "litellm.proxy._experimental.mcp_server.server._probe_upstream_auth",
-        new=AsyncMock(return_value=(401, None)),
-    ) as probe:
+    with (
+        _patch_delegate_resolver(servers[0], "delegate_test", "other_server"),
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
+            new=AsyncMock(return_value=servers),
+        ),
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._probe_upstream_auth",
+            new=AsyncMock(return_value=(401, None)),
+        ) as probe,
+    ):
         await _check_passthrough_upstream_auth(
             scope=scope,
             user_api_key_auth=UserAPIKeyAuth(),
@@ -6599,13 +6592,17 @@ async def test_bare_authorization_never_probes_passthrough_servers():
     )
     scope = _delegate_scope([(b"authorization", b"Bearer ambiguous-token")])
 
-    with _patch_delegate_resolver(passthrough_server, "pt_server"), patch(
-        "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
-        new=AsyncMock(return_value=[passthrough_server]),
-    ), patch(
-        "litellm.proxy._experimental.mcp_server.server._probe_upstream_auth",
-        new=AsyncMock(return_value=(401, None)),
-    ) as probe:
+    with (
+        _patch_delegate_resolver(passthrough_server, "pt_server"),
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
+            new=AsyncMock(return_value=[passthrough_server]),
+        ),
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._probe_upstream_auth",
+            new=AsyncMock(return_value=(401, None)),
+        ) as probe,
+    ):
         await _check_passthrough_upstream_auth(
             scope=scope,
             user_api_key_auth=UserAPIKeyAuth(),
@@ -6641,13 +6638,17 @@ async def test_delegate_not_probed_when_named_only_via_server_id():
         "headers": [(b"authorization", b"Bearer sk-litellm-proxy-key")],
     }
 
-    with _patch_delegate_resolver(server, "delegate_test"), patch(
-        "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
-        new=AsyncMock(return_value=[server]),
-    ), patch(
-        "litellm.proxy._experimental.mcp_server.server._probe_upstream_auth",
-        new=AsyncMock(return_value=(401, None)),
-    ) as probe:
+    with (
+        _patch_delegate_resolver(server, "delegate_test"),
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
+            new=AsyncMock(return_value=[server]),
+        ),
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._probe_upstream_auth",
+            new=AsyncMock(return_value=(401, None)),
+        ) as probe,
+    ):
         await _check_passthrough_upstream_auth(
             scope=scope,
             user_api_key_auth=UserAPIKeyAuth(user_id="u1", api_key="hashed-sk"),
@@ -6695,12 +6696,16 @@ async def test_delegate_preflight_with_unpatched_probe():
 
     server = _delegate_auth_mcp_server()
 
-    with _patch_delegate_resolver(server, "delegate_test"), patch(
-        "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
-        new=AsyncMock(return_value=[server]),
-    ), patch(
-        "litellm.proxy._experimental.mcp_server.server.get_async_httpx_client",
-        return_value=mock_client,
+    with (
+        _patch_delegate_resolver(server, "delegate_test"),
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
+            new=AsyncMock(return_value=[server]),
+        ),
+        patch(
+            "litellm.proxy._experimental.mcp_server.server.get_async_httpx_client",
+            return_value=mock_client,
+        ),
     ):
         with pytest.raises(HTTPException) as exc_info:
             await _check_passthrough_upstream_auth(
@@ -6720,7 +6725,9 @@ async def test_delegate_preflight_with_unpatched_probe():
     assert exc_info.value.status_code == 401
     challenge = exc_info.value.headers["www-authenticate"]
     assert 'error="invalid_token"' in challenge
-    assert 'resource_metadata="http://localhost:4000/.well-known/oauth-protected-resource/mcp/delegate_test"' in challenge
+    assert (
+        'resource_metadata="http://localhost:4000/.well-known/oauth-protected-resource/mcp/delegate_test"' in challenge
+    )
     probed_urls = [call.kwargs["url"] for call in mock_client.post.await_args_list]
     assert probed_urls == ["http://upstream:9401/mcp", "http://upstream:9401/mcp"]
 
@@ -6745,12 +6752,16 @@ async def test_delegate_challenge_echoes_requested_alias():
         "headers": [(b"authorization", b"Bearer bogus-token")],
     }
 
-    with _patch_delegate_resolver(server, "dt-alias"), patch(
-        "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
-        new=AsyncMock(return_value=[server]),
-    ), patch(
-        "litellm.proxy._experimental.mcp_server.server._probe_upstream_auth",
-        new=AsyncMock(return_value=(401, 'Bearer error="invalid_token"')),
+    with (
+        _patch_delegate_resolver(server, "dt-alias"),
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
+            new=AsyncMock(return_value=[server]),
+        ),
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._probe_upstream_auth",
+            new=AsyncMock(return_value=(401, 'Bearer error="invalid_token"')),
+        ),
     ):
         with pytest.raises(HTTPException) as exc_info:
             await _check_passthrough_upstream_auth(
@@ -6777,13 +6788,17 @@ async def test_delegate_probe_not_fanned_out_to_access_group_members():
 
     group_member = _delegate_auth_mcp_server()
 
-    with _patch_delegate_resolver(group_member, "delegate_test"), patch(
-        "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
-        new=AsyncMock(return_value=[group_member]),
-    ), patch(
-        "litellm.proxy._experimental.mcp_server.server._probe_upstream_auth",
-        new=AsyncMock(return_value=(401, None)),
-    ) as probe:
+    with (
+        _patch_delegate_resolver(group_member, "delegate_test"),
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
+            new=AsyncMock(return_value=[group_member]),
+        ),
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._probe_upstream_auth",
+            new=AsyncMock(return_value=(401, None)),
+        ) as probe,
+    ):
         await _check_passthrough_upstream_auth(
             scope=_delegate_scope([(b"authorization", b"Bearer bogus-token")]),
             user_api_key_auth=UserAPIKeyAuth(),
@@ -8064,10 +8079,10 @@ async def test_fire_mcp_tool_call_logging_iserror_logs_failure():
     """Regression test: a CallToolResult with isError=True must go
     down the failure logging path (async_failure_handler + post_call_failure_hook),
     never async_success_handler."""
+    from litellm.proxy._experimental.mcp_server.exceptions import MCPToolResultError
     from litellm.proxy._experimental.mcp_server.server import (
         _fire_mcp_tool_call_logging,
     )
-    from litellm.proxy._experimental.mcp_server.exceptions import MCPToolResultError
 
     logging_obj = _mock_mcp_logging_obj()
     proxy_logging_mock = _mock_mcp_proxy_logging()
@@ -8417,11 +8432,11 @@ async def test_call_mcp_tool_skips_failure_hook_for_upstream_auth_error():
     caller-must-reauth signal, not a failed call, so call_mcp_tool must re-raise it WITHOUT firing
     post_call_failure_hook (which records a failure and can trip LLM exception alerts). The
     streamable handler downgrades it to an informational isError result afterward."""
+    from litellm.proxy._experimental.mcp_server.exceptions import MCPUpstreamAuthError
     from litellm.proxy._experimental.mcp_server.server import (
         call_mcp_tool,
         global_mcp_server_manager,
     )
-    from litellm.proxy._experimental.mcp_server.exceptions import MCPUpstreamAuthError
     from litellm.proxy._types import MCPTransport, UserAPIKeyAuth
     from litellm.types.mcp_server.mcp_server_manager import MCPServer
 
@@ -9019,16 +9034,13 @@ class TestListFiltersHonorThePrefixBoundary:
             url="http://127.0.0.1:5115/mcp",
             transport=MCPTransport.http,
         )
-        published = MCPTool(
-            name=f"{self.SERVER_ID}-read_wiki_contents", description="", inputSchema={"type": "object"}
-        )
+        published = MCPTool(name=f"{self.SERVER_ID}-read_wiki_contents", description="", inputSchema={"type": "object"})
         auth = UserAPIKeyAuth(api_key="sk-test")
 
-        with patch.object(
-            MCPRequestHandler, "get_allowed_tools_for_server", AsyncMock(return_value=grants)
-        ), patch(
-            "litellm.proxy._experimental.mcp_server.server.global_mcp_server_manager"
-        ) as mock_manager:
+        with (
+            patch.object(MCPRequestHandler, "get_allowed_tools_for_server", AsyncMock(return_value=grants)),
+            patch("litellm.proxy._experimental.mcp_server.server.global_mcp_server_manager") as mock_manager,
+        ):
             mock_manager.get_mcp_server_by_id.return_value = server
 
             listed = await filter_tools_by_key_team_permissions([published], self.SERVER_ID, auth) != []

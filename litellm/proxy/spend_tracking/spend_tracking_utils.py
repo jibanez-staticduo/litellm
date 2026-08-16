@@ -53,11 +53,18 @@ def _get_max_string_length_prompt_in_db() -> int:
         return DEFAULT_MAX_STRING_LENGTH_PROMPT_IN_DB
 
 
+def _hash_api_key_for_spend_log(api_key: str) -> str:
+    stripped: Final = api_key[7:] if api_key[:7].lower() == "bearer " else api_key
+    if stripped.startswith("sk-"):
+        return hash_token(stripped)
+    return stripped
+
+
 def _strip_null_bytes_from_string(value: str) -> str:
     return value.replace("\x00", "").replace("\\u0000", "").replace("\\U0000", "")
 
 
-def sanitize_spend_log_payload_for_db(value: Any, visited: Optional[set] = None) -> Any:
+def sanitize_spend_log_payload_for_db(value: Any, visited: set | None = None) -> Any:
     """Remove NUL bytes recursively before writing spend log JSON to Postgres."""
     if isinstance(value, str):
         return _strip_null_bytes_from_string(value)
@@ -72,9 +79,7 @@ def sanitize_spend_log_payload_for_db(value: Any, visited: Optional[set] = None)
         visited.add(obj_id)
         try:
             return {
-                sanitize_spend_log_payload_for_db(
-                    k, visited
-                ): sanitize_spend_log_payload_for_db(v, visited)
+                sanitize_spend_log_payload_for_db(k, visited): sanitize_spend_log_payload_for_db(v, visited)
                 for k, v in value.items()
             }
         finally:
@@ -96,7 +101,7 @@ def sanitize_spend_log_payload_for_db(value: Any, visited: Optional[set] = None)
     return value
 
 
-def _is_master_key(api_key: Optional[str], _master_key: Optional[str]) -> bool:
+def _is_master_key(api_key: str | None, _master_key: str | None) -> bool:
     """
     Raw-only constant-time master-key comparison. The hashed form is never
     considered equivalent — only the raw master-key string matches.

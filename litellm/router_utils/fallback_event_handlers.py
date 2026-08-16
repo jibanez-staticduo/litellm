@@ -1,11 +1,10 @@
 import hashlib
 import json
 from collections.abc import Mapping
+from contextvars import ContextVar
 from dataclasses import dataclass
 from enum import Enum
-import hashlib
-from contextvars import ContextVar
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Final
 
 import litellm
 from litellm._logging import verbose_router_logger
@@ -15,7 +14,6 @@ from litellm.router_utils.add_retry_fallback_headers import (
     add_fallback_headers_to_response,
     get_fallback_error_info,
 )
-from litellm.router_utils.batch_utils import _get_router_metadata_variable_name
 from litellm.router_utils.cooldown_handlers import (
     _first_present,  # pyright: ignore[reportPrivateUsage] - shared internal helper, used across router_utils
     _set_cooldown_deployments,  # pyright: ignore[reportPrivateUsage] - shared helper, used across router_utils
@@ -34,7 +32,94 @@ if TYPE_CHECKING:
 else:
     LitellmRouter = Any
 
-_router_fallback_identity: ContextVar[Optional[Tuple[object, object]]] = ContextVar(
+_REQUEST_SCOPED_STATUS_CODES: Final = frozenset((404,))
+
+
+def _trigger_cooldown_for_failed_deployment(
+    litellm_router: LitellmRouter,
+    kwargs: Mapping[str, Any],
+    exception: Exception,
+) -> None:
+    try:
+        if is_advisor_orchestration_failure(exception):
+            return
+        exception_status: Final[str | int] = getattr(exception, "status_code", "")
+        if (
+            kwargs.get("original_generic_function") is not None
+            and cast_exception_status_to_int(exception_status) in _REQUEST_SCOPED_STATUS_CODES
+        ):
+            return
+        if kwargs.get("client_side_timeout") and cast_exception_status_to_int(exception_status) == 408:
+            return
+        deployment_id: Final[str | None] = getattr(exception, "failed_deployment_id", None)
+        if deployment_id is None:
+            return
+        deployment_dict: Final = litellm_router.get_model_info(id=deployment_id)
+        deployment_cooldown: Final = (
+            _first_present(
+                deployment_dict.get("model_info"),
+                deployment_dict.get("litellm_params"),
+                key="cooldown_time",
+            )
+            if deployment_dict is not None
+            else None
+        )
+        exception_headers: Final = litellm.litellm_core_utils.exception_mapping_utils._get_response_headers(
+            original_exception=exception
+        )
+        header_cooldown: Final = (
+            litellm.utils.get_retry_after_from_exception_header(response_headers=exception_headers)
+            if exception_headers is not None
+            else None
+        )
+        time_to_cooldown: Final = (
+            deployment_cooldown
+            if deployment_cooldown is not None and deployment_cooldown >= 0
+            else (
+                header_cooldown
+                if header_cooldown is not None and header_cooldown >= 0
+                else litellm_router.cooldown_time
+            )
+        )
+        increment_deployment_failures_for_current_minute(
+            litellm_router_instance=litellm_router,
+            deployment_id=deployment_id,
+        )
+        _set_cooldown_deployments(
+            litellm_router_instance=litellm_router,
+            exception_status=exception_status,
+            original_exception=exception,
+            deployment=deployment_id,
+            time_to_cooldown=time_to_cooldown,
+        )
+    except (AttributeError, KeyError, OSError, RuntimeError, TypeError, ValueError) as exc:
+        verbose_router_logger.debug("Error triggering cooldown for fallback deployment: %s", exc)
+
+
+def fallback_attempt_key(fallback_target: object) -> str | None:
+    if isinstance(fallback_target, str):
+        return fallback_target
+    if not isinstance(fallback_target, dict):
+        return None
+    model: Final = fallback_target.get("model")
+    if tuple(fallback_target) == ("model",) and isinstance(model, str):
+        return model
+    serialized: Final = json.dumps(fallback_target, sort_keys=True, default=str)
+    return hashlib.sha256(serialized.encode()).hexdigest()
+
+
+@dataclass(slots=True)
+class AttemptedFallbackTargets:
+    keys: frozenset[str] = frozenset()
+
+    def __contains__(self, key: str) -> bool:
+        return key in self.keys
+
+    def record(self, key: str) -> None:
+        self.keys = self.keys | frozenset((key,))
+
+
+_router_fallback_identity: ContextVar[tuple[object, object] | None] = ContextVar(
     "router_fallback_identity", default=None
 )
 
@@ -102,7 +187,7 @@ def get_fallback_model_group(fallbacks: list[Any], model_group: str) -> tuple[li
     return fallback_model_group, generic_fallback_idx
 
 
-def _chatgpt_auth_profiles(litellm_router: LitellmRouter, model_group: object) -> Optional[frozenset[str]]:
+def _chatgpt_auth_profiles(litellm_router: LitellmRouter, model_group: object) -> frozenset[str] | None:
     if not isinstance(model_group, str):
         return None
     deployments = litellm_router.get_model_list(model_name=model_group) or []
@@ -135,11 +220,11 @@ def _is_cross_profile_fallback(
     return len(source_profiles) != 1 or len(target_profiles) != 1 or source_profiles != target_profiles
 
 
-def get_internal_router_fallback_identity() -> Optional[Tuple[object, object]]:
+def get_internal_router_fallback_identity() -> tuple[object, object] | None:
     return _router_fallback_identity.get()
 
 
-def validate_chatgpt_model_group_profiles(deployments: List[Dict[str, Any]], model_group: str) -> None:
+def validate_chatgpt_model_group_profiles(deployments: list[dict[str, Any]], model_group: str) -> None:
     profiles = frozenset(
         str(params.get("chatgpt_auth_profile") or "default")
         for deployment in deployments

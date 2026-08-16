@@ -6596,6 +6596,10 @@ def _get_retry_after_from_exception_header(
         retry_after = -1
 
 
+def get_retry_after_from_exception_header(response_headers: httpx.Headers | None = None):
+    return _get_retry_after_from_exception_header(response_headers)
+
+
 def _calculate_retry_after(
     remaining_retries: int,
     max_retries: int,

@@ -30,12 +30,18 @@ from litellm.litellm_core_utils.llm_response_utils.response_metadata import (
 )
 from litellm.litellm_core_utils.thread_pool_executor import executor
 from litellm.llms.base_llm.responses.transformation import BaseResponsesAPIConfig
-from litellm.responses.utils import ResponsesAPIRequestUtils
 from litellm.responses.sse_output_recovery import (
     record_output_item_chunk,
     record_output_text_chunk,
 )
-from litellm.types.llms.openai import ResponsesAPIStreamEvents
+from litellm.responses.utils import ResponseAPILoggingUtils, ResponsesAPIRequestUtils
+from litellm.types.llms.openai import (
+    PART_UNION_TYPES,
+    ResponseAPIUsage,
+    ResponsesAPIResponse,
+    ResponsesAPIStreamEvents,
+    ResponsesAPIStreamingResponse,
+)
 from litellm.types.utils import CallTypes
 from litellm.utils import async_post_call_success_deployment_hook
 
@@ -170,11 +176,11 @@ class BaseResponsesAPIStreamingIterator:
         self._completed_response_cached = False
         self._completed_response_logged = False
         self._success_logging_enabled = True
-        self._completed_response_cache_hit: Optional[bool] = None
+        self._completed_response_cache_hit: bool | None = None
         self._persist_completed_response_before_logging = True
         self._stream_created_time: float = time.time()
-        self._streamed_output_items: Dict[int, Dict[str, Any]] = {}
-        self._streamed_text_only_items: Dict[int, Dict[str, Any]] = {}
+        self._streamed_output_items: dict[int, dict[str, Any]] = {}
+        self._streamed_text_only_items: dict[int, dict[str, Any]] = {}
 
         # track request context for hooks
         self.litellm_metadata = litellm_metadata
@@ -250,7 +256,7 @@ class BaseResponsesAPIStreamingIterator:
         response_obj = getattr(completed_chunk, "response", None)
         if response_obj is None or getattr(response_obj, "output", None):
             return
-        merged_items: Dict[int, Dict[str, Any]] = {**self._streamed_text_only_items}
+        merged_items: dict[int, dict[str, Any]] = {**self._streamed_text_only_items}
         merged_items.update(self._streamed_output_items)
         if not merged_items:
             return
@@ -512,7 +518,7 @@ class BaseResponsesAPIStreamingIterator:
             return
         try:
             self.logging_obj.model_call_details["combined_usage_object"] = (
-                ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(usage_obj)
+                ResponseAPILoggingUtils.transform_response_api_usage_to_chat_usage(usage_obj)
             )
         except (TypeError, ValueError) as usage_error:
             verbose_logger.debug(
@@ -684,9 +690,7 @@ class BaseResponsesAPIStreamingIterator:
         if self.completed_response is None:
             return
 
-        request_payload: Final[dict[str, object]] = {}
-        if isinstance(self.request_data, dict):
-            request_payload.update(self.request_data)
+        request_payload: Final[dict[str, object]] = dict(self.request_data)
         try:
             if hasattr(self.logging_obj, "model_call_details"):
                 request_payload.update(self.logging_obj.model_call_details)

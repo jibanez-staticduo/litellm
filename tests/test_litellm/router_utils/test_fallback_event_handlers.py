@@ -1,21 +1,13 @@
 import json
-from unittest.mock import MagicMock, patch
-
-import httpx
-import pytest
 from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 from litellm import Router
 from litellm.llms.chatgpt.chat.transformation import ChatGPTConfig
 from litellm.llms.chatgpt.common_utils import InteractiveAuthError
 from litellm.llms.chatgpt.responses.transformation import ChatGPTResponsesAPIConfig
-
-import litellm
-from litellm.router_utils.cooldown_handlers import mark_advisor_orchestration_failure
 from litellm.router_utils.fallback_event_handlers import (
-    AttemptedFallbackTargets,
-    _trigger_cooldown_for_failed_deployment,
-    fallback_attempt_key,
     get_fallback_model_group,
     run_async_fallback,
     validate_chatgpt_model_group_profiles,
@@ -282,6 +274,7 @@ def test_mixed_chatgpt_model_group_fails_closed_before_selection():
 
 def _mixed_profile_router():
     router = Router.__new__(Router)
+    router.routing_plugins = []
     deployments = [
         {"litellm_params": {"model": "chatgpt/gpt-5.6-sol"}},
         {
@@ -312,6 +305,7 @@ async def test_router_async_mixed_chatgpt_group_fails_before_selection():
 
 def test_router_sync_selected_log_has_authoritative_profile_and_deployment(caplog):
     router = Router.__new__(Router)
+    router.routing_plugins = []
     deployment = {
         "litellm_params": {"model": "chatgpt/gpt-5.6-sol"},
         "model_info": {"id": "deadbeefcafebabe"},

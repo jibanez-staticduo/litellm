@@ -119,6 +119,7 @@ if MCP_AVAILABLE:
     from litellm.proxy._experimental.mcp_server.db import (
         approve_mcp_server,
         cleanup_mcp_server_references,
+        create_draft_mcp_server,
         create_mcp_server,
         delete_mcp_server,
         delete_user_credential,

@@ -38,8 +38,8 @@ from litellm.proxy.auth.auth_checks import (
     _can_object_call_model,
     _check_end_user_budget,
     _delete_cache_key_object,
-    _get_user_role,
     _get_user_object_value,
+    _get_user_role,
     _is_model_cost_zero,
     _is_user_proxy_admin,
     _virtual_key_max_budget_alert_check,
@@ -115,7 +115,7 @@ def _normalize_public_auth_route(route: str) -> str:
     return route
 
 
-def _route_requires_auth_despite_public(route: str, general_settings: Optional[dict]) -> bool:
+def _route_requires_auth_despite_public(route: str, general_settings: dict | None) -> bool:
     normalized_route = _normalize_public_auth_route(route)
     if normalized_route == "/metrics":
         return litellm.require_auth_for_metrics_endpoint is not False
@@ -1381,8 +1381,7 @@ async def _user_api_key_auth_builder(
                         team_models=(team_object.models if team_object is not None else []),
                         user_role=(
                             LitellmUserRoles(_get_user_object_value(user_object, "user_role"))
-                            if user_object is not None
-                            and _get_user_object_value(user_object, "user_role") is not None
+                            if user_object is not None and _get_user_object_value(user_object, "user_role") is not None
                             else LitellmUserRoles.INTERNAL_USER
                         ),
                         user_id=user_id,
@@ -1391,14 +1390,10 @@ async def _user_api_key_auth_builder(
                         parent_otel_span=parent_otel_span,
                         end_user_id=end_user_id,
                         user_tpm_limit=(
-                            _get_user_object_value(user_object, "tpm_limit")
-                            if user_object is not None
-                            else None
+                            _get_user_object_value(user_object, "tpm_limit") if user_object is not None else None
                         ),
                         user_rpm_limit=(
-                            _get_user_object_value(user_object, "rpm_limit")
-                            if user_object is not None
-                            else None
+                            _get_user_object_value(user_object, "rpm_limit") if user_object is not None else None
                         ),
                         team_member_rpm_limit=(
                             team_membership.safe_get_team_member_rpm_limit() if team_membership is not None else None
@@ -1822,9 +1817,7 @@ async def _user_api_key_auth_builder(
                     user_obj = None
 
                 user_metadata = (
-                    user_obj.get("metadata")
-                    if isinstance(user_obj, dict)
-                    else getattr(user_obj, "metadata", None)
+                    user_obj.get("metadata") if isinstance(user_obj, dict) else getattr(user_obj, "metadata", None)
                 )
                 if (
                     user_obj is not None
@@ -2407,11 +2400,7 @@ async def _run_centralized_common_checks(
         user_object = LiteLLM_UserTable(
             user_id=user_api_key_auth_obj.user_id or litellm_proxy_admin_name,
             user_role=LitellmUserRoles.PROXY_ADMIN,
-            spend=(
-                _get_user_object_value(user_object, "spend")
-                if user_object is not None
-                else 0.0
-            ),
+            spend=(_get_user_object_value(user_object, "spend") if user_object is not None else 0.0),
         )
 
     if project_object is not None:
@@ -2739,7 +2728,7 @@ async def user_api_key_auth(
 
 
 async def _return_user_api_key_auth_obj(
-    user_obj: Optional[Union[LiteLLM_UserTable, dict]],
+    user_obj: LiteLLM_UserTable | dict | None,
     api_key: str,
     parent_otel_span: Span | None,
     valid_token_dict: dict,

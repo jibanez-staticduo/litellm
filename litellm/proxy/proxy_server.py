@@ -333,8 +333,8 @@ from litellm.proxy.common_request_processing import (
 from litellm.proxy.common_utils.auth_cache_invalidation_pubsub import (
     AuthCacheInvalidationSubscriber,
 )
-from litellm.proxy.common_utils.callback_utils import initialize_callbacks_on_proxy
 from litellm.proxy.common_utils.cache_pydantic_utils import CacheCodec
+from litellm.proxy.common_utils.callback_utils import initialize_callbacks_on_proxy
 from litellm.proxy.common_utils.debug_utils import init_verbose_loggers
 from litellm.proxy.common_utils.debug_utils import router as debugging_endpoints_router
 from litellm.proxy.common_utils.encrypt_decrypt_utils import (
@@ -433,6 +433,9 @@ from litellm.proxy.logging_endpoints.callback_logs_endpoints import (
 from litellm.proxy.management_endpoints.access_group_endpoints import (
     router as access_group_router,
 )
+from litellm.proxy.management_endpoints.auto_router_endpoints import (
+    router as auto_router_management_router,
+)
 from litellm.proxy.management_endpoints.budget_management_endpoints import (
     router as budget_management_router,
 )
@@ -480,6 +483,15 @@ from litellm.proxy.management_endpoints.key_management_endpoints import (
 )
 from litellm.proxy.management_endpoints.key_management_endpoints import (
     router as key_management_router,
+)
+from litellm.proxy.management_endpoints.management_v1 import (
+    router as management_v1_router,
+)
+from litellm.proxy.management_endpoints.management_v1.common import (
+    MANAGEMENT_V1_PREFIX,
+    PROBLEM_TYPE_BASE,
+    ManagementProblem,
+    problem_response,
 )
 from litellm.proxy.management_endpoints.mcp_management_endpoints import (
     router as mcp_management_router,
@@ -3193,7 +3205,7 @@ async def update_cache(
                 "_update_team_db: existing spend: %s; response_cost: %s", existing_spend_obj, response_cost
             )
             if existing_spend_obj is None:
-                existing_spend: Optional[float] = 0.0
+                existing_spend: float | None = 0.0
             else:
                 if isinstance(existing_spend_obj, dict):
                     existing_spend = existing_spend_obj["spend"]
@@ -3238,9 +3250,7 @@ async def update_cache(
 
                 cache_key = f"tag:{tag_name}"
                 # Fetch the existing tag object from cache
-                existing_tag_obj = await user_api_key_cache.async_get_cache(
-                    key=cache_key
-                )
+                existing_tag_obj = await user_api_key_cache.async_get_cache(key=cache_key)
                 if existing_tag_obj is None:
                     # do nothing if tag not in api key cache
                     continue
@@ -8485,7 +8495,7 @@ class ProxyStartupEvent:
     def _initialize_jwt_auth(
         cls,
         general_settings: dict,
-        prisma_client: Optional[PrismaClient],
+        prisma_client: PrismaClient | None,
         user_api_key_cache: DualCache,
     ):
         """Initialize JWT auth on startup"""
@@ -9304,7 +9314,7 @@ class ProxyStartupEvent:
         database_url: str | None,
         proxy_logging_obj: ProxyLogging,
         user_api_key_cache: DualCache,
-    ) -> Optional[PrismaClient]:
+    ) -> PrismaClient | None:
         """
         - Sets up prisma client
         - Adds necessary views to proxy
@@ -14659,11 +14669,9 @@ def _get_update_many_count(update_result: Any) -> int:
     return int(getattr(update_result, "count", 0) or 0)
 
 
-def _get_onboarding_bearer_token(request: Request) -> Optional[str]:
+def _get_onboarding_bearer_token(request: Request) -> str | None:
     auth_header_name = general_settings.get("litellm_key_header_name", "Authorization")
-    auth_header = request.headers.get(auth_header_name) or request.headers.get(
-        "Authorization"
-    )
+    auth_header = request.headers.get(auth_header_name) or request.headers.get("Authorization")
     if auth_header is None:
         return None
     auth_header_parts = auth_header.split(" ", 1)
@@ -14672,9 +14680,7 @@ def _get_onboarding_bearer_token(request: Request) -> Optional[str]:
     return auth_header_parts[1]
 
 
-def _validate_onboarding_session_token(
-    request: Request, *, invitation_link: str, user_id: str
-) -> None:
+def _validate_onboarding_session_token(request: Request, *, invitation_link: str, user_id: str) -> None:
     import jwt
 
     if master_key is None:
@@ -14783,7 +14789,7 @@ async def onboarding(invite_link: str, request: Request):
     if user_obj is None:
         raise HTTPException(status_code=401, detail={"error": "User does not exist in db."})
 
-    user_email = user_obj.user_email
+    user_email: Final = user_obj.user_email
 
     import jwt
 
@@ -14804,17 +14810,6 @@ async def onboarding(invite_link: str, request: Request):
     else:
         litellm_dashboard_ui += "/ui/onboarding"
 
-    user_email: Final = user_obj.user_email
-    onboarding_token: Final = jwt.encode(
-        {
-            "token_type": "litellm_onboarding",
-            "invitation_link": invite_link,
-            "user_id": user_obj.user_id,
-            "exp": litellm.utils.get_utc_datetime() + timedelta(minutes=15),
-        },
-        master_key,
-        algorithm="HS256",
-    )
     disabled_non_admin_personal_key_creation: Final = get_disabled_non_admin_personal_key_creation()
 
     returned_ui_token_object: Final = ReturnedUITokenObject(
@@ -14970,17 +14965,11 @@ async def claim_onboarding_link(data: InvitationClaim, request: Request):
                 "error": f"Invalid invitation link. The user id submitted does not match the user id this link is attached to. Got={data.user_id}, Expected={invite_obj.user_id}"
             },
         )
-    _validate_onboarding_session_token(
-        request, invitation_link=data.invitation_link, user_id=data.user_id
-    )
+    _validate_onboarding_session_token(request, invitation_link=data.invitation_link, user_id=data.user_id)
 
-    existing_user_obj = await prisma_client.db.litellm_usertable.find_unique(
-        where={"user_id": invite_obj.user_id}
-    )
+    existing_user_obj = await prisma_client.db.litellm_usertable.find_unique(where={"user_id": invite_obj.user_id})
     if existing_user_obj is None:
-        raise HTTPException(
-            status_code=401, detail={"error": "User does not exist in db."}
-        )
+        raise HTTPException(status_code=401, detail={"error": "User does not exist in db."})
 
     reservation_time = litellm.utils.get_utc_datetime()
     reservation_result = await prisma_client.db.litellm_invitationlink.update_many(
@@ -15185,9 +15174,7 @@ async def get_favicon():
         except HTTPException:
             raise
         except Exception as e:
-            verbose_proxy_logger.debug(
-                "Error downloading favicon from %s: %s", favicon_url, e
-            )
+            verbose_proxy_logger.debug("Error downloading favicon from %s: %s", favicon_url, e)
             if os.path.exists(default_favicon):
                 return FileResponse(default_favicon, media_type="image/x-icon")
             raise HTTPException(status_code=404, detail="Favicon not found")
@@ -17406,9 +17393,7 @@ async def toolset_lazymcp_route(toolset_name: str, request: Request):
         if prisma_client is None:
             raise HTTPException(status_code=503, detail="Database not available")
 
-        toolset = await global_mcp_server_manager.get_toolset_by_name_cached(
-            prisma_client, toolset_name
-        )
+        toolset = await global_mcp_server_manager.get_toolset_by_name_cached(prisma_client, toolset_name)
         if toolset is None:
             raise HTTPException(
                 status_code=404,
@@ -17420,19 +17405,15 @@ async def toolset_lazymcp_route(toolset_name: str, request: Request):
 
         token = _mcp_active_toolset_id.set(toolset.toolset_id)
         try:
-            return await _stream_mcp_asgi_response(
-                handle_streamable_http_lazymcp, scope, request.receive
-            )
+            return await _stream_mcp_asgi_response(handle_streamable_http_lazymcp, scope, request.receive)
         finally:
             _mcp_active_toolset_id.reset(token)
 
     except HTTPException as e:
         raise e
     except Exception as e:
-        verbose_proxy_logger.error(
-            f"Error handling toolset LazyMCP route for {toolset_name}: {str(e)}"
-        )
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        verbose_proxy_logger.error(f"Error handling toolset LazyMCP route for {toolset_name}: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e!s}")
 
 
 @app.api_route(
@@ -17590,14 +17571,12 @@ async def root_lazymcp_route(request: Request):
 
         scope = dict(request.scope)
         scope["path"] = "/lazymcp"
-        return await _stream_mcp_asgi_response(
-            handle_streamable_http_lazymcp, scope, request.receive
-        )
+        return await _stream_mcp_asgi_response(handle_streamable_http_lazymcp, scope, request.receive)
     except HTTPException as e:
         raise e
     except Exception as e:
-        verbose_proxy_logger.error(f"Error handling root LazyMCP route: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        verbose_proxy_logger.error(f"Error handling root LazyMCP route: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e!s}")
 
 
 @app.api_route(
@@ -17621,38 +17600,28 @@ async def dynamic_lazymcp_route(mcp_server_name: str, request: Request):
         from litellm.proxy.auth.ip_address_utils import IPAddressUtils
 
         client_ip = IPAddressUtils.get_mcp_client_ip(request)
-        mcp_server = global_mcp_server_manager.get_mcp_server_by_name(
-            mcp_server_name, client_ip=client_ip
-        )
+        mcp_server = global_mcp_server_manager.get_mcp_server_by_name(mcp_server_name, client_ip=client_ip)
         scope = dict(request.scope)
         scope["path"] = f"/lazymcp/{mcp_server_name}"
 
         if mcp_server is None and prisma_client is not None:
-            toolset = await global_mcp_server_manager.get_toolset_by_name_cached(
-                prisma_client, mcp_server_name
-            )
+            toolset = await global_mcp_server_manager.get_toolset_by_name_cached(prisma_client, mcp_server_name)
             if toolset is not None:
                 scope["path"] = "/lazymcp"
                 token = _mcp_active_toolset_id.set(toolset.toolset_id)
                 try:
-                    return await _stream_mcp_asgi_response(
-                        handle_streamable_http_lazymcp, scope, request.receive
-                    )
+                    return await _stream_mcp_asgi_response(handle_streamable_http_lazymcp, scope, request.receive)
                 finally:
                     _mcp_active_toolset_id.reset(token)
 
         # Defer all remaining names (server, access-group, or invalid target) to
         # the LazyMCP handler, which applies the existing group/permission resolver.
-        return await _stream_mcp_asgi_response(
-            handle_streamable_http_lazymcp, scope, request.receive
-        )
+        return await _stream_mcp_asgi_response(handle_streamable_http_lazymcp, scope, request.receive)
     except HTTPException as e:
         raise e
     except Exception as e:
-        verbose_proxy_logger.error(
-            f"Error handling dynamic LazyMCP route for {mcp_server_name}: {str(e)}"
-        )
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        verbose_proxy_logger.error(f"Error handling dynamic LazyMCP route for {mcp_server_name}: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e!s}")
 
 
 # Dynamic MCP server routes - handle /{mcp_server_name}/mcp

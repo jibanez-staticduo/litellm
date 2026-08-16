@@ -6301,8 +6301,8 @@ class Router:
             verbose_router_logger.debug("Traceback%s", redact_string(traceback.format_exc()))
         original_exception: Final = e
         fallback_model_group = None
-        original_model_group: Optional[str] = kwargs.get("model")  # type: ignore
-        logical_model_group: Optional[str] = kwargs.get("logical_model_group", original_model_group)
+        original_model_group: str | None = kwargs.get("model")  # type: ignore
+        logical_model_group: str | None = kwargs.get("logical_model_group", original_model_group)
         fallback_failure_exception_str = ""
 
         if disable_fallbacks is True or original_model_group is None:
@@ -6541,7 +6541,7 @@ class Router:
         Try calling the function_with_retries
         If it fails after num_retries, fall back to another model group
         """
-        model_group: Optional[str] = kwargs.get("model")
+        model_group: str | None = kwargs.get("model")
         kwargs.pop("_router_fallback_identity", None)
         internal_identity = get_internal_router_fallback_identity()
         if internal_identity is not None:
@@ -6550,10 +6550,10 @@ class Router:
             kwargs["original_requested_model"] = model_group
             kwargs["logical_model_group"] = model_group
         include_fallback_errors = kwargs.get("include_fallback_errors", False) is True
-        disable_fallbacks: Optional[bool] = kwargs.pop("disable_fallbacks", False)
-        fallbacks: Optional[List] = kwargs.get("fallbacks", self.fallbacks)
-        context_window_fallbacks: Optional[List] = kwargs.get("context_window_fallbacks", self.context_window_fallbacks)
-        content_policy_fallbacks: Optional[List] = kwargs.get("content_policy_fallbacks", self.content_policy_fallbacks)
+        disable_fallbacks: bool | None = kwargs.pop("disable_fallbacks", False)
+        fallbacks: list | None = kwargs.get("fallbacks", self.fallbacks)
+        context_window_fallbacks: list | None = kwargs.get("context_window_fallbacks", self.context_window_fallbacks)
+        content_policy_fallbacks: list | None = kwargs.get("content_policy_fallbacks", self.content_policy_fallbacks)
 
         mock_timeout: Final = kwargs.pop("mock_timeout", None)
 
@@ -11752,7 +11752,7 @@ class Router:
             return healthy_deployments
 
         validate_chatgpt_model_group_profiles(healthy_deployments, model)
-        parent_otel_span: Optional[Span] = _get_parent_otel_span_from_kwargs(request_kwargs)
+        parent_otel_span: Span | None = _get_parent_otel_span_from_kwargs(request_kwargs)
 
         # Health-check-based filtering (before cooldown)
         healthy_deployments = self._filter_health_check_unhealthy_deployments(
@@ -11856,7 +11856,7 @@ class Router:
         self._log_selected_deployment(model, deployment, request_kwargs or {})
         return deployment
 
-    def _log_selected_deployment(self, model: str, deployment: Dict, request_kwargs: Dict) -> None:
+    def _log_selected_deployment(self, model: str, deployment: dict, request_kwargs: dict) -> None:
         metadata = request_kwargs.get("metadata") or request_kwargs.get("litellm_metadata") or {}
         params = deployment.get("litellm_params") or {}
         deployment_id = str((deployment.get("model_info") or {}).get("id") or "none")

@@ -29,7 +29,7 @@ class AzureFoundryErrorStrings(str, enum.Enum):
 
 
 class AzureAIStudioConfig(OpenAIConfig):
-    def get_supported_openai_params(self, model: str) -> List:
+    def get_supported_openai_params(self, model: str) -> list:
         # azure ai supports tool_choice by default; only drop it when the
         # model cost map explicitly sets supports_tool_choice=false. A missing
         # capability flag must be treated as supported so new or custom

@@ -3416,12 +3416,9 @@ class Logging(LiteLLMLoggingBaseClass):
                 else getattr(result.response, "usage", None)
             )
             if isinstance(response_usage, ResponseAPIUsage) or (
-                isinstance(response_usage, dict)
-                and ResponseAPILoggingUtils._is_response_api_usage(response_usage)
+                isinstance(response_usage, dict) and ResponseAPILoggingUtils._is_response_api_usage(response_usage)
             ):
-                transformed_usage = ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(
-                    response_usage
-                )
+                transformed_usage = ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(response_usage)
                 # Set as dict instead of Usage object so model_dump() serializes it correctly
                 transformed_usage_dict = (
                     transformed_usage.model_dump()

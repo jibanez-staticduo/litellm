@@ -373,18 +373,10 @@ class OpenAIResponsesAPIConfig(BaseResponsesAPIConfig):
             normalized_usage["input_tokens"] = usage["prompt_tokens"]
         if "output_tokens" not in normalized_usage and "completion_tokens" in usage:
             normalized_usage["output_tokens"] = usage["completion_tokens"]
-        if (
-            "input_tokens_details" not in normalized_usage
-            and "prompt_tokens_details" in usage
-        ):
+        if "input_tokens_details" not in normalized_usage and "prompt_tokens_details" in usage:
             normalized_usage["input_tokens_details"] = usage["prompt_tokens_details"]
-        if (
-            "output_tokens_details" not in normalized_usage
-            and "completion_tokens_details" in usage
-        ):
-            normalized_usage["output_tokens_details"] = usage[
-                "completion_tokens_details"
-            ]
+        if "output_tokens_details" not in normalized_usage and "completion_tokens_details" in usage:
+            normalized_usage["output_tokens_details"] = usage["completion_tokens_details"]
         if "total_tokens" not in normalized_usage:
             input_tokens = normalized_usage.get("input_tokens")
             output_tokens = normalized_usage.get("output_tokens")

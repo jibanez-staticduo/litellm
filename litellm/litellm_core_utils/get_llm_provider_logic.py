@@ -12,6 +12,10 @@ from litellm.secret_managers.main import get_secret, get_secret_str
 from ..types.router import GenericLiteLLMParams, LiteLLM_Params
 
 
+def _is_optional_string(value: object) -> bool:
+    return value is None or isinstance(value, str)
+
+
 def _endpoint_matches_api_base(endpoint: str, api_base: str) -> bool:
     """
     Match a registered openai-compatible endpoint against a caller-supplied
@@ -221,9 +225,9 @@ def get_llm_provider(
         elif model.split("/", 1)[0] in litellm.provider_list:
             custom_llm_provider = model.split("/", 1)[0]
             model = model.split("/", 1)[1]
-            if api_base is not None and not isinstance(api_base, str):
+            if not _is_optional_string(api_base):
                 raise Exception(f"api base needs to be a string. api_base={api_base}")
-            if dynamic_api_key is not None and not isinstance(dynamic_api_key, str):
+            if not _is_optional_string(dynamic_api_key):
                 raise Exception(f"dynamic_api_key needs to be a string. Got type={type(dynamic_api_key).__name__}")
             return model, custom_llm_provider, dynamic_api_key, api_base
         # check if api base is a known openai compatible endpoint
@@ -847,9 +851,9 @@ def _get_openai_compatible_provider_info(
         api_base = api_base or get_secret_str("MANUS_API_BASE") or "https://api.manus.im"
         dynamic_api_key = api_key or get_secret_str("MANUS_API_KEY")
 
-    if api_base is not None and not isinstance(api_base, str):
+    if not _is_optional_string(api_base):
         raise Exception(f"api base needs to be a string. api_base={api_base}")
-    if dynamic_api_key is not None and not isinstance(dynamic_api_key, str):
+    if not _is_optional_string(dynamic_api_key):
         raise Exception(f"dynamic_api_key needs to be a string. dynamic_api_key={dynamic_api_key}")
     if dynamic_api_key is None and api_key is not None:
         dynamic_api_key = api_key

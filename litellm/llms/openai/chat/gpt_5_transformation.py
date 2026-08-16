@@ -166,9 +166,7 @@ class OpenAIGPT5Config(OpenAIGPTConfig):
         base_gpt_series_params = super().get_supported_openai_params(model=model)
         gpt_5_only_params = ["reasoning_effort", "verbosity"]
         base_gpt_series_params.extend(gpt_5_only_params)
-        if _is_explicitly_disabled_factory(
-            model=model, custom_llm_provider=None, key="supports_tool_choice"
-        ):
+        if _is_explicitly_disabled_factory(model=model, custom_llm_provider=None, key="supports_tool_choice"):
             base_gpt_series_params.remove("tool_choice")
 
         non_supported_params: Final = [

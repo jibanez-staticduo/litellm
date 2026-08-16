@@ -8,7 +8,8 @@ from collections.abc import Mapping
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Final
 
-from fastapi import Request
+from fastapi import HTTPException, Request
+from pydantic import ValidationError as PydanticValidationError
 from starlette.datastructures import Headers
 
 import litellm
@@ -28,6 +29,10 @@ from litellm.litellm_core_utils.initialize_dynamic_callback_params import (
     iter_client_callback_metadata_dicts,
 )
 from litellm.litellm_core_utils.safe_json_loads import safe_json_loads
+from litellm.litellm_core_utils.url_utils import (
+    is_url_destination_allowed_by_host,
+    provider_url_destination_candidates,
+)
 from litellm.proxy._types import (
     AddTeamCallback,
     CommonProxyErrors,
@@ -37,13 +42,13 @@ from litellm.proxy._types import (
     TeamCallbackMetadata,
     UserAPIKeyAuth,
 )
+from litellm.proxy.auth.ip_address_utils import IPAddressUtils
 from litellm.proxy.common_utils.callback_utils import (
     decrypt_callback_vars,
     get_metadata_variable_name_from_kwargs,
     strip_callback_config,
 )
 from litellm.proxy.common_utils.http_parsing_utils import _safe_get_request_headers
-from litellm.proxy.auth.ip_address_utils import IPAddressUtils
 
 # Cache special headers as a frozenset for O(1) lookup performance
 _SPECIAL_HEADERS_CACHE: Final = frozenset(v.value.lower() for v in SpecialHeaders._member_map_.values())
@@ -1672,9 +1677,7 @@ async def add_litellm_data_to_request(
 
     data["secret_fields"] = SecretFields(
         raw_headers=_raw_headers,
-        mcp_client_ip=IPAddressUtils.get_mcp_client_ip(
-            request, general_settings=general_settings
-        ),
+        mcp_client_ip=IPAddressUtils.get_mcp_client_ip(request, general_settings=general_settings),
     )
 
     ## Dynamic api version (Azure OpenAI endpoints) ##
@@ -1970,18 +1973,10 @@ async def add_litellm_data_to_request(
     )
 
     if tags is not None:
-        if _admin_allow_client_tags:
-            data[_metadata_variable_name]["tags"] = (
-                LiteLLMProxyRequestSetup._merge_tags(
-                    request_tags=data[_metadata_variable_name].get("tags"),
-                    tags_to_add=tags,
-                )
-            )
-        else:
-            verbose_proxy_logger.warning(
-                "Ignored caller-supplied tags from header/root body: this "
-                "key/team does not have `allow_client_tags: true` in its metadata."
-            )
+        data[_metadata_variable_name]["tags"] = LiteLLMProxyRequestSetup._merge_tags(
+            request_tags=data[_metadata_variable_name].get("tags"),
+            tags_to_add=tags,
+        )
 
     _caller_body_metadata: Final = data.get("metadata") if _metadata_variable_name != "metadata" else None
     _caller_body_tags: Final = (

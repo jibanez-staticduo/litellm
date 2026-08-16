@@ -41,7 +41,7 @@ DEVICE_CODE_TIMEOUT_SECONDS = 15 * 60
 DEVICE_CODE_COOLDOWN_SECONDS = 5 * 60
 DEVICE_CODE_POLL_SLEEP_SECONDS = 5
 _SAFE_AUTH_PROFILE_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
-_AUTH_LOCKS: Dict[str, threading.RLock] = {}
+_AUTH_LOCKS: dict[str, threading.RLock] = {}
 _AUTH_LOCKS_GUARD = threading.Lock()
 
 
@@ -61,12 +61,12 @@ def _lock_auth_file(lock_file: Any) -> None:
 
 
 class Authenticator:
-    def __init__(self, litellm_params: Optional[object] = None) -> None:
+    def __init__(self, litellm_params: object | None = None) -> None:
         self.token_dir = self._resolve_token_dir(litellm_params)
         self.auth_file = self._resolve_auth_file(litellm_params)
         self._ensure_token_dir()
 
-    def _resolve_token_dir(self, litellm_params: Optional[object]) -> str:
+    def _resolve_token_dir(self, litellm_params: object | None) -> str:
         configured_token_dir = self._get_litellm_param(litellm_params, "chatgpt_token_dir")
         if configured_token_dir:
             return os.path.expanduser(str(configured_token_dir))
@@ -75,7 +75,7 @@ class Authenticator:
             os.path.expanduser("~/.config/litellm/chatgpt"),
         )
 
-    def _resolve_auth_file(self, litellm_params: Optional[object]) -> str:
+    def _resolve_auth_file(self, litellm_params: object | None) -> str:
         configured_auth_file = self._get_litellm_param(litellm_params, "chatgpt_auth_file")
         if configured_auth_file:
             auth_file = os.path.expanduser(str(configured_auth_file))
@@ -110,7 +110,7 @@ class Authenticator:
             raise ValueError("chatgpt_auth_profile must resolve inside chatgpt_token_dir")
         return profile_name
 
-    def _get_litellm_param(self, litellm_params: Optional[object], key: str) -> Optional[object]:
+    def _get_litellm_param(self, litellm_params: object | None, key: str) -> object | None:
         if litellm_params is None:
             return None
         getter = getattr(litellm_params, "get", None)
@@ -156,7 +156,7 @@ class Authenticator:
             raise InteractiveAuthError(message="Interactive ChatGPT authentication failed", status_code=401) from exc
         return tokens["access_token"]
 
-    def get_account_id(self) -> Optional[str]:
+    def get_account_id(self) -> str | None:
         with _AUTH_LOCKS_GUARD:
             auth_lock = _AUTH_LOCKS.setdefault(os.path.realpath(self.auth_file), threading.RLock())
         with auth_lock:
@@ -191,8 +191,8 @@ class Authenticator:
             verbose_logger.warning("Invalid ChatGPT auth file: %s", exc)
             return None
 
-    def _write_auth_file(self, data: Dict[str, Any]) -> None:
-        temporary_path: Optional[str] = None
+    def _write_auth_file(self, data: dict[str, Any]) -> None:
+        temporary_path: str | None = None
         try:
             auth_file_dir = os.path.dirname(self.auth_file) or "."
             file_descriptor, temporary_path = tempfile.mkstemp(prefix=".chatgpt-auth-", dir=auth_file_dir)
@@ -213,7 +213,7 @@ class Authenticator:
                 finally:
                     os.close(directory_fd)
             temporary_path = None
-        except IOError as exc:
+        except OSError as exc:
             verbose_logger.error("Failed to write ChatGPT auth file: %s", exc)
         finally:
             if temporary_path is not None:

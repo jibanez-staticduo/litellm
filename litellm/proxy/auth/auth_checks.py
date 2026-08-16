@@ -704,7 +704,7 @@ async def common_checks(
     if isinstance(valid_token, dict):
         valid_token = UserAPIKeyAuth(**valid_token)
 
-    _model: Optional[Union[str, List[str]]] = get_model_from_request(
+    _model: str | list[str] | None = get_model_from_request(
         request_data=request_body,
         route=route,
         request_headers=_safe_get_request_headers(request=request),
@@ -826,13 +826,14 @@ async def common_checks(
 
                 user_budget = _get_user_object_value(user_object, "max_budget")
                 user_id = _get_user_object_value(user_object, "user_id")
+                fallback_user_spend: Final = _get_user_object_value(user_object, "spend") or 0.0
                 user_spend = await get_current_spend(
                     counter_key=f"spend:user:{user_id}",
-                    fallback_spend=_get_user_object_value(user_object, "spend") or 0.0,
+                    fallback_spend=fallback_user_spend,
                     max_budget=user_budget,
-                    message=f"ExceededBudget: User={user_object.user_id} over budget. Spend={user_spend}, Budget={user_budget}",
+                    message=f"ExceededBudget: User={user_id} over budget. Spend={fallback_user_spend}, Budget={user_budget}",
                     entity_type=Litellm_EntityType.USER.value,
-                    entity_id=user_object.user_id,
+                    entity_id=user_id,
                 )
                 if math.isfinite(user_budget) and user_spend >= user_budget:
                     raise litellm.BudgetExceededError(
@@ -952,8 +953,8 @@ async def common_checks(
 
 
 def _get_user_role(
-    user_obj: Optional[Union[LiteLLM_UserTable, dict]],
-) -> Optional[LitellmUserRoles]:
+    user_obj: LiteLLM_UserTable | dict | None,
+) -> LitellmUserRoles | None:
     if user_obj is None:
         return None
 
@@ -993,7 +994,7 @@ def _is_api_route_allowed(
     return True
 
 
-def _is_user_proxy_admin(user_obj: Optional[Union[LiteLLM_UserTable, dict]]):
+def _is_user_proxy_admin(user_obj: LiteLLM_UserTable | dict | None):
     if user_obj is None:
         return False
 
@@ -1001,9 +1002,7 @@ def _is_user_proxy_admin(user_obj: Optional[Union[LiteLLM_UserTable, dict]]):
     return user_role is not None and user_role == LitellmUserRoles.PROXY_ADMIN.value
 
 
-def _get_user_object_value(
-    user_obj: Optional[Union[LiteLLM_UserTable, dict]], field: str
-):
+def _get_user_object_value(user_obj: LiteLLM_UserTable | dict | None, field: str):
     if user_obj is None:
         return None
     if isinstance(user_obj, dict):
@@ -4013,9 +4012,7 @@ async def _virtual_key_soft_budget_check(
             team_id=valid_token.team_id,
             team_alias=valid_token.team_alias,
             organization_id=valid_token.org_id,
-            user_email=(
-                _get_user_object_value(user_obj, "user_email") if user_obj else None
-            ),
+            user_email=(_get_user_object_value(user_obj, "user_email") if user_obj else None),
             key_alias=valid_token.key_alias,
             event_group=Litellm_EntityType.KEY,
         )
@@ -4083,7 +4080,7 @@ async def _virtual_key_max_budget_alert_check(
 
     if valid_token.max_budget is not None and valid_token.spend is not None and valid_token.spend > 0:
         owner_email = _get_user_object_value(user_obj, "user_email") if user_obj else None
-        alert_email_config: Optional[Dict[str, List[str]]] = _merge_budget_alert_email_configs(
+        alert_email_config: dict[str, list[str]] | None = _merge_budget_alert_email_configs(
             global_cfg=litellm.default_key_max_budget_alert_emails,
             per_key_cfg=(valid_token.metadata or {}).get("max_budget_alert_emails"),
         )

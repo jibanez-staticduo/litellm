@@ -106,6 +106,10 @@ def _redact_mcp_resource_url(url: str | None) -> str | None:
     return urlunsplit((parts.scheme, netloc, "", "", "")) or None
 
 
+def redact_mcp_resource_url(url: str | None) -> str | None:
+    return _redact_mcp_resource_url(url)
+
+
 def _resolve_proxy_base_url_env() -> str | None:
     global _warned_invalid_proxy_base_url
     configured: Final = os.environ.get("PROXY_BASE_URL", "").strip()

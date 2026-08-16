@@ -21,6 +21,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/.well-known/jwks.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Jwks Json
+         * @description JSON Web Key Set endpoint.
+         *
+         *     Returns the RSA public key used by MCPJWTSigner to sign outbound MCP tokens.
+         *     MCP servers and gateways use this endpoint to verify liteLLM-issued JWTs.
+         *
+         *     Returns an empty key set if MCPJWTSigner is not configured.
+         */
+        get: operations["jwks_json__well_known_jwks_json_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/.well-known/litellm-ui-config": {
         parameters: {
             query?: never;
@@ -30,6 +55,241 @@ export interface paths {
         };
         /** Get Ui Config */
         get: operations["get_ui_config__well_known_litellm_ui_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/.well-known/oauth-authorization-server": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Oauth Authorization Server Mcp
+         * @description OAuth authorization server discovery endpoint.
+         *
+         *     Supports both legacy pattern (/{server_name}) and root endpoint.
+         */
+        get: operations["oauth_authorization_server_mcp__well_known_oauth_authorization_server_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/.well-known/oauth-authorization-server/mcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Oauth Authorization Server Aggregate
+         * @description OAuth authorization server discovery for the aggregate /mcp endpoint, the RFC 8414
+         *     path-inserted form for a client that treats {base}/mcp as its authorization base URL.
+         *
+         *     The single-segment /mcp is reserved for the aggregate so the discovery chain stays
+         *     consistent: the aggregate protected-resource document advertises {base}/mcp as its
+         *     authorization server, so the document served here must have issuer {base}/mcp. A server
+         *     literally named ``mcp`` therefore does not take this route; it keeps its standard
+         *     two-segment discovery at /.well-known/oauth-authorization-server/mcp/mcp. Letting the
+         *     per-server row win here instead would serve an issuer of {base} against a resource that
+         *     advertised {base}/mcp, which fails the RFC 8414 issuer check and breaks the front door.
+         */
+        get: operations["oauth_authorization_server_aggregate__well_known_oauth_authorization_server_mcp_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/.well-known/oauth-authorization-server/mcp/{mcp_server_name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Oauth Authorization Server Mcp Standard
+         * @description OAuth authorization server discovery endpoint using standard MCP URL pattern.
+         *
+         *     Standard pattern: /mcp/{server_name}
+         *     Discovery path: /.well-known/oauth-authorization-server/mcp/{server_name}
+         */
+        get: operations["oauth_authorization_server_mcp_standard__well_known_oauth_authorization_server_mcp__mcp_server_name__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/.well-known/oauth-authorization-server/{mcp_server_name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Oauth Authorization Server Mcp
+         * @description OAuth authorization server discovery endpoint.
+         *
+         *     Supports both legacy pattern (/{server_name}) and root endpoint.
+         */
+        get: operations["oauth_authorization_server_mcp__well_known_oauth_authorization_server__mcp_server_name__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/.well-known/oauth-authorization-server/{mcp_server_name}/mcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Oauth Authorization Server Legacy
+         * @description OAuth authorization server discovery for legacy /{server_name}/mcp pattern.
+         */
+        get: operations["oauth_authorization_server_legacy__well_known_oauth_authorization_server__mcp_server_name__mcp_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/.well-known/oauth-protected-resource": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Oauth Protected Resource Mcp
+         * @description OAuth protected resource discovery endpoint using LiteLLM legacy URL pattern.
+         *
+         *     Legacy pattern: /{server_name}/mcp
+         *     Discovery path: /.well-known/oauth-protected-resource/{server_name}/mcp
+         *
+         *     This endpoint is kept for backward compatibility. New integrations should
+         *     use the standard MCP pattern (/mcp/{server_name}) instead.
+         */
+        get: operations["oauth_protected_resource_mcp__well_known_oauth_protected_resource_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/.well-known/oauth-protected-resource/mcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Oauth Protected Resource Aggregate
+         * @description OAuth protected resource discovery for the aggregate /mcp endpoint.
+         *
+         *     The single-segment ``/mcp`` path does not collide with any per-server PRM pattern
+         *     (those are two-segment: ``/mcp/{server}`` or ``/{server}/mcp``), so this unambiguously
+         *     describes the aggregate resource.
+         */
+        get: operations["oauth_protected_resource_aggregate__well_known_oauth_protected_resource_mcp_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/.well-known/oauth-protected-resource/mcp/{mcp_server_name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Oauth Protected Resource Mcp Standard
+         * @description OAuth protected resource discovery endpoint using standard MCP URL pattern.
+         *
+         *     Standard pattern: /mcp/{server_name}
+         *     Discovery path: /.well-known/oauth-protected-resource/mcp/{server_name}
+         *
+         *     This endpoint is compliant with MCP specification and works with standard
+         *     MCP clients like mcp-inspector and VSCode Copilot.
+         */
+        get: operations["oauth_protected_resource_mcp_standard__well_known_oauth_protected_resource_mcp__mcp_server_name__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/.well-known/oauth-protected-resource/{mcp_server_name}/mcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Oauth Protected Resource Mcp
+         * @description OAuth protected resource discovery endpoint using LiteLLM legacy URL pattern.
+         *
+         *     Legacy pattern: /{server_name}/mcp
+         *     Discovery path: /.well-known/oauth-protected-resource/{server_name}/mcp
+         *
+         *     This endpoint is kept for backward compatibility. New integrations should
+         *     use the standard MCP pattern (/mcp/{server_name}) instead.
+         */
+        get: operations["oauth_protected_resource_mcp__well_known_oauth_protected_resource__mcp_server_name__mcp_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/.well-known/openid-configuration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Openid Configuration */
+        get: operations["openid_configuration__well_known_openid_configuration_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -467,29 +727,29 @@ export interface paths {
          * Anthropic Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/anthropic_completion)
          */
-        get: operations["anthropic_proxy_route_anthropic__endpoint__get"];
+        get: operations["anthropic_proxy_route_anthropic__endpoint_"];
         /**
          * Anthropic Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/anthropic_completion)
          */
-        put: operations["anthropic_proxy_route_anthropic__endpoint__put"];
+        put: operations["anthropic_proxy_route_anthropic__endpoint_"];
         /**
          * Anthropic Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/anthropic_completion)
          */
-        post: operations["anthropic_proxy_route_anthropic__endpoint__post"];
+        post: operations["anthropic_proxy_route_anthropic__endpoint_"];
         /**
          * Anthropic Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/anthropic_completion)
          */
-        delete: operations["anthropic_proxy_route_anthropic__endpoint__delete"];
+        delete: operations["anthropic_proxy_route_anthropic__endpoint_"];
         options?: never;
         head?: never;
         /**
          * Anthropic Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/anthropic_completion)
          */
-        patch: operations["anthropic_proxy_route_anthropic__endpoint__patch"];
+        patch: operations["anthropic_proxy_route_anthropic__endpoint_"];
         trace?: never;
     };
     "/api/event_logging/batch": {
@@ -599,17 +859,17 @@ export interface paths {
             cookie?: never;
         };
         /** Assemblyai Proxy Route */
-        get: operations["assemblyai_proxy_route_assemblyai__endpoint__get"];
+        get: operations["assemblyai_proxy_route_assemblyai__endpoint_"];
         /** Assemblyai Proxy Route */
-        put: operations["assemblyai_proxy_route_assemblyai__endpoint__put"];
+        put: operations["assemblyai_proxy_route_assemblyai__endpoint_"];
         /** Assemblyai Proxy Route */
-        post: operations["assemblyai_proxy_route_assemblyai__endpoint__post"];
+        post: operations["assemblyai_proxy_route_assemblyai__endpoint_"];
         /** Assemblyai Proxy Route */
-        delete: operations["assemblyai_proxy_route_assemblyai__endpoint__delete"];
+        delete: operations["assemblyai_proxy_route_assemblyai__endpoint_"];
         options?: never;
         head?: never;
         /** Assemblyai Proxy Route */
-        patch: operations["assemblyai_proxy_route_assemblyai__endpoint__patch"];
+        patch: operations["assemblyai_proxy_route_assemblyai__endpoint_"];
         trace?: never;
     };
     "/assistants": {
@@ -754,6 +1014,47 @@ export interface paths {
         get: operations["get_audit_log_by_id_audit__id__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Authorize */
+        get: operations["authorize_authorize_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/authorize/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Authorize Complete
+         * @description Finish an aggregate connect flow: mint the gateway authorization code for the
+         *     signed-in user and hand it back to the DCR client, by 303 redirect (default) or, for
+         *     a loopback client on a different machine, as a copyable callback URL
+         *     (``delivery=manual``). POST plus the per-flow HttpOnly cookie set at /authorize; an
+         *     anonymous or bad-flow request just 400s.
+         */
+        post: operations["authorize_complete_authorize_complete_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -953,7 +1254,7 @@ export interface paths {
          *
          *     Checks if the deployment id in the url is a litellm model name. If so, it will route using the llm_router.allm_passthrough_route.
          */
-        get: operations["azure_proxy_route_azure__endpoint__get"];
+        get: operations["azure_proxy_route_azure__endpoint_"];
         /**
          * Azure Proxy Route
          * @description Call any azure endpoint using the proxy.
@@ -962,7 +1263,7 @@ export interface paths {
          *
          *     Checks if the deployment id in the url is a litellm model name. If so, it will route using the llm_router.allm_passthrough_route.
          */
-        put: operations["azure_proxy_route_azure__endpoint__put"];
+        put: operations["azure_proxy_route_azure__endpoint_"];
         /**
          * Azure Proxy Route
          * @description Call any azure endpoint using the proxy.
@@ -971,7 +1272,7 @@ export interface paths {
          *
          *     Checks if the deployment id in the url is a litellm model name. If so, it will route using the llm_router.allm_passthrough_route.
          */
-        post: operations["azure_proxy_route_azure__endpoint__post"];
+        post: operations["azure_proxy_route_azure__endpoint_"];
         /**
          * Azure Proxy Route
          * @description Call any azure endpoint using the proxy.
@@ -980,7 +1281,7 @@ export interface paths {
          *
          *     Checks if the deployment id in the url is a litellm model name. If so, it will route using the llm_router.allm_passthrough_route.
          */
-        delete: operations["azure_proxy_route_azure__endpoint__delete"];
+        delete: operations["azure_proxy_route_azure__endpoint_"];
         options?: never;
         head?: never;
         /**
@@ -991,7 +1292,7 @@ export interface paths {
          *
          *     Checks if the deployment id in the url is a litellm model name. If so, it will route using the llm_router.allm_passthrough_route.
          */
-        patch: operations["azure_proxy_route_azure__endpoint__patch"];
+        patch: operations["azure_proxy_route_azure__endpoint_"];
         trace?: never;
     };
     "/azure_ai/{endpoint}": {
@@ -1009,7 +1310,7 @@ export interface paths {
          *
          *     Checks if the deployment id in the url is a litellm model name. If so, it will route using the llm_router.allm_passthrough_route.
          */
-        get: operations["azure_proxy_route_azure_ai__endpoint__get"];
+        get: operations["azure_proxy_route_azure_ai__endpoint_"];
         /**
          * Azure Proxy Route
          * @description Call any azure endpoint using the proxy.
@@ -1018,7 +1319,7 @@ export interface paths {
          *
          *     Checks if the deployment id in the url is a litellm model name. If so, it will route using the llm_router.allm_passthrough_route.
          */
-        put: operations["azure_proxy_route_azure_ai__endpoint__put"];
+        put: operations["azure_proxy_route_azure_ai__endpoint_"];
         /**
          * Azure Proxy Route
          * @description Call any azure endpoint using the proxy.
@@ -1027,7 +1328,7 @@ export interface paths {
          *
          *     Checks if the deployment id in the url is a litellm model name. If so, it will route using the llm_router.allm_passthrough_route.
          */
-        post: operations["azure_proxy_route_azure_ai__endpoint__post"];
+        post: operations["azure_proxy_route_azure_ai__endpoint_"];
         /**
          * Azure Proxy Route
          * @description Call any azure endpoint using the proxy.
@@ -1036,7 +1337,7 @@ export interface paths {
          *
          *     Checks if the deployment id in the url is a litellm model name. If so, it will route using the llm_router.allm_passthrough_route.
          */
-        delete: operations["azure_proxy_route_azure_ai__endpoint__delete"];
+        delete: operations["azure_proxy_route_azure_ai__endpoint_"];
         options?: never;
         head?: never;
         /**
@@ -1047,7 +1348,7 @@ export interface paths {
          *
          *     Checks if the deployment id in the url is a litellm model name. If so, it will route using the llm_router.allm_passthrough_route.
          */
-        patch: operations["azure_proxy_route_azure_ai__endpoint__patch"];
+        patch: operations["azure_proxy_route_azure_ai__endpoint_"];
         trace?: never;
     };
     "/batches": {
@@ -1161,28 +1462,28 @@ export interface paths {
          *     V2 is handled by the `/bedrock/v2` endpoint.
          *     [Docs](https://docs.litellm.ai/docs/pass_through/bedrock)
          */
-        get: operations["bedrock_proxy_route_bedrock__endpoint__get"];
+        get: operations["bedrock_proxy_route_bedrock__endpoint_"];
         /**
          * Bedrock Proxy Route
          * @description This is the v1 passthrough for Bedrock.
          *     V2 is handled by the `/bedrock/v2` endpoint.
          *     [Docs](https://docs.litellm.ai/docs/pass_through/bedrock)
          */
-        put: operations["bedrock_proxy_route_bedrock__endpoint__put"];
+        put: operations["bedrock_proxy_route_bedrock__endpoint_"];
         /**
          * Bedrock Proxy Route
          * @description This is the v1 passthrough for Bedrock.
          *     V2 is handled by the `/bedrock/v2` endpoint.
          *     [Docs](https://docs.litellm.ai/docs/pass_through/bedrock)
          */
-        post: operations["bedrock_proxy_route_bedrock__endpoint__post"];
+        post: operations["bedrock_proxy_route_bedrock__endpoint_"];
         /**
          * Bedrock Proxy Route
          * @description This is the v1 passthrough for Bedrock.
          *     V2 is handled by the `/bedrock/v2` endpoint.
          *     [Docs](https://docs.litellm.ai/docs/pass_through/bedrock)
          */
-        delete: operations["bedrock_proxy_route_bedrock__endpoint__delete"];
+        delete: operations["bedrock_proxy_route_bedrock__endpoint_"];
         options?: never;
         head?: never;
         /**
@@ -1191,7 +1492,7 @@ export interface paths {
          *     V2 is handled by the `/bedrock/v2` endpoint.
          *     [Docs](https://docs.litellm.ai/docs/pass_through/bedrock)
          */
-        patch: operations["bedrock_proxy_route_bedrock__endpoint__patch"];
+        patch: operations["bedrock_proxy_route_bedrock__endpoint_"];
         trace?: never;
     };
     "/budget/delete": {
@@ -1491,6 +1792,37 @@ export interface paths {
          *     to verify the credentials work without affecting global state.
          */
         post: operations["test_cache_connection_cache_settings_test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Callback
+         * @description OAuth 2.0 authorization response handler for MCP loopback clients.
+         *
+         *     Accepts either:
+         *
+         *     - A successful authorization response (``code`` + ``state``), which is
+         *       forwarded back to the validated client ``redirect_uri`` with the
+         *       original (un-wrapped) ``state``.
+         *     - An error response (``error``[+``error_description``/``error_uri``]), per
+         *       RFC 6749 §4.1.2.1. When ``state`` is present and decodes to a trusted
+         *       ``redirect_uri``, the error params are propagated back to the client so
+         *       its OAuth library can surface them. Otherwise we render an HTML error
+         *       page so the user is not left on an opaque 422 / blank screen.
+         */
+        get: operations["callback_callback_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1957,29 +2289,29 @@ export interface paths {
          * Cohere Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/cohere)
          */
-        get: operations["cohere_proxy_route_cohere__endpoint__get"];
+        get: operations["cohere_proxy_route_cohere__endpoint_"];
         /**
          * Cohere Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/cohere)
          */
-        put: operations["cohere_proxy_route_cohere__endpoint__put"];
+        put: operations["cohere_proxy_route_cohere__endpoint_"];
         /**
          * Cohere Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/cohere)
          */
-        post: operations["cohere_proxy_route_cohere__endpoint__post"];
+        post: operations["cohere_proxy_route_cohere__endpoint_"];
         /**
          * Cohere Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/cohere)
          */
-        delete: operations["cohere_proxy_route_cohere__endpoint__delete"];
+        delete: operations["cohere_proxy_route_cohere__endpoint_"];
         options?: never;
         head?: never;
         /**
          * Cohere Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/cohere)
          */
-        patch: operations["cohere_proxy_route_cohere__endpoint__patch"];
+        patch: operations["cohere_proxy_route_cohere__endpoint_"];
         trace?: never;
     };
     "/completions": {
@@ -2331,7 +2663,7 @@ export interface paths {
          *
          *     Writes only the sections present in the request body to LiteLLM_Config rows
          *     (one row per top-level section). Sections the caller did not send are left
-         *     untouched — this endpoint never persists pre-existing YAML values to DB as
+         *     untouched - this endpoint never persists pre-existing YAML values to DB as
          *     a side effect of an unrelated update.
          */
         post: operations["update_config_config_update_post"];
@@ -2581,67 +2913,6 @@ export interface paths {
         get: operations["handler_binary_content_containers__container_id__files__file_id__content_get"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/coordination_redis/settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Coordination Redis Settings
-         * @description Get the coordination Redis configuration and available settings.
-         *
-         *     Returns:
-         *     - values: current coordination Redis settings, with password/sentinel_password/url redacted
-         *     - fields: all configurable settings with their metadata (type, description, default, section)
-         *     - source: "coordination_redis" | "cache_backend" | "environment" | null
-         */
-        get: operations["get_coordination_redis_settings_coordination_redis_settings_get"];
-        put?: never;
-        /**
-         * Update Coordination Redis Settings
-         * @description Save coordination Redis settings under `general_settings.coordination_redis`.
-         *
-         *     Parameters:
-         *     - settings: dict - Redis connection params (host, port, username, password, url, ssl, startup_nodes, sentinel_nodes, sentinel_password, service_name). Values may be `os.environ/VAR` references, which are stored as written and resolved at startup
-         *
-         *     The settings are written to the `general_settings` row of LiteLLM_Config,
-         *     which startup merges over the yaml config; the proxy picks them up on its
-         *     next restart.
-         */
-        post: operations["update_coordination_redis_settings_coordination_redis_settings_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/coordination_redis/settings/test": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Check Coordination Redis Connection
-         * @description Test a coordination Redis connection with the provided credentials.
-         *
-         *     Parameters:
-         *     - settings: dict - Redis connection params to test. Credential fields sent back as `***REDACTED***` fall back to the saved value
-         *
-         *     Builds a throwaway client (never touching global state) and pings it.
-         */
-        post: operations["check_coordination_redis_connection_coordination_redis_settings_test_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2953,7 +3224,7 @@ export interface paths {
          *     2. litellm.credential_list (credentials added via UI)
          *     3. CURSOR_API_KEY environment variable
          */
-        get: operations["cursor_proxy_route_cursor__endpoint__get"];
+        get: operations["cursor_proxy_route_cursor__endpoint_"];
         /**
          * Cursor Proxy Route
          * @description Pass-through endpoint for the Cursor Cloud Agents API.
@@ -2977,7 +3248,7 @@ export interface paths {
          *     2. litellm.credential_list (credentials added via UI)
          *     3. CURSOR_API_KEY environment variable
          */
-        put: operations["cursor_proxy_route_cursor__endpoint__put"];
+        put: operations["cursor_proxy_route_cursor__endpoint_"];
         /**
          * Cursor Proxy Route
          * @description Pass-through endpoint for the Cursor Cloud Agents API.
@@ -3001,7 +3272,7 @@ export interface paths {
          *     2. litellm.credential_list (credentials added via UI)
          *     3. CURSOR_API_KEY environment variable
          */
-        post: operations["cursor_proxy_route_cursor__endpoint__post"];
+        post: operations["cursor_proxy_route_cursor__endpoint_"];
         /**
          * Cursor Proxy Route
          * @description Pass-through endpoint for the Cursor Cloud Agents API.
@@ -3025,7 +3296,7 @@ export interface paths {
          *     2. litellm.credential_list (credentials added via UI)
          *     3. CURSOR_API_KEY environment variable
          */
-        delete: operations["cursor_proxy_route_cursor__endpoint__delete"];
+        delete: operations["cursor_proxy_route_cursor__endpoint_"];
         options?: never;
         head?: never;
         /**
@@ -3051,7 +3322,7 @@ export interface paths {
          *     2. litellm.credential_list (credentials added via UI)
          *     3. CURSOR_API_KEY environment variable
          */
-        patch: operations["cursor_proxy_route_cursor__endpoint__patch"];
+        patch: operations["cursor_proxy_route_cursor__endpoint_"];
         trace?: never;
     };
     "/customer/block": {
@@ -3998,17 +4269,17 @@ export interface paths {
             cookie?: never;
         };
         /** Assemblyai Proxy Route */
-        get: operations["assemblyai_proxy_route_eu_assemblyai__endpoint__get"];
+        get: operations["assemblyai_proxy_route_eu_assemblyai__endpoint_"];
         /** Assemblyai Proxy Route */
-        put: operations["assemblyai_proxy_route_eu_assemblyai__endpoint__put"];
+        put: operations["assemblyai_proxy_route_eu_assemblyai__endpoint_"];
         /** Assemblyai Proxy Route */
-        post: operations["assemblyai_proxy_route_eu_assemblyai__endpoint__post"];
+        post: operations["assemblyai_proxy_route_eu_assemblyai__endpoint_"];
         /** Assemblyai Proxy Route */
-        delete: operations["assemblyai_proxy_route_eu_assemblyai__endpoint__delete"];
+        delete: operations["assemblyai_proxy_route_eu_assemblyai__endpoint_"];
         options?: never;
         head?: never;
         /** Assemblyai Proxy Route */
-        patch: operations["assemblyai_proxy_route_eu_assemblyai__endpoint__patch"];
+        patch: operations["assemblyai_proxy_route_eu_assemblyai__endpoint_"];
         trace?: never;
     };
     "/fallback": {
@@ -4354,29 +4625,29 @@ export interface paths {
          * Gemini Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/google_ai_studio)
          */
-        get: operations["gemini_proxy_route_gemini__endpoint__get"];
+        get: operations["gemini_proxy_route_gemini__endpoint_"];
         /**
          * Gemini Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/google_ai_studio)
          */
-        put: operations["gemini_proxy_route_gemini__endpoint__put"];
+        put: operations["gemini_proxy_route_gemini__endpoint_"];
         /**
          * Gemini Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/google_ai_studio)
          */
-        post: operations["gemini_proxy_route_gemini__endpoint__post"];
+        post: operations["gemini_proxy_route_gemini__endpoint_"];
         /**
          * Gemini Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/google_ai_studio)
          */
-        delete: operations["gemini_proxy_route_gemini__endpoint__delete"];
+        delete: operations["gemini_proxy_route_gemini__endpoint_"];
         options?: never;
         head?: never;
         /**
          * Gemini Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/google_ai_studio)
          */
-        patch: operations["gemini_proxy_route_gemini__endpoint__patch"];
+        patch: operations["gemini_proxy_route_gemini__endpoint_"];
         trace?: never;
     };
     "/get/allowed_ips": {
@@ -4616,15 +4887,7 @@ export interface paths {
         };
         /**
          * Get Logo Url
-         * @description Get the current logo URL from environment.
-         *
-         *     Only HTTP(S) URLs are returned — those are intended to be loaded
-         *     directly by the browser from a public/internal CDN. Local file
-         *     paths set via ``UI_LOGO_PATH`` are NOT returned: they are admin-
-         *     only filesystem details, the dashboard falls back to ``/get_image``
-         *     which serves the file only when it is a supported image. Without
-         *     this filter, the unauthenticated endpoint would disclose internal
-         *     hostnames or filesystem paths to any caller.
+         * @description Get the current logo URL from environment
          */
         get: operations["get_logo_url_get_logo_url_get"];
         put?: never;
@@ -7466,28 +7729,28 @@ export interface paths {
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/langfuse)
          */
-        get: operations["langfuse_proxy_route_langfuse__endpoint__get"];
+        get: operations["langfuse_proxy_route_langfuse__endpoint_"];
         /**
          * Langfuse Proxy Route
          * @description Call Langfuse via LiteLLM proxy. Works with Langfuse SDK.
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/langfuse)
          */
-        put: operations["langfuse_proxy_route_langfuse__endpoint__put"];
+        put: operations["langfuse_proxy_route_langfuse__endpoint_"];
         /**
          * Langfuse Proxy Route
          * @description Call Langfuse via LiteLLM proxy. Works with Langfuse SDK.
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/langfuse)
          */
-        post: operations["langfuse_proxy_route_langfuse__endpoint__post"];
+        post: operations["langfuse_proxy_route_langfuse__endpoint_"];
         /**
          * Langfuse Proxy Route
          * @description Call Langfuse via LiteLLM proxy. Works with Langfuse SDK.
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/langfuse)
          */
-        delete: operations["langfuse_proxy_route_langfuse__endpoint__delete"];
+        delete: operations["langfuse_proxy_route_langfuse__endpoint_"];
         options?: never;
         head?: never;
         /**
@@ -7496,24 +7759,183 @@ export interface paths {
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/langfuse)
          */
-        patch: operations["langfuse_proxy_route_langfuse__endpoint__patch"];
+        patch: operations["langfuse_proxy_route_langfuse__endpoint_"];
         trace?: never;
     };
-    "/lazy/warm/{name}": {
+    "/lazymcp": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
-        /** Warm */
-        post: operations["warm_lazy_warm__name__post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
+        /**
+         * Root Lazymcp Route
+         * @description Handle root LazyMCP route like /lazymcp.
+         */
+        get: operations["root_lazymcp_route_lazymcp"];
+        /**
+         * Root Lazymcp Route
+         * @description Handle root LazyMCP route like /lazymcp.
+         */
+        put: operations["root_lazymcp_route_lazymcp"];
+        /**
+         * Root Lazymcp Route
+         * @description Handle root LazyMCP route like /lazymcp.
+         */
+        post: operations["root_lazymcp_route_lazymcp"];
+        /**
+         * Root Lazymcp Route
+         * @description Handle root LazyMCP route like /lazymcp.
+         */
+        delete: operations["root_lazymcp_route_lazymcp"];
+        /**
+         * Root Lazymcp Route
+         * @description Handle root LazyMCP route like /lazymcp.
+         */
+        options: operations["root_lazymcp_route_lazymcp"];
+        /**
+         * Root Lazymcp Route
+         * @description Handle root LazyMCP route like /lazymcp.
+         */
+        head: operations["root_lazymcp_route_lazymcp"];
+        /**
+         * Root Lazymcp Route
+         * @description Handle root LazyMCP route like /lazymcp.
+         */
+        patch: operations["root_lazymcp_route_lazymcp"];
+        trace?: never;
+    };
+    "/lazymcp/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Root Lazymcp Route
+         * @description Handle root LazyMCP route like /lazymcp.
+         */
+        get: operations["root_lazymcp_route_lazymcp_"];
+        /**
+         * Root Lazymcp Route
+         * @description Handle root LazyMCP route like /lazymcp.
+         */
+        put: operations["root_lazymcp_route_lazymcp_"];
+        /**
+         * Root Lazymcp Route
+         * @description Handle root LazyMCP route like /lazymcp.
+         */
+        post: operations["root_lazymcp_route_lazymcp_"];
+        /**
+         * Root Lazymcp Route
+         * @description Handle root LazyMCP route like /lazymcp.
+         */
+        delete: operations["root_lazymcp_route_lazymcp_"];
+        /**
+         * Root Lazymcp Route
+         * @description Handle root LazyMCP route like /lazymcp.
+         */
+        options: operations["root_lazymcp_route_lazymcp_"];
+        /**
+         * Root Lazymcp Route
+         * @description Handle root LazyMCP route like /lazymcp.
+         */
+        head: operations["root_lazymcp_route_lazymcp_"];
+        /**
+         * Root Lazymcp Route
+         * @description Handle root LazyMCP route like /lazymcp.
+         */
+        patch: operations["root_lazymcp_route_lazymcp_"];
+        trace?: never;
+    };
+    "/lazymcp/{mcp_server_name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dynamic Lazymcp Route
+         * @description Handle dynamic LazyMCP server routes like /lazymcp/github_mcp.
+         */
+        get: operations["dynamic_lazymcp_route_lazymcp__mcp_server_name_"];
+        /**
+         * Dynamic Lazymcp Route
+         * @description Handle dynamic LazyMCP server routes like /lazymcp/github_mcp.
+         */
+        put: operations["dynamic_lazymcp_route_lazymcp__mcp_server_name_"];
+        /**
+         * Dynamic Lazymcp Route
+         * @description Handle dynamic LazyMCP server routes like /lazymcp/github_mcp.
+         */
+        post: operations["dynamic_lazymcp_route_lazymcp__mcp_server_name_"];
+        /**
+         * Dynamic Lazymcp Route
+         * @description Handle dynamic LazyMCP server routes like /lazymcp/github_mcp.
+         */
+        delete: operations["dynamic_lazymcp_route_lazymcp__mcp_server_name_"];
+        /**
+         * Dynamic Lazymcp Route
+         * @description Handle dynamic LazyMCP server routes like /lazymcp/github_mcp.
+         */
+        options: operations["dynamic_lazymcp_route_lazymcp__mcp_server_name_"];
+        /**
+         * Dynamic Lazymcp Route
+         * @description Handle dynamic LazyMCP server routes like /lazymcp/github_mcp.
+         */
+        head: operations["dynamic_lazymcp_route_lazymcp__mcp_server_name_"];
+        /**
+         * Dynamic Lazymcp Route
+         * @description Handle dynamic LazyMCP server routes like /lazymcp/github_mcp.
+         */
+        patch: operations["dynamic_lazymcp_route_lazymcp__mcp_server_name_"];
+        trace?: never;
+    };
+    "/lazymcp/{mcp_server_name}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dynamic Lazymcp Route
+         * @description Handle dynamic LazyMCP server routes like /lazymcp/github_mcp.
+         */
+        get: operations["dynamic_lazymcp_route_lazymcp__mcp_server_name__"];
+        /**
+         * Dynamic Lazymcp Route
+         * @description Handle dynamic LazyMCP server routes like /lazymcp/github_mcp.
+         */
+        put: operations["dynamic_lazymcp_route_lazymcp__mcp_server_name__"];
+        /**
+         * Dynamic Lazymcp Route
+         * @description Handle dynamic LazyMCP server routes like /lazymcp/github_mcp.
+         */
+        post: operations["dynamic_lazymcp_route_lazymcp__mcp_server_name__"];
+        /**
+         * Dynamic Lazymcp Route
+         * @description Handle dynamic LazyMCP server routes like /lazymcp/github_mcp.
+         */
+        delete: operations["dynamic_lazymcp_route_lazymcp__mcp_server_name__"];
+        /**
+         * Dynamic Lazymcp Route
+         * @description Handle dynamic LazyMCP server routes like /lazymcp/github_mcp.
+         */
+        options: operations["dynamic_lazymcp_route_lazymcp__mcp_server_name__"];
+        /**
+         * Dynamic Lazymcp Route
+         * @description Handle dynamic LazyMCP server routes like /lazymcp/github_mcp.
+         */
+        head: operations["dynamic_lazymcp_route_lazymcp__mcp_server_name__"];
+        /**
+         * Dynamic Lazymcp Route
+         * @description Handle dynamic LazyMCP server routes like /lazymcp/github_mcp.
+         */
+        patch: operations["dynamic_lazymcp_route_lazymcp__mcp_server_name__"];
         trace?: never;
     };
     "/litellm/.well-known/litellm-ui-config": {
@@ -7635,49 +8057,49 @@ export interface paths {
          *     ``/mcp`` mount cannot match its bare prefix, and the resulting 307 breaks
          *     MCP clients behind TLS-terminating proxies.
          */
-        get: operations["aggregate_mcp_route_mcp_get"];
+        get: operations["aggregate_mcp_route_mcp"];
         /**
          * Aggregate Mcp Route
          * @description Serve the aggregate MCP endpoint on the bare ``/mcp`` spelling: the
          *     ``/mcp`` mount cannot match its bare prefix, and the resulting 307 breaks
          *     MCP clients behind TLS-terminating proxies.
          */
-        put: operations["aggregate_mcp_route_mcp_put"];
+        put: operations["aggregate_mcp_route_mcp"];
         /**
          * Aggregate Mcp Route
          * @description Serve the aggregate MCP endpoint on the bare ``/mcp`` spelling: the
          *     ``/mcp`` mount cannot match its bare prefix, and the resulting 307 breaks
          *     MCP clients behind TLS-terminating proxies.
          */
-        post: operations["aggregate_mcp_route_mcp_post"];
+        post: operations["aggregate_mcp_route_mcp"];
         /**
          * Aggregate Mcp Route
          * @description Serve the aggregate MCP endpoint on the bare ``/mcp`` spelling: the
          *     ``/mcp`` mount cannot match its bare prefix, and the resulting 307 breaks
          *     MCP clients behind TLS-terminating proxies.
          */
-        delete: operations["aggregate_mcp_route_mcp_delete"];
+        delete: operations["aggregate_mcp_route_mcp"];
         /**
          * Aggregate Mcp Route
          * @description Serve the aggregate MCP endpoint on the bare ``/mcp`` spelling: the
          *     ``/mcp`` mount cannot match its bare prefix, and the resulting 307 breaks
          *     MCP clients behind TLS-terminating proxies.
          */
-        options: operations["aggregate_mcp_route_mcp_options"];
+        options: operations["aggregate_mcp_route_mcp"];
         /**
          * Aggregate Mcp Route
          * @description Serve the aggregate MCP endpoint on the bare ``/mcp`` spelling: the
          *     ``/mcp`` mount cannot match its bare prefix, and the resulting 307 breaks
          *     MCP clients behind TLS-terminating proxies.
          */
-        head: operations["aggregate_mcp_route_mcp_head"];
+        head: operations["aggregate_mcp_route_mcp"];
         /**
          * Aggregate Mcp Route
          * @description Serve the aggregate MCP endpoint on the bare ``/mcp`` spelling: the
          *     ``/mcp`` mount cannot match its bare prefix, and the resulting 307 breaks
          *     MCP clients behind TLS-terminating proxies.
          */
-        patch: operations["aggregate_mcp_route_mcp_patch"];
+        patch: operations["aggregate_mcp_route_mcp"];
         trace?: never;
     };
     "/mcp-rest/test/connection": {
@@ -7761,6 +8183,8 @@ export interface paths {
          *                 "mcp_info": {
          *                     "server_name": "zapier",
          *                     "logo_url": "https://www.zapier.com/logo.png",
+         *                     "server_id": "a1b2c3d4-...",
+         *                     "alias": "zapier_prod",
          *                 }
          *             }
          *         ],
@@ -7834,29 +8258,29 @@ export interface paths {
          * Milvus Proxy Route
          * @description Enable using Milvus `/vectors` endpoint as a pass-through endpoint.
          */
-        get: operations["milvus_proxy_route_milvus__endpoint__get"];
+        get: operations["milvus_proxy_route_milvus__endpoint_"];
         /**
          * Milvus Proxy Route
          * @description Enable using Milvus `/vectors` endpoint as a pass-through endpoint.
          */
-        put: operations["milvus_proxy_route_milvus__endpoint__put"];
+        put: operations["milvus_proxy_route_milvus__endpoint_"];
         /**
          * Milvus Proxy Route
          * @description Enable using Milvus `/vectors` endpoint as a pass-through endpoint.
          */
-        post: operations["milvus_proxy_route_milvus__endpoint__post"];
+        post: operations["milvus_proxy_route_milvus__endpoint_"];
         /**
          * Milvus Proxy Route
          * @description Enable using Milvus `/vectors` endpoint as a pass-through endpoint.
          */
-        delete: operations["milvus_proxy_route_milvus__endpoint__delete"];
+        delete: operations["milvus_proxy_route_milvus__endpoint_"];
         options?: never;
         head?: never;
         /**
          * Milvus Proxy Route
          * @description Enable using Milvus `/vectors` endpoint as a pass-through endpoint.
          */
-        patch: operations["milvus_proxy_route_milvus__endpoint__patch"];
+        patch: operations["milvus_proxy_route_milvus__endpoint_"];
         trace?: never;
     };
     "/mistral/{endpoint}": {
@@ -7870,29 +8294,29 @@ export interface paths {
          * Mistral Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/mistral)
          */
-        get: operations["mistral_proxy_route_mistral__endpoint__get"];
+        get: operations["mistral_proxy_route_mistral__endpoint_"];
         /**
          * Mistral Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/mistral)
          */
-        put: operations["mistral_proxy_route_mistral__endpoint__put"];
+        put: operations["mistral_proxy_route_mistral__endpoint_"];
         /**
          * Mistral Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/mistral)
          */
-        post: operations["mistral_proxy_route_mistral__endpoint__post"];
+        post: operations["mistral_proxy_route_mistral__endpoint_"];
         /**
          * Mistral Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/mistral)
          */
-        delete: operations["mistral_proxy_route_mistral__endpoint__delete"];
+        delete: operations["mistral_proxy_route_mistral__endpoint_"];
         options?: never;
         head?: never;
         /**
          * Mistral Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/mistral)
          */
-        patch: operations["mistral_proxy_route_mistral__endpoint__patch"];
+        patch: operations["mistral_proxy_route_mistral__endpoint_"];
         trace?: never;
     };
     "/model/block": {
@@ -8652,7 +9076,7 @@ export interface paths {
          * Onboarding
          * @description - Get the invite link
          *     - Validate it's still 'valid'
-         *     - Return a short-lived onboarding token
+         *     - Invalidate the link (prevents abuse)
          *     - Get user from db
          *     - Pass in user_email if set
          */
@@ -8803,26 +9227,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/openai/v1/realtime": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * WebSocket: realtime_websocket_endpoint
-         * @description WebSocket connection endpoint
-         */
-        get: operations["websocket_realtime_websocket_endpoint_get_3"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/openai/v1/realtime/calls": {
         parameters: {
             query?: never;
@@ -8851,6 +9255,30 @@ export interface paths {
         put?: never;
         /** Create Realtime Client Secret */
         post: operations["create_realtime_client_secret_openai_v1_realtime_client_secrets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/openai/v1/realtime/transcription_sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Realtime Transcription Session
+         * @description Create an ephemeral Realtime transcription session
+         *     (POST /v1/realtime/transcription_sessions) for the WebRTC/WebSocket flow.
+         *
+         *     Mirrors the client_secrets route but targets the transcription_sessions
+         *     endpoint and encrypts the ephemeral key returned under `client_secret.value`.
+         */
+        post: operations["create_realtime_transcription_session_openai_v1_realtime_transcription_sessions_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9060,7 +9488,7 @@ export interface paths {
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/openai_passthrough)
          */
-        get: operations["openai_proxy_route_openai__endpoint__get"];
+        get: operations["openai_proxy_route_openai__endpoint_"];
         /**
          * Openai Proxy Route
          * @description Pass-through endpoint for OpenAI API calls.
@@ -9085,7 +9513,7 @@ export interface paths {
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/openai_passthrough)
          */
-        put: operations["openai_proxy_route_openai__endpoint__put"];
+        put: operations["openai_proxy_route_openai__endpoint_"];
         /**
          * Openai Proxy Route
          * @description Pass-through endpoint for OpenAI API calls.
@@ -9110,7 +9538,7 @@ export interface paths {
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/openai_passthrough)
          */
-        post: operations["openai_proxy_route_openai__endpoint__post"];
+        post: operations["openai_proxy_route_openai__endpoint_"];
         /**
          * Openai Proxy Route
          * @description Pass-through endpoint for OpenAI API calls.
@@ -9135,7 +9563,7 @@ export interface paths {
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/openai_passthrough)
          */
-        delete: operations["openai_proxy_route_openai__endpoint__delete"];
+        delete: operations["openai_proxy_route_openai__endpoint_"];
         options?: never;
         head?: never;
         /**
@@ -9162,7 +9590,7 @@ export interface paths {
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/openai_passthrough)
          */
-        patch: operations["openai_proxy_route_openai__endpoint__patch"];
+        patch: operations["openai_proxy_route_openai__endpoint_"];
         trace?: never;
     };
     "/openai_passthrough/{endpoint}": {
@@ -9196,7 +9624,7 @@ export interface paths {
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/openai_passthrough)
          */
-        get: operations["openai_proxy_route_openai_passthrough__endpoint__get"];
+        get: operations["openai_proxy_route_openai_passthrough__endpoint_"];
         /**
          * Openai Proxy Route
          * @description Pass-through endpoint for OpenAI API calls.
@@ -9221,7 +9649,7 @@ export interface paths {
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/openai_passthrough)
          */
-        put: operations["openai_proxy_route_openai_passthrough__endpoint__put"];
+        put: operations["openai_proxy_route_openai_passthrough__endpoint_"];
         /**
          * Openai Proxy Route
          * @description Pass-through endpoint for OpenAI API calls.
@@ -9246,7 +9674,7 @@ export interface paths {
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/openai_passthrough)
          */
-        post: operations["openai_proxy_route_openai_passthrough__endpoint__post"];
+        post: operations["openai_proxy_route_openai_passthrough__endpoint_"];
         /**
          * Openai Proxy Route
          * @description Pass-through endpoint for OpenAI API calls.
@@ -9271,7 +9699,7 @@ export interface paths {
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/openai_passthrough)
          */
-        delete: operations["openai_proxy_route_openai_passthrough__endpoint__delete"];
+        delete: operations["openai_proxy_route_openai_passthrough__endpoint_"];
         options?: never;
         head?: never;
         /**
@@ -9298,7 +9726,7 @@ export interface paths {
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/openai_passthrough)
          */
-        patch: operations["openai_proxy_route_openai_passthrough__endpoint__patch"];
+        patch: operations["openai_proxy_route_openai_passthrough__endpoint_"];
         trace?: never;
     };
     "/organization/daily/activity": {
@@ -9654,7 +10082,7 @@ export interface paths {
          *     The caller's litellm credential is stripped and replaced with the
          *     plugin's own plugin_key so plugins never receive a live litellm API key.
          */
-        get: operations["plugin_proxy_plugin_proxy__plugin_name___path__get"];
+        get: operations["plugin_proxy_plugin_proxy__plugin_name___path_"];
         /**
          * Plugin Proxy
          * @description Authenticated reverse-proxy to a registered plugin backend.
@@ -9667,7 +10095,7 @@ export interface paths {
          *     The caller's litellm credential is stripped and replaced with the
          *     plugin's own plugin_key so plugins never receive a live litellm API key.
          */
-        put: operations["plugin_proxy_plugin_proxy__plugin_name___path__put"];
+        put: operations["plugin_proxy_plugin_proxy__plugin_name___path_"];
         /**
          * Plugin Proxy
          * @description Authenticated reverse-proxy to a registered plugin backend.
@@ -9680,7 +10108,7 @@ export interface paths {
          *     The caller's litellm credential is stripped and replaced with the
          *     plugin's own plugin_key so plugins never receive a live litellm API key.
          */
-        post: operations["plugin_proxy_plugin_proxy__plugin_name___path__post"];
+        post: operations["plugin_proxy_plugin_proxy__plugin_name___path_"];
         /**
          * Plugin Proxy
          * @description Authenticated reverse-proxy to a registered plugin backend.
@@ -9693,7 +10121,7 @@ export interface paths {
          *     The caller's litellm credential is stripped and replaced with the
          *     plugin's own plugin_key so plugins never receive a live litellm API key.
          */
-        delete: operations["plugin_proxy_plugin_proxy__plugin_name___path__delete"];
+        delete: operations["plugin_proxy_plugin_proxy__plugin_name___path_"];
         /**
          * Plugin Proxy
          * @description Authenticated reverse-proxy to a registered plugin backend.
@@ -9706,7 +10134,7 @@ export interface paths {
          *     The caller's litellm credential is stripped and replaced with the
          *     plugin's own plugin_key so plugins never receive a live litellm API key.
          */
-        options: operations["plugin_proxy_plugin_proxy__plugin_name___path__options"];
+        options: operations["plugin_proxy_plugin_proxy__plugin_name___path_"];
         /**
          * Plugin Proxy
          * @description Authenticated reverse-proxy to a registered plugin backend.
@@ -9719,7 +10147,7 @@ export interface paths {
          *     The caller's litellm credential is stripped and replaced with the
          *     plugin's own plugin_key so plugins never receive a live litellm API key.
          */
-        head: operations["plugin_proxy_plugin_proxy__plugin_name___path__head"];
+        head: operations["plugin_proxy_plugin_proxy__plugin_name___path_"];
         /**
          * Plugin Proxy
          * @description Authenticated reverse-proxy to a registered plugin backend.
@@ -9732,7 +10160,7 @@ export interface paths {
          *     The caller's litellm credential is stripped and replaced with the
          *     plugin's own plugin_key so plugins never receive a live litellm API key.
          */
-        patch: operations["plugin_proxy_plugin_proxy__plugin_name___path__patch"];
+        patch: operations["plugin_proxy_plugin_proxy__plugin_name___path_"];
         trace?: never;
     };
     "/policies": {
@@ -9995,7 +10423,10 @@ export interface paths {
          * @description List all policies from the database and config.yaml. Optionally filter by version_status.
          *
          *     Config-defined policies are returned with definition_location "config" and are treated
-         *     as production versions. On a name conflict with a DB policy, only the DB policy is returned.
+         *     as production versions. On a name conflict with a production DB policy, only the DB policy
+         *     is returned, mirroring runtime resolution where only production DB versions override config.
+         *     A draft or published DB version does not hide the config policy, since the config version
+         *     is still the one being enforced.
          *
          *     Query params:
          *     - version_status: Optional. One of "draft", "published", "production".
@@ -11554,7 +11985,7 @@ export interface paths {
          * WebSocket: realtime_websocket_endpoint
          * @description WebSocket connection endpoint
          */
-        get: operations["websocket_realtime_websocket_endpoint_get"];
+        get: operations["websocket_realtime_websocket_endpoint"];
         put?: never;
         post?: never;
         delete?: never;
@@ -11591,6 +12022,47 @@ export interface paths {
         put?: never;
         /** Create Realtime Client Secret */
         post: operations["create_realtime_client_secret_realtime_client_secrets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/realtime/transcription_sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Realtime Transcription Session
+         * @description Create an ephemeral Realtime transcription session
+         *     (POST /v1/realtime/transcription_sessions) for the WebRTC/WebSocket flow.
+         *
+         *     Mirrors the client_secrets route but targets the transcription_sessions
+         *     endpoint and encrypts the ephemeral key returned under `client_secret.value`.
+         */
+        post: operations["create_realtime_transcription_session_realtime_transcription_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register Client */
+        post: operations["register_client_register_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11671,7 +12143,7 @@ export interface paths {
          * WebSocket: responses_websocket_endpoint
          * @description WebSocket connection endpoint
          */
-        get: operations["websocket_responses_websocket_endpoint_get"];
+        get: operations["websocket_responses_websocket_endpoint"];
         put?: never;
         /**
          * Responses Api
@@ -12049,6 +12521,29 @@ export interface paths {
          *     Identity providers (Okta, Azure AD, etc.) use this endpoint for resource discovery.
          */
         get: operations["get_scim_base_scim_v2_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/scim/v2/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Scim Base
+         * @description Base SCIM v2 endpoint for resource discovery per RFC 7644 Section 4.
+         *
+         *     Returns a ListResponse of ResourceTypes supported by this SCIM service provider.
+         *     Identity providers (Okta, Azure AD, etc.) use this endpoint for resource discovery.
+         */
+        get: operations["get_scim_base_scim_v2__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -14780,6 +15275,120 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Token Endpoint
+         * @description Accept the authorization code from client and exchange it for OAuth token.
+         *     Supports PKCE flow by forwarding code_verifier to upstream provider.
+         *
+         *     1. Call the token endpoint with PKCE parameters
+         *     2. Store the user's token in the db - and generate a LiteLLM virtual key
+         *     3. Return the token
+         *     4. Return a virtual key in this response
+         */
+        post: operations["token_endpoint_token_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/toolset/{toolset_name}/lazymcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Toolset Lazymcp Route
+         * @description Namespace a toolset as its own LazyMCP endpoint.
+         */
+        get: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp"];
+        /**
+         * Toolset Lazymcp Route
+         * @description Namespace a toolset as its own LazyMCP endpoint.
+         */
+        put: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp"];
+        /**
+         * Toolset Lazymcp Route
+         * @description Namespace a toolset as its own LazyMCP endpoint.
+         */
+        post: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp"];
+        /**
+         * Toolset Lazymcp Route
+         * @description Namespace a toolset as its own LazyMCP endpoint.
+         */
+        delete: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp"];
+        /**
+         * Toolset Lazymcp Route
+         * @description Namespace a toolset as its own LazyMCP endpoint.
+         */
+        options: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp"];
+        /**
+         * Toolset Lazymcp Route
+         * @description Namespace a toolset as its own LazyMCP endpoint.
+         */
+        head: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp"];
+        /**
+         * Toolset Lazymcp Route
+         * @description Namespace a toolset as its own LazyMCP endpoint.
+         */
+        patch: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp"];
+        trace?: never;
+    };
+    "/toolset/{toolset_name}/lazymcp/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Toolset Lazymcp Route
+         * @description Namespace a toolset as its own LazyMCP endpoint.
+         */
+        get: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp_"];
+        /**
+         * Toolset Lazymcp Route
+         * @description Namespace a toolset as its own LazyMCP endpoint.
+         */
+        put: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp_"];
+        /**
+         * Toolset Lazymcp Route
+         * @description Namespace a toolset as its own LazyMCP endpoint.
+         */
+        post: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp_"];
+        /**
+         * Toolset Lazymcp Route
+         * @description Namespace a toolset as its own LazyMCP endpoint.
+         */
+        delete: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp_"];
+        /**
+         * Toolset Lazymcp Route
+         * @description Namespace a toolset as its own LazyMCP endpoint.
+         */
+        options: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp_"];
+        /**
+         * Toolset Lazymcp Route
+         * @description Namespace a toolset as its own LazyMCP endpoint.
+         */
+        head: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp_"];
+        /**
+         * Toolset Lazymcp Route
+         * @description Namespace a toolset as its own LazyMCP endpoint.
+         */
+        patch: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp_"];
+        trace?: never;
+    };
     "/toolset/{toolset_name}/mcp": {
         parameters: {
             query?: never;
@@ -14796,7 +15405,7 @@ export interface paths {
          *     listed in their object_permission.mcp_toolsets grant list, or the request
          *     will be rejected with a 403.
          */
-        get: operations["toolset_mcp_route_toolset__toolset_name__mcp_get"];
+        get: operations["toolset_mcp_route_toolset__toolset_name__mcp"];
         /**
          * Toolset Mcp Route
          * @description Namespace a toolset as its own MCP endpoint.
@@ -14806,7 +15415,7 @@ export interface paths {
          *     listed in their object_permission.mcp_toolsets grant list, or the request
          *     will be rejected with a 403.
          */
-        put: operations["toolset_mcp_route_toolset__toolset_name__mcp_put"];
+        put: operations["toolset_mcp_route_toolset__toolset_name__mcp"];
         /**
          * Toolset Mcp Route
          * @description Namespace a toolset as its own MCP endpoint.
@@ -14816,7 +15425,7 @@ export interface paths {
          *     listed in their object_permission.mcp_toolsets grant list, or the request
          *     will be rejected with a 403.
          */
-        post: operations["toolset_mcp_route_toolset__toolset_name__mcp_post"];
+        post: operations["toolset_mcp_route_toolset__toolset_name__mcp"];
         /**
          * Toolset Mcp Route
          * @description Namespace a toolset as its own MCP endpoint.
@@ -14826,7 +15435,7 @@ export interface paths {
          *     listed in their object_permission.mcp_toolsets grant list, or the request
          *     will be rejected with a 403.
          */
-        delete: operations["toolset_mcp_route_toolset__toolset_name__mcp_delete"];
+        delete: operations["toolset_mcp_route_toolset__toolset_name__mcp"];
         /**
          * Toolset Mcp Route
          * @description Namespace a toolset as its own MCP endpoint.
@@ -14836,7 +15445,7 @@ export interface paths {
          *     listed in their object_permission.mcp_toolsets grant list, or the request
          *     will be rejected with a 403.
          */
-        options: operations["toolset_mcp_route_toolset__toolset_name__mcp_options"];
+        options: operations["toolset_mcp_route_toolset__toolset_name__mcp"];
         /**
          * Toolset Mcp Route
          * @description Namespace a toolset as its own MCP endpoint.
@@ -14846,7 +15455,7 @@ export interface paths {
          *     listed in their object_permission.mcp_toolsets grant list, or the request
          *     will be rejected with a 403.
          */
-        head: operations["toolset_mcp_route_toolset__toolset_name__mcp_head"];
+        head: operations["toolset_mcp_route_toolset__toolset_name__mcp"];
         /**
          * Toolset Mcp Route
          * @description Namespace a toolset as its own MCP endpoint.
@@ -14856,7 +15465,7 @@ export interface paths {
          *     listed in their object_permission.mcp_toolsets grant list, or the request
          *     will be rejected with a 403.
          */
-        patch: operations["toolset_mcp_route_toolset__toolset_name__mcp_patch"];
+        patch: operations["toolset_mcp_route_toolset__toolset_name__mcp"];
         trace?: never;
     };
     "/update/default_team_settings": {
@@ -15633,40 +16242,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/a2a/discover": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** a2a_registration */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1/a2a/{agent_id}/message/send": {
         parameters: {
             query?: never;
@@ -15760,30 +16335,30 @@ export interface paths {
          *         -H "Content-Type: application/json" \
          *         -d '{
          *             "agent_name": "my-custom-agent",
-         *                 "agent_card_params": {
-         *                     "protocolVersion": "1.0",
-         *                     "name": "Hello World Agent",
-         *                     "description": "Just a hello world agent",
-         *                     "url": "http://localhost:9999/",
-         *                     "version": "1.0.0",
-         *                     "defaultInputModes": ["text"],
-         *                     "defaultOutputModes": ["text"],
-         *                     "capabilities": {
-         *                         "streaming": true
-         *                     },
-         *                     "skills": [
-         *                         {
-         *                             "id": "hello_world",
-         *                             "name": "Returns hello world",
-         *                             "description": "just returns hello world",
-         *                             "tags": ["hello world"],
-         *                             "examples": ["hi", "hello world"]
-         *                         }
-         *                     ]
+         *             "agent_card_params": {
+         *                 "protocolVersion": "1.0",
+         *                 "name": "Hello World Agent",
+         *                 "description": "Just a hello world agent",
+         *                 "url": "http://localhost:9999/",
+         *                 "version": "1.0.0",
+         *                 "defaultInputModes": ["text"],
+         *                 "defaultOutputModes": ["text"],
+         *                 "capabilities": {
+         *                     "streaming": true
          *                 },
-         *                 "litellm_params": {
-         *                     "make_public": true
-         *            }
+         *                 "skills": [
+         *                     {
+         *                         "id": "hello_world",
+         *                         "name": "Returns hello world",
+         *                         "description": "just returns hello world",
+         *                         "tags": ["hello world"],
+         *                         "examples": ["hi", "hello world"]
+         *                     }
+         *                 ]
+         *             },
+         *             "litellm_params": {
+         *                 "make_public": true
+         *             }
          *         }'
          *     ```
          */
@@ -15853,7 +16428,7 @@ export interface paths {
          *
          *     Example Request:
          *     ```bash
-         *     curl -X GET "http://localhost:4000/agents/123e4567-e89b-12d3-a456-426614174000" \
+         *     curl -X GET "http://localhost:4000/v1/agents/123e4567-e89b-12d3-a456-426614174000" \
          *         -H "Authorization: Bearer <your_api_key>"
          *     ```
          */
@@ -15864,28 +16439,26 @@ export interface paths {
          *
          *     Example Request:
          *     ```bash
-         *     curl -X PUT "http://localhost:4000/agents/123e4567-e89b-12d3-a456-426614174000" \
+         *     curl -X PUT "http://localhost:4000/v1/agents/123e4567-e89b-12d3-a456-426614174000" \
          *         -H "Authorization: Bearer <your_api_key>" \
          *         -H "Content-Type: application/json" \
          *         -d '{
-         *             "agent": {
-         *                 "agent_name": "updated-agent",
-         *                 "agent_card_params": {
-         *                     "protocolVersion": "1.0",
-         *                     "name": "Updated Agent",
-         *                     "description": "Updated description",
-         *                     "url": "http://localhost:9999/",
-         *                     "version": "1.1.0",
-         *                     "defaultInputModes": ["text"],
-         *                     "defaultOutputModes": ["text"],
-         *                     "capabilities": {
-         *                         "streaming": true
-         *                     },
-         *                     "skills": []
+         *             "agent_name": "updated-agent",
+         *             "agent_card_params": {
+         *                 "protocolVersion": "1.0",
+         *                 "name": "Updated Agent",
+         *                 "description": "Updated description",
+         *                 "url": "http://localhost:9999/",
+         *                 "version": "1.1.0",
+         *                 "defaultInputModes": ["text"],
+         *                 "defaultOutputModes": ["text"],
+         *                 "capabilities": {
+         *                     "streaming": true
          *                 },
-         *                 "litellm_params": {
-         *                     "make_public": false
-         *                 }
+         *                 "skills": []
+         *             },
+         *             "litellm_params": {
+         *                 "make_public": false
          *             }
          *         }'
          *     ```
@@ -15898,7 +16471,7 @@ export interface paths {
          *
          *     Example Request:
          *     ```bash
-         *     curl -X DELETE "http://localhost:4000/agents/123e4567-e89b-12d3-a456-426614174000" \
+         *     curl -X DELETE "http://localhost:4000/v1/agents/123e4567-e89b-12d3-a456-426614174000" \
          *         -H "Authorization: Bearer <your_api_key>"
          *     ```
          *
@@ -15918,28 +16491,26 @@ export interface paths {
          *
          *     Example Request:
          *     ```bash
-         *     curl -X PUT "http://localhost:4000/agents/123e4567-e89b-12d3-a456-426614174000" \
+         *     curl -X PATCH "http://localhost:4000/v1/agents/123e4567-e89b-12d3-a456-426614174000" \
          *         -H "Authorization: Bearer <your_api_key>" \
          *         -H "Content-Type: application/json" \
          *         -d '{
-         *             "agent": {
-         *                 "agent_name": "updated-agent",
-         *                 "agent_card_params": {
-         *                     "protocolVersion": "1.0",
-         *                     "name": "Updated Agent",
-         *                     "description": "Updated description",
-         *                     "url": "http://localhost:9999/",
-         *                     "version": "1.1.0",
-         *                     "defaultInputModes": ["text"],
-         *                     "defaultOutputModes": ["text"],
-         *                     "capabilities": {
-         *                         "streaming": true
-         *                     },
-         *                     "skills": []
+         *             "agent_name": "updated-agent",
+         *             "agent_card_params": {
+         *                 "protocolVersion": "1.0",
+         *                 "name": "Updated Agent",
+         *                 "description": "Updated description",
+         *                 "url": "http://localhost:9999/",
+         *                 "version": "1.1.0",
+         *                 "defaultInputModes": ["text"],
+         *                 "defaultOutputModes": ["text"],
+         *                 "capabilities": {
+         *                     "streaming": true
          *                 },
-         *                 "litellm_params": {
-         *                     "make_public": false
-         *                 }
+         *                 "skills": []
+         *             },
+         *             "litellm_params": {
+         *                 "make_public": false
          *             }
          *         }'
          *     ```
@@ -16956,17 +17527,27 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * Index List
+         * @description List all vector store indexes. Proxy admin only.
+         *
+         *     ```bash
+         *     curl -L -X GET 'http://0.0.0.0:4000/v1/indexes'         -H 'Authorization: Bearer sk-1234'
+         *     ```
+         */
+        get: operations["index_list_v1_indexes_get"];
         put?: never;
         /**
          * Index Create
          * @description Create an index. Just writes the index to the database.
          *
          *     ```bash
-         *     curl -L -X POST 'http://0.0.0.0:4000/indexes/create'         -H 'Content-Type: application/json'         -H 'Authorization: Bearer sk-1234'         -H 'LiteLLM-Beta: indexes_beta=v1'         -d '{
+         *     curl -L -X POST 'http://0.0.0.0:4000/v1/indexes'         -H 'Content-Type: application/json'         -H 'Authorization: Bearer sk-1234'         -d '{
          *             "index_name": "dall-e-3",
-         *             "vector_store_index": "real-index-name",
-         *             "vector_store_name": "azure-ai-search"
+         *             "litellm_params": {
+         *                 "vector_store_index": "real-index-name",
+         *                 "vector_store_name": "azure-ai-search"
+         *             }
          *         }'
          *     ```
          */
@@ -17051,6 +17632,64 @@ export interface paths {
         get: operations["get_client_ip_v1_mcp_network_client_ip_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/mcp/oauth/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Byok Authorize Get
+         * @description Show the BYOK API-key entry form.
+         *
+         *     The MCP client navigates the user here; the user types their API key and
+         *     clicks "Connect & Authorize", which POSTs back to this same path.
+         *
+         *     This GET is intentionally unauthenticated: it only renders HTML with no
+         *     state change. The POST handler enforces ``user_api_key_auth`` and pins
+         *     the stored credential to the authenticated session.
+         */
+        get: operations["byok_authorize_get_v1_mcp_oauth_authorize_get"];
+        put?: never;
+        /**
+         * Byok Authorize Post
+         * @description Process the BYOK API-key form submission.
+         *
+         *     Stores a short-lived authorization code and redirects the client back to
+         *     redirect_uri with ?code=...&state=... query parameters.
+         */
+        post: operations["byok_authorize_post_v1_mcp_oauth_authorize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/mcp/oauth/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Byok Token
+         * @description Exchange an authorization code for a short-lived BYOK session JWT.
+         *
+         *     1. Validates the authorization code and PKCE challenge.
+         *     2. Stores the API key via store_user_credential().
+         *     3. Issues a signed JWT with type="byok_session".
+         */
+        post: operations["byok_token_v1_mcp_oauth_token_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17159,6 +17798,57 @@ export interface paths {
          * @description Temporarily cache an MCP server in memory without writing to the database
          */
         post: operations["add_session_mcp_server_v1_mcp_server_oauth_session_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/mcp/server/oauth/{server_id}/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mcp Authorize */
+        get: operations["mcp_authorize_v1_mcp_server_oauth__server_id__authorize_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/mcp/server/oauth/{server_id}/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mcp Register */
+        post: operations["mcp_register_v1_mcp_server_oauth__server_id__register_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/mcp/server/oauth/{server_id}/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mcp Token */
+        post: operations["mcp_token_v1_mcp_server_oauth__server_id__token_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17337,6 +18027,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/mcp/server/{server_id}/user-env-vars": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Mcp User Env Vars
+         * @description Return the calling user's per-user MCP env var status for this server.
+         */
+        get: operations["get_mcp_user_env_vars_v1_mcp_server__server_id__user_env_vars_get"];
+        put?: never;
+        /**
+         * Store Mcp User Env Vars
+         * @description Store the calling user's per-user MCP env var values for this server. Submitted values are merged over any previously stored values, so you only send the fields you want to set or change; a variable omitted (or sent empty) keeps its stored value. Use DELETE to clear all stored values.
+         */
+        post: operations["store_mcp_user_env_vars_v1_mcp_server__server_id__user_env_vars_post"];
+        /**
+         * Clear Mcp User Env Vars
+         * @description Clear the calling user's per-user MCP env var values for this server.
+         */
+        delete: operations["clear_mcp_user_env_vars_v1_mcp_server__server_id__user_env_vars_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/mcp/tools": {
         parameters: {
             query?: never;
@@ -17421,6 +18139,26 @@ export interface paths {
          * @description List all OAuth2 MCP credentials stored for the calling user
          */
         get: operations["list_mcp_user_credentials_v1_mcp_user_credentials_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/mcp/user-env-vars/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Mcp User Env Var Status
+         * @description Per-user MCP env var status across every server the user can access. Used by the dashboard to highlight servers with missing per-user vars.
+         */
+        get: operations["list_mcp_user_env_var_status_v1_mcp_user_env_vars_status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -17848,7 +18586,7 @@ export interface paths {
          * WebSocket: realtime_websocket_endpoint
          * @description WebSocket connection endpoint
          */
-        get: operations["websocket_realtime_websocket_endpoint_get_2"];
+        get: operations["websocket_realtime_websocket_endpoint"];
         put?: never;
         post?: never;
         delete?: never;
@@ -17891,6 +18629,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/realtime/transcription_sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Realtime Transcription Session
+         * @description Create an ephemeral Realtime transcription session
+         *     (POST /v1/realtime/transcription_sessions) for the WebRTC/WebSocket flow.
+         *
+         *     Mirrors the client_secrets route but targets the transcription_sessions
+         *     endpoint and encrypts the ephemeral key returned under `client_secret.value`.
+         */
+        post: operations["create_realtime_transcription_session_v1_realtime_transcription_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/rerank": {
         parameters: {
             query?: never;
@@ -17919,7 +18681,7 @@ export interface paths {
          * WebSocket: responses_websocket_endpoint
          * @description WebSocket connection endpoint
          */
-        get: operations["websocket_responses_websocket_endpoint_get_2"];
+        get: operations["websocket_responses_websocket_endpoint"];
         put?: never;
         /**
          * Responses Api
@@ -19270,40 +20032,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1beta/agents": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** gemini_agents */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/v1beta/interactions": {
         parameters: {
             query?: never;
@@ -20183,28 +20911,28 @@ export interface paths {
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/vertex_ai)
          */
-        get: operations["vertex_proxy_route_vertex_ai__endpoint__get_2"];
+        get: operations["vertex_proxy_route_vertex_ai__endpoint_"];
         /**
          * Vertex Proxy Route
          * @description Call LiteLLM proxy via Vertex AI SDK.
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/vertex_ai)
          */
-        put: operations["vertex_proxy_route_vertex_ai__endpoint__put_2"];
+        put: operations["vertex_proxy_route_vertex_ai__endpoint_"];
         /**
          * Vertex Proxy Route
          * @description Call LiteLLM proxy via Vertex AI SDK.
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/vertex_ai)
          */
-        post: operations["vertex_proxy_route_vertex_ai__endpoint__post_2"];
+        post: operations["vertex_proxy_route_vertex_ai__endpoint_"];
         /**
          * Vertex Proxy Route
          * @description Call LiteLLM proxy via Vertex AI SDK.
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/vertex_ai)
          */
-        delete: operations["vertex_proxy_route_vertex_ai__endpoint__delete_2"];
+        delete: operations["vertex_proxy_route_vertex_ai__endpoint_"];
         options?: never;
         head?: never;
         /**
@@ -20213,7 +20941,7 @@ export interface paths {
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/vertex_ai)
          */
-        patch: operations["vertex_proxy_route_vertex_ai__endpoint__patch_2"];
+        patch: operations["vertex_proxy_route_vertex_ai__endpoint_"];
         trace?: never;
     };
     "/vertex_ai/discovery/{endpoint}": {
@@ -20231,7 +20959,7 @@ export interface paths {
          *
          *     Target url: `https://discoveryengine.googleapis.com`
          */
-        get: operations["vertex_discovery_proxy_route_vertex_ai_discovery__endpoint__get"];
+        get: operations["vertex_discovery_proxy_route_vertex_ai_discovery__endpoint_"];
         /**
          * Vertex Discovery Proxy Route
          * @description Call any vertex discovery endpoint using the proxy.
@@ -20240,7 +20968,7 @@ export interface paths {
          *
          *     Target url: `https://discoveryengine.googleapis.com`
          */
-        put: operations["vertex_discovery_proxy_route_vertex_ai_discovery__endpoint__put"];
+        put: operations["vertex_discovery_proxy_route_vertex_ai_discovery__endpoint_"];
         /**
          * Vertex Discovery Proxy Route
          * @description Call any vertex discovery endpoint using the proxy.
@@ -20249,7 +20977,7 @@ export interface paths {
          *
          *     Target url: `https://discoveryengine.googleapis.com`
          */
-        post: operations["vertex_discovery_proxy_route_vertex_ai_discovery__endpoint__post"];
+        post: operations["vertex_discovery_proxy_route_vertex_ai_discovery__endpoint_"];
         /**
          * Vertex Discovery Proxy Route
          * @description Call any vertex discovery endpoint using the proxy.
@@ -20258,7 +20986,7 @@ export interface paths {
          *
          *     Target url: `https://discoveryengine.googleapis.com`
          */
-        delete: operations["vertex_discovery_proxy_route_vertex_ai_discovery__endpoint__delete"];
+        delete: operations["vertex_discovery_proxy_route_vertex_ai_discovery__endpoint_"];
         options?: never;
         head?: never;
         /**
@@ -20269,7 +20997,7 @@ export interface paths {
          *
          *     Target url: `https://discoveryengine.googleapis.com`
          */
-        patch: operations["vertex_discovery_proxy_route_vertex_ai_discovery__endpoint__patch"];
+        patch: operations["vertex_discovery_proxy_route_vertex_ai_discovery__endpoint_"];
         trace?: never;
     };
     "/vertex_ai/live": {
@@ -20305,28 +21033,28 @@ export interface paths {
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/vertex_ai)
          */
-        get: operations["vertex_proxy_route_vertex_ai__endpoint__get"];
+        get: operations["vertex_proxy_route_vertex_ai__endpoint_"];
         /**
          * Vertex Proxy Route
          * @description Call LiteLLM proxy via Vertex AI SDK.
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/vertex_ai)
          */
-        put: operations["vertex_proxy_route_vertex_ai__endpoint__put"];
+        put: operations["vertex_proxy_route_vertex_ai__endpoint_"];
         /**
          * Vertex Proxy Route
          * @description Call LiteLLM proxy via Vertex AI SDK.
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/vertex_ai)
          */
-        post: operations["vertex_proxy_route_vertex_ai__endpoint__post"];
+        post: operations["vertex_proxy_route_vertex_ai__endpoint_"];
         /**
          * Vertex Proxy Route
          * @description Call LiteLLM proxy via Vertex AI SDK.
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/vertex_ai)
          */
-        delete: operations["vertex_proxy_route_vertex_ai__endpoint__delete"];
+        delete: operations["vertex_proxy_route_vertex_ai__endpoint_"];
         options?: never;
         head?: never;
         /**
@@ -20335,7 +21063,7 @@ export interface paths {
          *
          *     [Docs](https://docs.litellm.ai/docs/pass_through/vertex_ai)
          */
-        patch: operations["vertex_proxy_route_vertex_ai__endpoint__patch"];
+        patch: operations["vertex_proxy_route_vertex_ai__endpoint_"];
         trace?: never;
     };
     "/videos": {
@@ -20590,29 +21318,29 @@ export interface paths {
          * Vllm Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/vllm)
          */
-        get: operations["vllm_proxy_route_vllm__endpoint__get"];
+        get: operations["vllm_proxy_route_vllm__endpoint_"];
         /**
          * Vllm Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/vllm)
          */
-        put: operations["vllm_proxy_route_vllm__endpoint__put"];
+        put: operations["vllm_proxy_route_vllm__endpoint_"];
         /**
          * Vllm Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/vllm)
          */
-        post: operations["vllm_proxy_route_vllm__endpoint__post"];
+        post: operations["vllm_proxy_route_vllm__endpoint_"];
         /**
          * Vllm Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/vllm)
          */
-        delete: operations["vllm_proxy_route_vllm__endpoint__delete"];
+        delete: operations["vllm_proxy_route_vllm__endpoint_"];
         options?: never;
         head?: never;
         /**
          * Vllm Proxy Route
          * @description [Docs](https://docs.litellm.ai/docs/pass_through/vllm)
          */
-        patch: operations["vllm_proxy_route_vllm__endpoint__patch"];
+        patch: operations["vllm_proxy_route_vllm__endpoint_"];
         trace?: never;
     };
     "/watsonx/{endpoint}": {
@@ -20631,7 +21359,7 @@ export interface paths {
          *         POST /watsonx/ml/v1/text/tokenization
          *         POST /watsonx/ml/v1/text/generation
          */
-        get: operations["watsonx_proxy_route_watsonx__endpoint__get"];
+        get: operations["watsonx_proxy_route_watsonx__endpoint_"];
         /**
          * Watsonx Proxy Route
          * @description Watsonx pass-through endpoint.
@@ -20641,7 +21369,7 @@ export interface paths {
          *         POST /watsonx/ml/v1/text/tokenization
          *         POST /watsonx/ml/v1/text/generation
          */
-        put: operations["watsonx_proxy_route_watsonx__endpoint__put"];
+        put: operations["watsonx_proxy_route_watsonx__endpoint_"];
         /**
          * Watsonx Proxy Route
          * @description Watsonx pass-through endpoint.
@@ -20651,7 +21379,7 @@ export interface paths {
          *         POST /watsonx/ml/v1/text/tokenization
          *         POST /watsonx/ml/v1/text/generation
          */
-        post: operations["watsonx_proxy_route_watsonx__endpoint__post"];
+        post: operations["watsonx_proxy_route_watsonx__endpoint_"];
         /**
          * Watsonx Proxy Route
          * @description Watsonx pass-through endpoint.
@@ -20661,7 +21389,7 @@ export interface paths {
          *         POST /watsonx/ml/v1/text/tokenization
          *         POST /watsonx/ml/v1/text/generation
          */
-        delete: operations["watsonx_proxy_route_watsonx__endpoint__delete"];
+        delete: operations["watsonx_proxy_route_watsonx__endpoint_"];
         options?: never;
         head?: never;
         /**
@@ -20673,7 +21401,24 @@ export interface paths {
          *         POST /watsonx/ml/v1/text/tokenization
          *         POST /watsonx/ml/v1/text/generation
          */
-        patch: operations["watsonx_proxy_route_watsonx__endpoint__patch"];
+        patch: operations["watsonx_proxy_route_watsonx__endpoint_"];
+        trace?: never;
+    };
+    "/{mcp_server_name}/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Authorize */
+        get: operations["authorize__mcp_server_name__authorize_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/{mcp_server_name}/mcp": {
@@ -20693,7 +21438,7 @@ export interface paths {
          *     3. Toolset name (DB lookup, cached)
          *     4. MCP access group tag (DB lookup, cached)
          */
-        get: operations["dynamic_mcp_route__mcp_server_name__mcp_get"];
+        get: operations["dynamic_mcp_route__mcp_server_name__mcp"];
         /**
          * Dynamic Mcp Route
          * @description Handle /{name}/mcp for MCP server aliases, toolsets, MCP access group tags, and comma-separated lists.
@@ -20704,7 +21449,7 @@ export interface paths {
          *     3. Toolset name (DB lookup, cached)
          *     4. MCP access group tag (DB lookup, cached)
          */
-        put: operations["dynamic_mcp_route__mcp_server_name__mcp_put"];
+        put: operations["dynamic_mcp_route__mcp_server_name__mcp"];
         /**
          * Dynamic Mcp Route
          * @description Handle /{name}/mcp for MCP server aliases, toolsets, MCP access group tags, and comma-separated lists.
@@ -20715,7 +21460,7 @@ export interface paths {
          *     3. Toolset name (DB lookup, cached)
          *     4. MCP access group tag (DB lookup, cached)
          */
-        post: operations["dynamic_mcp_route__mcp_server_name__mcp_post"];
+        post: operations["dynamic_mcp_route__mcp_server_name__mcp"];
         /**
          * Dynamic Mcp Route
          * @description Handle /{name}/mcp for MCP server aliases, toolsets, MCP access group tags, and comma-separated lists.
@@ -20726,7 +21471,7 @@ export interface paths {
          *     3. Toolset name (DB lookup, cached)
          *     4. MCP access group tag (DB lookup, cached)
          */
-        delete: operations["dynamic_mcp_route__mcp_server_name__mcp_delete"];
+        delete: operations["dynamic_mcp_route__mcp_server_name__mcp"];
         /**
          * Dynamic Mcp Route
          * @description Handle /{name}/mcp for MCP server aliases, toolsets, MCP access group tags, and comma-separated lists.
@@ -20737,7 +21482,7 @@ export interface paths {
          *     3. Toolset name (DB lookup, cached)
          *     4. MCP access group tag (DB lookup, cached)
          */
-        options: operations["dynamic_mcp_route__mcp_server_name__mcp_options"];
+        options: operations["dynamic_mcp_route__mcp_server_name__mcp"];
         /**
          * Dynamic Mcp Route
          * @description Handle /{name}/mcp for MCP server aliases, toolsets, MCP access group tags, and comma-separated lists.
@@ -20748,7 +21493,7 @@ export interface paths {
          *     3. Toolset name (DB lookup, cached)
          *     4. MCP access group tag (DB lookup, cached)
          */
-        head: operations["dynamic_mcp_route__mcp_server_name__mcp_head"];
+        head: operations["dynamic_mcp_route__mcp_server_name__mcp"];
         /**
          * Dynamic Mcp Route
          * @description Handle /{name}/mcp for MCP server aliases, toolsets, MCP access group tags, and comma-separated lists.
@@ -20759,7 +21504,50 @@ export interface paths {
          *     3. Toolset name (DB lookup, cached)
          *     4. MCP access group tag (DB lookup, cached)
          */
-        patch: operations["dynamic_mcp_route__mcp_server_name__mcp_patch"];
+        patch: operations["dynamic_mcp_route__mcp_server_name__mcp"];
+        trace?: never;
+    };
+    "/{mcp_server_name}/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register Client */
+        post: operations["register_client__mcp_server_name__register_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/{mcp_server_name}/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Token Endpoint
+         * @description Accept the authorization code from client and exchange it for OAuth token.
+         *     Supports PKCE flow by forwarding code_verifier to upstream provider.
+         *
+         *     1. Call the token endpoint with PKCE parameters
+         *     2. Store the user's token in the db - and generate a LiteLLM virtual key
+         *     3. Return the token
+         *     4. Return a virtual key in this response
+         */
+        post: operations["token_endpoint__mcp_server_name__token_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/{provider}/v1/batches": {
@@ -21295,6 +22083,15 @@ export interface components {
             /** Url */
             url?: string;
         };
+        /** AgentKeySummary */
+        AgentKeySummary: {
+            /** Key Alias */
+            key_alias?: string | null;
+            /** Key Name */
+            key_name?: string | null;
+            /** Token */
+            token: string;
+        };
         /** AgentMakePublicResponse */
         AgentMakePublicResponse: {
             /** Message */
@@ -21345,6 +22142,8 @@ export interface components {
             created_by?: string | null;
             /** Extra Headers */
             extra_headers?: string[] | null;
+            /** Keys */
+            keys?: components["schemas"]["AgentKeySummary"][] | null;
             /** Litellm Params */
             litellm_params?: {
                 [key: string]: unknown;
@@ -21758,7 +22557,7 @@ export interface components {
             routing_decision: components["schemas"]["StandardLoggingRoutingDecision"];
         };
         /** BaseLitellmParams */
-        "BaseLitellmParams-Input": {
+        BaseLitellmParams: {
             /**
              * Additional Provider Specific Params
              * @description Additional provider-specific parameters for generic guardrail APIs
@@ -21838,7 +22637,7 @@ export interface components {
             extra_headers?: string[] | null;
             /**
              * Fail On Error
-             * @description Whether to fail the request if Model Armor encounters an error
+             * @description Whether to fail the request if the guardrail encounters an error. Implemented by guardrail='model_armor' and 'generic_guardrail_api'. True (default) raises the error. False logs a critical error and lets the request proceed, so only a valid guardrail response can block or modify it.
              * @default true
              */
             fail_on_error: boolean | null;
@@ -21873,185 +22672,21 @@ export interface components {
              */
             model?: string | null;
             /**
+             * On Sensitive Data
+             * @description Action to take when sensitive data is detected. 'block' raises an exception (default behavior). 'route' reroutes the request to the model specified in sensitive_data_route_to_model.
+             */
+            on_sensitive_data?: ("block" | "route") | null;
+            /**
              * On Violation
              * @description For /v1/realtime sessions: 'warn' speaks the violation message and continues; 'end_session' speaks the message and closes the connection.
              */
             on_violation?: ("warn" | "end_session") | null;
             /**
-             * Pangea Input Recipe
-             * @description Recipe for input (LLM request)
-             */
-            pangea_input_recipe?: string | null;
-            /**
-             * Pangea Output Recipe
-             * @description Recipe for output (LLM response)
-             */
-            pangea_output_recipe?: string | null;
-            /**
-             * Pattern Redaction Format
-             * @description Format string for pattern redaction (use {pattern_name} placeholder)
-             */
-            pattern_redaction_format?: string | null;
-            /**
-             * Patterns
-             * @description List of patterns (prebuilt or custom regex) to detect
-             */
-            patterns?: components["schemas"]["ContentFilterPattern"][] | null;
-            /**
-             * Realtime Violation Message
-             * @description The message the bot speaks aloud when a /v1/realtime guardrail fires. Falls back to violation_message_template if not set.
-             */
-            realtime_violation_message?: string | null;
-            /**
-             * Severity Threshold
-             * @description Minimum severity to block (high, medium, low)
-             */
-            severity_threshold?: string | null;
-            /**
-             * Skip System Message In Guardrail
-             * @description When True, unified guardrails skip system-role messages when building evaluation inputs (texts and structured_messages). When False, system messages are included even if litellm_settings sets a global skip. When None, use the global litellm.skip_system_message_in_guardrail setting.
-             */
-            skip_system_message_in_guardrail?: boolean | null;
-            /**
-             * Template Id
-             * @description The ID of your Model Armor template
-             */
-            template_id?: string | null;
-            /**
-             * Unreachable Fallback
-             * @description Behavior when a guardrail endpoint is unreachable due to network errors. NOTE: This is currently only implemented by guardrail='generic_guardrail_api'. 'fail_closed' raises an error (default). 'fail_open' logs a critical error and allows the request to proceed.
-             * @default fail_closed
-             * @enum {string}
-             */
-            unreachable_fallback: "fail_closed" | "fail_open";
-            /**
-             * Violation Message Template
-             * @description Custom message when a guardrail blocks an action. Supports placeholders like {tool_name}, {rule_id}, and {default_message}.
-             */
-            violation_message_template?: string | null;
-        } & {
-            [key: string]: unknown;
-        };
-        /** BaseLitellmParams */
-        "BaseLitellmParams-Output": {
-            /**
-             * Additional Provider Specific Params
-             * @description Additional provider-specific parameters for generic guardrail APIs
-             */
-            additional_provider_specific_params?: {
-                [key: string]: unknown;
-            } | null;
-            /**
-             * Api Base
-             * @description Base URL for the guardrail service API
-             */
-            api_base?: string | null;
-            /**
-             * Api Endpoint
-             * @description Optional custom API endpoint for Model Armor
-             */
-            api_endpoint?: string | null;
-            /**
-             * Api Key
-             * @description API key for the guardrail service
-             */
-            api_key?: string | null;
-            /**
-             * Blocked Words
-             * @description List of blocked words with individual actions
-             */
-            blocked_words?: components["schemas"]["BlockedWord"][] | null;
-            /**
-             * Blocked Words File
-             * @description Path to YAML file containing blocked_words list
-             */
-            blocked_words_file?: string | null;
-            /**
-             * Categories
-             * @description List of prebuilt categories to enable (harmful_*, bias_*)
-             */
-            categories?: components["schemas"]["ContentFilterCategoryConfig"][] | null;
-            /** @description Threshold configuration for Lakera guardrail categories */
-            category_thresholds?: components["schemas"]["LakeraCategoryThresholds"] | null;
-            /**
-             * Credentials
-             * @description Path to Google Cloud credentials JSON file or JSON string
-             */
-            credentials?: string | null;
-            /**
-             * Custom Code
-             * @description Python-like code containing the apply_guardrail function for custom guardrail logic
-             */
-            custom_code?: string | null;
-            /**
-             * Default On
-             * @description Whether the guardrail is enabled by default
-             */
-            default_on?: boolean | null;
-            /**
-             * Detect Secrets Config
-             * @description Configuration for detect-secrets guardrail
-             */
-            detect_secrets_config?: {
-                [key: string]: unknown;
-            } | null;
-            /**
-             * End Session After N Fails
-             * @description For /v1/realtime sessions: automatically close the session after this many guardrail violations.
-             */
-            end_session_after_n_fails?: number | null;
-            /**
-             * Experimental Use Latest Role Message Only
-             * @description When True, guardrails only receive the latest message for the relevant role (e.g., newest user input pre-call, newest assistant output post-call)
+             * Only Scan New Messages
+             * @description When True, the guardrail only scans messages that have not already been scanned earlier in the same session (identified by litellm_session_id / session_id). Message content is hashed per session and cached; only the diff (new or edited messages) is sent to the guardrail provider on follow-up calls. Falls back to a full scan when the request has no session id or the cache is unavailable. Intended for blocking/detection guardrails; not applied when mask_request_content is set.
              * @default false
              */
-            experimental_use_latest_role_message_only: boolean | null;
-            /**
-             * Extra Headers
-             * @description Header names to forward from the client request to the guardrail (e.g. x-request-id). Only these headers' values are sent; others may be omitted or sent as [present]. Used by generic_guardrail_api (similar to MCP extra_headers).
-             */
-            extra_headers?: string[] | null;
-            /**
-             * Fail On Error
-             * @description Whether to fail the request if Model Armor encounters an error
-             * @default true
-             */
-            fail_on_error: boolean | null;
-            /**
-             * Guard Name
-             * @description Name of the guardrail in guardrails.ai
-             */
-            guard_name?: string | null;
-            /**
-             * Keyword Redaction Tag
-             * @description Tag to use for keyword redaction
-             */
-            keyword_redaction_tag?: string | null;
-            /**
-             * Location
-             * @description Google Cloud location/region (e.g., us-central1)
-             */
-            location?: string | null;
-            /**
-             * Mask Request Content
-             * @description Will mask request content if guardrail makes any changes
-             */
-            mask_request_content?: boolean | null;
-            /**
-             * Mask Response Content
-             * @description Will mask response content if guardrail makes any changes
-             */
-            mask_response_content?: boolean | null;
-            /**
-             * Model
-             * @description Optional field if guardrail requires a 'model' parameter
-             */
-            model?: string | null;
-            /**
-             * On Violation
-             * @description For /v1/realtime sessions: 'warn' speaks the violation message and continues; 'end_session' speaks the message and closes the connection.
-             */
-            on_violation?: ("warn" | "end_session") | null;
+            only_scan_new_messages: boolean | null;
             /**
              * Pangea Input Recipe
              * @description Recipe for input (LLM request)
@@ -22078,23 +22713,66 @@ export interface components {
              */
             realtime_violation_message?: string | null;
             /**
+             * Run In Parallel
+             * @description When True, this pre_call or post_call guardrail runs concurrently with other opted-in guardrails of the same hook, after the sequential guardrails have run. Use only for block-only guardrails that inspect and reject; do not enable it for guardrails that modify the request or response (e.g. PII masking or sensitive-data routing), since parallel runs share one snapshot and their mutations would race.
+             */
+            run_in_parallel?: boolean | null;
+            /**
+             * Sanitize Error Detail
+             * @description For guardrail='model_armor': omit the raw Model Armor response from caller-facing errors and logs by default. Set False to restore verbose output.
+             * @default true
+             */
+            sanitize_error_detail: boolean | null;
+            /**
+             * Scan Only Tool Results
+             * @description When True, unified guardrails only evaluate tool results, the untrusted data an agent feeds back into the model, and skip system, user, and assistant content. Intended for agent harnesses whose own prompt scaffolding is trusted but often trips prompt-attack detectors.
+             */
+            scan_only_tool_results?: boolean | null;
+            /**
+             * Sensitive Data Route To Model
+             * @description Model to route requests to when sensitive data is detected and on_sensitive_data='route'. This is typically an on-premise model for data privacy. The routing decision persists for the entire session.
+             */
+            sensitive_data_route_to_model?: string | null;
+            /**
              * Severity Threshold
              * @description Minimum severity to block (high, medium, low)
              */
             severity_threshold?: string | null;
             /**
              * Skip System Message In Guardrail
-             * @description When True, unified guardrails skip system-role messages when building evaluation inputs (texts and structured_messages). When False, system messages are included even if litellm_settings sets a global skip. When None, use the global litellm.skip_system_message_in_guardrail setting.
+             * @description When True, unified guardrails skip system-role messages when building evaluation inputs (texts and structured_messages). When False, system messages are included even if litellm_settings sets a global skip. When None, use the global litellm.skip_system_message_in_guardrail setting. For Anthropic /v1/messages, the flag applies only to the trusted top-level system prompt. In-sequence system entries are untrusted client input and remain in texts and structured_messages.
              */
             skip_system_message_in_guardrail?: boolean | null;
+            /**
+             * Skip Tool Message In Guardrail
+             * @description When True, unified guardrails skip tool-role messages when building evaluation inputs (texts and structured_messages). When False, tool messages are included even if litellm_settings sets a global skip. When None, use the global litellm.skip_tool_message_in_guardrail setting.
+             */
+            skip_tool_message_in_guardrail?: boolean | null;
+            /**
+             * Skip Unscannable Attachments
+             * @description Implemented by guardrail='model_armor'. When True, attachment references that carry no inline bytes (file_id, gs://, or http(s) URLs) pass through unscanned instead of blocking, while fail_on_error still governs real Model Armor API errors. Default False blocks them.
+             * @default false
+             */
+            skip_unscannable_attachments: boolean | null;
+            /**
+             * Sticky Session Routing
+             * @description When True (default), after sensitive data is detected and routed, all subsequent requests in the same session will continue routing to the same model.
+             * @default true
+             */
+            sticky_session_routing: boolean | null;
             /**
              * Template Id
              * @description The ID of your Model Armor template
              */
             template_id?: string | null;
             /**
+             * Timeout
+             * @description Per-request timeout for the guardrail provider API call (seconds). Accepts int, float, or numeric string; coerced to float on load. Each guardrail handler chooses its own default when unset.
+             */
+            timeout?: number | null;
+            /**
              * Unreachable Fallback
-             * @description Behavior when a guardrail endpoint is unreachable due to network errors. NOTE: This is currently only implemented by guardrail='generic_guardrail_api'. 'fail_closed' raises an error (default). 'fail_open' logs a critical error and allows the request to proceed.
+             * @description Behavior when a guardrail endpoint is unreachable due to network errors. Implemented by guardrail='generic_guardrail_api', 'akto', 'vigil_guard', 'repelloai', 'headroom', and 'compresr'. 'fail_closed' raises an error (default). 'fail_open' logs a critical error and allows the request to proceed.
              * @default fail_closed
              * @enum {string}
              */
@@ -22109,6 +22787,56 @@ export interface components {
         };
         /** BaseModel */
         BaseModel: Record<string, never>;
+        /**
+         * BedrockChecksConfigModel
+         * @description Inline `checks` config for the resource-less Bedrock InvokeGuardrailChecks API.
+         *
+         *     Include only the checks you want to run; at least one must be set.
+         */
+        BedrockChecksConfigModel: {
+            contentFilter?: components["schemas"]["BedrockChecksContentFilterModel"] | null;
+            promptAttack?: components["schemas"]["BedrockChecksPromptAttackModel"] | null;
+            sensitiveInformation?: components["schemas"]["BedrockChecksSensitiveInformationModel"] | null;
+        };
+        /** BedrockChecksContentFilterCategoryItem */
+        BedrockChecksContentFilterCategoryItem: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "VIOLENCE" | "HATE" | "SEXUAL" | "MISCONDUCT" | "INSULTS";
+        };
+        /** BedrockChecksContentFilterModel */
+        BedrockChecksContentFilterModel: {
+            /** Categories */
+            categories: components["schemas"]["BedrockChecksContentFilterCategoryItem"][];
+        };
+        /** BedrockChecksPromptAttackCategoryItem */
+        BedrockChecksPromptAttackCategoryItem: {
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "JAILBREAK" | "PROMPT_INJECTION" | "PROMPT_LEAKAGE";
+        };
+        /** BedrockChecksPromptAttackModel */
+        BedrockChecksPromptAttackModel: {
+            /** Categories */
+            categories: components["schemas"]["BedrockChecksPromptAttackCategoryItem"][];
+        };
+        /** BedrockChecksSensitiveInformationEntityItem */
+        BedrockChecksSensitiveInformationEntityItem: {
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "ADDRESS" | "AGE" | "AWS_ACCESS_KEY" | "AWS_SECRET_KEY" | "CA_HEALTH_NUMBER" | "CA_SOCIAL_INSURANCE_NUMBER" | "CREDIT_DEBIT_CARD_CVV" | "CREDIT_DEBIT_CARD_EXPIRY" | "CREDIT_DEBIT_CARD_NUMBER" | "DRIVER_ID" | "EMAIL" | "INTERNATIONAL_BANK_ACCOUNT_NUMBER" | "IP_ADDRESS" | "LICENSE_PLATE" | "MAC_ADDRESS" | "NAME" | "PASSWORD" | "PHONE" | "PIN" | "SWIFT_CODE" | "UK_NATIONAL_HEALTH_SERVICE_NUMBER" | "UK_NATIONAL_INSURANCE_NUMBER" | "UK_UNIQUE_TAXPAYER_REFERENCE_NUMBER" | "URL" | "USERNAME" | "US_BANK_ACCOUNT_NUMBER" | "US_BANK_ROUTING_NUMBER" | "US_INDIVIDUAL_TAX_IDENTIFICATION_NUMBER" | "US_PASSPORT_NUMBER" | "US_SOCIAL_SECURITY_NUMBER" | "VEHICLE_IDENTIFICATION_NUMBER";
+        };
+        /** BedrockChecksSensitiveInformationModel */
+        BedrockChecksSensitiveInformationModel: {
+            /** Entities */
+            entities: components["schemas"]["BedrockChecksSensitiveInformationEntityItem"][];
+        };
         /** BlockKeyRequest */
         BlockKeyRequest: {
             /** Key */
@@ -22178,12 +22906,64 @@ export interface components {
             /** File */
             file: string;
         };
+        /** Body_authorize_complete_authorize_complete_post */
+        Body_authorize_complete_authorize_complete_post: {
+            /** Delivery */
+            delivery?: string | null;
+            /** Flow */
+            flow: string;
+        };
+        /** Body_byok_authorize_post_v1_mcp_oauth_authorize_post */
+        Body_byok_authorize_post_v1_mcp_oauth_authorize_post: {
+            /** Api Key */
+            api_key: string;
+            /**
+             * Client Id
+             * @default
+             */
+            client_id: string;
+            /** Code Challenge */
+            code_challenge: string;
+            /**
+             * Code Challenge Method
+             * @default S256
+             */
+            code_challenge_method: string;
+            /** Redirect Uri */
+            redirect_uri: string;
+            /**
+             * Server Id
+             * @default
+             */
+            server_id: string;
+            /**
+             * State
+             * @default
+             */
+            state: string;
+        };
+        /** Body_byok_token_v1_mcp_oauth_token_post */
+        Body_byok_token_v1_mcp_oauth_token_post: {
+            /**
+             * Client Id
+             * @default
+             */
+            client_id: string;
+            /** Code */
+            code: string;
+            /** Code Verifier */
+            code_verifier: string;
+            /** Grant Type */
+            grant_type: string;
+            /**
+             * Redirect Uri
+             * @default
+             */
+            redirect_uri: string;
+        };
         /** Body_convert_prompt_file_to_json_utils_dotprompt_json_converter_post */
         Body_convert_prompt_file_to_json_utils_dotprompt_json_converter_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** Body_create_file__provider__v1_files_post */
@@ -22291,6 +23071,25 @@ export interface components {
             /** Mask[] */
             "mask[]"?: string[] | null;
         };
+        /** Body_mcp_token_v1_mcp_server_oauth__server_id__token_post */
+        Body_mcp_token_v1_mcp_server_oauth__server_id__token_post: {
+            /** Client Id */
+            client_id?: string | null;
+            /** Client Secret */
+            client_secret?: string | null;
+            /** Code */
+            code?: string | null;
+            /** Code Verifier */
+            code_verifier?: string | null;
+            /** Grant Type */
+            grant_type: string;
+            /** Redirect Uri */
+            redirect_uri?: string | null;
+            /** Refresh Token */
+            refresh_token?: string | null;
+            /** Scope */
+            scope?: string | null;
+        };
         /** Body_test_model_connection_health_test_connection_post */
         Body_test_model_connection_health_test_connection_post: {
             /**
@@ -22312,6 +23111,48 @@ export interface components {
             model_info?: {
                 [key: string]: unknown;
             };
+        };
+        /** Body_token_endpoint__mcp_server_name__token_post */
+        Body_token_endpoint__mcp_server_name__token_post: {
+            /** Client Id */
+            client_id: string;
+            /** Client Secret */
+            client_secret?: string | null;
+            /** Code */
+            code?: string;
+            /** Code Verifier */
+            code_verifier?: string;
+            /** Grant Type */
+            grant_type: string;
+            /** Redirect Uri */
+            redirect_uri?: string;
+            /** Refresh Token */
+            refresh_token?: string | null;
+            /** Resource */
+            resource?: string | null;
+            /** Scope */
+            scope?: string | null;
+        };
+        /** Body_token_endpoint_token_post */
+        Body_token_endpoint_token_post: {
+            /** Client Id */
+            client_id: string;
+            /** Client Secret */
+            client_secret?: string | null;
+            /** Code */
+            code?: string;
+            /** Code Verifier */
+            code_verifier?: string;
+            /** Grant Type */
+            grant_type: string;
+            /** Redirect Uri */
+            redirect_uri?: string;
+            /** Refresh Token */
+            refresh_token?: string | null;
+            /** Resource */
+            resource?: string | null;
+            /** Scope */
+            scope?: string | null;
         };
         /** Body_upload_logo_upload_logo_post */
         Body_upload_logo_upload_logo_post: {
@@ -23217,6 +24058,8 @@ export interface components {
         };
         /** ChatCompletionToolParam */
         ChatCompletionToolParam: {
+            /** Allowed Callers */
+            allowed_callers?: string[];
             cache_control?: components["schemas"]["ChatCompletionCachedContent"];
             function: components["schemas"]["ChatCompletionToolParamFunctionChunk"];
             /** Type */
@@ -23298,6 +24141,86 @@ export interface components {
             } | null;
         } & {
             [key: string]: unknown;
+        };
+        /**
+         * CiscoAIDefenseGuardrailConfigModelOptionalParams
+         * @description Optional parameters for the Cisco AI Defense guardrail.
+         */
+        CiscoAIDefenseGuardrailConfigModelOptionalParams: {
+            /**
+             * Enabled Rules
+             * @description Explicit list of Cisco AI Defense rules to evaluate. If omitted, the policies configured for the API key in the Cisco AI Defense UI are used.
+             */
+            enabled_rules?: components["schemas"]["CiscoAIDefenseRule"][] | null;
+            /**
+             * Fallback On Error
+             * @description Behaviour when the Cisco AI Defense API is unavailable: 'allow' proceeds without scanning (high availability), 'block' rejects the request (maximum security).
+             * @default block
+             */
+            fallback_on_error: ("allow" | "block") | null;
+            /**
+             * Inspect Path
+             * @description Override for the inspection endpoint path. Defaults to /api/v1/inspect/chat when inspection_type='chat' and /api/v1/inspect/mcp when inspection_type='mcp'.
+             */
+            inspect_path?: string | null;
+            /**
+             * Inspection Type
+             * @description Which Cisco AI Defense inspection surface to use. 'chat' scans LLM model conversations via /api/v1/inspect/chat. 'mcp' scans MCP tool calls via /api/v1/inspect/mcp. Each guardrail instance targets exactly one surface; configure two guardrails to scan both chat and MCP traffic.
+             * @default chat
+             * @enum {string}
+             */
+            inspection_type: "chat" | "mcp";
+            /**
+             * Integration Profile Id
+             * @description Integration profile id to apply (advanced).
+             */
+            integration_profile_id?: string | null;
+            /**
+             * Integration Profile Version
+             * @description Integration profile version to apply (advanced).
+             */
+            integration_profile_version?: string | null;
+            /**
+             * Integration Tenant Id
+             * @description Integration tenant id to apply (advanced).
+             */
+            integration_tenant_id?: string | null;
+            /**
+             * Integration Type
+             * @description Integration type to apply (advanced).
+             */
+            integration_type?: string | null;
+            /**
+             * On Flagged Action
+             * @description Action to take when Cisco AI Defense flags content. 'block' raises an HTTPException; 'monitor' logs the detection and lets the request continue.
+             * @default block
+             */
+            on_flagged_action: string | null;
+            /**
+             * Timeout
+             * @description Timeout (seconds) for Cisco AI Defense API calls (1-60).
+             * @default 10
+             */
+            timeout: number | null;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * CiscoAIDefenseRule
+         * @description A single rule to enable for Cisco AI Defense inspection.
+         */
+        CiscoAIDefenseRule: {
+            /**
+             * Entity Types
+             * @description Optional list of entity types for the rule (e.g. 'Email Address', 'Phone Number'). Applies to rules such as PII, PCI, and PHI.
+             */
+            entity_types?: string[] | null;
+            /**
+             * Rule Name
+             * @description The canonical Cisco AI Defense rule name to evaluate.
+             * @enum {string}
+             */
+            rule_name: "Code Detection" | "Harassment" | "Hate Speech" | "PCI" | "PHI" | "PII" | "Prompt Injection" | "Profanity" | "Sexual Content & Exploitation" | "Social Division & Polarization" | "Violence & Public Safety Threats";
         };
         /** CitationsObject */
         CitationsObject: {
@@ -24138,69 +25061,6 @@ export interface components {
             username?: string | null;
         } & {
             [key: string]: unknown;
-        };
-        /** CoordinationRedisSettingsField */
-        CoordinationRedisSettingsField: {
-            /** Field Default */
-            field_default?: unknown | null;
-            /** Field Description */
-            field_description: string;
-            /** Field Name */
-            field_name: string;
-            /** Field Type */
-            field_type: string;
-            /** Field Value */
-            field_value?: unknown | null;
-            /**
-             * Section
-             * @enum {string}
-             */
-            section: "connection" | "cluster" | "sentinel";
-            /** Ui Field Name */
-            ui_field_name: string;
-        };
-        /** CoordinationRedisSettingsRequest */
-        CoordinationRedisSettingsRequest: {
-            /**
-             * Settings
-             * @description Coordination Redis connection params
-             */
-            settings: {
-                [key: string]: unknown;
-            };
-        };
-        /** CoordinationRedisSettingsResponse */
-        CoordinationRedisSettingsResponse: {
-            /**
-             * Fields
-             * @description List of all configurable coordination Redis settings with metadata
-             */
-            fields: components["schemas"]["CoordinationRedisSettingsField"][];
-            /**
-             * Source
-             * @description Where the proxy's coordination Redis comes from; null when it has none
-             */
-            source: ("coordination_redis" | "cache_backend" | "environment") | null;
-            /**
-             * Values
-             * @description Current coordination Redis settings, with credentials redacted
-             */
-            values: {
-                [key: string]: unknown;
-            };
-        };
-        /** CoordinationRedisTestResponse */
-        CoordinationRedisTestResponse: {
-            /**
-             * Error
-             * @description Error message if the connection failed
-             */
-            error?: string | null;
-            /**
-             * Status
-             * @description Connection status: 'healthy' or 'unhealthy'
-             */
-            status: string;
         };
         /**
          * CostEstimateRequest
@@ -25454,6 +26314,8 @@ export interface components {
             images?: string[];
             /** Model */
             model?: string | null;
+            /** Stream Holdback Chars */
+            stream_holdback_chars?: number[];
             /** Structured Messages */
             structured_messages?: (components["schemas"]["ChatCompletionUserMessage"] | components["schemas"]["ChatCompletionAssistantMessage"] | components["schemas"]["ChatCompletionToolMessage"] | components["schemas"]["ChatCompletionSystemMessage"] | components["schemas"]["ChatCompletionFunctionMessage"] | components["schemas"]["ChatCompletionDeveloperMessage"])[];
             /** Texts */
@@ -25487,53 +26349,6 @@ export interface components {
             /** Starttime */
             startTime?: string | null;
         };
-        /**
-         * GraySwanGuardrailConfigModelOptionalParams
-         * @description Optional parameters for the Gray Swan guardrail.
-         */
-        GraySwanGuardrailConfigModelOptionalParams: {
-            /**
-             * Categories
-             * @description Default Gray Swan category definitions to send with each request.
-             */
-            categories?: {
-                [key: string]: string;
-            } | null;
-            /**
-             * Fail Open
-             * @description If true (default), errors contacting Gray Swan are logged and the request proceeds. If false, errors propagate and block the request.
-             * @default true
-             */
-            fail_open: boolean | null;
-            /**
-             * Guardrail Timeout
-             * @description Timeout in seconds for calling the Gray Swan guardrail service.
-             * @default 30
-             */
-            guardrail_timeout: number | null;
-            /**
-             * On Flagged Action
-             * @description Action when a violation is detected: 'block' rejects the call (400 error), 'monitor' logs only, 'passthrough' replaces response content with violation message (200 status).
-             * @default passthrough
-             */
-            on_flagged_action: string | null;
-            /**
-             * Policy Id
-             * @description Gray Swan policy identifier to apply during monitoring.
-             */
-            policy_id?: string | null;
-            /**
-             * Reasoning Mode
-             * @description Gray Swan reasoning mode override. Accepted values: 'off', 'hybrid', 'thinking'.
-             */
-            reasoning_mode?: string | null;
-            /**
-             * Violation Threshold
-             * @description Threshold between 0 and 1 at which Gray Swan violations trigger the configured action.
-             * @default 0.5
-             */
-            violation_threshold: number | null;
-        };
         /** Guardrail */
         Guardrail: {
             /** Created At */
@@ -25566,7 +26381,7 @@ export interface components {
             } | null;
             /** Guardrail Name */
             guardrail_name: string;
-            litellm_params?: components["schemas"]["BaseLitellmParams-Output"] | null;
+            litellm_params?: components["schemas"]["BaseLitellmParams"] | null;
             /** Updated At */
             updated_at?: string | null;
         };
@@ -25765,6 +26580,17 @@ export interface components {
             /** Index Name */
             index_name: string;
             litellm_params: components["schemas"]["IndexCreateLiteLLMParams"];
+        };
+        /** IndexListResponse */
+        IndexListResponse: {
+            /** Data */
+            data: components["schemas"]["LiteLLM_ManagedVectorStoreIndex"][];
+            /**
+             * Object
+             * @default list
+             * @constant
+             */
+            object: "list";
         };
         /** InputAudio */
         InputAudio: {
@@ -26550,8 +27376,10 @@ export interface components {
             approval_status: string | null;
             /** Args */
             args?: string[];
+            /** Audience */
+            audience?: string | null;
             /** Auth Type */
-            auth_type?: ("none" | "api_key" | "bearer_token" | "basic" | "authorization" | "oauth2" | "aws_sigv4" | "token") | null;
+            auth_type?: ("none" | "api_key" | "bearer_token" | "basic" | "authorization" | "oauth2" | "aws_sigv4" | "token" | "oauth2_token_exchange" | "oauth2_id_jag" | "true_passthrough" | "oauth_delegate") | null;
             /** Authorization Url */
             authorization_url?: string | null;
             /**
@@ -26565,17 +27393,28 @@ export interface components {
             byok_description?: string[];
             /** Command */
             command?: string | null;
+            /** Connected App Reachable */
+            connected_app_reachable?: boolean | null;
             /** Created At */
             created_at?: string | null;
             /** Created By */
             created_by?: string | null;
             credentials?: components["schemas"]["MCPCredentials"] | null;
+            /** Dcr Bridge */
+            dcr_bridge?: boolean | null;
+            /**
+             * Delegate Auth To Upstream
+             * @default false
+             */
+            delegate_auth_to_upstream: boolean;
             /** Description */
             description?: string | null;
             /** Env */
             env?: {
                 [key: string]: string;
             };
+            /** Env Vars */
+            env_vars?: components["schemas"]["MCPEnvVar"][] | null;
             /** Extra Headers */
             extra_headers?: string[];
             /** Has User Credential */
@@ -26589,14 +27428,25 @@ export interface components {
              * @default false
              */
             is_byok: boolean;
+            /** Issuer */
+            issuer?: string | null;
             /** Last Health Check */
             last_health_check?: string | null;
+            /** Max Concurrent Requests */
+            max_concurrent_requests?: number | null;
             /** Mcp Access Groups */
             mcp_access_groups?: string[];
             /** Mcp Info */
             mcp_info?: {
                 [key: string]: unknown;
             } | null;
+            /** Oauth2 Flow */
+            oauth2_flow?: ("client_credentials" | "authorization_code") | null;
+            /**
+             * Oauth Passthrough
+             * @default false
+             */
+            oauth_passthrough: boolean;
             /** Registration Url */
             registration_url?: string | null;
             /** Review Notes */
@@ -26621,6 +27471,8 @@ export interface components {
              * @default unknown
              */
             status: ("healthy" | "unhealthy" | "unknown") | null;
+            /** Subject Token Type */
+            subject_token_type?: string | null;
             /** Submitted At */
             submitted_at?: string | null;
             /** Submitted By */
@@ -26629,6 +27481,12 @@ export interface components {
             teams?: {
                 [key: string]: string | null;
             }[];
+            /** Timeout */
+            timeout?: number | null;
+            /** Token Exchange Endpoint */
+            token_exchange_endpoint?: string | null;
+            /** Token Exchange Profile */
+            token_exchange_profile?: string | null;
             /** Token Url */
             token_url?: string | null;
             /** Tool Name To Description */
@@ -26684,6 +27542,29 @@ export interface components {
             vector_store_name?: string | null;
         };
         /**
+         * LiteLLM_ManagedVectorStoreIndex
+         * @description LiteLLM managed vector store index object - this is is the object stored in the database
+         */
+        LiteLLM_ManagedVectorStoreIndex: {
+            /** Created At */
+            created_at?: string | null;
+            /** Created By */
+            created_by?: string | null;
+            /** Id */
+            id: string;
+            /** Index Info */
+            index_info?: {
+                [key: string]: unknown;
+            } | null;
+            /** Index Name */
+            index_name: string;
+            litellm_params: components["schemas"]["IndexCreateLiteLLMParams"];
+            /** Updated At */
+            updated_at?: string | null;
+            /** Updated By */
+            updated_by?: string | null;
+        };
+        /**
          * LiteLLM_ManagedVectorStoreListResponse
          * @description Response format for listing vector stores
          */
@@ -26705,31 +27586,31 @@ export interface components {
         /** LiteLLM_ManagedVectorStoresTable */
         LiteLLM_ManagedVectorStoresTable: {
             /** Created At */
-            created_at: string | null;
+            created_at?: string | null;
             /** Custom Llm Provider */
             custom_llm_provider: string;
             /** Litellm Credential Name */
-            litellm_credential_name: string | null;
+            litellm_credential_name?: string | null;
             /** Litellm Params */
-            litellm_params: {
+            litellm_params?: {
                 [key: string]: unknown;
             } | null;
             /** Team Id */
-            team_id: string | null;
+            team_id?: string | null;
             /** Updated At */
-            updated_at: string | null;
+            updated_at?: string | null;
             /** User Id */
-            user_id: string | null;
+            user_id?: string | null;
             /** Vector Store Description */
-            vector_store_description: string | null;
+            vector_store_description?: string | null;
             /** Vector Store Id */
             vector_store_id: string;
             /** Vector Store Metadata */
-            vector_store_metadata: {
+            vector_store_metadata?: {
                 [key: string]: unknown;
             } | null;
             /** Vector Store Name */
-            vector_store_name: string | null;
+            vector_store_name?: string | null;
         };
         /** LiteLLM_MemoryRow */
         LiteLLM_MemoryRow: {
@@ -27052,6 +27933,12 @@ export interface components {
             cache_read_input_token_cost_flex?: number | null;
             /** Cache Read Input Token Cost Priority */
             cache_read_input_token_cost_priority?: number | null;
+            /** Chatgpt Auth File */
+            chatgpt_auth_file?: string | null;
+            /** Chatgpt Auth Profile */
+            chatgpt_auth_profile?: string | null;
+            /** Chatgpt Token Dir */
+            chatgpt_token_dir?: string | null;
             /** Citation Cost Per Token */
             citation_cost_per_token?: number | null;
             /** Complexity Router Config */
@@ -27994,7 +28881,7 @@ export interface components {
             anonymize_input?: boolean | null;
             /**
              * Api Base
-             * @description Base URL for the Lakera AI API
+             * @description Regional base URL for the Cisco AI Defense Inspection API. Defaults to https://us.api.inspect.aidefense.security.cisco.com. Supported regions: us (us-west-2), ap (ap-ne-1), eu (eu-central-1). The environment variable `CISCO_AI_DEFENSE_API_BASE` is consulted as a fallback. The endpoint path is derived from inspection_type (/api/v1/inspect/chat for 'chat', /api/v1/inspect/mcp for 'mcp').
              */
             api_base?: string | null;
             /**
@@ -28009,7 +28896,7 @@ export interface components {
             api_id?: string | null;
             /**
              * Api Key
-             * @description API key for the Lakera AI service
+             * @description API key for the Cisco AI Defense inspection endpoint. If not provided, the `CISCO_AI_DEFENSE_API_KEY` environment variable is used. Sent in the `X-Cisco-AI-Defense-API-Key` header. Both the chat and MCP endpoints use this key.
              */
             api_key?: string | null;
             /**
@@ -28033,6 +28920,11 @@ export interface components {
              * @description Custom assertions to validate against the output. Each assertion is a string describing a condition.
              */
             assertions?: string[] | null;
+            /**
+             * Asset Id
+             * @description Repello asset ID whose dashboard policies are enforced. Required; the guardrail raises at init if it is missing.
+             */
+            asset_id?: string | null;
             /**
              * Async Mode
              * @description Set to True to request asynchronous analysis (sets `plr_async` header). Defaults to provider behaviour when omitted.
@@ -28142,6 +29034,14 @@ export interface components {
             categories?: components["schemas"]["ContentFilterCategoryConfig"][] | null;
             /** @description Threshold configuration for Lakera guardrail categories */
             category_thresholds?: components["schemas"]["LakeraCategoryThresholds"] | null;
+            /** @description Inline safeguards for the resource-less InvokeGuardrailChecks API (contentFilter / promptAttack / sensitiveInformation). When set, the guardrail calls InvokeGuardrailChecks instead of ApplyGuardrail and no guardrailIdentifier is required. Mutually exclusive with guardrailIdentifier. */
+            checks?: components["schemas"]["BedrockChecksConfigModel"] | null;
+            /**
+             * Chunk Budget Chars
+             * @description ApplyGuardrail: batch size, in characters, used to re-send content after AWS has rejected a request as too large. Requests AWS accepts are always sent in a single call, so this has no effect until a rejection happens. Defaults to 25,000; a batch AWS still rejects is bisected automatically, so this value only trades round trips against batch size and cannot fail a request on its own.
+             * @default 25000
+             */
+            chunk_budget_chars: number;
             /**
              * Confidence Threshold
              * @description Only block or mask when detection confidence >= this value; below threshold, allow or log_only.
@@ -28155,6 +29055,12 @@ export interface components {
             config?: {
                 [key: string]: unknown;
             } | null;
+            /**
+             * Content Filter Threshold
+             * @description InvokeGuardrailChecks: block when any contentFilter severityScore >= this value (scores are in [0,1]). Set to null to make the content filter detect-only (logged, never blocks).
+             * @default 0.5
+             */
+            content_filter_threshold: number | null;
             /**
              * Content Moderation Check
              * @description Enable content moderation to check for harmful content (harassment, hate speech, etc.).
@@ -28170,6 +29076,11 @@ export interface components {
              * @description Python-like code containing the apply_guardrail function for custom guardrail logic
              */
             custom_code?: string | null;
+            /**
+             * Deepkeep Firewall Id
+             * @description The DeepKeep Firewall ID to use for guardrail evaluation. If not provided, the `DEEPKEEP_FIREWALL_ID` environment variable is checked.
+             */
+            deepkeep_firewall_id?: string | null;
             /**
              * Default Action
              * @description Fallback decision when no rule matches
@@ -28247,7 +29158,7 @@ export interface components {
             extra_headers?: string[] | null;
             /**
              * Fail On Error
-             * @description Whether to fail the request if Model Armor encounters an error
+             * @description Whether to fail the request if the guardrail encounters an error. Implemented by guardrail='model_armor' and 'generic_guardrail_api'. True (default) raises the error. False logs a critical error and lets the request proceed, so only a valid guardrail response can block or modify it.
              * @default true
              */
             fail_on_error: boolean | null;
@@ -28366,7 +29277,7 @@ export interface components {
             mode: string | string[] | components["schemas"]["Mode"];
             /**
              * Model
-             * @description Optional field if guardrail requires a 'model' parameter
+             * @description Model name forwarded to the headroom /v1/compress endpoint.
              */
             model?: string | null;
             /**
@@ -28394,12 +29305,23 @@ export interface components {
              */
             on_flagged_action: string | null;
             /**
+             * On Sensitive Data
+             * @description Action to take when sensitive data is detected. 'block' raises an exception (default behavior). 'route' reroutes the request to the model specified in sensitive_data_route_to_model.
+             */
+            on_sensitive_data?: ("block" | "route") | null;
+            /**
              * On Violation
              * @description For /v1/realtime sessions: 'warn' speaks the violation message and continues; 'end_session' speaks the message and closes the connection.
              */
             on_violation?: ("warn" | "end_session") | null;
+            /**
+             * Only Scan New Messages
+             * @description When True, the guardrail only scans messages that have not already been scanned earlier in the same session (identified by litellm_session_id / session_id). Message content is hashed per session and cached; only the diff (new or edited messages) is sent to the guardrail provider on follow-up calls. Falls back to a full scan when the request has no session id or the cache is unavailable. Intended for blocking/detection guardrails; not applied when mask_request_content is set.
+             * @default false
+             */
+            only_scan_new_messages: boolean | null;
             /** @description Optional parameters for the guardrail */
-            optional_params?: components["schemas"]["GraySwanGuardrailConfigModelOptionalParams"] | null;
+            optional_params?: components["schemas"]["CiscoAIDefenseGuardrailConfigModelOptionalParams"] | null;
             /**
              * Output Parse Pii
              * @description When True, LiteLLM will replace the masked text with the original text in the response
@@ -28442,6 +29364,12 @@ export interface components {
              */
             pii_check?: boolean | null;
             /**
+             * Pii Confidence Threshold
+             * @description InvokeGuardrailChecks: block when any sensitiveInformation confidenceScore >= this value (scores are in [0,1]). Set to null to make PII detection detect-only.
+             * @default 0.5
+             */
+            pii_confidence_threshold: number | null;
+            /**
              * Pii Entities Config
              * @description Configuration for PII entity types and actions
              */
@@ -28463,6 +29391,16 @@ export interface components {
              * @description XecGuard policies to apply on each scan. Select one or more of the built-in default policies; if none are selected, the guardrail defaults to System Prompt Enforcement + Harmful Content Protection.
              */
             policy_names?: string[] | null;
+            /**
+             * Post Checkpoint Id
+             * @description Post-checkpoint ID for the Ovalix Tracker service.
+             */
+            post_checkpoint_id?: string | null;
+            /**
+             * Pre Checkpoint Id
+             * @description Pre-checkpoint ID for the Ovalix Tracker service.
+             */
+            pre_checkpoint_id?: string | null;
             /**
              * Presidio Ad Hoc Recognizers
              * @description Path to a JSON file containing ad-hoc recognizers for Presidio
@@ -28512,6 +29450,12 @@ export interface components {
              */
             project_id?: string | null;
             /**
+             * Prompt Attack Threshold
+             * @description InvokeGuardrailChecks: block when any promptAttack severityScore >= this value (scores are in [0,1]). Set to null to make prompt-attack detection detect-only.
+             * @default 0.5
+             */
+            prompt_attack_threshold: number | null;
+            /**
              * Prompt Injections
              * @description Enable prompt injection detection. Default check if no evaluation_id and no other checks are specified.
              */
@@ -28526,6 +29470,22 @@ export interface components {
              * @description Ordered allow/deny rules. Patterns use regex for tool names/types and optional regex constraints on tool arguments.
              */
             rules?: components["schemas"]["ToolPermissionRule"][] | null;
+            /**
+             * Run In Parallel
+             * @description When True, this pre_call or post_call guardrail runs concurrently with other opted-in guardrails of the same hook, after the sequential guardrails have run. Use only for block-only guardrails that inspect and reject; do not enable it for guardrails that modify the request or response (e.g. PII masking or sensitive-data routing), since parallel runs share one snapshot and their mutations would race.
+             */
+            run_in_parallel?: boolean | null;
+            /**
+             * Sanitize Error Detail
+             * @description For guardrail='model_armor': omit the raw Model Armor response from caller-facing errors and logs by default. Set False to restore verbose output.
+             * @default true
+             */
+            sanitize_error_detail: boolean | null;
+            /**
+             * Scan Only Tool Results
+             * @description When True, unified guardrails only evaluate tool results, the untrusted data an agent feeds back into the model, and skip system, user, and assistant content. Intended for agent harnesses whose own prompt scaffolding is trusted but often trips prompt-attack detectors.
+             */
+            scan_only_tool_results?: boolean | null;
             /**
              * Send User Api Key Alias
              * @description Whether to send user_API_key_alias in headers
@@ -28545,28 +29505,85 @@ export interface components {
              */
             send_user_api_key_user_id: boolean | null;
             /**
+             * Sensitive Data Route To Model
+             * @description Model to route requests to when sensitive data is detected and on_sensitive_data='route'. This is typically an on-premise model for data privacy. The routing decision persists for the entire session.
+             */
+            sensitive_data_route_to_model?: string | null;
+            /**
              * Severity Threshold
              * @description Minimum severity to block (high, medium, low)
              */
             severity_threshold?: string | null;
             /**
+             * Singulr Api Base
+             * @description The Singulr API base URL. Get base URL from Singulr Platform.
+             */
+            singulr_api_base?: string | null;
+            /**
+             * Singulr Api Key
+             * @description The Singulr API key. Generate API key from Singulr Platform.
+             */
+            singulr_api_key?: string | null;
+            /**
+             * Singulr Application Id
+             * @description The Singulr application ID. Get application ID from Singulr Platform.
+             */
+            singulr_application_id?: string | null;
+            /**
+             * Singulr Guardrail Id
+             * @description The Singulr Guardrail ID. Get guardrail ID from Singulr Platform.
+             */
+            singulr_guardrail_id?: string | null;
+            /**
              * Skip System Message In Guardrail
-             * @description When True, unified guardrails skip system-role messages when building evaluation inputs (texts and structured_messages). When False, system messages are included even if litellm_settings sets a global skip. When None, use the global litellm.skip_system_message_in_guardrail setting.
+             * @description When True, unified guardrails skip system-role messages when building evaluation inputs (texts and structured_messages). When False, system messages are included even if litellm_settings sets a global skip. When None, use the global litellm.skip_system_message_in_guardrail setting. For Anthropic /v1/messages, the flag applies only to the trusted top-level system prompt. In-sequence system entries are untrusted client input and remain in texts and structured_messages.
              */
             skip_system_message_in_guardrail?: boolean | null;
+            /**
+             * Skip Tool Message In Guardrail
+             * @description When True, unified guardrails skip tool-role messages when building evaluation inputs (texts and structured_messages). When False, tool messages are included even if litellm_settings sets a global skip. When None, use the global litellm.skip_tool_message_in_guardrail setting.
+             */
+            skip_tool_message_in_guardrail?: boolean | null;
+            /**
+             * Skip Unscannable Attachments
+             * @description Implemented by guardrail='model_armor'. When True, attachment references that carry no inline bytes (file_id, gs://, or http(s) URLs) pass through unscanned instead of blocking, while fail_on_error still governs real Model Armor API errors. Default False blocks them.
+             * @default false
+             */
+            skip_unscannable_attachments: boolean | null;
+            /**
+             * Sticky Session Routing
+             * @description When True (default), after sensitive data is detected and routed, all subsequent requests in the same session will continue routing to the same model.
+             * @default true
+             */
+            sticky_session_routing: boolean | null;
             /**
              * Template Id
              * @description The ID of your Model Armor template
              */
             template_id?: string | null;
             /**
+             * Timeout
+             * @description Per-request timeout for the guardrail provider API call (seconds). Accepts int, float, or numeric string; coerced to float on load. Each guardrail handler chooses its own default when unset.
+             */
+            timeout?: number | null;
+            /**
              * Tool Selection Quality Check
              * @description Enable tool selection quality check to evaluate quality of tool/function calls.
              */
             tool_selection_quality_check?: boolean | null;
             /**
+             * Tracker Api Base
+             * @description Base URL for the Ovalix Tracker service.
+             */
+            tracker_api_base?: string | null;
+            /**
+             * Tracker Api Key
+             * @description API key for the Ovalix Tracker service.
+             */
+            tracker_api_key?: string | null;
+            /**
              * Unreachable Fallback
-             * @description What to do when Akto is unreachable. 'fail_open' = allow, 'fail_closed' = block.
+             * @description Behavior when the headroom compression service is unreachable or errors. 'fail_closed' raises an error (default). 'fail_open' logs a critical error and forwards the request uncompressed instead of blocking it.
              * @default fail_closed
              * @enum {string}
              */
@@ -28637,6 +29654,8 @@ export interface components {
         };
         /** MCPCredentials */
         MCPCredentials: {
+            /** Audience */
+            audience?: string | null;
             /** Auth Value */
             auth_value?: string | null;
             /** Aws Access Key Id */
@@ -28653,13 +29672,68 @@ export interface components {
             aws_session_name?: string | null;
             /** Aws Session Token */
             aws_session_token?: string | null;
+            /** Client Assertion Signing Alg */
+            client_assertion_signing_alg?: string | null;
             /** Client Id */
             client_id?: string | null;
+            /** Client Private Key */
+            client_private_key?: string | null;
+            /** Client Private Key Id */
+            client_private_key_id?: string | null;
             /** Client Secret */
             client_secret?: string | null;
+            /** Id Jag Resource */
+            id_jag_resource?: string | null;
+            /** Id Jag Resource Token Endpoint */
+            id_jag_resource_token_endpoint?: string | null;
+            /** Redirect Uris */
+            redirect_uris?: string[] | null;
             /** Scopes */
             scopes?: string[] | null;
+            /** Subject Token Type */
+            subject_token_type?: string | null;
+            /** Token Endpoint Auth Method */
+            token_endpoint_auth_method?: ("client_secret_basic" | "client_secret_post") | null;
+            /** Token Exchange Endpoint */
+            token_exchange_endpoint?: string | null;
+            /** Token Exchange Profile */
+            token_exchange_profile?: string | null;
+            /** Upstream Resource */
+            upstream_resource?: string | null;
         };
+        /**
+         * MCPEnvVar
+         * @description One environment variable for an MCP server.
+         *
+         *     Variables can be interpolated into ``static_headers`` using ``${NAME}``
+         *     syntax. ``scope=global`` values are stored on the server. ``scope=user``
+         *     values are stored per-user in ``LiteLLM_MCPUserEnvVars`` and supplied by
+         *     each user.
+         */
+        MCPEnvVar: {
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name: string;
+            /** @default global */
+            scope: components["schemas"]["MCPEnvVarScope"];
+            /**
+             * Value
+             * @default
+             */
+            value: string;
+        };
+        /**
+         * MCPEnvVarScope
+         * @description Scope for an MCP server environment variable.
+         *
+         *     - ``global``: value is provided by the admin and used for all users.
+         *     - ``user``: each user must provide their own value via the per-user
+         *       env-var endpoint. The admin-supplied ``value`` is treated as a
+         *       placeholder/hint and is not used at request time.
+         * @enum {string}
+         */
+        MCPEnvVarScope: "global" | "user";
         /**
          * MCPOAuthUserCredentialRequest
          * @description Stores a user's OAuth2 token for an OpenAPI MCP server.
@@ -28820,6 +29894,55 @@ export interface components {
             has_credential: boolean;
             /** Server Id */
             server_id: string;
+        };
+        /**
+         * MCPUserEnvVarSpec
+         * @description Describes one per-user env var slot for the calling user.
+         *
+         *     Stored values are write-only: the status only reports whether a value
+         *     ``is_set`` and never echoes the decrypted secret back to the client.
+         */
+        MCPUserEnvVarSpec: {
+            /** Description */
+            description?: string | null;
+            /**
+             * Is Set
+             * @default false
+             */
+            is_set: boolean;
+            /** Name */
+            name: string;
+        };
+        /**
+         * MCPUserEnvVarsRequest
+         * @description Payload for storing the calling user's per-user env var values.
+         */
+        MCPUserEnvVarsRequest: {
+            /** Values */
+            values: {
+                [key: string]: string;
+            };
+        };
+        /**
+         * MCPUserEnvVarsStatus
+         * @description Per-user env var status for a single MCP server.
+         */
+        MCPUserEnvVarsStatus: {
+            /** Alias */
+            alias?: string | null;
+            /**
+             * Missing Count
+             * @default 0
+             */
+            missing_count: number;
+            /** Required */
+            required?: components["schemas"]["MCPUserEnvVarSpec"][];
+            /** Server Id */
+            server_id: string;
+            /** Server Name */
+            server_name?: string | null;
+            /** Setup Url */
+            setup_url?: string | null;
         };
         /** MakeAgentsPublicRequest */
         MakeAgentsPublicRequest: {
@@ -29167,8 +30290,10 @@ export interface components {
             approval_status?: string | null;
             /** Args */
             args?: string[];
+            /** Audience */
+            audience?: string | null;
             /** Auth Type */
-            auth_type?: ("none" | "api_key" | "bearer_token" | "basic" | "authorization" | "oauth2" | "aws_sigv4" | "token") | null;
+            auth_type?: ("none" | "api_key" | "bearer_token" | "basic" | "authorization" | "oauth2" | "aws_sigv4" | "token" | "oauth2_token_exchange" | "oauth2_id_jag" | "true_passthrough" | "oauth_delegate") | null;
             /** Authorization Url */
             authorization_url?: string | null;
             /**
@@ -29183,12 +30308,21 @@ export interface components {
             /** Command */
             command?: string | null;
             credentials?: components["schemas"]["MCPCredentials"] | null;
+            /** Dcr Bridge */
+            dcr_bridge?: boolean | null;
+            /**
+             * Delegate Auth To Upstream
+             * @default false
+             */
+            delegate_auth_to_upstream: boolean;
             /** Description */
             description?: string | null;
             /** Env */
             env?: {
                 [key: string]: string;
             };
+            /** Env Vars */
+            env_vars?: components["schemas"]["MCPEnvVar"][] | null;
             /** Extra Headers */
             extra_headers?: string[] | null;
             /** Instructions */
@@ -29198,6 +30332,10 @@ export interface components {
              * @default false
              */
             is_byok: boolean;
+            /** Issuer */
+            issuer?: string | null;
+            /** Max Concurrent Requests */
+            max_concurrent_requests?: number | null;
             /** Mcp Access Groups */
             mcp_access_groups?: string[];
             /** Mcp Info */
@@ -29206,6 +30344,11 @@ export interface components {
             } | null;
             /** Oauth2 Flow */
             oauth2_flow?: ("client_credentials" | "authorization_code") | null;
+            /**
+             * Oauth Passthrough
+             * @default false
+             */
+            oauth_passthrough: boolean;
             /** Registration Url */
             registration_url?: string | null;
             /** Server Id */
@@ -29220,6 +30363,8 @@ export interface components {
             static_headers?: {
                 [key: string]: string;
             } | null;
+            /** Subject Token Type */
+            subject_token_type?: string | null;
             /**
              * Submitted At
              * @description Server-managed: set by the endpoint; caller values are overridden.
@@ -29230,6 +30375,12 @@ export interface components {
              * @description Server-managed: set by the endpoint; caller values are overridden.
              */
             submitted_by?: string | null;
+            /** Timeout */
+            timeout?: number | null;
+            /** Token Exchange Endpoint */
+            token_exchange_endpoint?: string | null;
+            /** Token Exchange Profile */
+            token_exchange_profile?: string | null;
             /** Token Url */
             token_url?: string | null;
             /** Tool Name To Description */
@@ -30265,7 +31416,7 @@ export interface components {
             } | null;
             /** Guardrail Name */
             guardrail_name?: string | null;
-            litellm_params?: components["schemas"]["BaseLitellmParams-Input"] | null;
+            litellm_params?: components["schemas"]["BaseLitellmParams"] | null;
         };
         /** PatchPromptRequest */
         PatchPromptRequest: {
@@ -30447,7 +31598,7 @@ export interface components {
          * PiiEntityType
          * @enum {string}
          */
-        PiiEntityType: "CREDIT_CARD" | "CRYPTO" | "DATE_TIME" | "EMAIL_ADDRESS" | "IBAN_CODE" | "IP_ADDRESS" | "NRP" | "LOCATION" | "PERSON" | "PHONE_NUMBER" | "MEDICAL_LICENSE" | "URL" | "US_BANK_NUMBER" | "US_DRIVER_LICENSE" | "US_ITIN" | "US_PASSPORT" | "US_SSN" | "UK_NHS" | "UK_NINO" | "ES_NIF" | "ES_NIE" | "IT_FISCAL_CODE" | "IT_DRIVER_LICENSE" | "IT_VAT_CODE" | "IT_PASSPORT" | "IT_IDENTITY_CARD" | "PL_PESEL" | "SG_NRIC_FIN" | "SG_UEN" | "AU_ABN" | "AU_ACN" | "AU_TFN" | "AU_MEDICARE" | "IN_PAN" | "IN_AADHAAR" | "IN_VEHICLE_REGISTRATION" | "IN_VOTER" | "IN_PASSPORT" | "FI_PERSONAL_IDENTITY_CODE";
+        PiiEntityType: "CREDIT_CARD" | "CRYPTO" | "DATE_TIME" | "EMAIL_ADDRESS" | "IBAN_CODE" | "IP_ADDRESS" | "NRP" | "LOCATION" | "PERSON" | "PHONE_NUMBER" | "MEDICAL_LICENSE" | "URL" | "US_BANK_NUMBER" | "US_DRIVER_LICENSE" | "US_ITIN" | "US_PASSPORT" | "US_SSN" | "UK_NHS" | "UK_NINO" | "UK_PASSPORT" | "UK_POSTCODE" | "UK_VEHICLE_REGISTRATION" | "ES_NIF" | "ES_NIE" | "IT_FISCAL_CODE" | "IT_DRIVER_LICENSE" | "IT_VAT_CODE" | "IT_PASSPORT" | "IT_IDENTITY_CARD" | "PL_PESEL" | "SG_NRIC_FIN" | "SG_UEN" | "AU_ABN" | "AU_ACN" | "AU_TFN" | "AU_MEDICARE" | "IN_PAN" | "IN_AADHAAR" | "IN_VEHICLE_REGISTRATION" | "IN_VOTER" | "IN_PASSPORT" | "FI_PERSONAL_IDENTITY_CODE";
         /**
          * PipelineTestRequest
          * @description Request body for testing a guardrail pipeline with sample messages.
@@ -31608,6 +32759,21 @@ export interface components {
             /** Value */
             value: string;
         };
+        /**
+         * RealtimeTranscriptionSessionResponse
+         * @description Response from POST /v1/realtime/transcription_sessions.
+         *
+         *     `client_secret.value` contains the encrypted token instead of the raw
+         *     ephemeral key. Unknown fields pass through unchanged.
+         */
+        RealtimeTranscriptionSessionResponse: {
+            /** Client Secret */
+            client_secret?: {
+                [key: string]: unknown;
+            } | null;
+        } & {
+            [key: string]: unknown;
+        };
         /** RegenerateKeyRequest */
         RegenerateKeyRequest: {
             /** Access Group Ids */
@@ -32323,6 +33489,20 @@ export interface components {
             /** Run Id */
             run_id: string;
         };
+        /** SCIMEnterpriseUser */
+        SCIMEnterpriseUser: {
+            /** Costcenter */
+            costCenter?: string | null;
+            /** Department */
+            department?: string | null;
+            /** Division */
+            division?: string | null;
+            /** Employeenumber */
+            employeeNumber?: string | null;
+            manager?: components["schemas"]["SCIMUserManager"] | null;
+            /** Organization */
+            organization?: string | null;
+        };
         /** SCIMFeature */
         SCIMFeature: {
             /** Maxoperations */
@@ -32354,7 +33534,7 @@ export interface components {
         /** SCIMListResponse */
         SCIMListResponse: {
             /** Resources */
-            Resources: components["schemas"]["SCIMUser"][] | components["schemas"]["SCIMGroup"][];
+            Resources: components["schemas"]["SCIMUser-Output"][] | components["schemas"]["SCIMGroup"][];
             /**
              * Itemsperpage
              * @default 10
@@ -32379,6 +33559,19 @@ export interface components {
         SCIMMember: {
             /** Display */
             display?: string | null;
+            /** Type */
+            type?: string | null;
+            /** Value */
+            value: string;
+        };
+        /** SCIMMultiValuedAttribute */
+        SCIMMultiValuedAttribute: {
+            /** Display */
+            display?: string | null;
+            /** Primary */
+            primary?: boolean | null;
+            /** Type */
+            type?: string | null;
             /** Value */
             value: string;
         };
@@ -32458,7 +33651,7 @@ export interface components {
             sort: components["schemas"]["SCIMFeature"];
         };
         /** SCIMUser */
-        SCIMUser: {
+        "SCIMUser-Input": {
             /**
              * Active
              * @default true
@@ -32468,6 +33661,8 @@ export interface components {
             displayName?: string | null;
             /** Emails */
             emails?: components["schemas"]["SCIMUserEmail"][] | null;
+            /** Entitlements */
+            entitlements?: components["schemas"]["SCIMMultiValuedAttribute"][] | null;
             /** Externalid */
             externalId?: string | null;
             /** Groups */
@@ -32479,10 +33674,16 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             name?: components["schemas"]["SCIMUserName"] | null;
+            /** Roles */
+            roles?: components["schemas"]["SCIMMultiValuedAttribute"][] | null;
             /** Schemas */
             schemas: string[];
+            "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"?: components["schemas"]["SCIMEnterpriseUser"] | null;
             /** Username */
             userName?: string | null;
+        };
+        "SCIMUser-Output": {
+            [key: string]: unknown;
         };
         /** SCIMUserEmail */
         SCIMUserEmail: {
@@ -32507,6 +33708,15 @@ export interface components {
             type: string | null;
             /** Value */
             value: string;
+        };
+        /** SCIMUserManager */
+        SCIMUserManager: {
+            /** $Ref */
+            $ref?: string | null;
+            /** Displayname */
+            displayName?: string | null;
+            /** Value */
+            value?: string | null;
         };
         /** SCIMUserName */
         SCIMUserName: {
@@ -34363,8 +35573,10 @@ export interface components {
             allowed_tools?: string[] | null;
             /** Args */
             args?: string[];
+            /** Audience */
+            audience?: string | null;
             /** Auth Type */
-            auth_type?: ("none" | "api_key" | "bearer_token" | "basic" | "authorization" | "oauth2" | "aws_sigv4" | "token") | null;
+            auth_type?: ("none" | "api_key" | "bearer_token" | "basic" | "authorization" | "oauth2" | "aws_sigv4" | "token" | "oauth2_token_exchange" | "oauth2_id_jag" | "true_passthrough" | "oauth_delegate") | null;
             /** Authorization Url */
             authorization_url?: string | null;
             /**
@@ -34379,12 +35591,21 @@ export interface components {
             /** Command */
             command?: string | null;
             credentials?: components["schemas"]["MCPCredentials"] | null;
+            /** Dcr Bridge */
+            dcr_bridge?: boolean | null;
+            /**
+             * Delegate Auth To Upstream
+             * @default false
+             */
+            delegate_auth_to_upstream: boolean;
             /** Description */
             description?: string | null;
             /** Env */
             env?: {
                 [key: string]: string;
             };
+            /** Env Vars */
+            env_vars?: components["schemas"]["MCPEnvVar"][] | null;
             /** Extra Headers */
             extra_headers?: string[] | null;
             /** Instructions */
@@ -34394,12 +35615,23 @@ export interface components {
              * @default false
              */
             is_byok: boolean;
+            /** Issuer */
+            issuer?: string | null;
+            /** Max Concurrent Requests */
+            max_concurrent_requests?: number | null;
             /** Mcp Access Groups */
             mcp_access_groups?: string[];
             /** Mcp Info */
             mcp_info?: {
                 [key: string]: unknown;
             } | null;
+            /** Oauth2 Flow */
+            oauth2_flow?: ("client_credentials" | "authorization_code") | null;
+            /**
+             * Oauth Passthrough
+             * @default false
+             */
+            oauth_passthrough: boolean;
             /** Registration Url */
             registration_url?: string | null;
             /** Server Id */
@@ -34414,6 +35646,14 @@ export interface components {
             static_headers?: {
                 [key: string]: string;
             } | null;
+            /** Subject Token Type */
+            subject_token_type?: string | null;
+            /** Timeout */
+            timeout?: number | null;
+            /** Token Exchange Endpoint */
+            token_exchange_endpoint?: string | null;
+            /** Token Exchange Profile */
+            token_exchange_profile?: string | null;
             /** Token Url */
             token_url?: string | null;
             /** Tool Name To Description */
@@ -35029,9 +36269,7 @@ export interface components {
             /** Status */
             status: string;
             /** Time Series */
-            time_series: {
-                [key: string]: unknown;
-            }[];
+            time_series: components["schemas"]["UsageChartPoint"][];
             /** Trend */
             trend: string;
             /** Type */
@@ -35072,9 +36310,7 @@ export interface components {
         /** UsageOverviewResponse */
         UsageOverviewResponse: {
             /** Chart */
-            chart: {
-                [key: string]: unknown;
-            }[];
+            chart: components["schemas"]["UsageChartPoint"][];
             /** Passrate */
             passRate: number;
             /** Rows */
@@ -35965,6 +37201,12 @@ export interface components {
             cache_read_input_token_cost_flex?: number | null;
             /** Cache Read Input Token Cost Priority */
             cache_read_input_token_cost_priority?: number | null;
+            /** Chatgpt Auth File */
+            chatgpt_auth_file?: string | null;
+            /** Chatgpt Auth Profile */
+            chatgpt_auth_profile?: string | null;
+            /** Chatgpt Token Dir */
+            chatgpt_token_dir?: string | null;
             /** Citation Cost Per Token */
             citation_cost_per_token?: number | null;
             /** Complexity Router Config */
@@ -36234,6 +37476,26 @@ export interface operations {
             };
         };
     };
+    jwks_json__well_known_jwks_json_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     get_ui_config__well_known_litellm_ui_config_get: {
         parameters: {
             query?: never;
@@ -36250,6 +37512,283 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UiDiscoveryEndpoints"];
+                };
+            };
+        };
+    };
+    oauth_authorization_server_mcp__well_known_oauth_authorization_server_get: {
+        parameters: {
+            query?: {
+                mcp_server_name?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    oauth_authorization_server_aggregate__well_known_oauth_authorization_server_mcp_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    oauth_authorization_server_mcp_standard__well_known_oauth_authorization_server_mcp__mcp_server_name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    oauth_authorization_server_mcp__well_known_oauth_authorization_server__mcp_server_name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_name: string | null;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    oauth_authorization_server_legacy__well_known_oauth_authorization_server__mcp_server_name__mcp_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    oauth_protected_resource_mcp__well_known_oauth_protected_resource_get: {
+        parameters: {
+            query?: {
+                mcp_server_name?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    oauth_protected_resource_aggregate__well_known_oauth_protected_resource_mcp_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    oauth_protected_resource_mcp_standard__well_known_oauth_protected_resource_mcp__mcp_server_name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    oauth_protected_resource_mcp__well_known_oauth_protected_resource__mcp_server_name__mcp_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_name: string | null;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    openid_configuration__well_known_openid_configuration_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };
@@ -36659,7 +38198,7 @@ export interface operations {
             };
         };
     };
-    anthropic_proxy_route_anthropic__endpoint__get: {
+    anthropic_proxy_route_anthropic__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -36690,7 +38229,7 @@ export interface operations {
             };
         };
     };
-    anthropic_proxy_route_anthropic__endpoint__put: {
+    anthropic_proxy_route_anthropic__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -36721,7 +38260,7 @@ export interface operations {
             };
         };
     };
-    anthropic_proxy_route_anthropic__endpoint__post: {
+    anthropic_proxy_route_anthropic__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -36752,7 +38291,7 @@ export interface operations {
             };
         };
     };
-    anthropic_proxy_route_anthropic__endpoint__delete: {
+    anthropic_proxy_route_anthropic__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -36783,7 +38322,7 @@ export interface operations {
             };
         };
     };
-    anthropic_proxy_route_anthropic__endpoint__patch: {
+    anthropic_proxy_route_anthropic__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -36922,7 +38461,7 @@ export interface operations {
             };
         };
     };
-    assemblyai_proxy_route_assemblyai__endpoint__get: {
+    assemblyai_proxy_route_assemblyai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -36953,7 +38492,7 @@ export interface operations {
             };
         };
     };
-    assemblyai_proxy_route_assemblyai__endpoint__put: {
+    assemblyai_proxy_route_assemblyai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -36984,7 +38523,7 @@ export interface operations {
             };
         };
     };
-    assemblyai_proxy_route_assemblyai__endpoint__post: {
+    assemblyai_proxy_route_assemblyai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -37015,7 +38554,7 @@ export interface operations {
             };
         };
     };
-    assemblyai_proxy_route_assemblyai__endpoint__delete: {
+    assemblyai_proxy_route_assemblyai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -37046,7 +38585,7 @@ export interface operations {
             };
         };
     };
-    assemblyai_proxy_route_assemblyai__endpoint__patch: {
+    assemblyai_proxy_route_assemblyai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -37300,6 +38839,78 @@ export interface operations {
             };
         };
     };
+    authorize_authorize_get: {
+        parameters: {
+            query: {
+                redirect_uri: string;
+                client_id?: string | null;
+                state?: string;
+                mcp_server_name?: string | null;
+                code_challenge?: string | null;
+                code_challenge_method?: string | null;
+                response_type?: string | null;
+                scope?: string | null;
+                resource?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    authorize_complete_authorize_complete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": components["schemas"]["Body_authorize_complete_authorize_complete_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_auto_router_benchmarks_auto_router_benchmarks_get: {
         parameters: {
             query?: {
@@ -37529,7 +39140,7 @@ export interface operations {
             };
         };
     };
-    azure_proxy_route_azure__endpoint__get: {
+    azure_proxy_route_azure__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -37560,7 +39171,7 @@ export interface operations {
             };
         };
     };
-    azure_proxy_route_azure__endpoint__put: {
+    azure_proxy_route_azure__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -37591,7 +39202,7 @@ export interface operations {
             };
         };
     };
-    azure_proxy_route_azure__endpoint__post: {
+    azure_proxy_route_azure__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -37622,7 +39233,7 @@ export interface operations {
             };
         };
     };
-    azure_proxy_route_azure__endpoint__delete: {
+    azure_proxy_route_azure__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -37653,7 +39264,7 @@ export interface operations {
             };
         };
     };
-    azure_proxy_route_azure__endpoint__patch: {
+    azure_proxy_route_azure__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -37684,7 +39295,7 @@ export interface operations {
             };
         };
     };
-    azure_proxy_route_azure_ai__endpoint__get: {
+    azure_proxy_route_azure_ai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -37715,7 +39326,7 @@ export interface operations {
             };
         };
     };
-    azure_proxy_route_azure_ai__endpoint__put: {
+    azure_proxy_route_azure_ai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -37746,7 +39357,7 @@ export interface operations {
             };
         };
     };
-    azure_proxy_route_azure_ai__endpoint__post: {
+    azure_proxy_route_azure_ai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -37777,7 +39388,7 @@ export interface operations {
             };
         };
     };
-    azure_proxy_route_azure_ai__endpoint__delete: {
+    azure_proxy_route_azure_ai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -37808,7 +39419,7 @@ export interface operations {
             };
         };
     };
-    azure_proxy_route_azure_ai__endpoint__patch: {
+    azure_proxy_route_azure_ai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -37971,7 +39582,7 @@ export interface operations {
             };
         };
     };
-    bedrock_proxy_route_bedrock__endpoint__get: {
+    bedrock_proxy_route_bedrock__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -38002,7 +39613,7 @@ export interface operations {
             };
         };
     };
-    bedrock_proxy_route_bedrock__endpoint__put: {
+    bedrock_proxy_route_bedrock__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -38033,7 +39644,7 @@ export interface operations {
             };
         };
     };
-    bedrock_proxy_route_bedrock__endpoint__post: {
+    bedrock_proxy_route_bedrock__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -38064,7 +39675,7 @@ export interface operations {
             };
         };
     };
-    bedrock_proxy_route_bedrock__endpoint__delete: {
+    bedrock_proxy_route_bedrock__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -38095,7 +39706,7 @@ export interface operations {
             };
         };
     };
-    bedrock_proxy_route_bedrock__endpoint__patch: {
+    bedrock_proxy_route_bedrock__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -38465,6 +40076,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CacheTestResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    callback_callback_get: {
+        parameters: {
+            query?: {
+                code?: string | null;
+                state?: string | null;
+                error?: string | null;
+                error_description?: string | null;
+                error_uri?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -39132,7 +40778,7 @@ export interface operations {
             };
         };
     };
-    cohere_proxy_route_cohere__endpoint__get: {
+    cohere_proxy_route_cohere__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -39163,7 +40809,7 @@ export interface operations {
             };
         };
     };
-    cohere_proxy_route_cohere__endpoint__put: {
+    cohere_proxy_route_cohere__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -39194,7 +40840,7 @@ export interface operations {
             };
         };
     };
-    cohere_proxy_route_cohere__endpoint__post: {
+    cohere_proxy_route_cohere__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -39225,7 +40871,7 @@ export interface operations {
             };
         };
     };
-    cohere_proxy_route_cohere__endpoint__delete: {
+    cohere_proxy_route_cohere__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -39256,7 +40902,7 @@ export interface operations {
             };
         };
     };
-    cohere_proxy_route_cohere__endpoint__patch: {
+    cohere_proxy_route_cohere__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -39910,7 +41556,10 @@ export interface operations {
     update_hashicorp_vault_config_config_overrides_hashicorp_vault_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The litellm-changed-by header enables tracking of actions performed by authorized users on behalf of other users, providing an audit trail for accountability */
+                "litellm-changed-by"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -39943,7 +41592,10 @@ export interface operations {
     delete_hashicorp_vault_config_config_overrides_hashicorp_vault_delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description The litellm-changed-by header enables tracking of actions performed by authorized users on behalf of other users, providing an audit trail for accountability */
+                "litellm-changed-by"?: string | null;
+            };
             path?: never;
             cookie?: never;
         };
@@ -39956,6 +41608,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -40227,97 +41888,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_coordination_redis_settings_coordination_redis_settings_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CoordinationRedisSettingsResponse"];
-                };
-            };
-        };
-    };
-    update_coordination_redis_settings_coordination_redis_settings_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                /** @description The litellm-changed-by header enables tracking of actions performed by authorized users on behalf of other users, providing an audit trail for accountability */
-                "litellm-changed-by"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CoordinationRedisSettingsRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    check_coordination_redis_connection_coordination_redis_settings_test_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CoordinationRedisSettingsRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CoordinationRedisTestResponse"];
                 };
             };
             /** @description Validation Error */
@@ -40661,7 +42231,7 @@ export interface operations {
             };
         };
     };
-    cursor_proxy_route_cursor__endpoint__get: {
+    cursor_proxy_route_cursor__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -40692,7 +42262,7 @@ export interface operations {
             };
         };
     };
-    cursor_proxy_route_cursor__endpoint__put: {
+    cursor_proxy_route_cursor__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -40723,7 +42293,7 @@ export interface operations {
             };
         };
     };
-    cursor_proxy_route_cursor__endpoint__post: {
+    cursor_proxy_route_cursor__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -40754,7 +42324,7 @@ export interface operations {
             };
         };
     };
-    cursor_proxy_route_cursor__endpoint__delete: {
+    cursor_proxy_route_cursor__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -40785,7 +42355,7 @@ export interface operations {
             };
         };
     };
-    cursor_proxy_route_cursor__endpoint__patch: {
+    cursor_proxy_route_cursor__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -41982,7 +43552,7 @@ export interface operations {
             };
         };
     };
-    assemblyai_proxy_route_eu_assemblyai__endpoint__get: {
+    assemblyai_proxy_route_eu_assemblyai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -42013,7 +43583,7 @@ export interface operations {
             };
         };
     };
-    assemblyai_proxy_route_eu_assemblyai__endpoint__put: {
+    assemblyai_proxy_route_eu_assemblyai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -42044,7 +43614,7 @@ export interface operations {
             };
         };
     };
-    assemblyai_proxy_route_eu_assemblyai__endpoint__post: {
+    assemblyai_proxy_route_eu_assemblyai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -42075,7 +43645,7 @@ export interface operations {
             };
         };
     };
-    assemblyai_proxy_route_eu_assemblyai__endpoint__delete: {
+    assemblyai_proxy_route_eu_assemblyai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -42106,7 +43676,7 @@ export interface operations {
             };
         };
     };
-    assemblyai_proxy_route_eu_assemblyai__endpoint__patch: {
+    assemblyai_proxy_route_eu_assemblyai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -42589,7 +44159,7 @@ export interface operations {
             };
         };
     };
-    gemini_proxy_route_gemini__endpoint__get: {
+    gemini_proxy_route_gemini__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -42620,7 +44190,7 @@ export interface operations {
             };
         };
     };
-    gemini_proxy_route_gemini__endpoint__put: {
+    gemini_proxy_route_gemini__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -42651,7 +44221,7 @@ export interface operations {
             };
         };
     };
-    gemini_proxy_route_gemini__endpoint__post: {
+    gemini_proxy_route_gemini__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -42682,7 +44252,7 @@ export interface operations {
             };
         };
     };
-    gemini_proxy_route_gemini__endpoint__delete: {
+    gemini_proxy_route_gemini__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -42713,7 +44283,7 @@ export interface operations {
             };
         };
     };
-    gemini_proxy_route_gemini__endpoint__patch: {
+    gemini_proxy_route_gemini__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -45613,7 +47183,7 @@ export interface operations {
             };
         };
     };
-    langfuse_proxy_route_langfuse__endpoint__get: {
+    langfuse_proxy_route_langfuse__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -45644,7 +47214,7 @@ export interface operations {
             };
         };
     };
-    langfuse_proxy_route_langfuse__endpoint__put: {
+    langfuse_proxy_route_langfuse__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -45675,7 +47245,7 @@ export interface operations {
             };
         };
     };
-    langfuse_proxy_route_langfuse__endpoint__post: {
+    langfuse_proxy_route_langfuse__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -45706,7 +47276,7 @@ export interface operations {
             };
         };
     };
-    langfuse_proxy_route_langfuse__endpoint__delete: {
+    langfuse_proxy_route_langfuse__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -45737,7 +47307,7 @@ export interface operations {
             };
         };
     };
-    langfuse_proxy_route_langfuse__endpoint__patch: {
+    langfuse_proxy_route_langfuse__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -45768,12 +47338,695 @@ export interface operations {
             };
         };
     };
-    warm_lazy_warm__name__post: {
+    root_lazymcp_route_lazymcp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    dynamic_lazymcp_route_lazymcp__mcp_server_name_: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                name: string;
+                mcp_server_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dynamic_lazymcp_route_lazymcp__mcp_server_name_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dynamic_lazymcp_route_lazymcp__mcp_server_name_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dynamic_lazymcp_route_lazymcp__mcp_server_name_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dynamic_lazymcp_route_lazymcp__mcp_server_name_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dynamic_lazymcp_route_lazymcp__mcp_server_name_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dynamic_lazymcp_route_lazymcp__mcp_server_name_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dynamic_lazymcp_route_lazymcp__mcp_server_name__: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dynamic_lazymcp_route_lazymcp__mcp_server_name__: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dynamic_lazymcp_route_lazymcp__mcp_server_name__: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dynamic_lazymcp_route_lazymcp__mcp_server_name__: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dynamic_lazymcp_route_lazymcp__mcp_server_name__: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dynamic_lazymcp_route_lazymcp__mcp_server_name__: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dynamic_lazymcp_route_lazymcp__mcp_server_name__: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_name: string;
             };
             cookie?: never;
         };
@@ -45899,7 +48152,7 @@ export interface operations {
             };
         };
     };
-    aggregate_mcp_route_mcp_get: {
+    aggregate_mcp_route_mcp: {
         parameters: {
             query?: never;
             header?: never;
@@ -45919,7 +48172,7 @@ export interface operations {
             };
         };
     };
-    aggregate_mcp_route_mcp_put: {
+    aggregate_mcp_route_mcp: {
         parameters: {
             query?: never;
             header?: never;
@@ -45939,7 +48192,7 @@ export interface operations {
             };
         };
     };
-    aggregate_mcp_route_mcp_post: {
+    aggregate_mcp_route_mcp: {
         parameters: {
             query?: never;
             header?: never;
@@ -45959,7 +48212,7 @@ export interface operations {
             };
         };
     };
-    aggregate_mcp_route_mcp_delete: {
+    aggregate_mcp_route_mcp: {
         parameters: {
             query?: never;
             header?: never;
@@ -45979,7 +48232,7 @@ export interface operations {
             };
         };
     };
-    aggregate_mcp_route_mcp_options: {
+    aggregate_mcp_route_mcp: {
         parameters: {
             query?: never;
             header?: never;
@@ -45999,7 +48252,7 @@ export interface operations {
             };
         };
     };
-    aggregate_mcp_route_mcp_head: {
+    aggregate_mcp_route_mcp: {
         parameters: {
             query?: never;
             header?: never;
@@ -46019,7 +48272,7 @@ export interface operations {
             };
         };
     };
-    aggregate_mcp_route_mcp_patch: {
+    aggregate_mcp_route_mcp: {
         parameters: {
             query?: never;
             header?: never;
@@ -46130,6 +48383,12 @@ export interface operations {
             query?: {
                 /** @description The server id to list tools for */
                 server_id?: string | null;
+                /** @description Filter tools to a single MCP server by name or alias */
+                mcp_server_name?: string | null;
+                /** @description Filter tools to a single toolset by name */
+                toolset_name?: string | null;
+                /** @description Admin only. Return the full server tool catalog without the allowed_tools filter or per-key tool permissions, so the MCP settings UI can configure the allowlist. Ignored for non-admins. */
+                include_disabled_tools?: boolean;
             };
             header?: never;
             path?: never;
@@ -46199,7 +48458,7 @@ export interface operations {
             };
         };
     };
-    milvus_proxy_route_milvus__endpoint__get: {
+    milvus_proxy_route_milvus__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -46230,7 +48489,7 @@ export interface operations {
             };
         };
     };
-    milvus_proxy_route_milvus__endpoint__put: {
+    milvus_proxy_route_milvus__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -46261,7 +48520,7 @@ export interface operations {
             };
         };
     };
-    milvus_proxy_route_milvus__endpoint__post: {
+    milvus_proxy_route_milvus__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -46292,7 +48551,7 @@ export interface operations {
             };
         };
     };
-    milvus_proxy_route_milvus__endpoint__delete: {
+    milvus_proxy_route_milvus__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -46323,7 +48582,7 @@ export interface operations {
             };
         };
     };
-    milvus_proxy_route_milvus__endpoint__patch: {
+    milvus_proxy_route_milvus__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -46354,7 +48613,7 @@ export interface operations {
             };
         };
     };
-    mistral_proxy_route_mistral__endpoint__get: {
+    mistral_proxy_route_mistral__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -46385,7 +48644,7 @@ export interface operations {
             };
         };
     };
-    mistral_proxy_route_mistral__endpoint__put: {
+    mistral_proxy_route_mistral__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -46416,7 +48675,7 @@ export interface operations {
             };
         };
     };
-    mistral_proxy_route_mistral__endpoint__post: {
+    mistral_proxy_route_mistral__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -46447,7 +48706,7 @@ export interface operations {
             };
         };
     };
-    mistral_proxy_route_mistral__endpoint__delete: {
+    mistral_proxy_route_mistral__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -46478,7 +48737,7 @@ export interface operations {
             };
         };
     };
-    mistral_proxy_route_mistral__endpoint__patch: {
+    mistral_proxy_route_mistral__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -47776,24 +50035,6 @@ export interface operations {
             };
         };
     };
-    websocket_realtime_websocket_endpoint_get_3: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description WebSocket Protocol Switched */
-            101: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     proxy_realtime_calls_openai_v1_realtime_calls_post: {
         parameters: {
             query?: never;
@@ -47830,6 +50071,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RealtimeClientSecretResponse"];
+                };
+            };
+        };
+    };
+    create_realtime_transcription_session_openai_v1_realtime_transcription_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RealtimeTranscriptionSessionResponse"];
                 };
             };
         };
@@ -47998,7 +50259,7 @@ export interface operations {
             };
         };
     };
-    openai_proxy_route_openai__endpoint__get: {
+    openai_proxy_route_openai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -48029,7 +50290,7 @@ export interface operations {
             };
         };
     };
-    openai_proxy_route_openai__endpoint__put: {
+    openai_proxy_route_openai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -48060,7 +50321,7 @@ export interface operations {
             };
         };
     };
-    openai_proxy_route_openai__endpoint__post: {
+    openai_proxy_route_openai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -48091,7 +50352,7 @@ export interface operations {
             };
         };
     };
-    openai_proxy_route_openai__endpoint__delete: {
+    openai_proxy_route_openai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -48122,7 +50383,7 @@ export interface operations {
             };
         };
     };
-    openai_proxy_route_openai__endpoint__patch: {
+    openai_proxy_route_openai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -48153,7 +50414,7 @@ export interface operations {
             };
         };
     };
-    openai_proxy_route_openai_passthrough__endpoint__get: {
+    openai_proxy_route_openai_passthrough__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -48184,7 +50445,7 @@ export interface operations {
             };
         };
     };
-    openai_proxy_route_openai_passthrough__endpoint__put: {
+    openai_proxy_route_openai_passthrough__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -48215,7 +50476,7 @@ export interface operations {
             };
         };
     };
-    openai_proxy_route_openai_passthrough__endpoint__post: {
+    openai_proxy_route_openai_passthrough__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -48246,7 +50507,7 @@ export interface operations {
             };
         };
     };
-    openai_proxy_route_openai_passthrough__endpoint__delete: {
+    openai_proxy_route_openai_passthrough__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -48277,7 +50538,7 @@ export interface operations {
             };
         };
     };
-    openai_proxy_route_openai_passthrough__endpoint__patch: {
+    openai_proxy_route_openai_passthrough__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -48687,7 +50948,7 @@ export interface operations {
             };
         };
     };
-    plugin_proxy_plugin_proxy__plugin_name___path__get: {
+    plugin_proxy_plugin_proxy__plugin_name___path_: {
         parameters: {
             query?: never;
             header?: never;
@@ -48719,7 +50980,7 @@ export interface operations {
             };
         };
     };
-    plugin_proxy_plugin_proxy__plugin_name___path__put: {
+    plugin_proxy_plugin_proxy__plugin_name___path_: {
         parameters: {
             query?: never;
             header?: never;
@@ -48751,7 +51012,7 @@ export interface operations {
             };
         };
     };
-    plugin_proxy_plugin_proxy__plugin_name___path__post: {
+    plugin_proxy_plugin_proxy__plugin_name___path_: {
         parameters: {
             query?: never;
             header?: never;
@@ -48783,7 +51044,7 @@ export interface operations {
             };
         };
     };
-    plugin_proxy_plugin_proxy__plugin_name___path__delete: {
+    plugin_proxy_plugin_proxy__plugin_name___path_: {
         parameters: {
             query?: never;
             header?: never;
@@ -48815,7 +51076,7 @@ export interface operations {
             };
         };
     };
-    plugin_proxy_plugin_proxy__plugin_name___path__options: {
+    plugin_proxy_plugin_proxy__plugin_name___path_: {
         parameters: {
             query?: never;
             header?: never;
@@ -48847,7 +51108,7 @@ export interface operations {
             };
         };
     };
-    plugin_proxy_plugin_proxy__plugin_name___path__head: {
+    plugin_proxy_plugin_proxy__plugin_name___path_: {
         parameters: {
             query?: never;
             header?: never;
@@ -48879,7 +51140,7 @@ export interface operations {
             };
         };
     };
-    plugin_proxy_plugin_proxy__plugin_name___path__patch: {
+    plugin_proxy_plugin_proxy__plugin_name___path_: {
         parameters: {
             query?: never;
             header?: never;
@@ -50553,7 +52814,7 @@ export interface operations {
             };
         };
     };
-    websocket_realtime_websocket_endpoint_get: {
+    websocket_realtime_websocket_endpoint: {
         parameters: {
             query?: never;
             header?: never;
@@ -50607,6 +52868,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RealtimeClientSecretResponse"];
+                };
+            };
+        };
+    };
+    create_realtime_transcription_session_realtime_transcription_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RealtimeTranscriptionSessionResponse"];
+                };
+            };
+        };
+    };
+    register_client_register_post: {
+        parameters: {
+            query?: {
+                mcp_server_name?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -50671,7 +52983,7 @@ export interface operations {
             };
         };
     };
-    websocket_responses_websocket_endpoint_get: {
+    websocket_responses_websocket_endpoint: {
         parameters: {
             query?: never;
             header?: never;
@@ -51076,6 +53388,37 @@ export interface operations {
         };
     };
     get_scim_base_scim_v2_get: {
+        parameters: {
+            query?: {
+                feature?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_scim_base_scim_v2__get: {
         parameters: {
             query?: {
                 feature?: string | null;
@@ -51517,7 +53860,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SCIMUser"];
+                "application/json": components["schemas"]["SCIMUser-Input"];
             };
         };
         responses: {
@@ -51527,7 +53870,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SCIMUser"];
+                    "application/json": components["schemas"]["SCIMUser-Output"];
                 };
             };
             /** @description Validation Error */
@@ -51560,7 +53903,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SCIMUser"];
+                    "application/json": components["schemas"]["SCIMUser-Output"];
                 };
             };
             /** @description Validation Error */
@@ -51587,7 +53930,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SCIMUser"];
+                "application/json": components["schemas"]["SCIMUser-Input"];
             };
         };
         responses: {
@@ -51597,7 +53940,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SCIMUser"];
+                    "application/json": components["schemas"]["SCIMUser-Output"];
                 };
             };
             /** @description Validation Error */
@@ -51665,7 +54008,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SCIMUser"];
+                    "application/json": components["schemas"]["SCIMUser-Output"];
                 };
             };
             /** @description Validation Error */
@@ -54147,7 +56490,42 @@ export interface operations {
             };
         };
     };
-    toolset_mcp_route_toolset__toolset_name__mcp_get: {
+    token_endpoint_token_post: {
+        parameters: {
+            query?: {
+                mcp_server_name?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": components["schemas"]["Body_token_endpoint_token_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp: {
         parameters: {
             query?: never;
             header?: never;
@@ -54178,7 +56556,7 @@ export interface operations {
             };
         };
     };
-    toolset_mcp_route_toolset__toolset_name__mcp_put: {
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp: {
         parameters: {
             query?: never;
             header?: never;
@@ -54209,7 +56587,7 @@ export interface operations {
             };
         };
     };
-    toolset_mcp_route_toolset__toolset_name__mcp_post: {
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp: {
         parameters: {
             query?: never;
             header?: never;
@@ -54240,7 +56618,7 @@ export interface operations {
             };
         };
     };
-    toolset_mcp_route_toolset__toolset_name__mcp_delete: {
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp: {
         parameters: {
             query?: never;
             header?: never;
@@ -54271,7 +56649,7 @@ export interface operations {
             };
         };
     };
-    toolset_mcp_route_toolset__toolset_name__mcp_options: {
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp: {
         parameters: {
             query?: never;
             header?: never;
@@ -54302,7 +56680,7 @@ export interface operations {
             };
         };
     };
-    toolset_mcp_route_toolset__toolset_name__mcp_head: {
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp: {
         parameters: {
             query?: never;
             header?: never;
@@ -54333,7 +56711,441 @@ export interface operations {
             };
         };
     };
-    toolset_mcp_route_toolset__toolset_name__mcp_patch: {
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp_: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_mcp_route_toolset__toolset_name__mcp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_mcp_route_toolset__toolset_name__mcp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_mcp_route_toolset__toolset_name__mcp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_mcp_route_toolset__toolset_name__mcp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_mcp_route_toolset__toolset_name__mcp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_mcp_route_toolset__toolset_name__mcp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_mcp_route_toolset__toolset_name__mcp: {
         parameters: {
             query?: never;
             header?: never;
@@ -57280,6 +60092,26 @@ export interface operations {
             };
         };
     };
+    index_list_v1_indexes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndexListResponse"];
+                };
+            };
+        };
+    };
     index_create_v1_indexes_post: {
         parameters: {
             query?: never;
@@ -57420,6 +60252,109 @@ export interface operations {
             };
         };
     };
+    byok_authorize_get_v1_mcp_oauth_authorize_get: {
+        parameters: {
+            query?: {
+                client_id?: string | null;
+                redirect_uri?: string | null;
+                response_type?: string | null;
+                code_challenge?: string | null;
+                code_challenge_method?: string | null;
+                state?: string | null;
+                server_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    byok_authorize_post_v1_mcp_oauth_authorize_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": components["schemas"]["Body_byok_authorize_post_v1_mcp_oauth_authorize_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    byok_token_v1_mcp_oauth_token_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": components["schemas"]["Body_byok_token_v1_mcp_oauth_token_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_openapi_registry_v1_mcp_openapi_registry_get: {
         parameters: {
             query?: never;
@@ -57465,6 +60400,8 @@ export interface operations {
             query?: {
                 /** @description Filter MCP servers by team scope. When provided, returns only servers the team has access to plus globally available (allow_all_keys) servers. Used by the Create Key UI to show team-scoped MCP servers. */
                 team_id?: string | null;
+                /** @description Annotate each returned server with connected_app_reachable: whether a connected app authorized by the calling user (a gateway OAuth session) is served this server on the aggregate MCP endpoint. */
+                connected_app_view?: boolean;
             };
             header?: never;
             path?: never;
@@ -57609,6 +60546,111 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["NewMCPServerRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mcp_authorize_v1_mcp_server_oauth__server_id__authorize_get: {
+        parameters: {
+            query: {
+                client_id?: string | null;
+                redirect_uri: string;
+                state?: string;
+                code_challenge?: string | null;
+                code_challenge_method?: string | null;
+                response_type?: string | null;
+                scope?: string | null;
+            };
+            header?: never;
+            path: {
+                server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mcp_register_v1_mcp_server_oauth__server_id__register_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mcp_token_v1_mcp_server_oauth__server_id__token_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": components["schemas"]["Body_mcp_token_v1_mcp_server_oauth__server_id__token_post"];
             };
         };
         responses: {
@@ -57979,6 +61021,103 @@ export interface operations {
             };
         };
     };
+    get_mcp_user_env_vars_v1_mcp_server__server_id__user_env_vars_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MCPUserEnvVarsStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    store_mcp_user_env_vars_v1_mcp_server__server_id__user_env_vars_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MCPUserEnvVarsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MCPUserEnvVarsStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clear_mcp_user_env_vars_v1_mcp_server__server_id__user_env_vars_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MCPUserEnvVarsStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_mcp_tools_v1_mcp_tools_get: {
         parameters: {
             query?: never;
@@ -58169,6 +61308,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MCPUserCredentialListItem"][];
+                };
+            };
+        };
+    };
+    list_mcp_user_env_var_status_v1_mcp_user_env_vars_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MCPUserEnvVarsStatus"][];
                 };
             };
         };
@@ -58566,7 +61725,7 @@ export interface operations {
             };
         };
     };
-    websocket_realtime_websocket_endpoint_get_2: {
+    websocket_realtime_websocket_endpoint: {
         parameters: {
             query?: never;
             header?: never;
@@ -58624,6 +61783,26 @@ export interface operations {
             };
         };
     };
+    create_realtime_transcription_session_v1_realtime_transcription_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RealtimeTranscriptionSessionResponse"];
+                };
+            };
+        };
+    };
     rerank_v1_rerank_post: {
         parameters: {
             query?: never;
@@ -58644,7 +61823,7 @@ export interface operations {
             };
         };
     };
-    websocket_responses_websocket_endpoint_get_2: {
+    websocket_responses_websocket_endpoint: {
         parameters: {
             query?: never;
             header?: never;
@@ -61749,7 +64928,7 @@ export interface operations {
             };
         };
     };
-    vertex_proxy_route_vertex_ai__endpoint__get_2: {
+    vertex_proxy_route_vertex_ai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -61780,7 +64959,7 @@ export interface operations {
             };
         };
     };
-    vertex_proxy_route_vertex_ai__endpoint__put_2: {
+    vertex_proxy_route_vertex_ai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -61811,7 +64990,7 @@ export interface operations {
             };
         };
     };
-    vertex_proxy_route_vertex_ai__endpoint__post_2: {
+    vertex_proxy_route_vertex_ai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -61842,7 +65021,7 @@ export interface operations {
             };
         };
     };
-    vertex_proxy_route_vertex_ai__endpoint__delete_2: {
+    vertex_proxy_route_vertex_ai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -61873,7 +65052,7 @@ export interface operations {
             };
         };
     };
-    vertex_proxy_route_vertex_ai__endpoint__patch_2: {
+    vertex_proxy_route_vertex_ai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -61904,7 +65083,7 @@ export interface operations {
             };
         };
     };
-    vertex_discovery_proxy_route_vertex_ai_discovery__endpoint__get: {
+    vertex_discovery_proxy_route_vertex_ai_discovery__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -61935,7 +65114,7 @@ export interface operations {
             };
         };
     };
-    vertex_discovery_proxy_route_vertex_ai_discovery__endpoint__put: {
+    vertex_discovery_proxy_route_vertex_ai_discovery__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -61966,7 +65145,7 @@ export interface operations {
             };
         };
     };
-    vertex_discovery_proxy_route_vertex_ai_discovery__endpoint__post: {
+    vertex_discovery_proxy_route_vertex_ai_discovery__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -61997,7 +65176,7 @@ export interface operations {
             };
         };
     };
-    vertex_discovery_proxy_route_vertex_ai_discovery__endpoint__delete: {
+    vertex_discovery_proxy_route_vertex_ai_discovery__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -62028,7 +65207,7 @@ export interface operations {
             };
         };
     };
-    vertex_discovery_proxy_route_vertex_ai_discovery__endpoint__patch: {
+    vertex_discovery_proxy_route_vertex_ai_discovery__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -62077,7 +65256,7 @@ export interface operations {
             };
         };
     };
-    vertex_proxy_route_vertex_ai__endpoint__get: {
+    vertex_proxy_route_vertex_ai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -62108,7 +65287,7 @@ export interface operations {
             };
         };
     };
-    vertex_proxy_route_vertex_ai__endpoint__put: {
+    vertex_proxy_route_vertex_ai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -62139,7 +65318,7 @@ export interface operations {
             };
         };
     };
-    vertex_proxy_route_vertex_ai__endpoint__post: {
+    vertex_proxy_route_vertex_ai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -62170,7 +65349,7 @@ export interface operations {
             };
         };
     };
-    vertex_proxy_route_vertex_ai__endpoint__delete: {
+    vertex_proxy_route_vertex_ai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -62201,7 +65380,7 @@ export interface operations {
             };
         };
     };
-    vertex_proxy_route_vertex_ai__endpoint__patch: {
+    vertex_proxy_route_vertex_ai__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -62480,7 +65659,7 @@ export interface operations {
             };
         };
     };
-    vllm_proxy_route_vllm__endpoint__get: {
+    vllm_proxy_route_vllm__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -62511,7 +65690,7 @@ export interface operations {
             };
         };
     };
-    vllm_proxy_route_vllm__endpoint__put: {
+    vllm_proxy_route_vllm__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -62542,7 +65721,7 @@ export interface operations {
             };
         };
     };
-    vllm_proxy_route_vllm__endpoint__post: {
+    vllm_proxy_route_vllm__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -62573,7 +65752,7 @@ export interface operations {
             };
         };
     };
-    vllm_proxy_route_vllm__endpoint__delete: {
+    vllm_proxy_route_vllm__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -62604,7 +65783,7 @@ export interface operations {
             };
         };
     };
-    vllm_proxy_route_vllm__endpoint__patch: {
+    vllm_proxy_route_vllm__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -62635,7 +65814,7 @@ export interface operations {
             };
         };
     };
-    watsonx_proxy_route_watsonx__endpoint__get: {
+    watsonx_proxy_route_watsonx__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -62666,7 +65845,7 @@ export interface operations {
             };
         };
     };
-    watsonx_proxy_route_watsonx__endpoint__put: {
+    watsonx_proxy_route_watsonx__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -62697,7 +65876,7 @@ export interface operations {
             };
         };
     };
-    watsonx_proxy_route_watsonx__endpoint__post: {
+    watsonx_proxy_route_watsonx__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -62728,7 +65907,7 @@ export interface operations {
             };
         };
     };
-    watsonx_proxy_route_watsonx__endpoint__delete: {
+    watsonx_proxy_route_watsonx__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -62759,7 +65938,7 @@ export interface operations {
             };
         };
     };
-    watsonx_proxy_route_watsonx__endpoint__patch: {
+    watsonx_proxy_route_watsonx__endpoint_: {
         parameters: {
             query?: never;
             header?: never;
@@ -62790,7 +65969,47 @@ export interface operations {
             };
         };
     };
-    dynamic_mcp_route__mcp_server_name__mcp_get: {
+    authorize__mcp_server_name__authorize_get: {
+        parameters: {
+            query: {
+                redirect_uri: string;
+                client_id?: string | null;
+                state?: string;
+                code_challenge?: string | null;
+                code_challenge_method?: string | null;
+                response_type?: string | null;
+                scope?: string | null;
+                resource?: string | null;
+            };
+            header?: never;
+            path: {
+                mcp_server_name: string | null;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dynamic_mcp_route__mcp_server_name__mcp: {
         parameters: {
             query?: never;
             header?: never;
@@ -62821,7 +66040,7 @@ export interface operations {
             };
         };
     };
-    dynamic_mcp_route__mcp_server_name__mcp_put: {
+    dynamic_mcp_route__mcp_server_name__mcp: {
         parameters: {
             query?: never;
             header?: never;
@@ -62852,7 +66071,7 @@ export interface operations {
             };
         };
     };
-    dynamic_mcp_route__mcp_server_name__mcp_post: {
+    dynamic_mcp_route__mcp_server_name__mcp: {
         parameters: {
             query?: never;
             header?: never;
@@ -62883,7 +66102,7 @@ export interface operations {
             };
         };
     };
-    dynamic_mcp_route__mcp_server_name__mcp_delete: {
+    dynamic_mcp_route__mcp_server_name__mcp: {
         parameters: {
             query?: never;
             header?: never;
@@ -62914,7 +66133,7 @@ export interface operations {
             };
         };
     };
-    dynamic_mcp_route__mcp_server_name__mcp_options: {
+    dynamic_mcp_route__mcp_server_name__mcp: {
         parameters: {
             query?: never;
             header?: never;
@@ -62945,7 +66164,7 @@ export interface operations {
             };
         };
     };
-    dynamic_mcp_route__mcp_server_name__mcp_head: {
+    dynamic_mcp_route__mcp_server_name__mcp: {
         parameters: {
             query?: never;
             header?: never;
@@ -62976,7 +66195,7 @@ export interface operations {
             };
         };
     };
-    dynamic_mcp_route__mcp_server_name__mcp_patch: {
+    dynamic_mcp_route__mcp_server_name__mcp: {
         parameters: {
             query?: never;
             header?: never;
@@ -62986,6 +66205,72 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    register_client__mcp_server_name__register_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_name: string | null;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    token_endpoint__mcp_server_name__token_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_name: string | null;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": components["schemas"]["Body_token_endpoint__mcp_server_name__token_post"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

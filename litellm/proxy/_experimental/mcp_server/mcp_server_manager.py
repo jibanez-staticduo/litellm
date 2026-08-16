@@ -46,7 +46,6 @@ from litellm.constants import (
 )
 from litellm.exceptions import BlockedPiiEntityError, GuardrailRaisedException
 from litellm.experimental_mcp_client.client import MCPClient, MCPSigV4Auth
-from litellm.litellm_core_utils.url_utils import SSRFError, async_safe_get
 from litellm.llms.custom_httpx.http_handler import get_async_httpx_client
 from litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp import (
     MCPRequestHandler,
@@ -3998,8 +3997,11 @@ class MCPServerManager:
         return metadata.model_copy(update={"scopes": resource_scopes})
 
     async def _fetch_single_authorization_server_metadata(
-        self, issuer_url: str
-    ) -> Optional[MCPOAuthMetadata]:
+        self,
+        issuer_url: str,
+        server_url: str,
+        require_issuer: str | None = None,
+    ) -> MCPOAuthMetadata | None:
         try:
             parsed: Final = urlparse(issuer_url)
         except Exception:

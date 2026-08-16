@@ -74,7 +74,7 @@ async def resolve_ui_session_team_ids(
     if not teams:
         return []
 
-    resolved_team_ids: List[str] = []
+    resolved_team_ids: list[str] = []
     for team_id in teams:
         if team_id and team_id not in resolved_team_ids:
             resolved_team_ids.append(team_id)

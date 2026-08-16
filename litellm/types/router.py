@@ -318,9 +318,9 @@ class GenericLiteLLMParams(CredentialLiteLLMParams, CustomPricingLiteLLMParams):
         default=False,
         description="Use stored xAI OAuth credentials when no xAI API key is configured.",
     )
-    chatgpt_auth_profile: Optional[str] = None
-    chatgpt_token_dir: Optional[str] = None
-    chatgpt_auth_file: Optional[str] = None
+    chatgpt_auth_profile: str | None = None
+    chatgpt_token_dir: str | None = None
+    chatgpt_auth_file: str | None = None
     model_config = ConfigDict(extra="allow", arbitrary_types_allowed=True)
     merge_reasoning_content_in_choices: bool | None = False
     model_info: dict | None = None
@@ -456,10 +456,10 @@ class LiteLLMParamsTypedDict(TypedDict, total=False):
     use_in_pass_through: bool | None
     litellm_credential_name: str | None
     ## UNIFIED PROJECT/REGION ##
-    region_name: Optional[str]
-    chatgpt_auth_profile: Optional[str]
-    chatgpt_token_dir: Optional[str]
-    chatgpt_auth_file: Optional[str]
+    region_name: str | None
+    chatgpt_auth_profile: str | None
+    chatgpt_token_dir: str | None
+    chatgpt_auth_file: str | None
     ## VERTEX AI ##
     vertex_project: str | None
     vertex_location: str | None

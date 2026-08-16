@@ -4,6 +4,7 @@ import json
 import os
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta, timezone
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Annotated, Any, Final, Literal, NamedTuple, Protocol, TypedDict, TypeVar
 
 import fastapi
@@ -237,6 +238,7 @@ async def _find_team_rows(prisma_client: PrismaClient, team_ids: Sequence[str]) 
     """Read team rows as Prisma model instances."""
     return await _team_table(prisma_client).find_many(where={"team_id": {"in": team_ids}})
 
+
 LEGACY_SPEND_LOGS_LIGHTWEIGHT_COLUMNS = """
     request_id, call_type, api_key, spend, total_tokens,
     prompt_tokens, completion_tokens, "startTime", "endTime",
@@ -251,10 +253,10 @@ LEGACY_SPEND_LOGS_LIGHTWEIGHT_COLUMNS = """
 
 async def _get_legacy_spend_logs_without_heavy_columns(
     prisma_client: PrismaClient,
-    filter_query: Dict[str, Any],
-) -> List[Dict[str, Any]]:
-    sql_conditions: List[str] = []
-    sql_params: List[Any] = []
+    filter_query: dict[str, Any],
+) -> list[dict[str, Any]]:
+    sql_conditions: list[str] = []
+    sql_params: list[Any] = []
     p = 1
 
     start_time_filter = filter_query.get("startTime")
@@ -292,7 +294,13 @@ async def _get_legacy_spend_logs_without_heavy_columns(
         WHERE {" AND ".join(sql_conditions)}
         ORDER BY "startTime" DESC
     """
-    return await prisma_client.db.query_raw(sql_query, *sql_params)
+    query_raw: Final = getattr(prisma_client.db, "query_raw", None)
+    if callable(query_raw):
+        return await query_raw(sql_query, *sql_params)
+    return await SpendLogsRepository(prisma_client).table.find_many(
+        where=filter_query,
+        order=MappingProxyType({"startTime": "desc"}),
+    )
 
 
 @router.get(
