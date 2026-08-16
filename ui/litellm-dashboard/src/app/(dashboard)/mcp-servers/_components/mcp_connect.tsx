@@ -349,8 +349,8 @@ const MCPConnect: React.FC<MCPConnectProps> = ({ currentServerAccessGroups = [],
           </Title>
         </div>
         <Text className="text-purple-700">
-          Use tools directly from Cursor IDE with LiteLLM {endpointName}. Enable your AI assistant to perform real-world tasks
-          without leaving your coding environment.
+          Use tools directly from Cursor IDE with LiteLLM {endpointName}. Enable your AI assistant to perform real-world
+          tasks without leaving your coding environment.
         </Text>
       </div>
 
@@ -415,7 +415,8 @@ const MCPConnect: React.FC<MCPConnectProps> = ({ currentServerAccessGroups = [],
           </Title>
         </div>
         <Text className="text-green-700">
-          Connect to LiteLLM {endpointName} using HTTP transport. Compatible with any MCP client that supports HTTP streaming.
+          Connect to LiteLLM {endpointName} using HTTP transport. Compatible with any MCP client that supports HTTP
+          streaming.
         </Text>
       </div>
 

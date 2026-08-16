@@ -10,7 +10,6 @@ const nextConfig = {
   compiler: {
     removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
   },
-  trailingSlash: false,
   // Required with output: "export" — default image optimizer runs only in server mode.
   // See https://nextjs.org/docs/messages/export-image-api
   images: {
