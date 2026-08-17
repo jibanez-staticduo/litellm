@@ -1,0 +1,23 @@
+started_at_utc: 2026-08-04T07:21:41.604518+00:00
+request_count: 1
+endpoint: /v1/responses
+logical_group: gpt-5.6-luna
+selection_basis: public group had current pre-request rate-limit evidence
+store: false
+request_max_retries: 0
+stateless: true
+http_status: 400
+selected_deployment_header_present: true
+observed_groups_in_bounded_router_window:
+  - chatgpt-account2/gpt-5.6-luna
+  - chatgpt-account3/gpt-5.6-luna
+  - chatgpt/gpt-5.6-luna
+advancement_observed: true
+rate_limit_observed_in_probe_window: false
+interpretation: Router advanced across the configured account groups, but the intentionally bounded request ended in provider BadRequest rather than proving rate-limit-triggered advancement
+additional_inference_requests: none
+prompt_retained: no
+response_retained: no
+user_content_retained: no
+auth_content_retained: no
+raw_logs_retained: no

@@ -1,0 +1,31 @@
+captured_at_utc: 2026-08-04
+source: GET /router/settings and GET /model/info through LiteLLM admin API
+secrets_retained: no
+fallback_rule_count: 16
+public_gpt_fallbacks:
+  gpt-5.3-codex: [chatgpt-account3/gpt-5.3-codex, chatgpt/gpt-5.3-codex]
+  gpt-5.3-codex-spark: [chatgpt-account3/gpt-5.3-codex-spark, chatgpt/gpt-5.3-codex-spark]
+  gpt-5.4: [chatgpt-account3/gpt-5.4, chatgpt/gpt-5.4]
+  gpt-5.4-mini: [chatgpt-account3/gpt-5.4-mini, chatgpt/gpt-5.4-mini]
+  gpt-5.5: [chatgpt-account3/gpt-5.5, chatgpt/gpt-5.5]
+  gpt-5.6-luna: [chatgpt-account3/gpt-5.6-luna, chatgpt/gpt-5.6-luna]
+  gpt-5.6-sol: [chatgpt-account3/gpt-5.6-sol, chatgpt/gpt-5.6-sol]
+  gpt-5.6-terra: [chatgpt-account3/gpt-5.6-terra, chatgpt/gpt-5.6-terra]
+qualified_fallbacks:
+  chatgpt/gpt-5.5: [defend/gpt-5.5]
+  chatgpt/gpt-5.4-mini: [qwen3.6-35b-a3b-uncensored-nvfp4, deepseek-v4-flash-fp8-mtp, defend/gpt-5.5]
+other_fallback_rule_count: 6
+policy:
+  num_retries: 1
+  max_fallbacks: 5
+  allowed_fails: 1
+  cooldown_time: 30
+  retry_after: 0
+  retry_policy: null
+  allow_chatgpt_cross_profile_fallback: true
+applicable_public_group_count: 8
+account2_deployment_count_for_applicable_groups: 8
+account3_deployment_count_for_applicable_groups: 8
+default_deployment_count_for_applicable_groups: 8
+all_applicable_deployments_db_backed: true
+all_applicable_deployments_mode: responses

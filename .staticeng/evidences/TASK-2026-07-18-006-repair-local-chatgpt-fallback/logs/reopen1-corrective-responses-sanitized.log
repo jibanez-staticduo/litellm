@@ -1,0 +1,27 @@
+started_at_utc: 2026-08-04T07:27:38.231167+00:00
+request_count: 1
+endpoint: /v1/responses
+logical_group: gpt-5.3-codex
+request_shape_source: tests/test_litellm/llms/chatgpt/responses/test_chatgpt_responses_transformation.py
+request_shape: Codex-compatible string input with provider transformation supplying required stream, include, and instructions fields
+store: false
+request_max_retries: 0
+stateless: true
+pre_request_current_rate_limit_evidence: present for public ChatGPT groups
+http_status: 400
+observed_router_groups:
+  - chatgpt-account2/gpt-5.3-codex
+  - chatgpt-account3/gpt-5.3-codex
+  - chatgpt/gpt-5.3-codex
+advancement_observed: true
+final_selected_account: default
+final_selected_deployment_correlated: true
+rate_limit_observed_in_corrective_window: false
+sanitized_provider_blocker: gpt-5.3-codex is not supported by the current ChatGPT account-backed Codex provider
+additional_corrective_requests: none
+fallback_updates_repeated: no
+prompt_retained: no
+response_retained: no
+user_content_retained: no
+auth_content_retained: no
+raw_logs_retained: no

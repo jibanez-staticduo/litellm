@@ -1,0 +1,38 @@
+sources:
+  - GET /router/settings
+  - GET /fallback/{model}?fallback_type=general
+  - GET /model/info
+  - GET /health/readiness
+router_settings_status: 200
+fallback_get_status_for_all_groups: 200
+all_public_chains_exact_and_unique: true
+public_chains:
+  gpt-5.3-codex: [chatgpt-account2/gpt-5.3-codex, chatgpt-account3/gpt-5.3-codex, chatgpt/gpt-5.3-codex]
+  gpt-5.3-codex-spark: [chatgpt-account2/gpt-5.3-codex-spark, chatgpt-account3/gpt-5.3-codex-spark, chatgpt/gpt-5.3-codex-spark]
+  gpt-5.4: [chatgpt-account2/gpt-5.4, chatgpt-account3/gpt-5.4, chatgpt/gpt-5.4]
+  gpt-5.4-mini: [chatgpt-account2/gpt-5.4-mini, chatgpt-account3/gpt-5.4-mini, chatgpt/gpt-5.4-mini]
+  gpt-5.5: [chatgpt-account2/gpt-5.5, chatgpt-account3/gpt-5.5, chatgpt/gpt-5.5]
+  gpt-5.6-luna: [chatgpt-account2/gpt-5.6-luna, chatgpt-account3/gpt-5.6-luna, chatgpt/gpt-5.6-luna]
+  gpt-5.6-sol: [chatgpt-account2/gpt-5.6-sol, chatgpt-account3/gpt-5.6-sol, chatgpt/gpt-5.6-sol]
+  gpt-5.6-terra: [chatgpt-account2/gpt-5.6-terra, chatgpt-account3/gpt-5.6-terra, chatgpt/gpt-5.6-terra]
+fallback_rule_count_before: 16
+fallback_rule_count_after: 16
+qualified_fallbacks_unchanged: true
+unrelated_fallbacks_unchanged: true
+policy_unchanged:
+  num_retries: 1
+  max_fallbacks: 5
+  allowed_fails: 1
+  cooldown_time: 30
+  retry_after: 0
+  retry_policy: null
+  allow_chatgpt_cross_profile_fallback: true
+deployment_count: 42
+applicable_deployment_count: 32
+applicable_deployments_db_backed: true
+applicable_deployments_responses_mode: true
+deployment_counts_unchanged: true
+readiness_status: 200
+container_state: running
+container_health: healthy
+container_restart_count: 0
