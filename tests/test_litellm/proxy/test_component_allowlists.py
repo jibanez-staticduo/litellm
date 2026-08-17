@@ -41,7 +41,7 @@ _PRE_EXISTING_ENV = {key: os.environ.get(key) for key in _THROWAWAY_ENV}
 for _key, _value in _THROWAWAY_ENV.items():
     os.environ.setdefault(_key, _value)
 
-from fastapi.routing import Mount
+from fastapi.routing import APIRoute, Mount
 from prometheus_client import make_asgi_app
 
 # gateway/ and backend/ live at the repo root, not inside litellm/.
@@ -193,6 +193,15 @@ def test_gateway_drops_ui_and_swagger_mounts():
     for path in ("/ui", "/_next", "/litellm-asset-prefix/_next", "/swagger"):
         assert not _is_gateway_route(Mount(path, app=make_asgi_app())), \
             f"Mount {path} must not be served by the gateway"
+
+
+async def _lazymcp_test_endpoint():
+    return None
+
+
+def test_gateway_keeps_direct_lazymcp_routes():
+    for path in ("/lazymcp", "/lazymcp/{mcp_server_name}"):
+        assert _is_gateway_route(APIRoute(path, _lazymcp_test_endpoint))
 
 
 def test_every_app_mount_is_assigned_to_a_component():
