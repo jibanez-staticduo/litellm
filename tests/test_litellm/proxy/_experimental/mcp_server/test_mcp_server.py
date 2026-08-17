@@ -217,6 +217,7 @@ async def test_lazymcp_lists_only_gateway_tools_and_describes_visible_servers():
         catalog = await _lazymcp_describe({})
         server_detail = await _lazymcp_describe({"server": "memory"})
         tool_detail = await _lazymcp_describe({"server": "memory", "tool": "memory-search"})
+        short_tool_detail = await _lazymcp_describe({"server": "memory", "tool": "search"})
         legacy_tool_detail = await _lazymcp_describe(
             {
                 "server": "memory",
@@ -242,6 +243,7 @@ async def test_lazymcp_lists_only_gateway_tools_and_describes_visible_servers():
     assert server_detail["tools"][0]["input_schema"] == tool.inputSchema
     assert "input_schema_summary" not in server_detail["tools"][0]
     assert tool_detail["tool"]["input_schema"] == tool.inputSchema
+    assert short_tool_detail == tool_detail
     assert legacy_tool_detail == tool_detail
     assert "include_schemas" not in gateway_tools[0].inputSchema.get("properties", {})
     assert hidden_detail == {"error": "MCP server is not available for this request."}
@@ -289,18 +291,79 @@ async def test_lazymcp_call_rechecks_permissions_and_delegates_to_mcp_call():
             AsyncMock(return_value=delegated_result),
         ) as call_mock,
     ):
-        result = await _lazymcp_call(
+        short_result = await _lazymcp_call(
             {
                 "server": "github",
-                "tool": "github-create_issue",
+                "tool": "create_issue",
                 "arguments": {"title": "Bug"},
             }
         )
+        qualified_result = await _lazymcp_call(
+            {
+                "server": "github",
+                "tool": "github-create_issue",
+                "arguments": {"title": "Qualified bug"},
+            }
+        )
 
-    assert result is delegated_result
+    assert short_result is delegated_result
+    assert qualified_result is delegated_result
     assert allowed_mock.await_count >= 1
-    call_mock.assert_awaited_once()
-    assert call_mock.await_args.kwargs["name"] == "github-create_issue"
+    assert call_mock.await_count == 2
+    assert call_mock.await_args_list[0].kwargs["name"] == "github-create_issue"
+    assert call_mock.await_args_list[0].kwargs["arguments"] == {"title": "Bug"}
+    assert call_mock.await_args_list[1].kwargs["name"] == "github-create_issue"
+    assert call_mock.await_args_list[1].kwargs["arguments"] == {"title": "Qualified bug"}
+
+
+@pytest.mark.asyncio
+async def test_lazymcp_tool_resolution_rejects_unknown_and_ambiguous_tools():
+    try:
+        from mcp.types import Tool as MCPTool
+
+        from litellm.proxy._experimental.mcp_server.server import (
+            _lazymcp_call,
+            set_auth_context,
+        )
+    except ImportError:
+        pytest.skip("MCP server not available")
+
+    server = MCPServer(
+        server_id="memory-server",
+        name="memory",
+        alias="memory",
+        server_name="memory",
+        transport=MCPTransport.http,
+    )
+    recall = MCPTool(name="memory-recall", inputSchema={"type": "object"})
+    set_auth_context(UserAPIKeyAuth(api_key="sk-test", user_id="user"))
+
+    for visible_tools, expected_error in (
+        ([], "Tool is not available for this request."),
+        (
+            [recall, recall.model_copy(deep=True)],
+            "Tool name is ambiguous within the selected MCP server.",
+        ),
+    ):
+        with (
+            patch(
+                "litellm.proxy._experimental.mcp_server.server._get_lazymcp_allowed_servers",
+                AsyncMock(return_value=[server]),
+            ),
+            patch(
+                "litellm.proxy._experimental.mcp_server.server._get_lazymcp_server_tools",
+                AsyncMock(return_value=visible_tools),
+            ),
+            patch(
+                "litellm.proxy._experimental.mcp_server.server.call_mcp_tool",
+                AsyncMock(),
+            ) as call_mock,
+        ):
+            result = await _lazymcp_call({"server": "memory", "tool": "recall", "arguments": {}})
+
+        assert result.isError is True
+        assert json.loads(result.content[0].text) == {"error": expected_error}
+        call_mock.assert_not_awaited()
 
 
 @pytest.mark.asyncio

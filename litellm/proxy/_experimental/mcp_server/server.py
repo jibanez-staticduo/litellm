@@ -2466,6 +2466,7 @@ if MCP_AVAILABLE:
     LAZYMCP_CACHE_TTL_SECONDS = 300
     LAZYMCP_UNAVAILABLE_SERVER_ERROR = {"error": "MCP server is not available for this request."}
     LAZYMCP_UNAVAILABLE_TOOL_ERROR = {"error": "Tool is not available for this request."}
+    LAZYMCP_AMBIGUOUS_TOOL_ERROR = {"error": "Tool name is ambiguous within the selected MCP server."}
     LAZYMCP_PERMISSION_MAP_ADAPTER: Final = TypeAdapter(dict[str, list[str]])
     LAZYMCP_SERVER_LIST_ADAPTER: Final = TypeAdapter(list[str])
 
@@ -2755,6 +2756,19 @@ if MCP_AVAILABLE:
                 return item
         return None
 
+    def _resolve_lazymcp_tool(
+        tools: list[MCPTool], server: MCPServer, requested_name: str
+    ) -> tuple[MCPTool | None, dict[str, str] | None]:
+        exact_match = next((tool for tool in tools if tool.name == requested_name), None)
+        if exact_match is not None:
+            return exact_match, None
+        local_matches = tuple(tool for tool in tools if strip_known_server_prefix(tool.name, server) == requested_name)
+        if len(local_matches) == 1:
+            return local_matches[0], None
+        if len(local_matches) > 1:
+            return None, LAZYMCP_AMBIGUOUS_TOOL_ERROR
+        return None, LAZYMCP_UNAVAILABLE_TOOL_ERROR
+
     async def _lazymcp_describe(arguments: dict[str, Any]) -> dict[str, Any]:
         (
             user_api_key_auth,
@@ -2815,13 +2829,13 @@ if MCP_AVAILABLE:
                 raw_headers,
             )
             if tool_name:
-                for tool in tools:
-                    if tool.name == tool_name:
-                        return {
-                            "server": _get_lazymcp_server_label(selected_server),
-                            "tool": _lazymcp_tool_to_summary(tool, include_schema=True),
-                        }
-                return LAZYMCP_UNAVAILABLE_TOOL_ERROR
+                selected_tool, resolution_error = _resolve_lazymcp_tool(tools, selected_server, str(tool_name))
+                if selected_tool is None:
+                    return resolution_error or LAZYMCP_UNAVAILABLE_TOOL_ERROR
+                return {
+                    "server": _get_lazymcp_server_label(selected_server),
+                    "tool": _lazymcp_tool_to_summary(selected_tool, include_schema=True),
+                }
             return {
                 "server": _get_lazymcp_server_label(selected_server),
                 "description": server_item["description"],
@@ -2919,10 +2933,15 @@ if MCP_AVAILABLE:
             oauth2_headers,
             raw_headers,
         )
-        selected_tool = next((tool for tool in visible_tools if tool.name == tool_name), None)
+        selected_tool, resolution_error = _resolve_lazymcp_tool(visible_tools, selected_server, tool_name)
         if selected_tool is None:
             return CallToolResult(
-                content=[TextContent(text=json.dumps(LAZYMCP_UNAVAILABLE_TOOL_ERROR), type="text")],
+                content=[
+                    TextContent(
+                        text=json.dumps(resolution_error or LAZYMCP_UNAVAILABLE_TOOL_ERROR),
+                        type="text",
+                    )
+                ],
                 isError=True,
             )
         return await call_mcp_tool(
