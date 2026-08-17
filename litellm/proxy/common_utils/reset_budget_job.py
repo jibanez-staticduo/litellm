@@ -159,6 +159,11 @@ class _ChunkOutcome:
     advanced: int
 
 
+@dataclass(slots=True)
+class _BudgetWindowCursor:
+    value: str | None = None
+
+
 _NO_PROGRESS: Final = _ChunkOutcome(fetched=0, advanced=0)
 
 
@@ -918,27 +923,22 @@ class ResetBudgetJob:
         ).isoformat()
         return True
 
-    async def reset_budget_windows(self) -> None:
-        """
-        For keys and teams with budget_limits, reset any individual windows where
-        reset_at <= now. Only the expired windows are reset; other windows are untouched.
-        """
-
-        from litellm.proxy.proxy_server import spend_counter_cache
-
-        now: Final = datetime.utcnow()
-
-        # Note on raw SQL: prisma-client-python does not support null-filtering
-        # on `Json?` columns (no DbNull/JsonNull sentinel — see
-        # RobertCraigie/prisma-client-py#714). We use `query_raw` with
-        # `IS NOT NULL` so we don't materialize every key/team row on each
-        # tick of the reset job. Writes still go through the ORM.
-
-        # --- Keys ---
-        try:
-            key_rows: Final = await self.prisma_client.db.query_raw(
-                'SELECT token, budget_limits FROM "LiteLLM_VerificationToken" WHERE budget_limits IS NOT NULL'
-            )
+    async def _reset_key_budget_windows(self, spend_counter_cache: DualCache, now: datetime) -> None:
+        key_cursor: Final = _BudgetWindowCursor()
+        for _ in range(RESET_BUDGET_JOB_MAX_CHUNKS_PER_RUN):
+            if key_cursor.value is None:
+                key_rows = await self.prisma_client.db.query_raw(
+                    'SELECT token, budget_limits FROM "LiteLLM_VerificationToken" '
+                    "WHERE budget_limits IS NOT NULL ORDER BY token ASC LIMIT $1",
+                    RESET_BUDGET_JOB_BATCH_SIZE,
+                )
+            else:
+                key_rows = await self.prisma_client.db.query_raw(
+                    'SELECT token, budget_limits FROM "LiteLLM_VerificationToken" '
+                    "WHERE budget_limits IS NOT NULL AND token > $1 ORDER BY token ASC LIMIT $2",
+                    key_cursor.value,
+                    RESET_BUDGET_JOB_BATCH_SIZE,
+                )
             for row in key_rows:
                 raw = row["budget_limits"]
                 if not raw:
@@ -960,14 +960,26 @@ class ResetBudgetJob:
                         where={"token": row["token"]},
                         data={"budget_limits": json.dumps(windows)},
                     )
-        except Exception as e:
-            verbose_proxy_logger.exception("Failed to reset budget windows for keys: %s", e)
+            if len(key_rows) < RESET_BUDGET_JOB_BATCH_SIZE:
+                return
+            key_cursor.value = str(key_rows[-1]["token"])
 
-        # --- Teams ---
-        try:
-            team_rows: Final = await self.prisma_client.db.query_raw(
-                'SELECT team_id, budget_limits FROM "LiteLLM_TeamTable" WHERE budget_limits IS NOT NULL'
-            )
+    async def _reset_team_budget_windows(self, spend_counter_cache: DualCache, now: datetime) -> None:
+        team_cursor: Final = _BudgetWindowCursor()
+        for _ in range(RESET_BUDGET_JOB_MAX_CHUNKS_PER_RUN):
+            if team_cursor.value is None:
+                team_rows = await self.prisma_client.db.query_raw(
+                    'SELECT team_id, budget_limits FROM "LiteLLM_TeamTable" '
+                    "WHERE budget_limits IS NOT NULL ORDER BY team_id ASC LIMIT $1",
+                    RESET_BUDGET_JOB_BATCH_SIZE,
+                )
+            else:
+                team_rows = await self.prisma_client.db.query_raw(
+                    'SELECT team_id, budget_limits FROM "LiteLLM_TeamTable" '
+                    "WHERE budget_limits IS NOT NULL AND team_id > $1 ORDER BY team_id ASC LIMIT $2",
+                    team_cursor.value,
+                    RESET_BUDGET_JOB_BATCH_SIZE,
+                )
             for row in team_rows:
                 raw = row["budget_limits"]
                 if not raw:
@@ -989,6 +1001,27 @@ class ResetBudgetJob:
                         where={"team_id": row["team_id"]},
                         data={"budget_limits": json.dumps(windows)},
                     )
+            if len(team_rows) < RESET_BUDGET_JOB_BATCH_SIZE:
+                return
+            team_cursor.value = str(team_rows[-1]["team_id"])
+
+    async def reset_budget_windows(self) -> None:
+        """
+        For keys and teams with budget_limits, reset any individual windows where
+        reset_at <= now. Only the expired windows are reset; other windows are untouched.
+        """
+
+        from litellm.proxy.proxy_server import spend_counter_cache
+
+        now: Final = datetime.utcnow()
+
+        try:
+            await self._reset_key_budget_windows(spend_counter_cache, now)
+        except Exception as e:
+            verbose_proxy_logger.exception("Failed to reset budget windows for keys: %s", e)
+
+        try:
+            await self._reset_team_budget_windows(spend_counter_cache, now)
         except Exception as e:
             verbose_proxy_logger.exception("Failed to reset budget windows for teams: %s", e)
 

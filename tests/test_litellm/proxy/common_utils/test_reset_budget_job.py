@@ -863,6 +863,78 @@ def test_reset_budget_windows_uses_is_not_null_filter(monkeypatch):
     assert "budget_limits IS NOT NULL" in team_query
 
 
+def test_reset_budget_windows_paginates_key_rows_with_raw_sql(monkeypatch):
+    monkeypatch.setattr(reset_budget_job_module, "RESET_BUDGET_JOB_BATCH_SIZE", 2)
+    job, prisma_client, _ = _make_reset_budget_windows_job(monkeypatch, key_rows=[], team_rows=[])
+    key_batches = iter(
+        (
+            [
+                {"token": "key-1", "budget_limits": []},
+                {"token": "key-2", "budget_limits": []},
+            ],
+            [{"token": "key-3", "budget_limits": []}],
+        )
+    )
+
+    async def fake_query_raw(query: str, *args):
+        if '"LiteLLM_VerificationToken"' in query:
+            return next(key_batches)
+        if '"LiteLLM_TeamTable"' in query:
+            return []
+        raise AssertionError(query)
+
+    prisma_client.db.query_raw = AsyncMock(side_effect=fake_query_raw)
+
+    asyncio.run(job.reset_budget_windows())
+
+    key_calls = [
+        call
+        for call in prisma_client.db.query_raw.await_args_list
+        if '"LiteLLM_VerificationToken"' in call.args[0]
+    ]
+    assert len(key_calls) == 2
+    assert "ORDER BY token ASC LIMIT $1" in key_calls[0].args[0]
+    assert key_calls[0].args[1:] == (2,)
+    assert "token > $1" in key_calls[1].args[0]
+    assert "ORDER BY token ASC LIMIT $2" in key_calls[1].args[0]
+    assert key_calls[1].args[1:] == ("key-2", 2)
+
+
+def test_reset_budget_windows_paginates_team_rows_with_raw_sql(monkeypatch):
+    monkeypatch.setattr(reset_budget_job_module, "RESET_BUDGET_JOB_BATCH_SIZE", 2)
+    job, prisma_client, _ = _make_reset_budget_windows_job(monkeypatch, key_rows=[], team_rows=[])
+    team_batches = iter(
+        (
+            [
+                {"team_id": "team-1", "budget_limits": []},
+                {"team_id": "team-2", "budget_limits": []},
+            ],
+            [{"team_id": "team-3", "budget_limits": []}],
+        )
+    )
+
+    async def fake_query_raw(query: str, *args):
+        if '"LiteLLM_VerificationToken"' in query:
+            return []
+        if '"LiteLLM_TeamTable"' in query:
+            return next(team_batches)
+        raise AssertionError(query)
+
+    prisma_client.db.query_raw = AsyncMock(side_effect=fake_query_raw)
+
+    asyncio.run(job.reset_budget_windows())
+
+    team_calls = [
+        call for call in prisma_client.db.query_raw.await_args_list if '"LiteLLM_TeamTable"' in call.args[0]
+    ]
+    assert len(team_calls) == 2
+    assert "ORDER BY team_id ASC LIMIT $1" in team_calls[0].args[0]
+    assert team_calls[0].args[1:] == (2,)
+    assert "team_id > $1" in team_calls[1].args[0]
+    assert "ORDER BY team_id ASC LIMIT $2" in team_calls[1].args[0]
+    assert team_calls[1].args[1:] == ("team-2", 2)
+
+
 def test_reset_budget_windows_resets_expired_key_window(monkeypatch):
     """A key whose window's `reset_at` has passed gets an update with a new
     `reset_at` in the future, and the in-memory spend counter is cleared."""
