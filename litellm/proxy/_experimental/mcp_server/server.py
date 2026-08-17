@@ -2466,7 +2466,9 @@ if MCP_AVAILABLE:
     LAZYMCP_CACHE_TTL_SECONDS = 300
     LAZYMCP_UNAVAILABLE_SERVER_ERROR = {"error": "MCP server is not available for this request."}
     LAZYMCP_UNAVAILABLE_TOOL_ERROR = {"error": "Tool is not available for this request."}
-    LAZYMCP_AMBIGUOUS_TOOL_ERROR = {"error": "Tool name is ambiguous within the selected MCP server."}
+    LAZYMCP_AMBIGUOUS_TOOL_ERROR: Final[dict[str, str]] = {  # mutable-ok: MCP errors are JSON object payloads
+        "error": "Tool name is ambiguous within the selected MCP server."
+    }
     LAZYMCP_PERMISSION_MAP_ADAPTER: Final = TypeAdapter(dict[str, list[str]])
     LAZYMCP_SERVER_LIST_ADAPTER: Final = TypeAdapter(list[str])
 
@@ -2757,19 +2759,21 @@ if MCP_AVAILABLE:
         return None
 
     def _resolve_lazymcp_tool(
-        tools: list[MCPTool], server: MCPServer, requested_name: str
-    ) -> tuple[MCPTool | None, dict[str, str] | None]:
-        exact_match = next((tool for tool in tools if tool.name == requested_name), None)
+        tools: Sequence[MCPTool], server: MCPServer, requested_name: str
+    ) -> tuple[MCPTool | None, Mapping[str, str] | None]:
+        exact_match: Final = next((tool for tool in tools if tool.name == requested_name), None)
         if exact_match is not None:
             return exact_match, None
-        local_matches = tuple(tool for tool in tools if strip_known_server_prefix(tool.name, server) == requested_name)
+        local_matches: Final = tuple(
+            tool for tool in tools if strip_known_server_prefix(tool.name, server) == requested_name
+        )
         if len(local_matches) == 1:
             return local_matches[0], None
         if len(local_matches) > 1:
             return None, LAZYMCP_AMBIGUOUS_TOOL_ERROR
         return None, LAZYMCP_UNAVAILABLE_TOOL_ERROR
 
-    async def _lazymcp_describe(arguments: dict[str, Any]) -> dict[str, Any]:
+    async def _lazymcp_describe(arguments: dict[str, Any]) -> Mapping[str, Any]:
         (
             user_api_key_auth,
             mcp_auth_header,
