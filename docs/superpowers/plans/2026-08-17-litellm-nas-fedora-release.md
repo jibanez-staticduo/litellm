@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Release source is fork `origin/main` at exact SHA `8e074a3c6ac3522a29aaffbc490aa44613c65af8`
+- Application release source is exact code SHA `8e074a3c6ac3522a29aaffbc490aa44613c65af8`, which must remain an ancestor of published fork `origin/main`
 - Release version is `1.98.0`
 - Immutable image tag is `docker.staticduo.com/litellm:staticduo-gpt-lazymcp-v1.98.0-8e074a3c6a-20260817`
 - Fedora is the canary; NAS is not changed until Fedora passes all checks and a 15-minute soak
@@ -38,7 +38,7 @@
 
 The two PostgreSQL services are independent local endpoints. Canary database migrations on Fedora therefore do not mutate the NAS database
 
-### Task 1: Freeze the release source and run the release gate
+### Task 1: Freeze the application source and run the release gate
 
 **Files:**
 - Read: `/home/staticduo/git/litellm`
@@ -51,10 +51,10 @@ The two PostgreSQL services are independent local endpoints. Canary database mig
 - Test: `/tmp/litellm-release-8e074a3c6a/tests/guardrails_tests/test_eu_ai_act_article5.py`
 
 **Interfaces:**
-- Consumes: published fork ref `origin/main`
+- Consumes: application commit `8e074a3c6ac3522a29aaffbc490aa44613c65af8` and published fork ref `origin/main`
 - Produces: clean detached source tree whose `HEAD`, version, and test results are recorded in the release log
 
-- [ ] **Step 1: Re-fetch and prove the release commit is still the published clean `main`**
+- [ ] **Step 1: Re-fetch and prove no application code changed after the release commit**
 
 ```bash
 cd /home/staticduo/git/litellm
@@ -63,10 +63,13 @@ git status --porcelain
 git rev-parse HEAD
 git rev-parse origin/main
 git rev-list --left-right --count main...origin/main
+git merge-base --is-ancestor 8e074a3c6ac3522a29aaffbc490aa44613c65af8 origin/main
+test "$(git diff --name-only 8e074a3c6ac3522a29aaffbc490aa44613c65af8..origin/main | sort -u)" = \
+  'docs/superpowers/plans/2026-08-17-litellm-nas-fedora-release.md'
 git merge-base --is-ancestor upstream/main main
 ```
 
-Expected: no status output, both SHAs equal `8e074a3c6ac3522a29aaffbc490aa44613c65af8`, divergence is `0 0`, and the ancestry command exits `0`
+Expected: no status output, local and remote `main` have divergence `0 0`, the application SHA is an ancestor of `origin/main`, the only later path is this release plan, and upstream ancestry exits `0`
 
 - [ ] **Step 2: Create an isolated detached release worktree**
 
