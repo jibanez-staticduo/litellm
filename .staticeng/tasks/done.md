@@ -36,3 +36,5 @@
 | 2026-07-16 | TASK-2026-07-16-002-repair-fedora-litellm-routing-errors | none | pending-commit | Removed the stale Qwen request source through the NAS-authoritative OpenCode config and verified Fedora ChatGPT profiles healthy. |
 | 2026-07-16 | TASK-2026-07-16-004-clean-staticeng-repair-side-effects | none | pending-commit | Removed incomplete generated CodeMaps and restored the curated root CodeMap. |
 | 2026-07-16 | TASK-2026-07-16-003-review-litellm-repair-finalization | none | pending-commit | Authorized selective closure commits after cleanup removed incomplete CodeMap side effects. |
+# TASK-2026-08-15-001-diagnose-fedora-litellm-502
+- Closed 2026-08-15: LiteLLM was healthy; shared NPM/OpenResty response-header buffering caused the client-facing `/v1/responses` 502.

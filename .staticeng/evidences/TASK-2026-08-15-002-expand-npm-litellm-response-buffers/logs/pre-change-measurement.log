@@ -1,0 +1,15 @@
+measurement_source=fedora-local authenticated stateless /v1/responses
+response_status=200
+response_header_block_bytes=4452
+response_header_field_count=66
+largest_header_field_line_bytes=445
+response_content_retained=no
+response_header_values_retained=no
+target_npm_page_size_bytes=4096
+target_hosts_explicit_proxy_buffer_size=none
+effective_old_proxy_buffer_size_bytes=4096
+effective_old_limit_source=nginx platform default of one memory page
+selected_proxy_buffer_size_bytes=32768
+selected_proxy_buffers=4x32768
+selected_proxy_busy_buffers_size_bytes=65536
+selected_margin_over_measured_total=7.36x

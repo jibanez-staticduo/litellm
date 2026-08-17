@@ -1,0 +1,9 @@
+nginx_test=successful
+openresty_version=1.29.2.5
+npm_health=online
+npm_authenticated=yes
+npm_admin_access=yes
+litellm.staticduo.com_enabled=true
+litellm.staticduo.com_route=http://litellm:4000
+litellm.defend.tech_enabled=true
+litellm.defend.tech_route=http://fedora-ssh.staticduo.com:4000

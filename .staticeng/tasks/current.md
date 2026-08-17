@@ -4,10 +4,10 @@
 - (None)
 
 ## Active
-- TASK-2026-07-14-003-trigger-nas-account2-reauth
+- (None)
 
 ## Todo
-- (None)
+- TASK-2026-07-14-003-trigger-nas-account2-reauth
 
 ## Blocked
-- (None)
+- TASK-2026-08-15-002-expand-npm-litellm-response-buffers — technical work complete; blocked only by pre-existing repository-wide StaticEng CodeMap validation debt
