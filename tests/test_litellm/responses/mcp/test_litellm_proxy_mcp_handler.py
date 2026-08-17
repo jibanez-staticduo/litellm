@@ -931,6 +931,45 @@ async def test_get_mcp_tools_from_manager_enables_list_tools_logging(monkeypatch
     assert mock_get_tools.await_args.kwargs["list_tools_log_source"] == "responses"
 
 
+async def _standard_mcp_client_ip(monkeypatch, client_ip):
+    mock_get_tools = AsyncMock(return_value=AggregateToolListing(tools=[], outcomes={}))
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.server._get_tools_from_mcp_servers",
+        mock_get_tools,
+    )
+    fake_manager = types.SimpleNamespace(
+        config_mcp_servers=[],
+        get_registry=MagicMock(return_value={}),
+        get_allowed_mcp_servers=AsyncMock(return_value=[]),
+        get_mcp_servers_from_ids=MagicMock(return_value=[]),
+        get_mcp_server_by_name=MagicMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.mcp_server_manager.global_mcp_server_manager",
+        fake_manager,
+    )
+
+    await LiteLLM_Proxy_MCP_Handler._get_mcp_tools_from_manager(
+        user_api_key_auth=None,
+        mcp_tools_with_litellm_proxy=[
+            {"type": "mcp", "server_url": "litellm_proxy/mcp/standard"}
+        ],
+        client_ip=client_ip,
+    )
+
+    return mock_get_tools.await_args.kwargs["client_ip"]
+
+
+@pytest.mark.asyncio
+async def test_standard_mcp_preserves_missing_client_ip_behavior(monkeypatch):
+    assert await _standard_mcp_client_ip(monkeypatch, "__invalid_mcp_client_ip__") is None
+
+
+@pytest.mark.asyncio
+async def test_standard_mcp_keeps_verified_client_ip(monkeypatch):
+    assert await _standard_mcp_client_ip(monkeypatch, "10.0.0.7") == "10.0.0.7"
+
+
 def test_get_parent_request_tags_from_metadata():
     tags = LiteLLM_Proxy_MCP_Handler._get_parent_request_tags(
         {"metadata": {"tags": ["team-a", "prod"]}}

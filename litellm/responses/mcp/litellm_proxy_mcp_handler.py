@@ -431,6 +431,7 @@ class LiteLLM_Proxy_MCP_Handler:
                 client_ip=client_ip,
             )
 
+        standard_client_ip: Final = None if client_ip == "__invalid_mcp_client_ip__" else client_ip
         return await LiteLLM_Proxy_MCP_Handler._get_standard_mcp_tools(
             user_api_key_auth=user_api_key_auth,
             mcp_servers=mcp_servers,
@@ -439,7 +440,7 @@ class LiteLLM_Proxy_MCP_Handler:
             mcp_server_auth_headers=mcp_server_auth_headers,
             litellm_trace_id=litellm_trace_id,
             request_tags=request_tags,
-            client_ip=client_ip,
+            client_ip=standard_client_ip,
         )
 
     @staticmethod
