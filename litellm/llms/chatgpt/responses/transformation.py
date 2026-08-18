@@ -102,8 +102,15 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
             "previous_response_id",
             "truncation",
         }
-
-        return {k: v for k, v in request.items() if k in allowed_keys}
+        is_codex_responses_lite: Final = any(key.lower() == "x-openai-internal-codex-responses-lite" for key in headers)
+        request_items: Final = (
+            (*request.items(), ("parallel_tool_calls", False)) if is_codex_responses_lite else request.items()
+        )
+        return {
+            key: value
+            for key, value in request_items
+            if key in allowed_keys or (is_codex_responses_lite and key == "parallel_tool_calls")
+        }
 
     def transform_response_api_response(
         self,

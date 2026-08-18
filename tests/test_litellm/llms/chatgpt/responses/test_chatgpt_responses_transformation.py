@@ -14,11 +14,11 @@ import pytest
 
 sys.path.insert(0, os.path.abspath("../../../../.."))
 
+from litellm.llms.chatgpt.responses.transformation import ChatGPTResponsesAPIConfig
 from litellm.llms.openai.common_utils import OpenAIError
 from litellm.types.router import GenericLiteLLMParams
 from litellm.types.utils import LlmProviders
 from litellm.utils import ProviderConfigManager
-from litellm.llms.chatgpt.responses.transformation import ChatGPTResponsesAPIConfig
 
 
 class TestChatGPTResponsesAPITransformation:
@@ -106,6 +106,28 @@ class TestChatGPTResponsesAPITransformation:
         assert request["stream"] is True
         assert "reasoning.encrypted_content" in request["include"]
         assert request["instructions"].startswith("You are Codex, based on GPT-5.")
+
+    def test_chatgpt_codex_responses_lite_disables_parallel_tool_calls(self):
+        config = ChatGPTResponsesAPIConfig()
+        request = config.transform_responses_api_request(
+            model="chatgpt/gpt-5.6-sol",
+            input="hi",
+            response_api_optional_request_params={"parallel_tool_calls": True},
+            litellm_params=GenericLiteLLMParams(),
+            headers={"x-openai-internal-codex-responses-lite": "true"},
+        )
+
+        assert request["parallel_tool_calls"] is False
+
+        standard_request = config.transform_responses_api_request(
+            model="chatgpt/gpt-5.6-sol",
+            input="hi",
+            response_api_optional_request_params={"parallel_tool_calls": True},
+            litellm_params=GenericLiteLLMParams(),
+            headers={},
+        )
+
+        assert "parallel_tool_calls" not in standard_request
 
     @pytest.mark.parametrize(
         "model_name",
