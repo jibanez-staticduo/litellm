@@ -447,6 +447,7 @@ from litellm.proxy.management_endpoints.callback_management_endpoints import (
 )
 from litellm.proxy.management_endpoints.common_utils import (
     _user_has_admin_privileges,
+    _user_has_admin_view,
     admin_can_invite_user,
 )
 from litellm.proxy.management_endpoints.compliance_endpoints import (
