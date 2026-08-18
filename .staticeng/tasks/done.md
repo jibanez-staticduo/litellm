@@ -2,6 +2,8 @@
 
 | Date | Task ID | SCR ID | Commit | Summary |
 | :--- | :--- | :--- | :--- | :--- |
+| 2026-08-18 | TASK-2026-08-18-009-finalize-stream-fix-investigation | none | pending-commit | Reviewed and finalized the stream guard investigation closure artifacts for commit and push. |
+| 2026-08-18 | TASK-2026-08-18-008-find-stream-must-be-true-fix | none | pending-commit | Traced the uncommitted ChatGPT Responses stream guard and confirmed NAS contains it while Fedora 1.98.0 does not. |
 | 2026-08-18 | TASK-2026-08-18-007-finalize-nas-gpt-alias-primary | SCR-2026-08-18-001-nas-gpt-alias-primary-account | pending-commit | Reviewed, sanitized, and finalized the NAS recovery and GPT alias routing closure artifacts for commit and push. |
 | 2026-08-18 | TASK-2026-08-18-005-set-nas-gpt-alias-primary-account | SCR-2026-08-18-001-nas-gpt-alias-primary-account | pending-commit | Set all eight NAS ChatGPT Responses gpt aliases to use the default account as primary while preserving account2/account3 fallbacks. |
 | 2026-08-18 | TASK-2026-08-18-006-verify-nas-gpt-alias-primary | SCR-2026-08-18-001-nas-gpt-alias-primary-account | pending-commit | Independently verified alias routing, inventory, health, Fedora preservation, rollback artifact, and sanitized evidence. |

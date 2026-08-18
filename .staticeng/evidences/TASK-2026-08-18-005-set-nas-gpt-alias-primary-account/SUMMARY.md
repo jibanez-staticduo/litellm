@@ -16,12 +16,12 @@ The eight account2 deployments, eight account3 deployments, eight qualified defa
 
 ## Acceptance Criteria Coverage
 
-- **AC-1: PASS**. `logs/01-inventory-before-sanitized.log` identifies all eight scoped ChatGPT Responses aliases as account2 before mutation and records the explicit `gpt-4o-mini-tts` exclusion without secrets
-- **AC-2: PASS**. `logs/02-backup-and-update-sanitized.log` records the protected exact-row backup, SHA-256, checked rollback transaction, and reload plus revalidation procedure
-- **AC-3: PASS**. `logs/03-readback-validation-sanitized.log` proves all eight public primary deployments resolve through the default profile after readback
+- **AC-1: PASS**. `.staticeng/evidences/TASK-2026-08-18-005-set-nas-gpt-alias-primary-account/logs/01-inventory-before-sanitized.log` identifies all eight scoped ChatGPT Responses aliases as account2 before mutation and records the explicit `gpt-4o-mini-tts` exclusion without secrets
+- **AC-2: PASS**. `.staticeng/evidences/TASK-2026-08-18-005-set-nas-gpt-alias-primary-account/logs/02-backup-and-update-sanitized.log` records the protected exact-row backup, SHA-256, checked rollback transaction, and reload plus revalidation procedure
+- **AC-3: PASS**. `.staticeng/evidences/TASK-2026-08-18-005-set-nas-gpt-alias-primary-account/logs/03-readback-validation-sanitized.log` proves all eight public primary deployments resolve through the default profile after readback
 - **AC-4: PASS**. The same log records eight account2 and eight account3 qualified deployments, an unchanged 40-model inventory, an unchanged hash for all 32 unaffected rows, the preserved excluded speech route, and retained fallback targets
-- **AC-5: PASS**. `logs/04-routing-smokes-sanitized.log` records HTTP 200 for representative `gpt-5.5` and `gpt-5.6-sol` requests; each response deployment header matched the expected default-profile public deployment
-- **AC-6: PASS**. `logs/05-health-fedora-sanitized.log` records NAS readiness and liveliness HTTP 200, unchanged healthy container identity, zero restarts, `OOM=false`, and byte-identical Fedora runtime identity fields before and after
+- **AC-5: PASS**. `.staticeng/evidences/TASK-2026-08-18-005-set-nas-gpt-alias-primary-account/logs/04-routing-smokes-sanitized.log` records HTTP 200 for representative `gpt-5.5` and `gpt-5.6-sol` requests; each response deployment header matched the expected default-profile public deployment
+- **AC-6: PASS**. `.staticeng/evidences/TASK-2026-08-18-005-set-nas-gpt-alias-primary-account/logs/05-health-fedora-sanitized.log` records NAS readiness and liveliness HTTP 200, unchanged healthy container identity, zero restarts, `OOM=false`, and byte-identical Fedora runtime identity fields before and after
 - **AC-7: PASS**. This packet maps every AC to sanitized evidence. No steady-state product or architecture documentation update is required because this is an operational DB-backed routing selection change
 
 ## Documentation Impact
@@ -32,4 +32,4 @@ No product documentation update is required. The approved SCR, task update, and 
 
 The protected rollback transaction is intentionally stored only on NAS because it contains exact encrypted database row values. Repository evidence records only its path, mode, hash, row count, and secret-free execution procedure
 
-`staticeng_validate` remains blocked by pre-existing repository-wide CodeMap gaps and broken `.staticeng/codemap.yml` links. The required repair dry run proposed hundreds of unrelated changes, so it was not applied in this atomic NAS routing task. See `logs/06-staticeng-validation.log`
+`staticeng_validate` remains blocked by pre-existing repository-wide CodeMap gaps and broken `.staticeng/codemap.yml` links. The required repair dry run proposed hundreds of unrelated changes, so it was not applied in this atomic NAS routing task. See `.staticeng/evidences/TASK-2026-08-18-005-set-nas-gpt-alias-primary-account/logs/06-staticeng-validation.log`
