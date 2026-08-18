@@ -55,6 +55,7 @@ GATEWAY_PATH_PREFIXES: tuple[str, ...] = (
     "/v1/skills",
     "/v1/a2a/",
     "/a2a/",
+    "/api/event_logging/",
     # LiteLLM-native LLM surface
     "/v1/rerank",
     "/v2/rerank",
@@ -101,6 +102,7 @@ GATEWAY_PATH_PREFIXES: tuple[str, ...] = (
     # Dynamic provider / toolset passthrough (path templates)
     "/{provider}/",
     "/lazymcp",
+    "/mcp-rest/tools/",
     "/toolset/",
     # Realtime / streaming
     "/v1/realtime",
@@ -120,6 +122,12 @@ GATEWAY_EXACT_PATHS: frozenset[str] = frozenset(
         "/docs/oauth2-redirect",
         "/redoc",
         "/test",
+        "/apply_guardrail",
+        "/guardrails/apply_guardrail",
+        "/authorize",
+        "/authorize/complete",
+        "/callback",
+        "/register",
     }
 )
 

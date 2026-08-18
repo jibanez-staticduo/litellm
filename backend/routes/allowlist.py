@@ -32,6 +32,7 @@ BACKEND_PATH_PREFIXES: tuple[str, ...] = (
     "/oauth/",
     "/invitation/",
     "/jwt/",
+    "/scim/",
     # Models & routing config
     "/model/",
     "/v1/model/info",
@@ -54,13 +55,28 @@ BACKEND_PATH_PREFIXES: tuple[str, ...] = (
     "/credentials",
     "/credential",
     "/provider/budgets",
+    "/vector_store/",
+    "/v1/vector_store/",
     # Tools / agents (registry & policy admin)
     "/v1/tool/",
     "/v1/agents",
+    "/agent/",
     # Guardrails admin
     "/v2/guardrails/",
+    "/guardrails/list",
+    "/guardrails/register",
+    "/guardrails/submissions",
+    "/guardrails/{guardrail_id}",
+    "/guardrails/ui/",
+    "/guardrails/validate_blocked_words_file",
+    "/guardrails/test_custom_code",
+    "/guardrails/usage/",
+    "/policy/",
+    "/policies/",
+    "/prompts/",
     # MCP server admin + BYOK OAuth flow (UI-initiated) + dynamic per-server endpoints
     "/v1/mcp/",
+    "/mcp-rest/test/",
     "/test/",
     "/{mcp_server_name}/",
     # Budgets / tags / workflows / memory mgmt
@@ -87,6 +103,7 @@ BACKEND_PATH_PREFIXES: tuple[str, ...] = (
     "/gateway/daily/",
     # CloudZero cost-export admin (init / settings / export / dry-run / delete)
     "/cloudzero/",
+    "/vantage/",
     # Caching admin
     "/cache/",
     "/caching/",
@@ -107,6 +124,7 @@ BACKEND_PATH_PREFIXES: tuple[str, ...] = (
     # Debug / config / profiling
     "/debug/",
     "/config/",
+    "/config_overrides/",
     "/memory-usage-in-mem-cache",
     "/otel-spans",
     "/lazy/",
@@ -135,6 +153,9 @@ BACKEND_PATH_PREFIXES: tuple[str, ...] = (
     # Plugin system
     "/api/plugins",
     "/plugin-proxy/",
+    "/claude-code/",
+    "/compliance/",
+    "/v1/unified_access_group",
 )
 
 BACKEND_EXACT_PATHS: frozenset[str] = frozenset(
@@ -147,6 +168,9 @@ BACKEND_EXACT_PATHS: frozenset[str] = frozenset(
         "/redoc",
         "/fallback/login",
         "/mcp",  # bare spelling of the aggregate MCP endpoint; /mcp/ prefix covers the rest
+        "/guardrails",
+        "/policies",
+        "/prompts",
     }
 )
 
