@@ -1,0 +1,27 @@
+captured_at_utc: 2026-08-18T18:18:40Z
+host: nas
+backup_path: /volume2/docker/litellm/backups/TASK-2026-08-18-005-20260818T181840Z/rollback.sql
+backup_mode: 0600
+backup_sha256: f6ccaf75964864fcfd9bf70973a0be031cf82ae555bbb62735a467266c151afb
+backup_row_count: 8
+backup_contains_exact_affected_rows: true
+backup_persisted_in_repository: false
+rollback_transaction_checks_expected_row_count: true
+rollback_transaction_verifies_exact_rows: true
+rollback_procedure:
+  1: Feed rollback.sql to psql with ON_ERROR_STOP=1 using the NAS LiteLLM DATABASE_URL without printing it
+  2: Trigger one empty supported POST /model/update operation for an affected model ID to reload DB-backed models
+  3: Repeat the profile, inventory, routing smoke, and health checks from this evidence packet
+mutation: remove chatgpt_auth_profile from only the eight scoped public deployment rows
+mutation_transaction_precondition_count: 8
+mutation_updated_row_count: 8
+mutation_transaction_postcondition_count: 8
+direct_credential_edits: none
+auth_file_edits: none
+deployment_additions: none
+deployment_removals: none
+fedora_edits: none
+cancelled_release_resumed: false
+supported_reload_endpoint: POST /model/update
+supported_reload_status: 200
+secrets_retained: no

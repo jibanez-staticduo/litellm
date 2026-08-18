@@ -1,0 +1,7 @@
+StaticEng validation result
+
+result=fail
+cause=pre-existing repository-wide CodeMap incompleteness and broken root CodeMap links
+task_change_related=false
+
+The required dry-run repair was executed. It proposed generating hundreds of repository-wide CodeMaps and normalizing unrelated orchestration files. Applying that broad mutation was not safe or atomic within this NAS recovery task, so no repair changes were applied

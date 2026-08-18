@@ -1,0 +1,27 @@
+AC-2 sanitized deployment and preservation evidence
+
+rendered_litellm_image=docker.staticduo.com/litellm:rollback-nas-1.92.0-20260818
+pull_result=pass
+compose_command=up -d --no-deps litellm
+recreated_services=litellm
+database_restore_performed=false
+
+Unchanged dependency identities before and after:
+postgresql_id=f33022571374136db12c778d88f130f13d21669d2a3897b80cd64957fa6b1a85 started=2026-08-17T13:03:58.815884192Z restarts=0 health=healthy
+redis_id=8339623433c3ad44ad98968a2db02c6394f8d7b2203d583033f64c51d7c86f60 started=2026-08-15T04:50:27.334898632Z restarts=0 health=healthy
+admin_mcp_id=4849d7a2d77668ee3d0564461b4dec480902f763e7c4bd7d696d19bc46228959 started=2026-08-18T16:44:51.683118538Z restarts=0 health=healthy
+admin_mcp_compat_id=75fa06bc3ef3a38467279b40cdc2b6639bfda2358e637610b71fc99aa1a77326 started=2026-08-18T16:45:22.509081437Z restarts=0 health=healthy
+
+Unchanged protected file hashes:
+docker-compose.yaml=e55a68271cff897156d50ed6779369de3986ec47dee572aec29b76cf70224129
+config.yaml=d10d989072e329a3a47c11ee734783a08c8607865fa8e8fa940851e75f624272
+start-litellm.sh=ada13e55c55f15155c972569667eed5be150824a6959453221b35cc0f86c8778
+onepassword-mcp-wrapper.sh=31f719b71fce74e968cec69aa1ce51ca4dac08381c8005aa6b5d3be2879b6289
+
+Preserved bind destinations:
+/app/config.yaml read-only
+/app/start-litellm.sh read-only
+/app/patches read-only
+/app/onepassword-mcp-wrapper.sh read-only
+/run/secrets/op_service_account_token read-only
+/app/data read-write

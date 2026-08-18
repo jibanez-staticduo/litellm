@@ -1,0 +1,23 @@
+captured_at_utc: 2026-08-18T18:18:40Z
+host: nas
+source: authenticated GET /model/info, GET /v1/models, and read-only database classification
+secrets_retained: no
+scoped_alias_count: 8
+scoped_aliases:
+  gpt-5.3-codex: account2
+  gpt-5.3-codex-spark: account2
+  gpt-5.4: account2
+  gpt-5.4-mini: account2
+  gpt-5.5: account2
+  gpt-5.6-luna: account2
+  gpt-5.6-sol: account2
+  gpt-5.6-terra: account2
+explicitly_excluded_alias: gpt-4o-mini-tts
+exclusion_reason: OpenAI speech route, not a ChatGPT Responses alias
+excluded_alias_present: true
+model_count: 40
+model_inventory_sha256: ce44fbd0cb9287c78881bc341de7babeab27a5eeee0de2f6422cc224a208d614
+affected_row_count: 8
+affected_rows_sha256: 500e1c1bd1d17090f4897db579fef8e2a877be3ed37d824bbb3d272255752db5
+unaffected_row_count: 32
+unaffected_rows_sha256: ca6e5615faea928982634805c6c609bda73de5554f42b5f64e1ae9cb1eb2163e

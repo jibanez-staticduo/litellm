@@ -1,0 +1,18 @@
+AC-5 sanitized smoke and startup-log evidence
+
+responses_attempt_1 model=gpt-5.6-sol timeout_seconds=180 result=timeout
+responses_attempt_2 model=chatgpt-account3/gpt-5.6-sol timeout_seconds=180 result=timeout
+responses_attempt_3 model=chatgpt/gpt-5.4 timeout_seconds=180 result=http_400
+responses_probe=blocked
+lazymcp_probe=not_run_after_three_attempt_escalation
+
+startup_log_window=2026-08-18T17:10:37Z..2026-08-18T17:12:00Z
+startup_complete=1
+traceback=0
+unhandled=0
+prisma_error=0
+migration_error=0
+mcp_error=0
+http_5xx=0
+
+No authorization headers, credentials, prompts, responses, or raw error bodies retained

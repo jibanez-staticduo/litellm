@@ -1,0 +1,16 @@
+AC-3 and AC-4 sanitized runtime evidence
+
+healthy_attempt=12
+image=docker.staticduo.com/litellm:rollback-nas-1.92.0-20260818
+runtime_image_id=sha256:8ae33df6e1c13eaaca70ce179d4a724507a481ebcf4019be88182aa030b07afa
+status=running
+health=healthy
+restart_count=0
+oom=false
+started=2026-08-18T17:10:37.602506412Z
+litellm_version=1.92.0
+readiness_status=200
+liveliness_status=200
+model_inventory_exact_match=true
+model_count=40
+model_inventory_sha256=89a76d711401a12fa7e69ab67eb2ca8b8a4860b2d7c4666b101cb5c88a4ce30a

@@ -1,0 +1,8 @@
+captured_at_utc: 2026-08-18T18:24:12Z
+staticeng_validate: fail
+task_introduced_validation_error: false
+failure_category: pre-existing repository-wide CodeMap gaps and broken StaticEng links
+repair_dry_run_completed: true
+repair_applied: false
+repair_not_applied_reason: dry run proposed hundreds of unrelated CodeMap and generated-agent changes outside this NAS routing task
+functional_runtime_validation: pass

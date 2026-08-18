@@ -1,0 +1,35 @@
+captured_at_utc: 2026-08-18T18:24:12Z
+nas_before:
+  image: docker.staticduo.com/litellm:rollback-nas-1.92.0-20260818
+  status: running
+  health: healthy
+  restart_count: 0
+  oom: false
+  started_at: 2026-08-18T17:10:37.602506412Z
+nas_after:
+  image: docker.staticduo.com/litellm:rollback-nas-1.92.0-20260818
+  status: running
+  health: healthy
+  restart_count: 0
+  oom: false
+  started_at: 2026-08-18T17:10:37.602506412Z
+  readiness_status: 200
+  liveliness_status: 200
+nas_restart_count_stable: true
+fedora_before:
+  image: docker.staticduo.com/litellm@sha256:2e947963eddbd9385e618d5bd3e122f41a5677a05b843b5add29cef3d52991e9
+  image_id: sha256:2e947963eddbd9385e618d5bd3e122f41a5677a05b843b5add29cef3d52991e9
+  status: running
+  health: healthy
+  restart_count: 0
+  oom: false
+  started_at: 2026-08-18T11:19:55.216406845Z
+fedora_after:
+  image: docker.staticduo.com/litellm@sha256:2e947963eddbd9385e618d5bd3e122f41a5677a05b843b5add29cef3d52991e9
+  image_id: sha256:2e947963eddbd9385e618d5bd3e122f41a5677a05b843b5add29cef3d52991e9
+  status: running
+  health: healthy
+  restart_count: 0
+  oom: false
+  started_at: 2026-08-18T11:19:55.216406845Z
+fedora_runtime_identity_unchanged: true

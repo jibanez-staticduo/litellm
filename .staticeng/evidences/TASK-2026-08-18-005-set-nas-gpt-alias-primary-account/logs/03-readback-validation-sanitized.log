@@ -1,0 +1,32 @@
+captured_at_utc: 2026-08-18T18:24:12Z
+host: nas
+sources: authenticated GET /model/info, GET /v1/models, GET /router/settings, and read-only database hashes
+scoped_alias_count: 8
+all_scoped_primary_profiles: default
+scoped_aliases:
+  - gpt-5.3-codex
+  - gpt-5.3-codex-spark
+  - gpt-5.4
+  - gpt-5.4-mini
+  - gpt-5.5
+  - gpt-5.6-luna
+  - gpt-5.6-sol
+  - gpt-5.6-terra
+account2_qualified_deployment_count: 8
+account3_qualified_deployment_count: 8
+default_qualified_deployment_count: 8
+model_count_before: 40
+model_count_after: 40
+inventory_sha256_before: ce44fbd0cb9287c78881bc341de7babeab27a5eeee0de2f6422cc224a208d614
+inventory_sha256_after: ce44fbd0cb9287c78881bc341de7babeab27a5eeee0de2f6422cc224a208d614
+unaffected_row_count_before: 32
+unaffected_row_count_after: 32
+unaffected_rows_sha256_before: ca6e5615faea928982634805c6c609bda73de5554f42b5f64e1ae9cb1eb2163e
+unaffected_rows_sha256_after: ca6e5615faea928982634805c6c609bda73de5554f42b5f64e1ae9cb1eb2163e
+affected_rows_sha256_after: a3e46a0513e520c1bbe190df0e66ce142d6f47273a24f4fad11cede59dd4f8c2
+excluded_route: gpt-4o-mini-tts
+excluded_route_present_after: true
+fallback_rule_count: 16
+scoped_fallback_rule_count: 8
+account2_account3_fallback_targets_retained: true
+secrets_retained: no

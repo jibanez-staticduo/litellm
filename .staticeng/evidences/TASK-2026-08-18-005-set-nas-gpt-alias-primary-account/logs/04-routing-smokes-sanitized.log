@@ -1,0 +1,22 @@
+captured_at_utc: 2026-08-18T18:24:12Z
+host: nas
+request_count: 2
+endpoint: /v1/responses
+request_shape: stateless list-input Responses request
+store: false
+request_max_retries: 0
+response_content_retained: no
+prompt_content_retained: no
+authorization_content_retained: no
+raw_logs_retained: no
+results:
+  gpt-5.5:
+    http_status: 200
+    configured_primary_profile: default
+    selected_deployment_header_present: true
+    selected_deployment_matches_public_primary: true
+  gpt-5.6-sol:
+    http_status: 200
+    configured_primary_profile: default
+    selected_deployment_header_present: true
+    selected_deployment_matches_public_primary: true

@@ -1,0 +1,13 @@
+review_date: 2026-08-18
+branch: main
+tracking_branch: origin/main
+intended_paths_root: .staticeng/
+application_source_paths_included: false
+runtime_configuration_paths_included: false
+credential_values_detected: false
+git_diff_check: pass
+staticeng_validate: fail
+staticeng_failure_category: pre-existing broken root links and repository-wide missing CodeMaps
+broad_repair_generated_or_applied: false
+parent_acceptance_criteria: passed with documented recovery smoke disposition
+documentation_closure: complete

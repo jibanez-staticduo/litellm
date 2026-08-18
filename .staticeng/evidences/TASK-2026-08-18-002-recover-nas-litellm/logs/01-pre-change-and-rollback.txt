@@ -1,0 +1,22 @@
+AC-1 sanitized pre-change evidence
+
+host=nas
+image=docker.staticduo.com/litellm@sha256:2e947963eddbd9385e618d5bd3e122f41a5677a05b843b5add29cef3d52991e9
+runtime_image_id=sha256:a2922cfa50cb56eea0259a08b727d1de273174069bbacbf4e87ffad0115eaf1b
+status=restarting
+health=unhealthy
+restart_count=339
+oom=false
+rollback_back_reference=docker.staticduo.com/litellm@sha256:2e947963eddbd9385e618d5bd3e122f41a5677a05b843b5add29cef3d52991e9
+
+authorized_rollback_tag=docker.staticduo.com/litellm:rollback-nas-1.92.0-20260818
+authorized_rollback_image_id=sha256:8ae33df6e1c13eaaca70ce179d4a724507a481ebcf4019be88182aa030b07afa
+authorized_rollback_registry_digest=sha256:264774f4a3bb1d01a393b844270f7e71629da996a182295c77675fe2793c6018
+authorized_rollback_architecture=amd64
+authorized_rollback_runtime_version=1.92.0
+
+saved_baseline=/volume2/docker/litellm/releases/20260818-2a8d1a6051/models-before.json
+baseline_valid=true
+baseline_count=40
+baseline_sorted=true
+baseline_unique=true

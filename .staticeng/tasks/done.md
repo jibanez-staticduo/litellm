@@ -2,6 +2,13 @@
 
 | Date | Task ID | SCR ID | Commit | Summary |
 | :--- | :--- | :--- | :--- | :--- |
+| 2026-08-18 | TASK-2026-08-18-007-finalize-nas-gpt-alias-primary | SCR-2026-08-18-001-nas-gpt-alias-primary-account | pending-commit | Reviewed, sanitized, and finalized the NAS recovery and GPT alias routing closure artifacts for commit and push. |
+| 2026-08-18 | TASK-2026-08-18-005-set-nas-gpt-alias-primary-account | SCR-2026-08-18-001-nas-gpt-alias-primary-account | pending-commit | Set all eight NAS ChatGPT Responses gpt aliases to use the default account as primary while preserving account2/account3 fallbacks. |
+| 2026-08-18 | TASK-2026-08-18-006-verify-nas-gpt-alias-primary | SCR-2026-08-18-001-nas-gpt-alias-primary-account | pending-commit | Independently verified alias routing, inventory, health, Fedora preservation, rollback artifact, and sanitized evidence. |
+| 2026-08-18 | TASK-2026-08-18-004-complete-nas-litellm-198-release | none | n/a | Cancelled by user before completion; no stable-tag promotion performed. |
+| 2026-08-18 | TASK-2026-08-18-002-recover-nas-litellm | none | n/a | Recovered NAS LiteLLM on the tested 1.92.0 rollback image with health and exact 40-model preservation. |
+| 2026-08-18 | TASK-2026-08-18-003-diagnose-nas-smoke-blocker | none | n/a | Dispositioned recovery smoke failures as invalid payload shape and provider latency; carried valid Responses and LazyMCP checks into release retry. |
+| 2026-08-18 | TASK-2026-08-18-001-diagnose-incomplete-litellm-release | none | n/a | Identified an obsolete NAS-only startup patch as the cause of the failed 1.98.0 NAS rollout while Fedora remained healthy. |
 | 2026-06-08 | TASK-2026-06-08-004-add-litellm-redis-sidecar | none | n/a | Added internal Redis sidecar for LiteLLM cache settings. |
 | 2026-06-10 | TASK-2026-06-10-001-fix-mcp-delete-stale-permissions | SCR-2026-06-10-001-mcp-delete-stale-permissions | n/a | Fixed MCP server delete stale permission cleanup and regression tests. |
 | 2026-06-14 | TASK-2026-06-14-001-remove-notion-mcp | none | n/a | Removed the Notion MCP registration from LiteLLM and cleaned residual Notion MCP processes. |
