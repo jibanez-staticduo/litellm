@@ -1,0 +1,8 @@
+..                                                                       [100%]
+=============================== warnings summary ===============================
+tests/test_litellm/llms/openai/responses/test_openai_responses_transformation.py:316
+  /home/staticduo/git/litellm/tests/test_litellm/llms/openai/responses/test_openai_responses_transformation.py:316: PytestUnknownMarkWarning: Unknown pytest.mark.serial - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.serial
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+2 passed, 63 deselected, 1 warning in 0.42s

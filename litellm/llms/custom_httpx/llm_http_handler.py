@@ -2540,9 +2540,12 @@ class BaseLLMHTTPHandler:
             headers=headers,
         )
         data = BaseResponsesAPIConfig.normalize_responses_api_request_dict(data)
+        provider_requires_native_stream: Final = data.get("stream") is True
 
         if extra_body:
             data.update(extra_body)
+        if custom_llm_provider == "chatgpt" and provider_requires_native_stream:
+            data["stream"] = True
         stream = bool(stream or data.get("stream"))
 
         # Preserve the OpenAI-style request context (not sent to the provider) for streaming
@@ -2718,9 +2721,12 @@ class BaseLLMHTTPHandler:
             headers=headers,
         )
         data = BaseResponsesAPIConfig.normalize_responses_api_request_dict(data)
+        provider_requires_native_stream: Final = data.get("stream") is True
 
         if extra_body:
             data.update(extra_body)
+        if custom_llm_provider == "chatgpt" and provider_requires_native_stream:
+            data["stream"] = True
         stream = bool(stream or data.get("stream"))
 
         # Preserve the OpenAI-style request context (not sent to the provider) for streaming

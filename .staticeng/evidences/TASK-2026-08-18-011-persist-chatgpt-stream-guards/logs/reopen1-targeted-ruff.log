@@ -1,0 +1,5 @@
+Command: uv run --no-sync ruff check litellm/llms/custom_httpx/llm_http_handler.py litellm/llms/openai/responses/transformation.py tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py tests/test_litellm/llms/openai/responses/test_openai_responses_transformation.py --ignore TID251,I001,F401
+
+All checks passed!
+
+I001 and F401 are ignored because the mapped test files contain pre-existing import debt outside this task's changed lines. TID251 is the repository's pre-existing banned-API debt used by the prior targeted check

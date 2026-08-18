@@ -88,7 +88,7 @@ def test_prepare_fake_stream_request():
     assert result_data["messages"] == [{"role": "user", "content": "Hello"}]
 
 
-def test_response_api_handler_streams_when_provider_transform_adds_stream():
+def test_response_api_handler_preserves_chatgpt_provider_stream_requirement():
     handler = BaseLLMHTTPHandler()
     config = Mock()
     config.validate_environment.return_value = {}
@@ -117,10 +117,50 @@ def test_response_api_handler_streams_when_provider_transform_adds_stream():
         litellm_params=GenericLiteLLMParams(),
         logging_obj=logging_obj,
         client=client,
+        extra_body={"stream": False},
     )
 
     assert client.post.call_args.kwargs["stream"] is True
     assert client.post.call_args.kwargs["json"]["stream"] is True
+
+
+@pytest.mark.parametrize(
+    ("custom_llm_provider", "transformed_stream"),
+    [("openai", True), ("chatgpt", None)],
+)
+def test_response_api_handler_does_not_force_provider_stream(custom_llm_provider, transformed_stream):
+    handler = BaseLLMHTTPHandler()
+    config = Mock()
+    config.validate_environment.return_value = {}
+    config.get_complete_url.return_value = "https://api.example.com/responses"
+    transformed_request = {"model": "gpt-5", "input": "hi"}
+    if transformed_stream is not None:
+        transformed_request["stream"] = transformed_stream
+    config.transform_responses_api_request.return_value = transformed_request
+    config.sign_request.return_value = ({}, None)
+    config.transform_response_api_response.return_value = Mock()
+    client = HTTPHandler(client=httpx.Client())
+    client.post = Mock(
+        return_value=httpx.Response(
+            200,
+            request=httpx.Request("POST", "https://api.example.com/responses"),
+        )
+    )
+
+    handler.response_api_handler(
+        model="gpt-5",
+        input="hi",
+        responses_api_provider_config=config,
+        response_api_optional_request_params={},
+        custom_llm_provider=custom_llm_provider,
+        litellm_params=GenericLiteLLMParams(),
+        logging_obj=Mock(),
+        client=client,
+        extra_body={"stream": False},
+    )
+
+    assert client.post.call_args.kwargs["json"]["stream"] is False
+    assert "stream" not in client.post.call_args.kwargs
 
 
 def test_response_api_handler_runs_agentic_hooks_in_sync_path(monkeypatch):
@@ -231,7 +271,7 @@ def test_response_api_handler_runs_responses_pre_call_hook_before_transform():
 
 
 @pytest.mark.asyncio
-async def test_async_response_api_handler_streams_when_provider_transform_adds_stream():
+async def test_async_response_api_handler_preserves_chatgpt_provider_stream_requirement():
     handler = BaseLLMHTTPHandler()
     config = Mock()
     config.validate_environment.return_value = {}
@@ -250,6 +290,7 @@ async def test_async_response_api_handler_streams_when_provider_transform_adds_s
         )
     )
     logging_obj = Mock()
+    logging_obj.dynamic_success_callbacks = []
 
     await handler.async_response_api_handler(
         model="gpt-5.3-codex",
@@ -260,6 +301,7 @@ async def test_async_response_api_handler_streams_when_provider_transform_adds_s
         litellm_params=GenericLiteLLMParams(),
         logging_obj=logging_obj,
         client=client,
+        extra_body={"stream": False},
     )
 
     assert client.post.call_args.kwargs["stream"] is True
@@ -1097,9 +1139,7 @@ def test_sync_delete_responses_sets_json_content_type():
         ({}, True, None, None),
     ],
 )
-def test_resolve_anthropic_messages_timeout(
-    monkeypatch, litellm_params_kwargs, stream, global_timeout, expected
-):
+def test_resolve_anthropic_messages_timeout(monkeypatch, litellm_params_kwargs, stream, global_timeout, expected):
     from litellm.constants import DEFAULT_REQUEST_TIMEOUT_SECONDS
 
     if global_timeout is None:
@@ -1115,9 +1155,7 @@ def test_resolve_anthropic_messages_timeout(
         )
     else:
         monkeypatch.setattr("litellm.request_timeout", global_timeout, raising=False)
-        monkeypatch.setattr(
-            "litellm.request_timeout_explicitly_set", True, raising=False
-        )
+        monkeypatch.setattr("litellm.request_timeout_explicitly_set", True, raising=False)
 
     resolved = BaseLLMHTTPHandler._resolve_anthropic_messages_timeout(
         litellm_params=GenericLiteLLMParams(**litellm_params_kwargs),
@@ -1142,9 +1180,7 @@ async def test_async_anthropic_messages_handler_forwards_request_timeout(monkeyp
         return_value=({"x-api-key": "k"}, "https://api.anthropic.com")
     )
     mock_config.should_filter_anthropic_beta_headers = Mock(return_value=False)
-    mock_config.transform_anthropic_messages_request = Mock(
-        return_value={"model": "claude", "messages": []}
-    )
+    mock_config.transform_anthropic_messages_request = Mock(return_value={"model": "claude", "messages": []})
     mock_config.get_complete_url = Mock(return_value="https://api.anthropic.com/v1/messages")
     mock_config.sign_request = Mock(return_value=({"x-api-key": "k"}, None))
     mock_config.max_retry_on_anthropic_messages_http_error = 1
@@ -1190,9 +1226,7 @@ async def test_async_anthropic_messages_handler_forwards_stream_timeout(monkeypa
         return_value=({"x-api-key": "k"}, "https://api.anthropic.com")
     )
     mock_config.should_filter_anthropic_beta_headers = Mock(return_value=False)
-    mock_config.transform_anthropic_messages_request = Mock(
-        return_value={"model": "claude", "messages": []}
-    )
+    mock_config.transform_anthropic_messages_request = Mock(return_value={"model": "claude", "messages": []})
     mock_config.get_complete_url = Mock(return_value="https://api.anthropic.com/v1/messages")
     mock_config.sign_request = Mock(return_value=({"x-api-key": "k"}, None))
     mock_config.max_retry_on_anthropic_messages_http_error = 1
@@ -1602,7 +1636,13 @@ async def test_async_anthropic_messages_handler_passes_api_key_to_agentic_hooks(
     )
     mock_config.sign_request = Mock(return_value=({}, None))
 
-    fake_raw_response = {"id": "msg_1", "type": "message", "role": "assistant", "content": [], "stop_reason": "end_turn"}
+    fake_raw_response = {
+        "id": "msg_1",
+        "type": "message",
+        "role": "assistant",
+        "content": [],
+        "stop_reason": "end_turn",
+    }
     mock_config.transform_anthropic_messages_response = Mock(return_value=fake_raw_response)
 
     mock_logging_obj = Mock()
@@ -1622,10 +1662,17 @@ async def test_async_anthropic_messages_handler_passes_api_key_to_agentic_hooks(
     mock_httpx_response.status_code = 200
 
     with (
-        patch.object(handler, "_async_post_anthropic_messages_with_http_error_retry", new=AsyncMock(return_value=mock_httpx_response)),
+        patch.object(
+            handler,
+            "_async_post_anthropic_messages_with_http_error_retry",
+            new=AsyncMock(return_value=mock_httpx_response),
+        ),
         patch.object(handler, "_call_agentic_completion_hooks", side_effect=fake_agentic_hooks),
         patch("litellm.llms.custom_httpx.llm_http_handler.get_async_httpx_client"),
-        patch("litellm.litellm_core_utils.get_provider_specific_headers.ProviderSpecificHeaderUtils.get_provider_specific_headers", return_value=None),
+        patch(
+            "litellm.litellm_core_utils.get_provider_specific_headers.ProviderSpecificHeaderUtils.get_provider_specific_headers",
+            return_value=None,
+        ),
     ):
         result = await handler.async_anthropic_messages_handler(
             model="claude-haiku",
@@ -1799,7 +1846,9 @@ def test_audio_transcriptions_sends_dict_data_as_json_body():
     form-encodes it and silently ignores json=; JSON-body providers (e.g.
     Google Speech-to-Text) need an application/json body."""
     captured = {}
-    client = HTTPHandler(client=httpx.Client(transport=httpx.MockTransport(_capture_json_transcription_request(captured))))
+    client = HTTPHandler(
+        client=httpx.Client(transport=httpx.MockTransport(_capture_json_transcription_request(captured)))
+    )
 
     response = BaseLLMHTTPHandler().audio_transcriptions(
         client=client,
@@ -2035,9 +2084,7 @@ async def test_anthropic_invalid_thinking_signature_retry_resigns_bedrock_reques
     ok_response = httpx.Response(200, json={"id": "msg_1"}, request=httpx.Request("POST", request_url))
 
     class FakeAsyncClient:
-        async def post(
-            self, url, headers, data, stream=False, logging_obj=None, timeout=None
-        ):
+        async def post(self, url, headers, data, stream=False, logging_obj=None, timeout=None):
             posts.append({"headers": dict(headers), "data": data})
             return invalid_signature_response if len(posts) == 1 else ok_response
 

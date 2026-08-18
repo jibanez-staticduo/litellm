@@ -1,0 +1,17 @@
+Command: uv run --no-sync pytest -q tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py::test_async_response_api_handler_preserves_chatgpt_provider_stream_requirement
+Condition: async production guard temporarily removed, then restored immediately after this run
+
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_ test_async_response_api_handler_preserves_chatgpt_provider_stream_requirement _
+
+>       assert client.post.call_args.kwargs["stream"] is True
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'stream'
+
+tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py:307: KeyError
+=========================== short test summary info ============================
+FAILED tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py::test_async_response_api_handler_preserves_chatgpt_provider_stream_requirement
+1 failed in 0.54s
+
+Result: expected pre-fix failure reached the intended outbound stream assertion; no callback-mock TypeError occurred

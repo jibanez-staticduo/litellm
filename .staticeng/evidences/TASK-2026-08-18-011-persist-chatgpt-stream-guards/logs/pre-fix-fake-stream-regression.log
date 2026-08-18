@@ -1,0 +1,33 @@
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_ TestOpenAIResponsesAPIConfig.test_should_not_fake_stream_for_chatgpt_when_capability_metadata_misses _
+
+self = <test_openai_responses_transformation.TestOpenAIResponsesAPIConfig object at 0x7fb981db3af0>
+
+    def test_should_not_fake_stream_for_chatgpt_when_capability_metadata_misses(self):
+        with patch(
+            "litellm.utils.supports_native_streaming", return_value=False
+        ) as supports_native_streaming:
+            result = self.config.should_fake_stream(
+                model=self.model,
+                stream=True,
+                custom_llm_provider="chatgpt",
+            )
+
+>       assert result is False
+E       assert True is False
+
+tests/test_litellm/llms/openai/responses/test_openai_responses_transformation.py:153: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+[conftest] Module setup complete (worker: master)
+--------------------------- Captured stdout teardown ---------------------------
+[conftest] Module teardown complete (worker: master)
+=============================== warnings summary ===============================
+tests/test_litellm/llms/openai/responses/test_openai_responses_transformation.py:320
+  /home/staticduo/git/litellm/tests/test_litellm/llms/openai/responses/test_openai_responses_transformation.py:320: PytestUnknownMarkWarning: Unknown pytest.mark.serial - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    @pytest.mark.serial
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_litellm/llms/openai/responses/test_openai_responses_transformation.py::TestOpenAIResponsesAPIConfig::test_should_not_fake_stream_for_chatgpt_when_capability_metadata_misses
+1 failed, 64 deselected, 1 warning in 0.55s

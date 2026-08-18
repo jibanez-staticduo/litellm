@@ -1,0 +1,763 @@
+make[1]: Entering directory '/home/staticduo/git/litellm'
+uv sync --inexact --frozen --extra proxy --group proxy-dev --group e2e-dev
+   Building litellm-enterprise @ file:///home/staticduo/git/litellm/enterprise
+   Building litellm-proxy-extras @ file:///home/staticduo/git/litellm/litellm-proxy-extras
+      Built litellm-enterprise @ file:///home/staticduo/git/litellm/enterprise
+      Built litellm-proxy-extras @ file:///home/staticduo/git/litellm/litellm-proxy-extras
+Prepared 2 packages in 196ms
+Uninstalled 2 packages in 2ms
+Installed 7 packages in 6ms
+ + hiredis==3.4.0
+ + inquirerpy==0.3.4
+ - litellm-enterprise==0.1.47 (from file:///home/staticduo/git/litellm/enterprise)
+ + litellm-enterprise==0.1.56 (from file:///home/staticduo/git/litellm/enterprise)
+ - litellm-proxy-extras==0.4.75 (from file:///home/staticduo/git/litellm/litellm-proxy-extras)
+ + litellm-proxy-extras==0.4.86 (from file:///home/staticduo/git/litellm/litellm-proxy-extras)
+ + pfzy==0.3.4
+ + prompt-toolkit==3.0.52
+ + wcwidth==0.7.0
+uv run --no-sync python scripts/prisma_generate_if_needed.py
+Prisma client already generated for litellm/proxy/schema.prisma (prisma 0.11.0); skipping prisma generate
+cd ui/litellm-dashboard && ../../scripts/with_dashboard_node.sh npm install --no-audit --no-fund
+npm warn deprecated recharts@2.15.4: 1.x and 2.x branches are no longer active. Bump to Recharts v3 to receive latest features and bugfixes. See https://github.com/recharts/recharts/wiki/3.0-migration-guide
+
+added 26 packages, removed 75 packages, and changed 27 packages in 10s
+bootstrap: .env left untouched
+bootstrap: done
+./scripts/pre_commit_lint.sh
+check: logging full output to /home/staticduo/git/litellm/.git/pre_commit_lint.log
+check: nothing staged; scoping to the working tree's diff against the merge base with origin/litellm_internal_staging:
+    backend/routes/allowlist.py
+    docs/superpowers/plans/2026-08-17-litellm-nas-fedora-release.md
+    docs/superpowers/plans/2026-08-17-private-fixes-and-branch-cleanup.md
+    docs/superpowers/plans/2026-08-18-nas-litellm-staging-clone.md
+    docs/superpowers/specs/2026-08-17-private-fixes-and-branch-cleanup-design.md
+    docs/superpowers/specs/2026-08-18-nas-litellm-staging-clone-design.md
+    gateway/routes/allowlist.py
+    .github/codeql/codeql-config.yml
+    .github/workflows/codeql.yml
+    .github/workflows/codspeed.yml
+    .gitignore
+    litellm/caching/caching_handler.py
+    litellm/completion_extras/litellm_responses_transformation/handler.py
+    litellm/litellm_core_utils/get_llm_provider_logic.py
+    litellm/litellm_core_utils/litellm_logging.py
+    litellm/litellm_core_utils/sensitive_data_masker.py
+    litellm/llms/azure_ai/chat/transformation.py
+    litellm/llms/azure/chat/gpt_5_transformation.py
+    litellm/llms/chatgpt/authenticator.py
+    litellm/llms/chatgpt/chat/transformation.py
+    litellm/llms/chatgpt/common_utils.py
+    litellm/llms/chatgpt/responses/transformation.py
+    litellm/llms/custom_httpx/llm_http_handler.py
+    litellm/llms/openai/chat/gpt_5_transformation.py
+    litellm/llms/openai/responses/transformation.py
+    litellm/main.py
+    litellm/proxy/auth/auth_checks.py
+    litellm/proxy/auth/auth_utils.py
+    litellm/proxy/auth/route_checks.py
+    litellm/proxy/auth/user_api_key_auth.py
+    litellm/proxy/common_utils/reset_budget_job.py
+    litellm/proxy/_experimental/mcp_server/db.py
+    litellm/proxy/_experimental/mcp_server/mcp_server_manager.py
+    litellm/proxy/_experimental/mcp_server/oauth_utils.py
+    litellm/proxy/_experimental/mcp_server/server.py
+    litellm/proxy/_experimental/mcp_server/ui_session_utils.py
+    litellm/proxy/litellm_pre_call_utils.py
+    litellm/proxy/management_endpoints/mcp_management_endpoints.py
+    litellm/proxy/management_helpers/object_permission_utils.py
+    litellm/proxy/proxy_server.py
+    litellm/proxy/spend_tracking/spend_management_endpoints.py
+    litellm/proxy/spend_tracking/spend_tracking_utils.py
+    litellm/proxy/utils.py
+    litellm/responses/main.py
+    litellm/responses/mcp/chat_completions_handler.py
+    litellm/responses/mcp/litellm_proxy_mcp_handler.py
+    litellm/responses/mcp/mcp_streaming_iterator.py
+    litellm/responses/streaming_iterator.py
+    litellm/responses/utils.py
+    litellm/router.py
+    litellm/router_utils/fallback_event_handlers.py
+    litellm/types/proxy/litellm_pre_call_utils.py
+    litellm/types/router.py
+    litellm/types/utils.py
+    litellm/utils.py
+    Makefile
+    .staticeng/agent-additions/README.md
+    .staticeng/agents/README.md
+    .staticeng/codemap.yml
+    .staticeng/.config/generated/agents/product_manager.md
+    .staticeng/.config/generated/agents/README.md
+    .staticeng/.config/generated/policies/README.md
+    .staticeng/.config/runtime/discussions/DISCUSSION-001-transcript.md
+    .staticeng/.config/runtime/discussions.json
+    .staticeng/docs/scrs/current.md
+    .staticeng/docs/scrs/done.md
+    .staticeng/docs/scrs/SCR-2026-06-10-001-mcp-delete-stale-permissions.md
+    .staticeng/docs/scrs/SCR-2026-06-10-002-release-script-fedora-deploy.md
+    .staticeng/docs/scrs/SCR-2026-06-11-001-mcp-delete-graphql-json-serialization.md
+    .staticeng/docs/scrs/SCR-2026-06-11-002-mcp-delete-idempotent-missing.md
+    .staticeng/docs/scrs/SCR-2026-06-11-003-clone-selected-mcps-fedora.md
+    .staticeng/docs/scrs/SCR-2026-06-12-001-onboarding-claim-session-token.md
+    .staticeng/docs/scrs/SCR-2026-07-07-001-chatgpt-auth-profiles.md
+    .staticeng/docs/scrs/SCR-2026-08-18-001-nas-gpt-alias-primary-account.md
+    .staticeng/docs/scrs/SCR-2026-08-18-002-stream-safe-198-both-hosts.md
+    .staticeng/evidences/TASK-2026-05-29-003-fix-chatgpt-response-usage-parse/logs/focused-tests.log
+    .staticeng/evidences/TASK-2026-05-29-003-fix-chatgpt-response-usage-parse/logs/focused-tests-reopen.log
+    .staticeng/evidences/TASK-2026-06-01-003-fix-auth-dict-tpm-limit/logs/deploy.log
+    .staticeng/evidences/TASK-2026-06-01-003-fix-auth-dict-tpm-limit/logs/error-scan-after.log
+    .staticeng/evidences/TASK-2026-06-01-003-fix-auth-dict-tpm-limit/logs/health-after.log
+    .staticeng/evidences/TASK-2026-06-01-003-fix-auth-dict-tpm-limit/logs/tests.log
+    .staticeng/evidences/TASK-2026-06-01-003-fix-auth-dict-tpm-limit/SUMMARY.md
+    .staticeng/evidences/TASK-2026-06-08-002-fix-mcp-teams-and-spend-logs/logs/diff-stat.log
+    .staticeng/evidences/TASK-2026-06-08-002-fix-mcp-teams-and-spend-logs/logs/tests.log
+    .staticeng/evidences/TASK-2026-06-08-002-fix-mcp-teams-and-spend-logs/SUMMARY.md
+    .staticeng/evidences/TASK-2026-06-08-003-fix-mcp-null-tool-display-update/logs/diff-stat.log
+    .staticeng/evidences/TASK-2026-06-08-003-fix-mcp-null-tool-display-update/logs/tests.log
+    .staticeng/evidences/TASK-2026-06-08-003-fix-mcp-null-tool-display-update/SUMMARY.md
+    .staticeng/evidences/TASK-2026-06-08-004-add-litellm-redis-sidecar/logs/docker-compose-config.log
+    .staticeng/evidences/TASK-2026-06-08-004-add-litellm-redis-sidecar/logs/docker-compose-ps.log
+    .staticeng/evidences/TASK-2026-06-08-004-add-litellm-redis-sidecar/logs/litellm-cache-test.log
+    .staticeng/evidences/TASK-2026-06-08-004-add-litellm-redis-sidecar/logs/litellm-cache-test-logs.log
+    .staticeng/evidences/TASK-2026-06-08-004-add-litellm-redis-sidecar/logs/redis-ping.log
+    .staticeng/evidences/TASK-2026-06-08-004-add-litellm-redis-sidecar/SUMMARY.md
+    .staticeng/evidences/TASK-2026-06-10-001-fix-mcp-delete-stale-permissions/logs/diff-stat.log
+    .staticeng/evidences/TASK-2026-06-10-001-fix-mcp-delete-stale-permissions/logs/pytest-mcp-regression.log
+    .staticeng/evidences/TASK-2026-06-10-001-fix-mcp-delete-stale-permissions/logs/ruff-check.log
+    .staticeng/evidences/TASK-2026-06-10-001-fix-mcp-delete-stale-permissions/logs/staticeng-validate.log
+    .staticeng/evidences/TASK-2026-06-10-001-fix-mcp-delete-stale-permissions/SUMMARY.md
+    .staticeng/evidences/TASK-2026-06-10-002-update-release-script-fedora/logs/bash-n.log
+    .staticeng/evidences/TASK-2026-06-10-002-update-release-script-fedora/logs/command-path-review.log
+    .staticeng/evidences/TASK-2026-06-10-002-update-release-script-fedora/logs/help.log
+    .staticeng/evidences/TASK-2026-06-10-002-update-release-script-fedora/logs/live-release.log
+    .staticeng/evidences/TASK-2026-06-10-002-update-release-script-fedora/SUMMARY.md
+    .staticeng/evidences/TASK-2026-06-11-001-fix-mcp-delete-json-serialization/logs/formal-release.log
+    .staticeng/evidences/TASK-2026-06-11-001-fix-mcp-delete-json-serialization/logs/pytest-targeted.log
+    .staticeng/evidences/TASK-2026-06-11-001-fix-mcp-delete-json-serialization/logs/ruff-targeted.log
+    .staticeng/evidences/TASK-2026-06-11-001-fix-mcp-delete-json-serialization/logs/staticeng-validate.log
+    .staticeng/evidences/TASK-2026-06-11-001-fix-mcp-delete-json-serialization/SUMMARY.md
+    .staticeng/evidences/TASK-2026-06-11-002-mcp-delete-idempotent-missing/logs/formal-release.log
+    .staticeng/evidences/TASK-2026-06-11-002-mcp-delete-idempotent-missing/logs/pytest-targeted.log
+    .staticeng/evidences/TASK-2026-06-11-002-mcp-delete-idempotent-missing/logs/ruff-check.log
+    .staticeng/evidences/TASK-2026-06-11-002-mcp-delete-idempotent-missing/SUMMARY.md
+    .staticeng/evidences/TASK-2026-06-11-003-clone-selected-mcps-fedora/logs/first-pass-fedora-registration-redacted.json
+    .staticeng/evidences/TASK-2026-06-11-003-clone-selected-mcps-fedora/logs/first-pass-fedora-registration-stderr-redacted.log
+    .staticeng/evidences/TASK-2026-06-11-003-clone-selected-mcps-fedora/logs/first-pass-source-inventory-redacted.json
+    .staticeng/evidences/TASK-2026-06-11-003-clone-selected-mcps-fedora/logs/first-pass-summary-redacted.json
+    .staticeng/evidences/TASK-2026-06-11-003-clone-selected-mcps-fedora/SUMMARY.md
+    .staticeng/evidences/TASK-2026-06-12-001-fix-onboarding-claim-session/logs/backend-onboarding-tests.log
+    .staticeng/evidences/TASK-2026-06-12-001-fix-onboarding-claim-session/logs/frontend-onboarding-tests.log
+    .staticeng/evidences/TASK-2026-06-12-001-fix-onboarding-claim-session/logs/ruff-check.log
+    .staticeng/evidences/TASK-2026-06-12-001-fix-onboarding-claim-session/logs/staticeng-validate.log
+    .staticeng/evidences/TASK-2026-06-12-001-fix-onboarding-claim-session/logs/syntax-check.log
+    .staticeng/evidences/TASK-2026-06-12-001-fix-onboarding-claim-session/SUMMARY.md
+    .staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/logs/backend-onboarding-tests.log
+    .staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/logs/backend-onboarding-tests-rerun.log
+    .staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/logs/commit-verification.log
+    .staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/logs/fedora-readiness.log
+    .staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/logs/fedora-verification.log
+    .staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/logs/local-readiness.log
+    .staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/logs/local-verification.log
+    .staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/logs/release.log
+    .staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/logs/ruff-check.log
+    .staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/logs/staticeng-validate.log
+    .staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/logs/syntax-check.log
+    .staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/logs/uv-sync-proxy-dev.log
+    .staticeng/evidences/TASK-2026-06-12-002-release-onboarding-fix/SUMMARY.md
+    .staticeng/evidences/TASK-2026-06-12-003-commit-push-merge-clean/logs/pre-commit-diff-name-status.log
+    .staticeng/evidences/TASK-2026-06-12-003-commit-push-merge-clean/logs/pre-commit-diff-stat.log
+    .staticeng/evidences/TASK-2026-06-12-003-commit-push-merge-clean/logs/pre-commit-log.log
+    .staticeng/evidences/TASK-2026-06-12-003-commit-push-merge-clean/logs/pre-commit-status.log
+    .staticeng/evidences/TASK-2026-06-12-003-commit-push-merge-clean/logs/pre-final-commit-staged-stat.log
+    .staticeng/evidences/TASK-2026-06-12-003-commit-push-merge-clean/logs/pre-final-commit-status.log
+    .staticeng/evidences/TASK-2026-06-12-003-commit-push-merge-clean/logs/pre-staticeng-commit-status.log
+    .staticeng/evidences/TASK-2026-06-12-003-commit-push-merge-clean/logs/reconciled-stash-files.log
+    .staticeng/evidences/TASK-2026-06-12-003-commit-push-merge-clean/logs/staticeng-validate.log
+    .staticeng/evidences/TASK-2026-06-12-003-commit-push-merge-clean/SUMMARY.md
+    .staticeng/evidences/TASK-2026-06-14-001-remove-notion-mcp/logs/litellm-notion-mcp-removal.log
+    .staticeng/evidences/TASK-2026-06-14-001-remove-notion-mcp/SUMMARY.md
+    .staticeng/evidences/TASK-2026-06-15-001-investigate-missing-memory-neo4j-tools/logs/01-code-search-summary.md
+    .staticeng/evidences/TASK-2026-06-15-001-investigate-missing-memory-neo4j-tools/logs/02-runtime-v1-mcp-tools-sanitized.txt
+    .staticeng/evidences/TASK-2026-06-15-001-investigate-missing-memory-neo4j-tools/logs/03-runtime-rest-tools-per-server-sanitized.txt
+    .staticeng/evidences/TASK-2026-06-15-001-investigate-missing-memory-neo4j-tools/logs/04-runtime-mcp-server-inventory-sanitized.txt
+    .staticeng/evidences/TASK-2026-06-15-001-investigate-missing-memory-neo4j-tools/logs/05-db-mcp-config-sanitized.txt
+    .staticeng/evidences/TASK-2026-06-15-001-investigate-missing-memory-neo4j-tools/logs/06-litellm-recent-mcp-logs-sanitized.txt
+    .staticeng/evidences/TASK-2026-06-15-001-investigate-missing-memory-neo4j-tools/logs/07-health-check-sanitized.txt
+    .staticeng/evidences/TASK-2026-06-15-001-investigate-missing-memory-neo4j-tools/logs/08-db-key-team-scope-sanitized.txt
+    .staticeng/evidences/TASK-2026-06-15-001-investigate-missing-memory-neo4j-tools/logs/09-active-key-scope-counts-sanitized.txt
+    .staticeng/evidences/TASK-2026-06-15-001-investigate-missing-memory-neo4j-tools/logs/10-reopen-exact-key-vs-master-tools-sanitized.txt
+    .staticeng/evidences/TASK-2026-06-15-001-investigate-missing-memory-neo4j-tools/logs/11-reopen-exact-key-permissions-sanitized.txt
+    .staticeng/evidences/TASK-2026-06-15-001-investigate-missing-memory-neo4j-tools/logs/12-reopen-exact-key-rest-vs-v1-sanitized.txt
+    .staticeng/evidences/TASK-2026-06-15-001-investigate-missing-memory-neo4j-tools/logs/13-reopen-recent-mcp-logs-sanitized.txt
+    .staticeng/evidences/TASK-2026-06-15-001-investigate-missing-memory-neo4j-tools/logs/14-reopen-code-path-delta-summary.md
+    .staticeng/evidences/TASK-2026-06-15-001-investigate-missing-memory-neo4j-tools/SUMMARY.md
+    .staticeng/evidences/TASK-2026-06-29-001-fix-clickup-vercel-mcp/logs/registry_status_sanitized.log
+    .staticeng/evidences/TASK-2026-06-29-001-fix-clickup-vercel-mcp/logs/reopen_registry_status_sanitized.log
+    .staticeng/evidences/TASK-2026-06-29-001-fix-clickup-vercel-mcp/logs/reopen_verification_sanitized.log
+    .staticeng/evidences/TASK-2026-06-29-001-fix-clickup-vercel-mcp/logs/verification_sanitized.log
+    .staticeng/evidences/TASK-2026-06-29-001-fix-clickup-vercel-mcp/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/01-pre-status.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/02-fetch-branch.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/03-cherry-pick.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/04-conflict-resolutions.md
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/06-qa-git-history.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/07-qa-static-behavior.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/07-tech-lead-review.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/08-qa-test-lazymcp.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/09-qa-test-chatgpt-responses-usage.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/10-qa-test-auth-cached-dicts.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/11-qa-test-mcp-delete-null-maps.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/12-qa-test-spend-null-byte.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/13-qa-test-onboarding.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/14-qa-syntax-import.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/15-qa-final-status.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/16-qa-conflict-marker-precise.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/17-developer-reopen-fix.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/18-qa-rerun-status-history.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/18-tech-lead-rereview.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/19-qa-rerun-syntax-import.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/20-qa-rerun-static-behavior.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/21-qa-rerun-test-lazymcp.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/22-qa-rerun-test-chatgpt-responses-usage.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/23-qa-rerun-test-auth-cached-dicts.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/24-qa-rerun-test-mcp-delete-null-maps.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/25-qa-rerun-test-spend-null-byte.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/26-qa-rerun-test-onboarding.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/27-qa-rerun-env-expression.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/28-qa-rerun-test-chatgpt-only.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/29-qa-rerun-test-narrow-mcp-no-management-endpoints.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/30-qa-rerun-final-status.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/31-qa-dependency-sync.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/32-qa-post-sync-syntax-import.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/33-qa-post-sync-test-lazymcp.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/34-qa-post-sync-test-auth-cached-dicts.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/35-qa-post-sync-test-mcp-delete-null-maps.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/36-qa-post-sync-test-spend-null-byte.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/37-qa-post-sync-test-onboarding.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/38-qa-post-sync-test-chatgpt-responses-usage.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/39-qa-post-sync-final-status.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/40-developer-fix-targeted-failures.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/41-qa-final-rerun-history.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/42-qa-final-rerun-syntax-import.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/42-tech-lead-final-review.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/43-qa-final-rerun-test-lazymcp.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/44-qa-final-rerun-test-auth-cached-dicts.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/45-qa-final-rerun-test-mcp-delete-null-maps.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/46-qa-final-rerun-test-spend-null-byte.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/47-qa-final-rerun-test-onboarding.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/48-qa-final-rerun-test-chatgpt-responses-usage.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/49-qa-final-rerun-hygiene-status.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/50-qa-final-rerun-corrected-syntax-import.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/51-pre-commit-status.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/logs/52-staticeng-validation-escalation.log
+    .staticeng/evidences/TASK-2026-07-07-001-sync-upstream-v192-replay/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/01-preflight.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/02-release.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/03-blocker-state.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/04-release-retry.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/05-post-deploy-issue-summary.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/06-rollback.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/07-rollback-verification.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/08-py-compile.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/09-cachecodec-import-check.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/11-targeted-pytest-cachecodec-and-spend.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/12-make-pre-commit-summary.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/14-targeted-ruff-cachecodec-symbols.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/15-release-cachecodecfix.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/16-post-deploy-container-status.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/17-wait-for-health.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/18-container-health-endpoints.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/19-cachecodec-log-check.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/20-spend-tracking-log-check.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/21-final-image-and-status.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/22-final-container-inspect.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/23-post-release-git-status.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/24-lazymcp-smoke.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/logs/25-staticeng-validate-summary.log
+    .staticeng/evidences/TASK-2026-07-07-002-release-v192-replay-host/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/01-preflight.log
+    .staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/02-deploy.log
+    .staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/03-health-and-log-check.log
+    .staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/04-wait-for-docker-health.log
+    .staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/05-lazymcp-smoke.log
+    .staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/06-final-status.log
+    .staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/07-staticeng-validate.log
+    .staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/logs/08-pre-commit-git-status.log
+    .staticeng/evidences/TASK-2026-07-07-003-deploy-litellm-fedora/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/make-pre-commit.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/make-pre-commit-pma-final.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/make-pre-commit-reopen.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/pytest-chatgpt-auth-profiles.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/pytest-chatgpt-auth-profiles-reopen-2.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/pytest-chatgpt-auth-profiles-reopen.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/ruff-check-reopen-2.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/ruff-check-reopen.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/ruff-check-targeted.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/ruff-format-check-reopen-2.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/ruff-format-check-reopen.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/ruff-format-check-targeted.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/staticeng-repair-dry-run.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/logs/staticeng-validate.log
+    .staticeng/evidences/TASK-2026-07-07-005-implement-chatgpt-auth-profiles/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-07-006-release-chatgpt-profiles-local-and-add-account2-models/logs/container_image_and_auth_files.log
+    .staticeng/evidences/TASK-2026-07-07-006-release-chatgpt-profiles-local-and-add-account2-models/logs/db_mutation.log
+    .staticeng/evidences/TASK-2026-07-07-006-release-chatgpt-profiles-local-and-add-account2-models/logs/final_verification.log
+    .staticeng/evidences/TASK-2026-07-07-006-release-chatgpt-profiles-local-and-add-account2-models/logs/preflight_and_rollback.log
+    .staticeng/evidences/TASK-2026-07-07-006-release-chatgpt-profiles-local-and-add-account2-models/logs/release_build_deploy.log
+    .staticeng/evidences/TASK-2026-07-07-006-release-chatgpt-profiles-local-and-add-account2-models/logs/restart_after_db_mutation.log
+    .staticeng/evidences/TASK-2026-07-07-006-release-chatgpt-profiles-local-and-add-account2-models/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-07-007-remove-defend-account2-model/logs/container_health.log
+    .staticeng/evidences/TASK-2026-07-07-007-remove-defend-account2-model/logs/post_removal_api_health.log
+    .staticeng/evidences/TASK-2026-07-07-007-remove-defend-account2-model/logs/post_removal_db.log
+    .staticeng/evidences/TASK-2026-07-07-007-remove-defend-account2-model/logs/pre_removal_db.log
+    .staticeng/evidences/TASK-2026-07-07-007-remove-defend-account2-model/logs/removal.log
+    .staticeng/evidences/TASK-2026-07-07-007-remove-defend-account2-model/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-07-009-smoke-chatgpt-account2/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-07-010-retry-chatgpt-account2-gpt55/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-07-011-debug-fix-chatgpt-account2-empty-output/logs/live-smoke-after-hotpatch.jsonl
+    .staticeng/evidences/TASK-2026-07-07-011-debug-fix-chatgpt-account2-empty-output/logs/local-container-hotpatch.txt
+    .staticeng/evidences/TASK-2026-07-07-011-debug-fix-chatgpt-account2-empty-output/logs/reopen-resolution.txt
+    .staticeng/evidences/TASK-2026-07-07-011-debug-fix-chatgpt-account2-empty-output/logs/safe-live-diagnostics.jsonl
+    .staticeng/evidences/TASK-2026-07-07-011-debug-fix-chatgpt-account2-empty-output/logs/unit-tests.txt
+    .staticeng/evidences/TASK-2026-07-07-011-debug-fix-chatgpt-account2-empty-output/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-07-012-release-account2-empty-output-fix-local/logs/00-preflight.txt
+    .staticeng/evidences/TASK-2026-07-07-012-release-account2-empty-output-fix-local/logs/10-release.log
+    .staticeng/evidences/TASK-2026-07-07-012-release-account2-empty-output-fix-local/logs/20-post-deploy-health.txt
+    .staticeng/evidences/TASK-2026-07-07-012-release-account2-empty-output-fix-local/logs/30-readiness-liveliness.txt
+    .staticeng/evidences/TASK-2026-07-07-012-release-account2-empty-output-fix-local/logs/40-live-responses-smokes.txt
+    .staticeng/evidences/TASK-2026-07-07-012-release-account2-empty-output-fix-local/logs/41-responses-format-probe.txt
+    .staticeng/evidences/TASK-2026-07-07-012-release-account2-empty-output-fix-local/logs/42-responses-complex-input-format-probe.txt
+    .staticeng/evidences/TASK-2026-07-07-012-release-account2-empty-output-fix-local/logs/50-compose-ps.txt
+    .staticeng/evidences/TASK-2026-07-07-012-release-account2-empty-output-fix-local/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-08-001-deploy-empty-output-fix-fedora/logs/deploy.md
+    .staticeng/evidences/TASK-2026-07-08-001-deploy-empty-output-fix-fedora/logs/health_and_smoke.md
+    .staticeng/evidences/TASK-2026-07-08-001-deploy-empty-output-fix-fedora/logs/model_inventory_comparison.json
+    .staticeng/evidences/TASK-2026-07-08-001-deploy-empty-output-fix-fedora/logs/model_inventory_post.json
+    .staticeng/evidences/TASK-2026-07-08-001-deploy-empty-output-fix-fedora/logs/model_inventory_pre.json
+    .staticeng/evidences/TASK-2026-07-08-001-deploy-empty-output-fix-fedora/logs/preflight.md
+    .staticeng/evidences/TASK-2026-07-08-001-deploy-empty-output-fix-fedora/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-09-001-add-chatgpt-56-models-local-fedora/logs/fedora_health_admin_validation.json
+    .staticeng/evidences/TASK-2026-07-09-001-add-chatgpt-56-models-local-fedora/logs/fedora_mutation.json
+    .staticeng/evidences/TASK-2026-07-09-001-add-chatgpt-56-models-local-fedora/logs/fedora_post_inventory.json
+    .staticeng/evidences/TASK-2026-07-09-001-add-chatgpt-56-models-local-fedora/logs/fedora_pre_inventory.json
+    .staticeng/evidences/TASK-2026-07-09-001-add-chatgpt-56-models-local-fedora/logs/inventory_comparison.json
+    .staticeng/evidences/TASK-2026-07-09-001-add-chatgpt-56-models-local-fedora/logs/local_health_admin_validation.json
+    .staticeng/evidences/TASK-2026-07-09-001-add-chatgpt-56-models-local-fedora/logs/local_mutation.json
+    .staticeng/evidences/TASK-2026-07-09-001-add-chatgpt-56-models-local-fedora/logs/local_post_inventory.json
+    .staticeng/evidences/TASK-2026-07-09-001-add-chatgpt-56-models-local-fedora/logs/local_pre_inventory.json
+    .staticeng/evidences/TASK-2026-07-09-001-add-chatgpt-56-models-local-fedora/logs/settings_comparison.json
+    .staticeng/evidences/TASK-2026-07-09-001-add-chatgpt-56-models-local-fedora/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-10-001-set-chatgpt-56-pricing/logs/combined_verification.json
+    .staticeng/evidences/TASK-2026-07-10-001-set-chatgpt-56-pricing/logs/fedora_update_verify.json
+    .staticeng/evidences/TASK-2026-07-10-001-set-chatgpt-56-pricing/logs/local_update_verify.json
+    .staticeng/evidences/TASK-2026-07-10-001-set-chatgpt-56-pricing/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-10-003-add-gpt56-models-hermes-openclaw-fedora/logs/post-validation.txt
+    .staticeng/evidences/TASK-2026-07-10-003-add-gpt56-models-hermes-openclaw-fedora/logs/pre-inspection.txt
+    .staticeng/evidences/TASK-2026-07-10-003-add-gpt56-models-hermes-openclaw-fedora/logs/rollback.txt
+    .staticeng/evidences/TASK-2026-07-10-003-add-gpt56-models-hermes-openclaw-fedora/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-10-004-set-fedora-agent-defaults-terra/backups-and-rollback.log
+    .staticeng/evidences/TASK-2026-07-10-004-set-fedora-agent-defaults-terra/post-validation.log
+    .staticeng/evidences/TASK-2026-07-10-004-set-fedora-agent-defaults-terra/pre-inspection.log
+    .staticeng/evidences/TASK-2026-07-10-004-set-fedora-agent-defaults-terra/status.log
+    .staticeng/evidences/TASK-2026-07-10-004-set-fedora-agent-defaults-terra/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-11-001-investigate-chatgpt-multiaccount-routing/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-11-002-fix-multiaccount-routing-oauth/logs/post-fix-results.txt
+    .staticeng/evidences/TASK-2026-07-11-002-fix-multiaccount-routing-oauth/logs/pre-fix-regression.txt
+    .staticeng/evidences/TASK-2026-07-11-002-fix-multiaccount-routing-oauth/logs/structured-routing-sample.txt
+    .staticeng/evidences/TASK-2026-07-11-002-fix-multiaccount-routing-oauth/logs/verification.txt
+    .staticeng/evidences/TASK-2026-07-11-002-fix-multiaccount-routing-oauth/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-11-003-release-multiaccount-routing-fix-both/logs/fedora-verification.json
+    .staticeng/evidences/TASK-2026-07-11-003-release-multiaccount-routing-fix-both/logs/local-verification.json
+    .staticeng/evidences/TASK-2026-07-11-003-release-multiaccount-routing-fix-both/logs/release-and-rollback.md
+    .staticeng/evidences/TASK-2026-07-11-003-release-multiaccount-routing-fix-both/logs/routing-smokes-and-proof.jsonl
+    .staticeng/evidences/TASK-2026-07-11-003-release-multiaccount-routing-fix-both/logs/updatedockers-control.md
+    .staticeng/evidences/TASK-2026-07-11-003-release-multiaccount-routing-fix-both/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-12-001-remove-fedora-account2-models/deletion.log
+    .staticeng/evidences/TASK-2026-07-12-001-remove-fedora-account2-models/inventory-before.log
+    .staticeng/evidences/TASK-2026-07-12-001-remove-fedora-account2-models/opencode-config.log
+    .staticeng/evidences/TASK-2026-07-12-001-remove-fedora-account2-models/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-12-001-remove-fedora-account2-models/verification.log
+    .staticeng/evidences/TASK-2026-07-12-002-restore-fedora-account2-and-trigger-auth/inventory-before.log
+    .staticeng/evidences/TASK-2026-07-12-002-restore-fedora-account2-and-trigger-auth/setup.log
+    .staticeng/evidences/TASK-2026-07-12-002-restore-fedora-account2-and-trigger-auth/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-12-002-restore-fedora-account2-and-trigger-auth/validation.log
+    .staticeng/evidences/TASK-2026-07-13-001-configure-fedora-bidirectional-account-fallbacks/inspection.log
+    .staticeng/evidences/TASK-2026-07-13-001-configure-fedora-bidirectional-account-fallbacks/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-13-001-configure-fedora-bidirectional-account-fallbacks/validation.log
+    .staticeng/evidences/TASK-2026-07-13-002-investigate-litellm-errors-both/aggregate.json
+    .staticeng/evidences/TASK-2026-07-13-002-investigate-litellm-errors-both/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-14-001-fix-litellm-operational-errors/inspection.log
+    .staticeng/evidences/TASK-2026-07-14-001-fix-litellm-operational-errors/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-14-001-fix-litellm-operational-errors/validation.log
+    .staticeng/evidences/TASK-2026-07-14-002-reauth-account2-create-account3-nas/inventory-before.log
+    .staticeng/evidences/TASK-2026-07-14-002-reauth-account2-create-account3-nas/setup.log
+    .staticeng/evidences/TASK-2026-07-14-002-reauth-account2-create-account3-nas/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-14-002-reauth-account2-create-account3-nas/validation.log
+    .staticeng/evidences/TASK-2026-07-16-001-investigate-fedora-litellm-routing-errors/logs/code-paths-sanitized.log
+    .staticeng/evidences/TASK-2026-07-16-001-investigate-fedora-litellm-routing-errors/logs/container-and-deployment-sanitized.log
+    .staticeng/evidences/TASK-2026-07-16-001-investigate-fedora-litellm-routing-errors/logs/model-and-client-inventory-sanitized.json
+    .staticeng/evidences/TASK-2026-07-16-001-investigate-fedora-litellm-routing-errors/logs/recent-routing-aggregate-sanitized.json
+    .staticeng/evidences/TASK-2026-07-16-001-investigate-fedora-litellm-routing-errors/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-16-002-repair-fedora-litellm-routing-errors/logs/bounded-verification-sanitized.log
+    .staticeng/evidences/TASK-2026-07-16-002-repair-fedora-litellm-routing-errors/logs/config-repair-sanitized.log
+    .staticeng/evidences/TASK-2026-07-16-002-repair-fedora-litellm-routing-errors/logs/health-and-routing-sanitized.log
+    .staticeng/evidences/TASK-2026-07-16-002-repair-fedora-litellm-routing-errors/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-16-004-clean-staticeng-repair-side-effects/logs/cleanup-validation-sanitized.log
+    .staticeng/evidences/TASK-2026-07-16-004-clean-staticeng-repair-side-effects/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-18-002-repair-fedora-codex-provider/logs/01-service-recovery-sanitized.log
+    .staticeng/evidences/TASK-2026-07-18-002-repair-fedora-codex-provider/logs/02-health-and-preservation-sanitized.log
+    .staticeng/evidences/TASK-2026-07-18-002-repair-fedora-codex-provider/logs/03-single-response-request-sanitized.log
+    .staticeng/evidences/TASK-2026-07-18-002-repair-fedora-codex-provider/SUMMARY.md
+    .staticeng/evidences/TASK-2026-07-18-006-repair-local-chatgpt-fallback/logs/admin-update-sanitized.log
+    .staticeng/evidences/TASK-2026-07-18-006-repair-local-chatgpt-fallback/logs/bounded-responses-validation-sanitized.log
+    .staticeng/evidences/TASK-2026-07-18-006-repair-local-chatgpt-fallback/logs/readback-validation-sanitized.log
+    .staticeng/evidences/TASK-2026-07-18-006-repair-local-chatgpt-fallback/logs/reopen1-corrective-responses-sanitized.log
+    .staticeng/evidences/TASK-2026-07-18-006-repair-local-chatgpt-fallback/logs/routing-before-sanitized.log
+    .staticeng/evidences/TASK-2026-07-18-006-repair-local-chatgpt-fallback/SUMMARY.md
+    .staticeng/evidences/TASK-2026-08-15-002-expand-npm-litellm-response-buffers/logs/effective-config-inspection.log
+    .staticeng/evidences/TASK-2026-08-15-002-expand-npm-litellm-response-buffers/logs/host-109-canary.log
+    .staticeng/evidences/TASK-2026-08-15-002-expand-npm-litellm-response-buffers/logs/host-62-rollout.log
+    .staticeng/evidences/TASK-2026-08-15-002-expand-npm-litellm-response-buffers/logs/outage-recovery.log
+    .staticeng/evidences/TASK-2026-08-15-002-expand-npm-litellm-response-buffers/logs/pre-change-measurement.log
+    .staticeng/evidences/TASK-2026-08-15-002-expand-npm-litellm-response-buffers/logs/pre-change-nginx.log
+    .staticeng/evidences/TASK-2026-08-15-002-expand-npm-litellm-response-buffers/logs/proxy-hosts-before.sanitized.conf
+    .staticeng/evidences/TASK-2026-08-15-002-expand-npm-litellm-response-buffers/SUMMARY.md
+    .staticeng/evidences/TASK-2026-08-18-002-recover-nas-litellm/logs/01-pre-change-and-rollback.txt
+    .staticeng/evidences/TASK-2026-08-18-002-recover-nas-litellm/logs/02-deployment-and-preservation.txt
+    .staticeng/evidences/TASK-2026-08-18-002-recover-nas-litellm/logs/03-health-version-models.txt
+    .staticeng/evidences/TASK-2026-08-18-002-recover-nas-litellm/logs/04-smoke-and-startup-logs.txt
+    .staticeng/evidences/TASK-2026-08-18-002-recover-nas-litellm/logs/05-fedora-unchanged.txt
+    .staticeng/evidences/TASK-2026-08-18-002-recover-nas-litellm/logs/06-staticeng-validation.txt
+    .staticeng/evidences/TASK-2026-08-18-002-recover-nas-litellm/SUMMARY.md
+    .staticeng/evidences/TASK-2026-08-18-005-set-nas-gpt-alias-primary-account/logs/01-inventory-before-sanitized.log
+    .staticeng/evidences/TASK-2026-08-18-005-set-nas-gpt-alias-primary-account/logs/02-backup-and-update-sanitized.log
+    .staticeng/evidences/TASK-2026-08-18-005-set-nas-gpt-alias-primary-account/logs/03-readback-validation-sanitized.log
+    .staticeng/evidences/TASK-2026-08-18-005-set-nas-gpt-alias-primary-account/logs/04-routing-smokes-sanitized.log
+    .staticeng/evidences/TASK-2026-08-18-005-set-nas-gpt-alias-primary-account/logs/05-health-fedora-sanitized.log
+    .staticeng/evidences/TASK-2026-08-18-005-set-nas-gpt-alias-primary-account/logs/06-staticeng-validation.log
+    .staticeng/evidences/TASK-2026-08-18-005-set-nas-gpt-alias-primary-account/SUMMARY.md
+    .staticeng/evidences/TASK-2026-08-18-007-finalize-nas-gpt-alias-primary/logs/final-review-sanitized.log
+    .staticeng/evidences/TASK-2026-08-18-007-finalize-nas-gpt-alias-primary/SUMMARY.md
+    .staticeng/evidences/TASK-2026-08-18-009-finalize-stream-fix-investigation/logs/verification.log
+    .staticeng/evidences/TASK-2026-08-18-009-finalize-stream-fix-investigation/SUMMARY.md
+    .staticeng/evidences/TASK-2026-08-18-011-persist-chatgpt-stream-guards/logs/git-diff-check.log
+    .staticeng/evidences/TASK-2026-08-18-011-persist-chatgpt-stream-guards/logs/make-check.log
+    .staticeng/evidences/TASK-2026-08-18-011-persist-chatgpt-stream-guards/logs/new-fake-stream-regressions.log
+    .staticeng/evidences/TASK-2026-08-18-011-persist-chatgpt-stream-guards/logs/new-fake-stream-regressions-uv.log
+    .staticeng/evidences/TASK-2026-08-18-011-persist-chatgpt-stream-guards/logs/new-handler-regressions.log
+    .staticeng/evidences/TASK-2026-08-18-011-persist-chatgpt-stream-guards/logs/new-handler-regressions-uv.log
+    .staticeng/evidences/TASK-2026-08-18-011-persist-chatgpt-stream-guards/logs/test-chatgpt-responses-transformation.log
+    .staticeng/evidences/TASK-2026-08-18-011-persist-chatgpt-stream-guards/logs/test-llm-http-handler.log
+    .staticeng/evidences/TASK-2026-08-18-011-persist-chatgpt-stream-guards/logs/test-openai-responses-transformation.log
+    .staticeng/policies/README.md
+    .staticeng/tasks/blocked/TASK-2026-08-15-002-expand-npm-litellm-response-buffers.md
+    .staticeng/tasks/current.md
+    .staticeng/tasks/discussions/DISCUSSION-002-deploy-litellm-cachecodecfix-image-to-fedora.md
+    .staticeng/tasks/discussions/DISCUSSION-002-fix-litellm-mcp-server-delete-stale-permission-references.md
+    .staticeng/tasks/discussions/DISCUSSION-002-implement-chatgpt-multi-account-auth-profiles-in-litellm.md
+    .staticeng/tasks/discussions/DISCUSSION-002-investigate-multi-account-chatgpt-subscription-auth-in-litellm.md
+    .staticeng/tasks/discussions/DISCUSSION-002-release-chatgpt-auth-profiles-image-and-add-account2-db-models.md
+    .staticeng/tasks/discussions/DISCUSSION-002-release-litellm-v1-92-replay-on-this-host.md
+    .staticeng/tasks/discussions/DISCUSSION-002-update-litellm-release-script-for-fedora-deployment.md
+    .staticeng/tasks/discussions/DISCUSSION-003-commit-and-release-onboarding-fix-to-local-and-fedora-litellm.md
+    .staticeng/tasks/discussions/DISCUSSION-003-fix-lazymcp-clickup-and-vercel-registrations.md
+    .staticeng/tasks/discussions/DISCUSSION-003-investigate-missing-memory-neo4j-mcp-tools.md
+    .staticeng/tasks/discussions/DISCUSSION-003-remove-mistaken-defend-account2-litellm-model.md
+    .staticeng/tasks/discussions/DISCUSSION-004-debug-and-fix-chatgpt-account2-empty-responses-output.md
+    .staticeng/tasks/done.md
+    .staticeng/tasks/done/TASK-2026-06-14-001-remove-notion-mcp.md
+    .staticeng/tasks/done/TASK-2026-07-07-001-sync-upstream-v192-replay.md
+    .staticeng/tasks/done/TASK-2026-07-07-002-release-v192-replay-host.md
+    .staticeng/tasks/done/TASK-2026-07-07-003-deploy-litellm-fedora.md
+    .staticeng/tasks/done/TASK-2026-07-07-004-investigate-chatgpt-multi-account-auth.md
+    .staticeng/tasks/done/TASK-2026-07-07-005-implement-chatgpt-auth-profiles.md
+    .staticeng/tasks/done/TASK-2026-07-07-006-release-chatgpt-profiles-local-and-add-account2-models.md
+    .staticeng/tasks/done/TASK-2026-07-07-007-remove-defend-account2-model.md
+    .staticeng/tasks/done/TASK-2026-07-07-008-trigger-chatgpt-account2-login.md
+    .staticeng/tasks/done/TASK-2026-07-07-009-smoke-chatgpt-account2.md
+    .staticeng/tasks/done/TASK-2026-07-07-010-retry-chatgpt-account2-gpt55.md
+    .staticeng/tasks/done/TASK-2026-07-07-011-debug-fix-chatgpt-account2-empty-output.md
+    .staticeng/tasks/done/TASK-2026-07-07-012-release-account2-empty-output-fix-local.md
+    .staticeng/tasks/done/TASK-2026-07-08-001-deploy-empty-output-fix-fedora.md
+    .staticeng/tasks/done/TASK-2026-07-09-001-add-chatgpt-56-models-local-fedora.md
+    .staticeng/tasks/done/TASK-2026-07-10-001-set-chatgpt-56-pricing.md
+    .staticeng/tasks/done/TASK-2026-07-10-002-verify-gpt56-sol-routing.md
+    .staticeng/tasks/done/TASK-2026-07-10-003-add-gpt56-models-hermes-openclaw-fedora.md
+    .staticeng/tasks/done/TASK-2026-07-10-004-set-fedora-agent-defaults-terra.md
+    .staticeng/tasks/done/TASK-2026-07-11-001-investigate-chatgpt-multiaccount-routing.md
+    .staticeng/tasks/done/TASK-2026-07-11-002-fix-multiaccount-routing-oauth.md
+    .staticeng/tasks/done/TASK-2026-07-11-003-release-multiaccount-routing-fix-both.md
+    .staticeng/tasks/done/TASK-2026-07-12-001-remove-fedora-account2-models.md
+    .staticeng/tasks/done/TASK-2026-07-12-002-restore-fedora-account2-and-trigger-auth.md
+    .staticeng/tasks/done/TASK-2026-07-13-001-configure-fedora-bidirectional-account-fallbacks.md
+    .staticeng/tasks/done/TASK-2026-07-13-002-investigate-litellm-errors-both.md
+    .staticeng/tasks/done/TASK-2026-07-14-001-fix-litellm-operational-errors.md
+    .staticeng/tasks/done/TASK-2026-07-14-002-reauth-account2-create-account3-nas.md
+    .staticeng/tasks/done/TASK-2026-07-16-001-investigate-fedora-litellm-routing-errors.md
+    .staticeng/tasks/done/TASK-2026-07-16-002-repair-fedora-litellm-routing-errors.md
+    .staticeng/tasks/done/TASK-2026-07-16-003-review-litellm-repair-finalization.md
+    .staticeng/tasks/done/TASK-2026-07-16-004-clean-staticeng-repair-side-effects.md
+    .staticeng/tasks/done/TASK-2026-08-15-001-diagnose-fedora-litellm-502.md
+    .staticeng/tasks/done/TASK-2026-08-18-001-diagnose-incomplete-litellm-release.md
+    .staticeng/tasks/done/TASK-2026-08-18-002-recover-nas-litellm.md
+    .staticeng/tasks/done/TASK-2026-08-18-003-diagnose-nas-smoke-blocker.md
+    .staticeng/tasks/done/TASK-2026-08-18-004-complete-nas-litellm-198-release.md
+    .staticeng/tasks/done/TASK-2026-08-18-005-set-nas-gpt-alias-primary-account.md
+    .staticeng/tasks/done/TASK-2026-08-18-006-verify-nas-gpt-alias-primary.md
+    .staticeng/tasks/done/TASK-2026-08-18-007-finalize-nas-gpt-alias-primary.md
+    .staticeng/tasks/done/TASK-2026-08-18-008-find-stream-must-be-true-fix.md
+    .staticeng/tasks/done/TASK-2026-08-18-009-finalize-stream-fix-investigation.md
+    .staticeng/tasks/done/TASK-2026-08-18-010-design-stream-safe-198-release.md
+    .staticeng/tasks/subtask-template.md
+    .staticeng/tasks/task-template.md
+    .staticeng/tasks/todo/TASK-2026-05-29-003-fix-chatgpt-response-usage-parse.md
+    .staticeng/tasks/todo/TASK-2026-06-08-001-investigate-litellm-mcp-edit-cost-timeouts.md
+    .staticeng/tasks/todo/TASK-2026-06-08-002-fix-mcp-teams-and-spend-logs.md
+    .staticeng/tasks/todo/TASK-2026-06-08-003-fix-mcp-null-tool-display-update.md
+    .staticeng/tasks/todo/TASK-2026-06-08-004-add-litellm-redis-sidecar.md
+    .staticeng/tasks/todo/TASK-2026-06-10-001-fix-mcp-delete-stale-permissions.md
+    .staticeng/tasks/todo/TASK-2026-06-10-002-update-release-script-fedora.md
+    .staticeng/tasks/todo/TASK-2026-06-11-001-fix-mcp-delete-json-serialization.md
+    .staticeng/tasks/todo/TASK-2026-06-11-002-mcp-delete-idempotent-missing.md
+    .staticeng/tasks/todo/TASK-2026-06-11-003-clone-selected-mcps-fedora.md
+    .staticeng/tasks/todo/TASK-2026-06-12-001-fix-onboarding-claim-session.md
+    .staticeng/tasks/todo/TASK-2026-06-12-002-release-onboarding-fix.md
+    .staticeng/tasks/todo/TASK-2026-06-12-003-commit-push-merge-clean.md
+    .staticeng/tasks/todo/TASK-2026-06-15-001-investigate-missing-memory-neo4j-tools.md
+    .staticeng/tasks/todo/TASK-2026-06-29-001-fix-clickup-vercel-mcp.md
+    .staticeng/tasks/todo/TASK-2026-07-14-003-trigger-nas-account2-reauth.md
+    .staticeng/tasks/todo/TASK-2026-07-18-001-diagnose-fedora-codex-provider.md
+    .staticeng/tasks/todo/TASK-2026-07-18-002-repair-fedora-codex-provider.md
+    .staticeng/tasks/todo/TASK-2026-07-18-003-explain-codex-optima-proxy.md
+    .staticeng/tasks/todo/TASK-2026-07-18-004-review-litellm-model-alias.md
+    .staticeng/tasks/todo/TASK-2026-07-18-005-diagnose-local-chatgpt-fallback.md
+    .staticeng/tasks/todo/TASK-2026-07-18-006-repair-local-chatgpt-fallback.md
+    .staticeng/tasks/todo/TASK-2026-08-18-011-persist-chatgpt-stream-guards.md
+    tests/llm_responses_api_testing/test_base_responses_api_streaming_iterator.py
+    tests/proxy_unit_tests/test_update_spend.py
+    tests/test_litellm/completion_extras/litellm_responses_transformation/test_completion_extras_litellm_responses_transformation_handler.py
+    tests/test_litellm/litellm_core_utils/test_litellm_logging.py
+    tests/test_litellm/llms/azure_ai/chat/test_azure_ai_transformation.py
+    tests/test_litellm/llms/azure/chat/test_azure_gpt5_transformation.py
+    tests/test_litellm/llms/chatgpt/chat/test_chatgpt_chat_transformation.py
+    tests/test_litellm/llms/chatgpt/responses/test_chatgpt_responses_transformation.py
+    tests/test_litellm/llms/chatgpt/test_chatgpt_authenticator.py
+    tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py
+    tests/test_litellm/llms/openai/responses/test_openai_responses_transformation.py
+    tests/test_litellm/llms/openai/test_gpt5_transformation.py
+    tests/test_litellm/proxy/auth/test_auth_utils.py
+    tests/test_litellm/proxy/auth/test_onboarding.py
+    tests/test_litellm/proxy/auth/test_user_api_key_auth.py
+    tests/test_litellm/proxy/common_utils/test_reset_budget_job.py
+    tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_partial_update.py
+    tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py
+    tests/test_litellm/proxy/_experimental/mcp_server/test_ui_session_utils.py
+    tests/test_litellm/proxy/management_endpoints/test_mcp_management_endpoints.py
+    tests/test_litellm/proxy/management_helpers/test_object_permission_utils.py
+    tests/test_litellm/proxy/proxy_server/test_routes_onboarding.py
+    tests/test_litellm/proxy/proxy_server/test_spend_counters.py
+    tests/test_litellm/proxy/spend_tracking/test_spend_management_endpoints.py
+    tests/test_litellm/proxy/spend_tracking/test_spend_tracking_utils.py
+    tests/test_litellm/proxy/test_component_allowlists.py
+    tests/test_litellm/responses/mcp/test_litellm_proxy_mcp_handler.py
+    tests/test_litellm/responses/test_responses_utils.py
+    tests/test_litellm/responses/test_streaming_iterator.py
+    tests/test_litellm/router_utils/test_fallback_event_handlers.py
+    ui/litellm-dashboard/src/app/(dashboard)/mcp-servers/_components/mcp_connect.tsx
+    ui/litellm-dashboard/src/app/(dashboard)/mcp-servers/_components/mcp_servers.test.tsx
+    ui/litellm-dashboard/src/app/(dashboard)/mcp-servers/_components/mcp_servers.tsx
+    ui/litellm-dashboard/src/components/networking.tsx
+    ui/litellm-dashboard/src/lib/http/schema.d.ts
+check: linting Python (make lint)
+make[2]: Entering directory '/home/staticduo/git/litellm'
+make[3]: Entering directory '/home/staticduo/git/litellm'
+uv sync --inexact --frozen --group proxy-dev --group e2e-dev
+Audited 196 packages in 3ms
+uv run --no-sync python scripts/prisma_generate_if_needed.py
+Prisma client already generated for litellm/proxy/schema.prisma (prisma 0.11.0); skipping prisma generate
+git fetch origin litellm_internal_staging
+fatal: couldn't find remote ref litellm_internal_staging
+make[3]: *** [Makefile:135: lint-fetch-base] Error 128
+make[3]: Leaving directory '/home/staticduo/git/litellm'
+make[2]: *** [Makefile:243: lint] Error 2
+make[2]: Leaving directory '/home/staticduo/git/litellm'
+✗ Python lint failed. Fix the reds above, then re-run make check.
+check: ruff format --check (scoped litellm files)
+44 files already formatted
+check: linting dashboard (prettier + eslint + lint budgets)
+Checking formatting...
+All matched files use Prettier code style!
+
+/home/staticduo/git/litellm/ui/litellm-dashboard/src/app/(dashboard)/mcp-servers/_components/mcp_connect.tsx
+   39:35  warning  Unexpected any. Specify a different type                                                        @typescript-eslint/no-explicit-any
+   62:8   warning  Boolean expression combines 4 conditions; extract it into a named variable                      local/no-long-condition-chain
+  281:16  warning  Unused eslint-disable directive (no problems were reported from 'react/no-unescaped-entities')
+
+/home/staticduo/git/litellm/ui/litellm-dashboard/src/app/(dashboard)/mcp-servers/_components/mcp_servers.tsx
+  110:82  warning  Arrow function has a complexity of 27. Maximum allowed is 20                complexity
+  295:46  warning  Unexpected any. Specify a different type                                    @typescript-eslint/no-explicit-any
+  335:18  warning  Boolean expression combines 4 conditions; extract it into a named variable  local/no-long-condition-chain
+
+/home/staticduo/git/litellm/ui/litellm-dashboard/src/components/networking.tsx
+   123:3    warning  Unexpected console statement. Only these console methods are allowed: warn, error                   no-console
+   238:28   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+   246:25   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+   247:10   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+   248:10   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+   249:12   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+   255:22   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+   336:55   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+   645:30   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+   664:30   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+   714:30   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+   772:30   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+   833:29   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+   837:30   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+   869:30   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+   988:3    warning  Async arrow function has a complexity of 24. Maximum allowed is 20                                  complexity
+  1028:28   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  1222:30   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  1400:29   warning  Object literal with 6 properties passed inline as an argument; assign it to a named variable first  local/no-large-inline-object-arg
+  1423:29   warning  Object literal with 6 properties passed inline as an argument; assign it to a named variable first  local/no-large-inline-object-arg
+  1445:29   warning  Object literal with 6 properties passed inline as an argument; assign it to a named variable first  local/no-large-inline-object-arg
+  1465:29   warning  Object literal with 6 properties passed inline as an argument; assign it to a named variable first  local/no-large-inline-object-arg
+  1484:29   warning  Object literal with 6 properties passed inline as an argument; assign it to a named variable first  local/no-large-inline-object-arg
+  1503:29   warning  Object literal with 6 properties passed inline as an argument; assign it to a named variable first  local/no-large-inline-object-arg
+  1569:97   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  1614:3    warning  Async arrow function has a complexity of 21. Maximum allowed is 20                                  complexity
+  2237:34   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  2238:30   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  2544:30   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  2572:30   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  2645:30   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  2673:30   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  2722:30   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  2762:30   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  2825:24   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  2835:15   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  2857:22   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  2883:24   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  2893:15   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  2913:24   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  2951:24   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  2961:15   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  3071:15   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  3094:15   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  3099:38   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  3129:24   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  3257:98   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  3272:98   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  3378:97   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  3399:100  warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  3467:88   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  3639:101  warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  3685:28   warning  Object literal with 4 properties passed inline as an argument; assign it to a named variable first  local/no-large-inline-object-arg
+  3999:39   warning  Object literal with 4 properties passed inline as an argument; assign it to a named variable first  local/no-large-inline-object-arg
+  4006:28   warning  Object literal with 7 properties passed inline as an argument; assign it to a named variable first  local/no-large-inline-object-arg
+  4068:17   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4116:85   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4140:27   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4145:3    warning  Async arrow function has a complexity of 21. Maximum allowed is 20                                  complexity
+  4147:15   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4173:3    warning  Unused eslint-disable directive (no problems were reported from 'no-constant-condition')
+  4223:37   warning  Object literal with 4 properties passed inline as an argument; assign it to a named variable first  local/no-large-inline-object-arg
+  4246:3    warning  Unused eslint-disable directive (no problems were reported from 'no-constant-condition')
+  4277:73   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4287:91   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4300:45   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4332:12   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4365:12   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4409:87   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4449:13   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4504:89   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4593:73   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4603:91   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4626:44   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4655:71   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4694:33   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4701:20   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4704:18   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4726:27   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4735:30   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4757:79   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4909:30   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4926:87   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4944:70   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4953:88   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4962:88   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  4980:89   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  5069:88   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  5084:110  warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  5138:99   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  5188:13   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  5209:26   warning  Boolean expression combines 4 conditions; extract it into a named variable                          local/no-long-condition-chain
+  5234:33   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  5247:32   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  5274:11   warning  Blocks are nested too deeply (5). Maximum allowed is 4                                              max-depth
+  5293:25   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  5294:25   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  5295:25   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  5473:95   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  5574:93   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  5603:12   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  5666:96   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  5691:93   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  5691:108  warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  5723:43   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  5724:12   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  5731:26   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  6163:37   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  6164:40   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  6203:37   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  6204:37   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  6244:39   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  6304:28   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  6305:33   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  6306:42   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  6315:31   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  6326:33   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  6327:37   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  6418:87   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  6445:27   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  6447:25   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  6603:30   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  6655:35   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  6725:92   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  6799:38   warning  Object literal with 5 properties passed inline as an argument; assign it to a named variable first  local/no-large-inline-object-arg
+  6869:26   warning  Boolean expression combines 4 conditions; extract it into a named variable                          local/no-long-condition-chain
+  6879:12   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  6912:12   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  7114:42   warning  Object literal with 4 properties passed inline as an argument; assign it to a named variable first  local/no-large-inline-object-arg
+  7135:55   warning  Object literal with 4 properties passed inline as an argument; assign it to a named variable first  local/no-large-inline-object-arg
+  7201:86   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  7512:42   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  7562:32   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+
+✖ 139 problems (0 errors, 139 warnings)
+  0 errors and 3 warnings potentially fixable with the `--fix` option.
+
+There are suppressions left that do not occur anymore. Consider re-running the command with `--prune-suppressions`.
+@typescript-eslint/no-explicit-any: 1630 | max: 2040 | target: 1500 | 410 of headroom
+no-console: 12 | max: 12 | target: 0 | 0 of headroom
+complexity: 125 | max: 140 | target: 80 | 15 of headroom
+max-depth: 56 | max: 70 | target: 30 | 14 of headroom
+local/no-large-inline-object-arg: 494 | max: 560 | target: 300 | 66 of headroom
+local/no-long-condition-chain: 217 | max: 265 | target: 120 | 48 of headroom
+check: checking dashboard API types are in sync (npm run gen:api)
+Prisma client already generated for litellm/proxy/schema.prisma (prisma 0.11.0); skipping prisma generate
+
+> litellm-dashboard@0.1.0 gen:api
+> node scripts/gen-api-types.mjs
+
+✨ openapi-typescript 7.13.0
+🚀 /tmp/litellm-openapi-w6FR8B/openapi.json → /home/staticduo/git/litellm/ui/litellm-dashboard/src/lib/http/schema.d.ts [1.6s]
+check: summary
+    ran:     Python lint (make lint)
+    skipped: tests/e2e checks (basedpyright + raw HTTP client ban) (no tests/e2e Python files in scope)
+    ran:     dashboard lint (prettier + eslint + lint budgets)
+    ran:     dashboard API-type sync (npm run gen:api)
+check: FAIL
+check: full log: /home/staticduo/git/litellm/.git/pre_commit_lint.log
+make[1]: *** [Makefile:264: check-inner] Error 1
+make[1]: Leaving directory '/home/staticduo/git/litellm'
+make: *** [Makefile:261: check] Error 2

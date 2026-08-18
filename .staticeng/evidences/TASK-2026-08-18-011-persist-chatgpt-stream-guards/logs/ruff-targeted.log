@@ -1,0 +1,155 @@
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py:11:1
+   |
+10 |   sys.path.insert(0, os.path.abspath("../../../.."))  # Adds the parent directory to the system path
+11 | / import litellm
+12 | | from litellm.integrations.code_interpreter_interception.handler import (
+13 | |     CodeInterpreterInterceptionLogger,
+14 | |     LITELLM_CODE_EXECUTION_TOOL_NAME,
+15 | | )
+16 | | from litellm.llms.base_llm.audio_transcription.transformation import (
+17 | |     AudioTranscriptionRequestData,
+18 | |     BaseAudioTranscriptionConfig,
+19 | | )
+20 | | from litellm.llms.base_llm.chat.transformation import BaseLLMException
+21 | | from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
+22 | | from litellm.llms.custom_httpx.llm_http_handler import (
+23 | |     BaseLLMHTTPHandler,
+24 | |     _google_genai_streaming_hidden_params,
+25 | | )
+26 | | from litellm.types.llms.openai import ResponsesAPIResponse
+27 | | from litellm.types.router import GenericLiteLLMParams
+28 | | from litellm.types.utils import TranscriptionResponse
+   | |_____________________________________________________^
+29 |
+30 |   _ACTIVE_KEY = "_code_interpreter_interception_active"
+   |
+help: Organize imports
+
+I001 [*] Import block is un-sorted or un-formatted
+    --> tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py:1428:5
+     |
+1426 |       signing provider (e.g. Bedrock Mantle).
+1427 |       """
+1428 | /     from unittest.mock import MagicMock
+1429 | |     from litellm.llms.custom_httpx.http_handler import HTTPHandler
+1430 | |     from litellm.llms.custom_httpx.llm_http_handler import BaseLLMHTTPHandler
+1431 | |     from litellm.types.router import GenericLiteLLMParams
+     | |_________________________________________________________^
+1432 |
+1433 |       provider_config = MagicMock()
+     |
+help: Organize imports
+
+I001 [*] Import block is un-sorted or un-formatted
+    --> tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py:1483:5
+     |
+1481 |       We snapshot request_data at sign time and assert "stream" is already gone.
+1482 |       """
+1483 | /     from unittest.mock import MagicMock
+1484 | |     from litellm.llms.custom_httpx.http_handler import HTTPHandler
+1485 | |     from litellm.llms.custom_httpx.llm_http_handler import BaseLLMHTTPHandler
+1486 | |     from litellm.types.llms.openai import ResponsesAPIResponse
+1487 | |     from litellm.types.router import GenericLiteLLMParams
+     | |_________________________________________________________^
+1488 |
+1489 |       provider_config = MagicMock()
+     |
+help: Organize imports
+
+I001 [*] Import block is un-sorted or un-formatted
+    --> tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py:1546:5
+     |
+1544 |       signing provider (e.g. Bedrock Mantle SigV4 / bearer).
+1545 |       """
+1546 | /     from unittest.mock import MagicMock
+1547 | |     from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
+1548 | |     from litellm.llms.custom_httpx.llm_http_handler import BaseLLMHTTPHandler
+1549 | |     from litellm.types.router import GenericLiteLLMParams
+     | |_________________________________________________________^
+1550 |
+1551 |       compact_url = "https://bedrock-mantle.us-east-2.api.aws/openai/v1/responses/compact"
+     |
+help: Organize imports
+
+F401 [*] `json` imported but unused
+ --> tests/test_litellm/llms/openai/responses/test_openai_responses_transformation.py:1:8
+  |
+1 | import json
+  |        ^^^^
+2 | import os
+3 | import sys
+  |
+help: Remove unused import: `json`
+
+F401 [*] `unittest.mock.AsyncMock` imported but unused
+ --> tests/test_litellm/llms/openai/responses/test_openai_responses_transformation.py:4:27
+  |
+2 | import os
+3 | import sys
+4 | from unittest.mock import AsyncMock, MagicMock, Mock, patch
+  |                           ^^^^^^^^^
+5 |
+6 | import httpx
+  |
+help: Remove unused import: `unittest.mock.AsyncMock`
+
+F401 [*] `httpx` imported but unused
+ --> tests/test_litellm/llms/openai/responses/test_openai_responses_transformation.py:6:8
+  |
+4 | from unittest.mock import AsyncMock, MagicMock, Mock, patch
+5 |
+6 | import httpx
+  |        ^^^^^
+7 | import pytest
+  |
+help: Remove unused import: `httpx`
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/test_litellm/llms/openai/responses/test_openai_responses_transformation.py:13:1
+   |
+11 |   )  # Adds the parent directory to the system path
+12 |
+13 | / import litellm
+14 | | from litellm.llms.base_llm.responses.transformation import BaseResponsesAPIConfig
+15 | | from litellm.llms.azure.responses.transformation import AzureOpenAIResponsesAPIConfig
+16 | | from litellm.llms.openai.responses.transformation import OpenAIResponsesAPIConfig
+17 | | from litellm.types.llms.openai import (
+18 | |     ImageGenerationPartialImageEvent,
+19 | |     OutputTextDeltaEvent,
+20 | |     ResponseCompletedEvent,
+21 | |     ResponsesAPIRequestParams,
+22 | |     ResponsesAPIResponse,
+23 | |     ResponsesAPIStreamEvents,
+24 | | )
+25 | | from litellm.types.router import GenericLiteLLMParams
+   | |_____________________________________________________^
+   |
+help: Organize imports
+
+F401 [*] `litellm` imported but unused
+  --> tests/test_litellm/llms/openai/responses/test_openai_responses_transformation.py:13:8
+   |
+11 | )  # Adds the parent directory to the system path
+12 |
+13 | import litellm
+   |        ^^^^^^^
+14 | from litellm.llms.base_llm.responses.transformation import BaseResponsesAPIConfig
+15 | from litellm.llms.azure.responses.transformation import AzureOpenAIResponsesAPIConfig
+   |
+help: Remove unused import: `litellm`
+
+F401 [*] `litellm.types.llms.openai.ResponsesAPIRequestParams` imported but unused
+  --> tests/test_litellm/llms/openai/responses/test_openai_responses_transformation.py:21:5
+   |
+19 |     OutputTextDeltaEvent,
+20 |     ResponseCompletedEvent,
+21 |     ResponsesAPIRequestParams,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+22 |     ResponsesAPIResponse,
+23 |     ResponsesAPIStreamEvents,
+   |
+help: Remove unused import: `litellm.types.llms.openai.ResponsesAPIRequestParams`
+
+Found 10 errors.
+[*] 10 fixable with the `--fix` option.

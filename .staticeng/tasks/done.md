@@ -2,6 +2,10 @@
 
 | Date | Task ID | SCR ID | Commit | Summary |
 | :--- | :--- | :--- | :--- | :--- |
+| 2026-08-18 | TASK-2026-08-18-013-commit-chatgpt-stream-guards | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Finalized approved ChatGPT native-stream guards and StaticEng closure artifacts for commit and push. |
+| 2026-08-18 | TASK-2026-08-18-011-persist-chatgpt-stream-guards | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Persisted ChatGPT native-stream and fake-stream guards with 146 passing tests and independent Tech Lead approval. |
+| 2026-08-18 | TASK-2026-08-18-012-review-chatgpt-stream-guards | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Reviewed stream guards, approved source logic, and reopened the parent for formatter compliance and stronger async mutation evidence. |
+| 2026-08-18 | TASK-2026-08-18-010-design-stream-safe-198-release | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Defined the source contracts, host invariants, rollback gates, verification matrix, and atomic deployment plan for stream-safe LiteLLM 1.98.0. |
 | 2026-08-18 | TASK-2026-08-18-009-finalize-stream-fix-investigation | none | pending-commit | Reviewed and finalized the stream guard investigation closure artifacts for commit and push. |
 | 2026-08-18 | TASK-2026-08-18-008-find-stream-must-be-true-fix | none | pending-commit | Traced the uncommitted ChatGPT Responses stream guard and confirmed NAS contains it while Fedora 1.98.0 does not. |
 | 2026-08-18 | TASK-2026-08-18-007-finalize-nas-gpt-alias-primary | SCR-2026-08-18-001-nas-gpt-alias-primary-account | pending-commit | Reviewed, sanitized, and finalized the NAS recovery and GPT alias routing closure artifacts for commit and push. |

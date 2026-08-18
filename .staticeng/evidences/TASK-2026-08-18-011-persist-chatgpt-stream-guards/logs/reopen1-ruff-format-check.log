@@ -1,0 +1,3 @@
+Command: uv run --no-sync ruff format --check tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py tests/test_litellm/llms/openai/responses/test_openai_responses_transformation.py
+
+2 files already formatted

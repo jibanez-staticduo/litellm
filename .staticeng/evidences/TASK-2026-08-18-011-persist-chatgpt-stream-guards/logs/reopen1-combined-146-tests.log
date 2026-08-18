@@ -1,0 +1,17 @@
+Command: uv run --no-sync pytest -q tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py tests/test_litellm/llms/openai/responses/test_openai_responses_transformation.py tests/test_litellm/llms/chatgpt/responses/test_chatgpt_responses_transformation.py
+
+........................................................................ [ 49%]
+........................................................................ [ 98%]
+..                                                                       [100%]
+=============================== warnings summary ===============================
+tests/test_litellm/llms/openai/responses/test_openai_responses_transformation.py:310
+  PytestUnknownMarkWarning: Unknown pytest.mark.serial
+
+tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py::test_async_anthropic_messages_handler_agentic_streaming_forwards_provider_response_headers
+tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py::test_async_anthropic_messages_handler_streaming_forwards_provider_response_headers
+  RuntimeWarning: coroutine 'PassThroughStreamingHandler._route_streaming_logging_to_handler' was never awaited
+
+tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py::test_async_delete_responses_sets_json_content_type
+  RuntimeWarning: coroutine 'Logging.async_success_handler' was never awaited
+
+146 passed, 4 warnings in 3.47s

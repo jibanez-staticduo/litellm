@@ -456,6 +456,8 @@ class OpenAIResponsesAPIConfig(BaseResponsesAPIConfig):
     ) -> bool:
         if stream is not True:
             return False
+        if custom_llm_provider == "chatgpt":
+            return False
         if model is not None:
             try:
                 if (

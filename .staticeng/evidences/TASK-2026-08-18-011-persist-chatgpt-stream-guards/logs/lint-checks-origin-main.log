@@ -1,0 +1,11 @@
+No changed litellm Python files to format-check.
+cd litellm && uv run --no-sync ruff check . && cd ..
+All checks passed!
+uv run --no-sync python scripts/ruff_strict_gate.py --base origin/main
+FAIL: strict-rule totals exceed their limit (base origin/main):
+  EXE002: total 2196 over limit 3 (this change added 2193)
+Reduce the new violations or remove an equal number elsewhere; the ceiling is the limit in ruff-strict-budget.json.
+make: *** [Makefile:217: lint-gate] Error 1
+make: *** Waiting for unfinished jobs....
+uv run --no-sync python scripts/type_discipline_gate.py --base origin/main
+OK: every LIT rule is within its codebase ceiling (base origin/main)

@@ -1,0 +1,3 @@
+Command: git diff --check
+
+PASS: command produced no output

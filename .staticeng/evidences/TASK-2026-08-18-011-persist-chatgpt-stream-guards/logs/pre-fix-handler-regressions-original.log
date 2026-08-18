@@ -1,0 +1,129 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_ test_async_response_api_handler_preserves_chatgpt_provider_stream_requirement _
+
+    @pytest.mark.asyncio
+    async def test_async_response_api_handler_preserves_chatgpt_provider_stream_requirement():
+        handler = BaseLLMHTTPHandler()
+        config = Mock()
+        config.validate_environment.return_value = {}
+        config.get_complete_url.return_value = "https://chatgpt.example.com/responses"
+        config.transform_responses_api_request.return_value = {
+            "model": "gpt-5.3-codex",
+            "input": "hi",
+            "stream": True,
+        }
+        config.sign_request.return_value = ({}, None)
+        client = AsyncHTTPHandler()
+        client.post = AsyncMock(
+            return_value=httpx.Response(
+                200,
+                request=httpx.Request("POST", "https://chatgpt.example.com/responses"),
+            )
+        )
+        logging_obj = Mock()
+
+>       await handler.async_response_api_handler(
+            model="gpt-5.3-codex",
+            input="hi",
+            responses_api_provider_config=config,
+            response_api_optional_request_params={},
+            custom_llm_provider="chatgpt",
+            litellm_params=GenericLiteLLMParams(),
+            logging_obj=logging_obj,
+            client=client,
+            extra_body={"stream": False},
+        )
+
+tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py:294:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+litellm/llms/custom_httpx/llm_http_handler.py:2822: in async_response_api_handler
+    final_response: Final = await self._call_agentic_completion_hooks(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <litellm.llms.custom_httpx.llm_http_handler.BaseLLMHTTPHandler object at 0x7fe6c6df1a70>
+response = <Mock name='mock.transform_response_api_response()' id='140629283933552'>
+model = 'gpt-5.3-codex', messages = [{'content': 'hi', 'role': 'user'}]
+anthropic_messages_provider_config = <Mock id='140629155052384'>
+anthropic_messages_optional_request_params = {}
+logging_obj = <Mock id='140629283932208'>, stream = False
+custom_llm_provider = 'chatgpt'
+kwargs = {'adaptive_router_config': None, 'adaptive_router_default_model': None, 'allow_client_keepalive_override': False, 'annotation_cost_per_page': None, ...}
+api_surface = 'responses'
+
+    async def _call_agentic_completion_hooks(
+        self,
+        response: object,
+        model: str,
+        messages: list[dict],
+        anthropic_messages_provider_config: "BaseAnthropicMessagesConfig",
+        anthropic_messages_optional_request_params: dict,
+        logging_obj: "LiteLLMLoggingObj",
+        stream: bool,
+        custom_llm_provider: str,
+        kwargs: dict,
+        api_surface: str = "anthropic_messages",
+    ) -> Any | None:
+        """
+        Call agentic completion hooks for all custom loggers (Anthropic Messages API).
+
+        1. Call async_should_run_agentic_loop to check if agentic loop is needed
+        2. If yes, call async_run_agentic_loop to execute the loop
+
+        Returns the response from agentic loop, or None if no hook runs.
+        """
+        from litellm._logging import verbose_logger
+        from litellm.integrations.custom_logger import CustomLogger
+
+>       callbacks: Final = litellm.callbacks + (logging_obj.dynamic_success_callbacks or [])
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: can only concatenate list (not "Mock") to list
+
+litellm/llms/custom_httpx/llm_http_handler.py:5405: TypeError
+---------------------------- Captured stdout setup -----------------------------
+[conftest] Module setup complete (worker: master)
+___ test_response_api_handler_preserves_chatgpt_provider_stream_requirement ____
+
+    def test_response_api_handler_preserves_chatgpt_provider_stream_requirement():
+        handler = BaseLLMHTTPHandler()
+        config = Mock()
+        config.validate_environment.return_value = {}
+        config.get_complete_url.return_value = "https://chatgpt.example.com/responses"
+        config.transform_responses_api_request.return_value = {
+            "model": "gpt-5.3-codex",
+            "input": "hi",
+            "stream": True,
+        }
+        config.sign_request.return_value = ({}, None)
+        client = HTTPHandler(client=httpx.Client())
+        client.post = Mock(
+            return_value=httpx.Response(
+                200,
+                request=httpx.Request("POST", "https://chatgpt.example.com/responses"),
+            )
+        )
+        logging_obj = Mock()
+
+        handler.response_api_handler(
+            model="gpt-5.3-codex",
+            input="hi",
+            responses_api_provider_config=config,
+            response_api_optional_request_params={},
+            custom_llm_provider="chatgpt",
+            litellm_params=GenericLiteLLMParams(),
+            logging_obj=logging_obj,
+            client=client,
+            extra_body={"stream": False},
+        )
+
+>       assert client.post.call_args.kwargs["stream"] is True
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'stream'
+
+tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py:123: KeyError
+--------------------------- Captured stdout teardown ---------------------------
+[conftest] Module teardown complete (worker: master)
+=========================== short test summary info ============================
+FAILED tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py::test_async_response_api_handler_preserves_chatgpt_provider_stream_requirement
+FAILED tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py::test_response_api_handler_preserves_chatgpt_provider_stream_requirement
+2 failed, 57 deselected in 0.70s
