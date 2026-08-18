@@ -1,0 +1,9 @@
+fedora_final_digest: sha256:2e947963eddbd9385e618d5bd3e122f41a5677a05b843b5add29cef3d52991e9
+stable_manifest_digest: sha256:b52c0949442e8855289df706621725670d1cff28738a277c245b273b388873e0
+stable_matches_approved_preflight: true
+stable_promotion_performed: false
+nas_accessed_or_mutated: false
+database_restore_or_mutation: false
+model_or_routing_mutation: false
+credential_read_or_auth_flow: false
+dependencies_recreated: false

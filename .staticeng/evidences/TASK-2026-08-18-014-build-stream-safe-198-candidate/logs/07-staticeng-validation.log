@@ -1,0 +1,10 @@
+captured_at_utc: 2026-08-18
+staticeng_validate: FAIL
+failure_scope: pre-existing repository-wide StaticEng debt
+task_created_new_failure: no
+primary_failures: broken root .staticeng/codemap.yml links and hundreds of missing repository CodeMaps
+staticeng_repair_dry_run: completed
+repair_applied: no
+repair_disposition: dry run proposed broad Markdown normalization and hundreds of unrelated CodeMap creations; applying it would violate this atomic build-only task scope
+git_diff_check: PASS
+credential_pattern_scan: PASS

@@ -1,0 +1,37 @@
+reopen: 2
+request_shape: list input, stream true, store false, encrypted reasoning included, parallel tool calls false, Codex Responses Lite header true
+
+qualified_regular_gate:
+  requested_model: chatgpt/gpt-5.6-sol
+  retry_count: 0
+  http_status: 429
+  documented_quota_429: true
+  stream_error_present: false
+  auth_or_device_flow_error_present: false
+  unsupported_model_error_present: false
+  result: PASS_EXPECTED_QUOTA
+
+public_fallback_gate:
+  requested_model: gpt-5.6-sol
+  retry_count: 0
+  required_status: 200
+  actual_status: 429
+  stream_error_present: false
+  auth_or_device_flow_error_present: false
+  result: FAIL
+
+direct_account2_gate:
+  requested_model: chatgpt-account2/gpt-5.6-sol
+  retry_count: 0
+  required_status: 200
+  actual_status: 400
+  stream_error_present: false
+  auth_or_device_flow_error_present: false
+  unsupported_model_error_present: false
+  result: FAIL_NON_QUOTA
+
+global_stop_rule_applied: true
+lazymcp_status_describe_tool_list: NOT RUN after non-quota mandatory failure
+stable_observation: NOT RUN after non-quota mandatory failure
+candidate_clean_log_gate: NOT COMPLETED after non-quota mandatory failure
+disposition: immediate rollback

@@ -1,0 +1,8 @@
+reopen: 3
+staticeng_validate: FAIL
+failure_scope: pre-existing repository StaticEng integrity
+root_broken_links: Agents_Common.md, docs/core/agent_orchestration.md, docs/architecture/TECHNICAL_ARCHITECTURE.md
+repository_missing_codemap_scope: broad, hundreds of maintained source directories
+reopen_evidence_specific_error_observed: false
+repair_applied: false
+reason_not_applied: prior dry run established that repair would create broad unrelated repository changes outside this deployment task

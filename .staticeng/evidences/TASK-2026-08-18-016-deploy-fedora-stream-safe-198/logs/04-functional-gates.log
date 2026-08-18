@@ -1,0 +1,24 @@
+native_responses_probe:
+  client_stream: false
+  input_shape: valid list input
+  http_status: 200
+  content_type: text/event-stream
+  lifecycle_events: response.created,response.in_progress,response.output_item.added,response.content_part.added,response.output_text.delta,response.output_text.done,response.content_part.done,response.output_item.done,response.completed
+  stream_must_be_set_to_true_present: false
+  result: PASS
+
+probe_harness_note: the first HTTP 200 native response was parsed as JSON and therefore not retained as lifecycle evidence; the corrected bounded lifecycle probe above passed
+
+codex_compatible_probe:
+  profile: regular
+  requested_model: qualified Codex model
+  http_status: 400
+  error_class: HTTPError
+  stream_must_be_set_to_true_present: false
+  response_body_retained: false
+  result: FAIL
+
+global_stop_rule_applied: true
+lazymcp_status_describe_list: NOT RUN after mandatory failure
+account2_isolation: NOT RUN after mandatory failure
+disposition: immediate rollback

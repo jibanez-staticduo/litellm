@@ -1,0 +1,65 @@
+investigation_mode: read-only
+live_request_count: 1
+deployment_or_restart: none
+host_config_model_or_tag_mutation: none
+
+failed_canary_request:
+  endpoint: /v1/responses
+  model: chatgpt/gpt-5.3-codex
+  instructions: present, content redacted
+  input: list with one user message and one input_text, content redacted
+  client_stream: false
+  max_output_tokens: 32
+  http_status: 400
+  stream_required_present: false
+
+isolated_provider_transformation:
+  model: gpt-5.3-codex
+  input: list length 1
+  instructions: present, content redacted
+  stream: true
+  store: false
+  include: reasoning.encrypted_content
+  max_output_tokens_forwarded: false
+
+bounded_reproduction:
+  runtime: restored Fedora digest
+  request_count: 1
+  http_status: 400
+  error_code: 400
+  error_category: BadRequestError / ChatgptException
+  error_detail: The 'gpt-5.3-codex' model is not supported when using Codex with a ChatGPT account.
+  same_detail_on_configured_fallback: true
+  stream_required_present: false
+
+real_codex_session:
+  session_id: 01a00b76-b1cb-7ab1-a4a2-ef1f08a002ba
+  client_version: 0.147.0
+  provider: nas_litellm
+  endpoint: /v1/responses
+  method: POST
+  model: gpt-5.6-sol
+  stream: true
+  store: false
+  include: reasoning.encrypted_content
+  input_type: list
+  input_item_types: additional_tools,custom_tool_call,custom_tool_call_output,function_call,function_call_output,message,reasoning
+  roles: assistant,developer,user
+  content_types: input_text,output_text
+  parallel_tool_calls: false
+  reasoning: context=all_turns,effort=high,summary=detailed
+  request_content_retained: false
+
+classification:
+  candidate_code: not causal
+  model_or_routing_absence: not causal
+  provider_outage_or_rate_limit: not causal
+  invalid_probe_construction: causal, unsupported model selection
+
+retry_gate:
+  regular_model: chatgpt/gpt-5.6-sol
+  account2_model: chatgpt-account2/gpt-5.6-sol
+  codex_lite_header: true
+  required_terminal_event: response.completed
+  forbidden_events: response.failed,error
+  forbidden_details: Stream must be set to true,unsupported model,authentication prompt

@@ -1,0 +1,41 @@
+captured_at_utc: 2026-08-18T22:33:47Z
+reopen: 2
+host: fedora
+secrets_retained: no
+
+running_image: docker.staticduo.com/litellm@sha256:2e947963eddbd9385e618d5bd3e122f41a5677a05b843b5add29cef3d52991e9
+rollback_registry_resolution: PASS
+candidate_registry_resolution: PASS
+stable_manifest_digest: sha256:b52c0949442e8855289df706621725670d1cff28738a277c245b273b388873e0
+status: running
+health: healthy
+restart_count: 0
+oom: false
+readiness_http: 200
+liveliness_http: 200
+
+public_count: 27
+public_sha256: 62cc02c151720ca2a7663faaa4b06520b87764b84aa09a404238411fc75bf73d
+baseline_match: true
+deployment_count: 27
+deployment_sha256: 648e5960a3d32780115bd2de9525b425c22b8af385a52fe3df1f12c19607b965
+baseline_match: true
+router_sha256: 178feaf242c54ee7d31ce979dac7843d66b614c8b71207fa9c599b95867409c7
+baseline_match: true
+fallback_rule_count: 24
+cross_profile_policy: true
+default_qualified_deployments: 7
+account2_deployments: 7
+public_gpt_rows: 6
+
+env_sha256: 3051952e27d46b7abaa274642990cfa208d125e4a4b66c29f3fe91f9e008a39f
+compose_sha256: af1a6462aad67872997638fcaa9400879ed039b42c3ae497705d00602efbf9d6
+config_sha256: f3b83ce7ce2ec8418fdce63d16292c87933fe74d3f886b6d8510db8fee638967
+wrapper_sha256: 9e9b0de7f19e1c8a6e784a17e855d2236183901c32d1860164e2130239c6a06e
+onepassword_wrapper_sha256: 31f719b71fce74e968cec69aa1ce51ca4dac08381c8005aa6b5d3be2879b6289
+auth_metadata_match: true
+dependency_identities_match: true
+dependency_health: all healthy
+running_container_count: 47
+networks: llm-net,npm_npm-net
+mount_count: 5

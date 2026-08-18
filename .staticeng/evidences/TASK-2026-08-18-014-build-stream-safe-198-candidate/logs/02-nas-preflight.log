@@ -1,0 +1,65 @@
+captured_at_utc: 2026-08-18
+host: nas
+secrets_retained: no
+
+image_ref: docker.staticduo.com/litellm:rollback-nas-1.92.0-20260818
+image_id: sha256:8ae33df6e1c13eaaca70ce179d4a724507a481ebcf4019be88182aa030b07afa
+registry_digest: sha256:264774f4a3bb1d01a393b844270f7e71629da996a182295c77675fe2793c6018
+architecture: amd64
+status: running
+health: healthy
+restart_count: 0
+oom: false
+readiness_http: 200
+liveliness_http: 200
+
+normalized_public_inventory_count: 40
+normalized_public_inventory_sha256: 2dcd256cb7c00c7f79cb488b0b8266bf2334e514b25c6c9e0c03aec393b8b24f
+normalized_deployment_inventory_count: 40
+normalized_deployment_inventory_sha256: 23ea394ba76d6d29d6e5483d112fe3a8edccfda6b82dfc1ba30ae42ed5cb0437
+router_settings_sha256: 4e202dd60131ea3e8a8c5ee843ec49b2bd30b69408afee9b4486b4ab16c8fab9
+fallback_rule_count: 16
+cross_profile_policy: true
+routing_strategy: simple-shuffle
+account2_deployments: 8
+account3_deployments: 8
+default_qualified_deployments: 8
+public_gpt_rows: 9
+other_rows: 7
+
+protected_env_sha256: 78804ad0e38e4a4f1c3b30c02d52766400e03e05560213758c36b4e8628d1983
+protected_compose_sha256: e55a68271cff897156d50ed6779369de3986ec47dee572aec29b76cf70224129
+protected_config_sha256: d10d989072e329a3a47c11ee734783a08c8607865fa8e8fa940851e75f624272
+protected_wrapper_sha256: ada13e55c55f15155c972569667eed5be150824a6959453221b35cc0f86c8778
+protected_onepassword_wrapper_sha256: 31f719b71fce74e968cec69aa1ce51ca4dac08381c8005aa6b5d3be2879b6289
+database_endpoint_sha256: 94d711e3c82df202de8eb07147e3e4d522a738540d9e9161ebf6d1fe85b65709
+
+dependency_postgres: image=bitnami/postgresql:latest id=f33022571374136db12c778d88f130f13d21669d2a3897b80cd64957fa6b1a85 status=running health=healthy
+dependency_redis: image=redis:7.4-alpine id=8339623433c3 status=running health=healthy
+dependency_admin_mcp: id=4849d7a2d776 status=running health=healthy
+dependency_admin_mcp_compat: id=75fa06bc3ef3 status=running health=healthy
+networks: llm-net,npm_npm-net
+
+auth_chatgpt_path: present mode=777 mtime=1787088788 file_count=10
+auth_anthropic_path: present mode=777 mtime=1778479050 file_count=1
+auth_onepassword_path: present mode=755 mtime=1781105194 file_count=0 directory_mount=true
+auth_file_metadata_capture: path hashes, mode, mtime, and size captured without content or account identifiers
+auth_chatgpt_files:
+  1: path_sha256=42af1ffcef33c7deb7d3d7021374d362ae9002f1504aff97e7a810ea8fd30f3d mode=600 mtime=1783465566 size=4592
+  2: path_sha256=5b98981726327ffa2d5fcc9e5a9233187205f519b88842cfdda23c73cd4b5834 mode=600 mtime=1784028522 size=4303
+  3: path_sha256=cf2f4c119d2cd39c827b27854707c00a85b8cc5700ce08ffe6b3b35947e947a0 mode=600 mtime=1786604243 size=4051
+  4: path_sha256=af8b92b3e49afbca8c98b68e5addc821238862a87b53ef722dd5e7cda75b7088 mode=600 mtime=1783839930 size=0
+  5: path_sha256=0d39c0b82da99e0e0a8102b74cba964b0be1493ea204fe242a2817edb70276ef mode=600 mtime=1787088788 size=3855
+  6: path_sha256=4a70fa5273ea66a1a83f3966c6cbab7182668b6fc13d8d77a458fc84b6bba2bd mode=600 mtime=1784028185 size=0
+  7: path_sha256=2115c1e62984d943d52976dec42c9153bf543112d24b71344e47f0ae81b2df64 mode=600 mtime=1786429478 size=3823
+  8: path_sha256=1cd309cf26185add18548dfa70b6219ce8ef7243cf14605b1bad754542e7d249 mode=600 mtime=1783839888 size=0
+  9: path_sha256=ed469760602faaebb4a983b6fde9bdec3d0b07ce469a3af68eb77d9bf484efdb mode=777 mtime=1779480732 size=4375
+  10: path_sha256=6a64520681fe714db7405dea33c6dfe8f4568c173499fe8fee17b81a64db8e0a mode=777 mtime=1779795287 size=4435
+auth_anthropic_files:
+  1: path_sha256=38bb4ad1b0ba574342ce8b50994b9b193fa5f1939772bd37ba2988da389aa100 mode=600 mtime=1778479050 size=383
+
+tested_rollback_reference: docker.staticduo.com/litellm@sha256:264774f4a3bb1d01a393b844270f7e71629da996a182295c77675fe2793c6018
+rollback_test: local image inspect passed; amd64 image ID and registry digest agree
+existing_wrapper_rollback: /volume2/docker/litellm/releases/20260818-610dc93d98/start-litellm.sh
+existing_wrapper_rollback_sha256: ada13e55c55f15155c972569667eed5be150824a6959453221b35cc0f86c8778
+compose_rollback_gate: deployment task must create a mode-0600 exact pair before any NAS file mutation

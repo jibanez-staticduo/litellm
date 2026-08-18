@@ -1,0 +1,67 @@
+captured_at_utc: 2026-08-18T22:30:21Z
+investigation_mode: read-only
+inference_requests_sent: 0
+provider_metadata_requests_sent: 1
+provider_metadata_request: GET /backend-api/wham/usage for default profile
+
+failed_gate:
+  observed_at_utc: 2026-08-18T22:20Z
+  requested_model: chatgpt/gpt-5.6-sol
+  profile: default regular
+  http_status: 429
+  provider_category: rate_limit_reached
+  provider_detail: default
+  stream_required_error: false
+  unsupported_model_error: false
+  authentication_or_device_flow_error: false
+
+default_profile_usage:
+  usage_http_status: 200
+  plan_type: pro
+  primary_window_used_percent: 100
+  resets_at: absent
+  window_minutes: absent
+  retry_after_from_failed_gate: not retained
+  credits_has_credits: false
+  credits_unlimited: false
+  credits_balance: 0
+
+account_metadata:
+  default_token_current: true
+  default_account_claim_matches_file: true
+  account2_plan_type: pro
+  account2_token_current: true
+  account2_account_claim_matches_file: true
+  credentials_emitted: false
+
+account2_independent_evidence:
+  source: retained Fedora no-retry profile evidence
+  regular_result: HTTP 429 rate limit
+  account2_result: HTTP 200
+  account2_auth_prompt: false
+  new_account2_request_sent: false
+
+routing_readback:
+  cross_profile_policy: true
+  regular_to_account2_sol_rule_present: true
+  account2_to_regular_sol_rule_present: true
+  topology_mutated: false
+  interpretation: runtime fallback remained configured; release acceptance still requires the qualified regular profile itself to pass
+
+restored_fedora:
+  image_digest: sha256:2e947963eddbd9385e618d5bd3e122f41a5677a05b843b5add29cef3d52991e9
+  status: running
+  health: healthy
+  restart_count: 0
+  oom: false
+
+preservation:
+  nas_accessed_or_mutated: false
+  stable_tag_mutated: false
+  deployment_or_restart_performed: false
+  routing_or_model_mutated: false
+  credential_or_auth_mutated: false
+
+decision: BLOCK PENDING DEFAULT-PROFILE QUOTA RECOVERY
+safe_retry_condition: read-only usage reports primary window below 100 percent, or a provider reset timestamp is supplied and has passed
+non_waiver: complete Fedora regular, account2, LazyMCP, isolation, observation, and clean-log gates remain mandatory

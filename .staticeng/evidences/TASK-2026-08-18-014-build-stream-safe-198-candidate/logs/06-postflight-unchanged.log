@@ -1,0 +1,19 @@
+captured_at_utc: 2026-08-18
+host_mutations: none
+deployments: none
+stable_promotions: none
+
+nas_image_id_after: sha256:8ae33df6e1c13eaaca70ce179d4a724507a481ebcf4019be88182aa030b07afa
+nas_health_after: healthy
+nas_restart_count_after: 0
+nas_oom_after: false
+nas_protected_hashes_match_preflight: true
+
+fedora_image_id_after: sha256:2e947963eddbd9385e618d5bd3e122f41a5677a05b843b5add29cef3d52991e9
+fedora_health_after: healthy
+fedora_restart_count_after: 0
+fedora_oom_after: false
+fedora_protected_hashes_match_preflight: true
+
+stable_manifest_digest_after: sha256:b52c0949442e8855289df706621725670d1cff28738a277c245b273b388873e0
+stable_matches_preflight: true

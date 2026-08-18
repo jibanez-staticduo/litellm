@@ -1,0 +1,16 @@
+git_diff_check: PASS
+restored_fedora_final_check: PASS
+final_image_digest: sha256:2e947963eddbd9385e618d5bd3e122f41a5677a05b843b5add29cef3d52991e9
+final_status: running
+final_health: healthy
+final_restart_count: 0
+final_oom: false
+
+staticeng_validate: FAIL
+failure_scope: pre-existing repository StaticEng integrity
+root_broken_links: Agents_Common.md, docs/core/agent_orchestration.md, docs/architecture/TECHNICAL_ARCHITECTURE.md
+repository_missing_codemap_scope: broad, hundreds of maintained source directories
+task_evidence_specific_error_observed: false
+staticeng_repair_dry_run: completed
+repair_applied: false
+reason_not_applied: proposed repair would normalize unrelated historical artifacts, remove root links, and create hundreds of repository-wide CodeMaps outside this read-only operational investigation

@@ -2,6 +2,12 @@
 
 | Date | Task ID | SCR ID | Commit | Summary |
 | :--- | :--- | :--- | :--- | :--- |
+| 2026-08-18 | TASK-2026-08-18-016-deploy-fedora-stream-safe-198 | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Deployed and verified the stream-safe 1.98.0 Fedora canary with native Responses, account2 fallback, LazyMCP, preservation, and clean observation. |
+| 2026-08-18 | TASK-2026-08-18-019-diagnose-fedora-account2-fallback | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Proved missing reasoning.context caused account2 HTTP 400 and approved a corrected Fedora retry. |
+| 2026-08-18 | TASK-2026-08-18-018-diagnose-fedora-regular-profile-429 | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Confirmed Fedora regular profile quota exhaustion, account2 availability, and the absence of a defensible reset timestamp. |
+| 2026-08-18 | TASK-2026-08-18-017-diagnose-fedora-codex-canary-400 | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Proved the canary HTTP 400 came from unsupported gpt-5.3-codex probe construction and approved a gpt-5.6-sol retry gate. |
+| 2026-08-18 | TASK-2026-08-18-014-build-stream-safe-198-candidate | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Built and pushed one immutable stream-safe LiteLLM 1.98.0 candidate with complete host baselines and source-to-image proof. |
+| 2026-08-18 | TASK-2026-08-18-015-verify-stream-safe-198-candidate | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Independently verified the candidate identity, guards, tests, stable non-promotion, and approved Fedora canary deployment. |
 | 2026-08-18 | TASK-2026-08-18-013-commit-chatgpt-stream-guards | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Finalized approved ChatGPT native-stream guards and StaticEng closure artifacts for commit and push. |
 | 2026-08-18 | TASK-2026-08-18-011-persist-chatgpt-stream-guards | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Persisted ChatGPT native-stream and fake-stream guards with 146 passing tests and independent Tech Lead approval. |
 | 2026-08-18 | TASK-2026-08-18-012-review-chatgpt-stream-guards | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Reviewed stream guards, approved source logic, and reopened the parent for formatter compliance and stronger async mutation evidence. |

@@ -1,0 +1,8 @@
+staticeng_validate: FAIL
+task_specific_validation_error: false
+failure_scope: pre-existing repository StaticEng integrity
+broken_root_links: Agents_Common.md,docs/core/agent_orchestration.md,docs/architecture/TECHNICAL_ARCHITECTURE.md
+missing_codemap_scope: repository-wide
+staticeng_repair_dry_run: completed
+repair_applied: false
+reason_not_applied: proposed changes include unrelated historical Markdown normalization, broken root-link removal, and hundreds of repository-wide CodeMap creations outside this investigation

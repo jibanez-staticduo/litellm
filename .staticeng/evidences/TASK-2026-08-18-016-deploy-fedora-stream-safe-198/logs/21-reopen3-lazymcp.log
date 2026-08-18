@@ -1,0 +1,11 @@
+reopen: 3
+endpoint: Fedora root LazyMCP streamable HTTP
+protocol_version: 2025-11-25
+tool_count: 3
+gateway_tools_present: true
+mcp_status_ok: true
+mcp_describe_ok: true
+tool_list_ok: true
+result: PASS
+
+note: an initial harness raised SystemExit during successful client teardown after all assertions printed PASS; the clean rerun above exited successfully and is authoritative

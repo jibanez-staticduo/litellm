@@ -1,0 +1,66 @@
+captured_at_utc: 2026-08-18T22:45:40Z
+investigation_mode: read-only
+inference_requests_sent: 0
+provider_metadata_requests_sent: 0
+deployment_restart_or_tag_mutation: none
+model_routing_database_or_auth_mutation: none
+
+candidate_failure_rows:
+  qualified_regular:
+    observed_at_utc: 2026-08-18T22:35:21.553Z
+    requested_model: chatgpt/gpt-5.6-sol
+    initial_result: HTTP 429 usage_limit_reached
+    configured_fallback: chatgpt-account2/gpt-5.6-sol
+    fallback_result: HTTP 400 reasoning.context unsupported_value
+  public_alias:
+    observed_at_utc: 2026-08-18T22:35:43.353Z
+    requested_model: gpt-5.6-sol
+    initial_result: HTTP 429 usage_limit_reached on regular profile
+    configured_fallback: chatgpt-account2/gpt-5.6-sol
+    fallback_result: HTTP 400 reasoning.context unsupported_value
+    client_result: HTTP 429 because router re-raised the original exception after fallback failure
+  direct_account2:
+    observed_at_utc: 2026-08-18T22:36:07.499Z
+    requested_model: chatgpt-account2/gpt-5.6-sol
+    error_class: BadRequestError
+    provider_exception: ChatgptException
+    http_status: 400
+    provider_type: invalid_request_error
+    provider_param: reasoning.context
+    provider_code: unsupported_value
+    provider_detail: X-OpenAI-Internal-Codex-Responses-Lite requires reasoning.context to be all_turns.
+
+request_shape:
+  endpoint: /v1/responses
+  input: list with one user input_text; content omitted
+  stream: true
+  store: false
+  include: reasoning.encrypted_content
+  parallel_tool_calls: false
+  codex_responses_lite_header: true
+  retries: zero
+  reasoning_context: absent
+
+routing_readback:
+  allow_chatgpt_cross_profile_fallback: true
+  fallback_rule_count: 24
+  regular_to_account2_sol_rule_observed_in_failure: true
+  fallback_denied_or_missing: false
+
+auth_metadata:
+  default_file_readable: true
+  default_plan: pro
+  default_token_current: true
+  default_account_claim_matches: true
+  account2_file_readable: true
+  account2_plan: pro
+  account2_token_current: true
+  account2_account_claim_matches: true
+  credentials_or_identifiers_emitted: false
+
+classification:
+  probe_construction: causal
+  candidate_stream_code: not causal
+  fallback_configuration: not causal
+  account2_auth_state: not causal
+  account2_provider_outage: not causal

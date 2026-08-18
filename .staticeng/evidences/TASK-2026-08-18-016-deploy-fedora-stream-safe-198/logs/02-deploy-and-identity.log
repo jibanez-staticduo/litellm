@@ -1,0 +1,21 @@
+deployment_reference: docker.staticduo.com/litellm@sha256:42d36549ab561f202748e0f32a1ff9059eb86a51d6957802b3ce08445eab115b
+mutation_scope: LITELLM_IMAGE only
+compose_pull_service: litellm only
+compose_recreate: up -d --no-deps litellm
+dependency_recreate: none
+deploy_result: PASS
+
+running_image: docker.staticduo.com/litellm@sha256:42d36549ab561f202748e0f32a1ff9059eb86a51d6957802b3ce08445eab115b
+registry_config_digest: sha256:45a01917a825fa04dda4d8b0efafd1a780cfbbb9fc16d3846d654d5d49b42c73
+architecture: amd64
+oci_revision: b0dfe2e7a7d5191871fa63224f5ed8f9544382fa
+oci_version: 1.98.0
+package_version: 1.98.0
+status: running
+health: healthy
+restart_count: 0
+oom: false
+readiness_http: 200
+liveliness_http: 200
+
+note: Fedora Docker identifies the digest-pulled image locally by the manifest digest; the independently verified registry config digest is recorded above

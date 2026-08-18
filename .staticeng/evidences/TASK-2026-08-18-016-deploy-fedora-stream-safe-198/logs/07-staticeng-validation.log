@@ -1,0 +1,8 @@
+staticeng_validate: FAIL
+failure_scope: pre-existing repository StaticEng integrity
+root_broken_links: Agents_Common.md, docs/core/agent_orchestration.md, docs/architecture/TECHNICAL_ARCHITECTURE.md
+repository_missing_codemap_scope: broad, hundreds of maintained source directories
+task_evidence_specific_error_observed: false
+staticeng_repair_dry_run: completed
+repair_applied: false
+reason_not_applied: proposed repair would remove root links, normalize unrelated historical artifacts, and create hundreds of repository-wide CodeMaps outside this operational rollback task

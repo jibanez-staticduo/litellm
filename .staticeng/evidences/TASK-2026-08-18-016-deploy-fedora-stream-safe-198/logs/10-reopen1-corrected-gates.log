@@ -1,0 +1,21 @@
+reopen: 1
+gate: corrected regular Codex Responses
+requested_model: chatgpt/gpt-5.6-sol
+input_form: list with one input_text item
+stream: true
+store: false
+include_encrypted_reasoning: true
+parallel_tool_calls: false
+codex_responses_lite_header: true
+retry_count: 0
+http_status: 429
+stream_must_be_set_to_true_present: false
+unsupported_model_error_present: false
+authentication_or_device_flow_error_present: false
+result: FAIL
+
+global_stop_rule_applied: true
+account2_corrected_gate: NOT RUN after mandatory regular-profile failure
+lazymcp_status_describe_tool_list: NOT RUN after mandatory regular-profile failure
+remaining_observation_and_isolation_gates: NOT RUN after mandatory failure
+disposition: immediate rollback

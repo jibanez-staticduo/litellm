@@ -1,0 +1,64 @@
+captured_at_utc: 2026-08-18
+host: fedora
+secrets_retained: no
+
+image_ref: docker.staticduo.com/litellm@sha256:2e947963eddbd9385e618d5bd3e122f41a5677a05b843b5add29cef3d52991e9
+image_id: sha256:2e947963eddbd9385e618d5bd3e122f41a5677a05b843b5add29cef3d52991e9
+registry_digest: sha256:2e947963eddbd9385e618d5bd3e122f41a5677a05b843b5add29cef3d52991e9
+architecture: amd64
+status: running
+health: healthy
+restart_count: 0
+oom: false
+readiness_http: 200
+liveliness_http: 200
+
+normalized_public_inventory_count: 27
+normalized_public_inventory_sha256: 62cc02c151720ca2a7663faaa4b06520b87764b84aa09a404238411fc75bf73d
+normalized_deployment_inventory_count: 27
+normalized_deployment_inventory_sha256: 4032be64a49126c1ca07776a5c1415a6bf5f926a13eb9a4e1f94808966707d25
+router_settings_sha256: 423d4b8080531f13e8b618090fc7d3178eaf2e210d69fe17096b6213272199ce
+fallback_rule_count: 24
+cross_profile_policy: true
+routing_strategy: simple-shuffle
+account2_deployments: 7
+default_qualified_deployments: 7
+public_gpt_rows: 6
+other_rows: 7
+
+protected_env_sha256: 3051952e27d46b7abaa274642990cfa208d125e4a4b66c29f3fe91f9e008a39f
+protected_compose_sha256: af1a6462aad67872997638fcaa9400879ed039b42c3ae497705d00602efbf9d6
+protected_config_sha256: f3b83ce7ce2ec8418fdce63d16292c87933fe74d3f886b6d8510db8fee638967
+protected_wrapper_sha256: 9e9b0de7f19e1c8a6e784a17e855d2236183901c32d1860164e2130239c6a06e
+protected_onepassword_wrapper_sha256: 31f719b71fce74e968cec69aa1ce51ca4dac08381c8005aa6b5d3be2879b6289
+database_endpoint_sha256: 94d711e3c82df202de8eb07147e3e4d522a738540d9e9161ebf6d1fe85b65709
+
+dependency_postgres: image=postgres:17-alpine id=f7b8b0c4fa916fdf34a185e58337b4bb701fdf29cf10933d9a6627bc1d66d8bc status=running health=healthy
+dependency_redis: image=redis:7.4-alpine id=e177e235b512 status=running health=healthy
+dependency_admin_mcp: image_id=sha256:96f5bdbfa4085d90acd20681b3e7a1cdc04f8132b457cc129d455e131ed2b252 id=7b7cf44ab24b status=running health=healthy
+dependency_admin_mcp_compat: image_id=sha256:4be84b1873f5a44bad052ec39bebebf0892404a8a243caf820c4334364a52c5b id=4faf5494e7a2 status=running health=healthy
+networks: llm-net,npm_npm-net
+
+auth_chatgpt_path: present mode=750 mtime=1786943066 file_count=10
+auth_anthropic_path: present mode=700 mtime=1781088988 file_count=2
+auth_onepassword_path: present mode=750 mtime=1774719119 file_count=1
+auth_file_metadata_capture: path hashes, mode, mtime, and size captured without content or account identifiers
+auth_chatgpt_files:
+  1: path_sha256=cf2f4c119d2cd39c827b27854707c00a85b8cc5700ce08ffe6b3b35947e947a0 mode=600 mtime=1786831858 size=3807
+  2: path_sha256=6af946e7e68d484b934c6e8db3b17ac97dd692e5fe73ce3dfc0b962144428a3e mode=600 mtime=1785478970 size=3997
+  3: path_sha256=af8b92b3e49afbca8c98b68e5addc821238862a87b53ef722dd5e7cda75b7088 mode=600 mtime=1783840432 size=0
+  4: path_sha256=2115c1e62984d943d52976dec42c9153bf543112d24b71344e47f0ae81b2df64 mode=600 mtime=1786943066 size=4051
+  5: path_sha256=1cd309cf26185add18548dfa70b6219ce8ef7243cf14605b1bad754542e7d249 mode=600 mtime=1783815784 size=0
+  6: path_sha256=ed469760602faaebb4a983b6fde9bdec3d0b07ce469a3af68eb77d9bf484efdb mode=700 mtime=1779480732 size=4375
+  7: path_sha256=6a64520681fe714db7405dea33c6dfe8f4568c173499fe8fee17b81a64db8e0a mode=700 mtime=1779795287 size=4435
+  8: path_sha256=608bfaa9f80090b40d49d871caacfc4b77c3c1200be38de8abac603be6082d14 mode=644 mtime=1781448268 size=4720
+  9: path_sha256=1f45598f2b7e81a27121450e35d4f96a1f568dd0bb97b7e3c2e255d9bea87fab mode=644 mtime=1783288337 size=4556
+  10: path_sha256=a7954b0993090aa7f9fc403d6b2f81a45f122223894041086c596972a4fc5b82 mode=644 mtime=1781088995 size=731
+auth_anthropic_files:
+  1: path_sha256=38bb4ad1b0ba574342ce8b50994b9b193fa5f1939772bd37ba2988da389aa100 mode=600 mtime=1778479050 size=383
+  2: path_sha256=d35ee3ce302f5ebe0421d224e41d35cac8938ad16d349e0ce88c08a5cfdb61d3 mode=644 mtime=1781088988 size=464
+auth_onepassword_files:
+  1: path_sha256=f7599120e7332f6a20bf71cfab163658c4ad1f9babf1d54bd1df133de3a8975c mode=750 mtime=1774719119 size=853
+
+tested_rollback_reference: docker.staticduo.com/litellm@sha256:2e947963eddbd9385e618d5bd3e122f41a5677a05b843b5add29cef3d52991e9
+rollback_test: host-local image inspect passed; amd64 image ID and registry digest agree

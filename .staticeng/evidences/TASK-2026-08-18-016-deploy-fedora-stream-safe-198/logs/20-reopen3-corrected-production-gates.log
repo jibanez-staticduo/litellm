@@ -1,0 +1,34 @@
+reopen: 3
+request_shape: list input, reasoning context all_turns, reasoning effort high, reasoning summary detailed, stream true, store false, encrypted reasoning included, parallel tool calls false, Codex Responses Lite header true
+
+direct_account2_gate:
+  requested_model: chatgpt-account2/gpt-5.6-sol
+  retry_count: 0
+  http_status: 200
+  content_type_sse: true
+  lifecycle_start_present: true
+  response_completed_count: 1
+  failed_or_error_event: false
+  stream_error_present: false
+  auth_or_device_flow_error_present: false
+  expected_deployment_count: 1
+  selected_account2_profile: true
+  result: PASS
+
+public_fallback_gate:
+  requested_model: gpt-5.6-sol
+  retry_count: 0
+  http_status: 200
+  content_type_sse: true
+  lifecycle_start_present: true
+  response_completed_count: 1
+  failed_or_error_event: false
+  stream_error_present: false
+  auth_or_device_flow_error_present: false
+  expected_account2_deployment_count: 1
+  selected_account2_fallback: true
+  result: PASS
+
+qualified_regular_condition: documented provider quota HTTP 429 established in Reopen 1 and permitted by Reopen 2/3 gate
+profile_isolation_result: PASS
+fallback_routing_result: PASS
