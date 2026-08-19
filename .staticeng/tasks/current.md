@@ -4,7 +4,8 @@
 - (None)
 
 ## Active
-- (None)
+- TASK-2026-08-19-024-deploy-nas-stream-safe-198
+- TASK-2026-08-19-025-review-nas-identity-lock-gates
 
 ## Todo
 - TASK-2026-07-14-003-trigger-nas-account2-reauth

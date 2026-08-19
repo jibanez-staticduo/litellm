@@ -2,6 +2,10 @@
 
 | Date | Task ID | SCR ID | Commit | Summary |
 | :--- | :--- | :--- | :--- | :--- |
+| 2026-08-19 | TASK-2026-08-18-020-migrate-nas-198-startup-wrapper | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Migrated and compatibility-tested the NAS 1.98.0 wrapper/Compose with exact protected rollback pair. |
+| 2026-08-19 | TASK-2026-08-19-023-quarantine-nas-invalid-account3 | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Quarantined invalid account3 after backup, preserving functional default/account2 routing and a clean 32-model baseline. |
+| 2026-08-19 | TASK-2026-08-19-022-repair-nas-chatgpt-auth-hygiene | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Hardened NAS auth files and refreshed default/account2; account3 remained invalid and required quarantine. |
+| 2026-08-19 | TASK-2026-08-19-021-disposition-nas-oauth-mtime | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Rejected NAS deployment after credential drift correlated with failed refresh/device auth and defined a strict just-in-time gate. |
 | 2026-08-18 | TASK-2026-08-18-016-deploy-fedora-stream-safe-198 | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Deployed and verified the stream-safe 1.98.0 Fedora canary with native Responses, account2 fallback, LazyMCP, preservation, and clean observation. |
 | 2026-08-18 | TASK-2026-08-18-019-diagnose-fedora-account2-fallback | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Proved missing reasoning.context caused account2 HTTP 400 and approved a corrected Fedora retry. |
 | 2026-08-18 | TASK-2026-08-18-018-diagnose-fedora-regular-profile-429 | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Confirmed Fedora regular profile quota exhaustion, account2 availability, and the absence of a defensible reset timestamp. |

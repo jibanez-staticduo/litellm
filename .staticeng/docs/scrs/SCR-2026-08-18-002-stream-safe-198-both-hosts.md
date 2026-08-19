@@ -20,5 +20,10 @@ date: 2026-08-18
 - Fedora retains its current two-account topology and unrelated services/configuration.
 - Both hosts remain healthy and have tested rollback references.
 
+## Approved Operational Contingency
+- If a preserved ChatGPT profile is proven invalid and cannot be reauthorized without an unavailable user, PMA may quarantine that profile from active deployments/fallbacks after creating an exact protected rollback backup.
+- Functional default/account2 routing takes priority over retaining an invalid profile that repeatedly triggers device authentication.
+- The quarantined profile may be restored later through a separate user-assisted reauthorization task.
+
 ## Approval
 Approved directly by the user on 2026-08-18.
