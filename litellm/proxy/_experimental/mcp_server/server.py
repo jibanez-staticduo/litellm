@@ -23,7 +23,7 @@ import httpx
 from fastapi import FastAPI, HTTPException
 from pydantic import AnyUrl, ConfigDict, TypeAdapter
 from starlette.requests import Request as StarletteRequest
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 from starlette.types import Message, Receive, Scope, Send
 
 from litellm._logging import verbose_logger
@@ -5152,16 +5152,96 @@ if MCP_AVAILABLE:
                 # If we can't send a proper response, re-raise the original error
                 raise e
 
+    def _is_lazymcp_compatibility_request(scope: Scope) -> bool:
+        method: Final[str] = scope.get("method", "").upper()
+        if method == "HEAD":
+            return True
+        if method != "GET":
+            return False
+
+        def _split_quoted_header(value: str, delimiter: str) -> tuple[str, ...]:
+            fields: list[str] = []
+            field_start = 0
+            quoted = False
+            escaped = False
+            for index, character in enumerate(value):
+                if escaped:
+                    escaped = False
+                elif quoted and character == "\\":
+                    escaped = True
+                elif character == '"':
+                    quoted = not quoted
+                elif character == delimiter and not quoted:
+                    fields.append(value[field_start:index])
+                    field_start = index + 1
+            fields.append(value[field_start:])
+            return tuple(fields)
+
+        accept_headers: Final = StarletteRequest(scope).headers.getlist("accept")
+        for media_range in (
+            value for header in accept_headers for value in _split_quoted_header(header, delimiter=",")
+        ):
+            media_type, *parameters = _split_quoted_header(media_range, delimiter=";")
+            if media_type.strip().lower() != "text/event-stream":
+                continue
+
+            quality_parameters: Final = tuple(
+                parameter.partition("=")
+                for parameter in parameters
+                if parameter.partition("=")[0].strip().lower() == "q"
+            )
+            if not quality_parameters:
+                return False
+            if len(quality_parameters) != 1:
+                continue
+
+            _, separator, quality = quality_parameters[0]
+            normalized_quality: Final = quality.strip()
+            if (
+                separator
+                and re.fullmatch(r"(?:0(?:\.\d{0,3})?|1(?:\.0{0,3})?)", normalized_quality)
+                and float(normalized_quality) > 0
+            ):
+                return False
+
+        return True
+
+    def _combine_lazymcp_accept_headers(scope: Scope) -> None:
+        headers: Final = scope.get("headers", [])
+        accept_values: Final = [value for name, value in headers if name.lower() == b"accept"]
+        if len(accept_values) < 2:
+            return
+
+        combined_accept: Final = b", ".join(accept_values)
+        normalized_headers: list[tuple[bytes, bytes]] = []
+        accept_inserted = False
+        for name, value in headers:
+            if name.lower() != b"accept":
+                normalized_headers.append((name, value))
+            elif not accept_inserted:
+                normalized_headers.append((name, combined_accept))
+                accept_inserted = True
+        scope["headers"] = normalized_headers
+
     async def handle_streamable_http_lazymcp(scope: Scope, receive: Receive, send: Send) -> None:
         """Handle LazyMCP requests through StreamableHTTP."""
         try:
-            path = scope.get("path", "")
-            if path.startswith("/lazymcp/"):
-                scope["path"] = "/mcp/" + path[len("/lazymcp/") :]
-            elif path.startswith("/lazymcp"):
-                scope["path"] = "/mcp" + path[len("/lazymcp") :]
-            path = scope.get("path", "")
-            await _prepare_mcp_request_context(scope, path)
+            original_path: Final[str] = scope.get("path", "")
+            rewritten_path: Final[str] = (
+                "/mcp/" + original_path.removeprefix("/lazymcp/")
+                if original_path.startswith("/lazymcp/")
+                else "/mcp" + original_path.removeprefix("/lazymcp")
+                if original_path.startswith("/lazymcp")
+                else original_path
+            )
+            scope["path"] = rewritten_path
+            await _prepare_mcp_request_context(scope, rewritten_path)
+
+            if _is_lazymcp_compatibility_request(scope):
+                await Response(status_code=204)(scope, receive, send)
+                return
+
+            _combine_lazymcp_accept_headers(scope)
 
             if not _SESSION_MANAGERS_INITIALIZED:
                 await initialize_session_managers()
@@ -5173,6 +5253,8 @@ if MCP_AVAILABLE:
             await lazy_session_manager.handle_request(scope, receive, send)
         except HTTPException:
             raise
+        except ProxyException as e:
+            raise _proxy_exception_to_http_exception(e)
         except Exception as e:
             verbose_logger.exception(f"Error handling LazyMCP request: {e}")
             try:

@@ -1,0 +1,42 @@
+Command: uv run --no-sync pytest tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py -q
+Result: PASS
+Summary: 279 passed, 0 failed, 0 skipped, 5 pre-existing deprecation warnings
+
+Reopen 1 focused selection:
+- Command: uv run --no-sync pytest tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py -k 'lazymcp and (accept_negotiation or probe or sse_get_still or post_still)' -vv
+- Result: PASS
+- Summary: 52 passed, 217 deselected, 0 failed, 0 skipped
+
+Coverage includes:
+- /lazymcp and /lazymcp/
+- GET Accept */* and application/json -> 204 with empty body
+- HEAD -> 204 with empty body
+- SSE GET Accept text/event-stream -> existing session-manager dispatch
+- POST -> existing session-manager dispatch
+- unauthorized probe -> 401
+- /lazymcp/{name} and trailing slash
+- /toolset/{name}/lazymcp and trailing slash
+- compatibility requests assert no LazyMCP session-manager call
+- repeated Accept fields are combined
+- comma-separated mixed media ranges are evaluated independently
+- media type and q parameter names are case-insensitive
+- non-quality media parameters do not block SSE negotiation
+- valid q=0 rejects that SSE range; valid q>0 accepts it
+- malformed, empty, duplicate, and out-of-range q parameters reject that range
+- one valid acceptable SSE range overrides other rejected/non-SSE ranges and dispatches to MCP
+- quoted comma and semicolon parameter content remains inside its parameter
+- escaped quote and backslash content does not terminate or corrupt the quoted value
+- q after a quoted parameter is parsed and honored at route level for both q>0 SSE and q=0 compatibility responses
+- repeated Accept fields are normalized into one ordered field before real MCP SDK dispatch
+- combined normalization preserves exact quoted comma, semicolon, escaped quote, and escaped backslash bytes
+- repeated and already-combined q=0 inputs remain 204 and never reach normalization/session handling
+
+Reopen 2 focused selection:
+- Command: uv run --no-sync pytest tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py -k 'lazymcp and (accept_negotiation or quoted_accept or probe or sse_get_still or post_still)' -q
+- Result: PASS
+- Summary: 59 passed, 217 deselected, 0 failed, 0 skipped
+
+Reopen 3 focused selection:
+- Command: uv run --no-sync pytest tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py -k 'lazymcp and (accept_negotiation or quoted_accept or repeated_accept or repeated_or_combined or probe or sse_get_still or post_still)' -q
+- Result: PASS
+- Summary: 62 passed, 217 deselected, 0 failed, 0 skipped

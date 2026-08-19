@@ -1,0 +1,40 @@
+Commands and results:
+
+1. uv run --no-sync ruff format litellm/proxy/_experimental/mcp_server/server.py tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py
+   PASS: files formatted
+
+2. uv run --no-sync ruff check litellm/proxy/_experimental/mcp_server/server.py tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py
+   PASS: All checks passed
+
+3. uv run --no-sync python -m py_compile litellm/proxy/_experimental/mcp_server/server.py tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py
+   PASS
+
+4. uv run --no-sync pytest tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py -q
+   PASS: 279 passed, 0 failed, 0 skipped
+
+5. git diff --check
+   PASS
+
+6. staticeng_validate
+   FAIL: repository baseline has broken .staticeng/codemap.yml links and missing CodeMaps across existing source directories
+
+7. staticeng_repair mode=dry-run
+   PASS as diagnostic: proposed repository-wide CodeMap generation and unrelated Markdown normalization; not applied because it would create hundreds of out-of-scope files and alter concurrent task artifacts
+
+8. uv run --no-sync python scripts/type_discipline_gate.py
+   FAIL: the shared worktree contains concurrent source changes against origin/litellm_internal_staging, producing repository-wide budget deltas. The output includes pre-existing findings in server.py and many unrelated files; the new compatibility helper does not add a listed finding
+
+9. uv run --no-sync python scripts/ruff_strict_gate.py
+   FAIL: the shared worktree contains concurrent source changes against origin/litellm_internal_staging, producing repository-wide budget deltas. The output includes pre-existing findings in server.py and many unrelated files; the new compatibility helper does not add a listed finding
+
+10. uv run --no-sync pytest tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py -k 'lazymcp and (accept_negotiation or probe or sse_get_still or post_still)' -vv
+    PASS: 52 passed, 217 deselected, 0 failed, 0 skipped
+
+11. uv run --no-sync pytest tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py -k 'lazymcp and (accept_negotiation or quoted_accept or probe or sse_get_still or post_still)' -q
+    PASS: 59 passed, 217 deselected, 0 failed, 0 skipped
+
+12. uv run --no-sync pytest tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py -k 'real_sdk_session_manager or repeated_or_combined_zero_quality' -vv
+    PASS: 3 passed, 276 deselected, 0 failed, 0 skipped
+
+13. uv run --no-sync pytest tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py -k 'lazymcp and (accept_negotiation or quoted_accept or repeated_accept or repeated_or_combined or probe or sse_get_still or post_still)' -q
+    PASS: 62 passed, 217 deselected, 0 failed, 0 skipped

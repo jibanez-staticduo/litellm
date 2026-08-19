@@ -39,38 +39,370 @@ def _parse_mcp_text_result(result):
     return json.loads(result.content[0].text)
 
 
-def test_lazymcp_root_trailing_slash_does_not_redirect(monkeypatch):
+@pytest.mark.parametrize("path", ["/lazymcp", "/lazymcp/"])
+@pytest.mark.parametrize("method", ["get", "head"])
+@pytest.mark.parametrize(
+    "accept",
+    ["*/*", "application/json", "text/event-stream;q=0", "text/event-stream;q=", "text/event-stream;q=invalid"],
+)
+def test_lazymcp_root_probe_returns_empty_success_without_session(monkeypatch, path, method, accept):
     from litellm.proxy.proxy_server import app
 
-    async def fake_stream_response(handle_fn, scope, receive):
+    auth_mock = AsyncMock(return_value=(UserAPIKeyAuth(api_key="test-key"), None, None, None, None, None))
+    session_mock = AsyncMock(side_effect=AssertionError("probe must not reach the MCP session manager"))
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler.process_mcp_request",
+        auth_mock,
+    )
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.server.lazy_session_manager.handle_request",
+        session_mock,
+    )
+
+    response = getattr(TestClient(app), method)(path, headers={"Accept": accept}, follow_redirects=False)
+
+    assert response.status_code == 204
+    assert response.content == b""
+    assert "location" not in response.headers
+    auth_mock.assert_awaited_once()
+    session_mock.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    ("accept_headers", "is_compatibility_request"),
+    [
+        ([(b"accept", b"application/json"), (b"accept", b"text/event-stream;q=0.5")], False),
+        ([(b"accept", b"application/json, TEXT/EVENT-STREAM; charset=utf-8; Q=1.000")], False),
+        ([(b"accept", b"text/event-stream;q=0, application/json, text/event-stream;q=0.001")], False),
+        ([(b"accept", b"text/event-stream")], False),
+        ([(b"accept", b"text/event-stream; charset=utf-8")], False),
+        ([(b"accept", b"text/event-stream;q=0")], True),
+        ([(b"accept", b"text/event-stream;q=0.000")], True),
+        ([(b"accept", b"text/event-stream;q=")], True),
+        ([(b"accept", b"text/event-stream;q=invalid")], True),
+        ([(b"accept", b"text/event-stream;q=1.0000")], True),
+        ([(b"accept", b"text/event-stream;q=1;q=0")], True),
+        ([(b"accept", b"application/json"), (b"accept", b"")], True),
+    ],
+)
+def test_lazymcp_accept_negotiation(accept_headers, is_compatibility_request):
+    from litellm.proxy._experimental.mcp_server.server import _is_lazymcp_compatibility_request
+
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/mcp",
+        "headers": accept_headers,
+    }
+
+    assert _is_lazymcp_compatibility_request(scope) is is_compatibility_request
+
+
+@pytest.mark.parametrize(
+    "accept",
+    [
+        'text/event-stream; note="value,with,commas"; q=0, application/json',
+        'text/event-stream; note="value;with;semicolons"; q=0',
+        'text/event-stream; note="escaped\\"quote\\\\backslash"; q=0',
+    ],
+)
+def test_lazymcp_quoted_accept_with_zero_quality_returns_compatibility_response(monkeypatch, accept):
+    from litellm.proxy.proxy_server import app
+
+    auth_mock = AsyncMock(return_value=(UserAPIKeyAuth(api_key="test-key"), None, None, None, None, None))
+    session_mock = AsyncMock(side_effect=AssertionError("q=0 quoted range must not reach the MCP session manager"))
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler.process_mcp_request",
+        auth_mock,
+    )
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.server.lazy_session_manager.handle_request",
+        session_mock,
+    )
+
+    response = TestClient(app).get("/lazymcp", headers={"Accept": accept})
+
+    assert response.status_code == 204
+    assert response.content == b""
+    auth_mock.assert_awaited_once()
+    session_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_lazymcp_repeated_accept_headers_work_with_real_sdk_session_manager(monkeypatch):
+    import anyio
+    from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
+
+    from litellm.proxy._experimental.mcp_server import server as mcp_server_module
+    from litellm.proxy._experimental.mcp_server.server import handle_streamable_http_lazymcp, lazymcp_server
+
+    real_session_manager = StreamableHTTPSessionManager(
+        app=lazymcp_server,
+        event_store=None,
+        json_response=False,
+        stateless=True,
+    )
+
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler.process_mcp_request",
+        AsyncMock(return_value=(UserAPIKeyAuth(api_key="test-key"), None, None, None, None, None)),
+    )
+    monkeypatch.setattr(mcp_server_module, "_SESSION_MANAGERS_INITIALIZED", True)
+    monkeypatch.setattr(mcp_server_module, "lazy_session_manager", real_session_manager)
+
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "GET",
+        "scheme": "http",
+        "path": "/lazymcp",
+        "raw_path": b"/lazymcp",
+        "query_string": b"",
+        "server": ("testserver", 80),
+        "client": ("testclient", 50000),
+        "headers": [
+            (b"host", b"testserver"),
+            (b"accept", b'application/json; note="exact,quoted;content\\"\\\\"'),
+            (b"accept", b"text/event-stream;q=0.5"),
+        ],
+    }
+    request_sent = False
+
+    async def receive():
+        nonlocal request_sent
+        if not request_sent:
+            request_sent = True
+            return {"type": "http.request", "body": b"", "more_body": False}
+        return {"type": "http.disconnect"}
+
+    messages = []
+
+    async def send(message):
+        messages.append(message)
+
+    async with real_session_manager.run():
+        with anyio.fail_after(2):
+            await handle_streamable_http_lazymcp(scope, receive, send)
+
+    response_start = next(message for message in messages if message["type"] == "http.response.start")
+    assert response_start["status"] == 200
+    assert scope["headers"] == [
+        (b"host", b"testserver"),
+        (
+            b"accept",
+            b'application/json; note="exact,quoted;content\\"\\\\", text/event-stream;q=0.5',
+        ),
+    ]
+
+
+@pytest.mark.parametrize(
+    "accept_headers",
+    [
+        [("Accept", "application/json"), ("Accept", "text/event-stream;q=0")],
+        [("Accept", "application/json, text/event-stream;q=0")],
+    ],
+)
+def test_lazymcp_repeated_or_combined_zero_quality_remains_compatibility_response(monkeypatch, accept_headers):
+    from litellm.proxy.proxy_server import app
+
+    auth_mock = AsyncMock(return_value=(UserAPIKeyAuth(api_key="test-key"), None, None, None, None, None))
+    session_mock = AsyncMock(side_effect=AssertionError("q=0 must not reach or normalize for the MCP session manager"))
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler.process_mcp_request",
+        auth_mock,
+    )
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.server.lazy_session_manager.handle_request",
+        session_mock,
+    )
+
+    response = TestClient(app).get("/lazymcp", headers=accept_headers)
+
+    assert response.status_code == 204
+    assert response.content == b""
+    auth_mock.assert_awaited_once()
+    session_mock.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["/lazymcp", "/lazymcp/", "/lazymcp/dev", "/lazymcp/dev/", "/toolset/dev/lazymcp", "/toolset/dev/lazymcp/"],
+)
+def test_lazymcp_sse_get_still_streams(monkeypatch, path):
+    from litellm.proxy.proxy_server import app
+
+    async def fake_stream_response(_handle_fn, scope, _receive):
         from starlette.responses import Response
 
         assert scope["path"] == "/lazymcp"
         return Response("ok", media_type="text/event-stream")
 
+    async def fake_get_toolset(_prisma_client, toolset_name):
+        return types.SimpleNamespace(toolset_id=f"toolset-{toolset_name}")
+
+    monkeypatch.setattr("litellm.proxy.proxy_server.prisma_client", object())
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.mcp_server_manager.global_mcp_server_manager.get_mcp_server_by_name",
+        MagicMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.mcp_server_manager.global_mcp_server_manager.get_toolset_by_name_cached",
+        fake_get_toolset,
+    )
     monkeypatch.setattr("litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response)
 
-    response = TestClient(app).get("/lazymcp/", follow_redirects=False)
+    response = TestClient(app).get(path, headers={"Accept": "text/event-stream"}, follow_redirects=False)
 
     assert response.status_code == 200
+    assert response.text == "ok"
     assert "location" not in response.headers
 
 
-def test_lazymcp_root_without_trailing_slash_still_routes(monkeypatch):
+@pytest.mark.parametrize(
+    "path",
+    ["/lazymcp/dev", "/lazymcp/dev/", "/toolset/dev/lazymcp", "/toolset/dev/lazymcp/"],
+)
+@pytest.mark.parametrize("method", ["get", "head"])
+def test_lazymcp_scoped_probe_returns_empty_success_without_session(monkeypatch, path, method):
     from litellm.proxy.proxy_server import app
 
-    async def fake_stream_response(handle_fn, scope, receive):
-        from starlette.responses import Response
+    async def fake_get_toolset(_prisma_client, toolset_name):
+        return types.SimpleNamespace(toolset_id=f"toolset-{toolset_name}")
 
-        assert scope["path"] == "/lazymcp"
-        return Response("ok", media_type="text/event-stream")
+    user_auth = UserAPIKeyAuth(
+        api_key="test-key",
+        object_permission=LiteLLM_ObjectPermissionTable(
+            object_permission_id="permission-id",
+            mcp_toolsets=["toolset-dev"],
+        ),
+    )
+    auth_mock = AsyncMock(return_value=(user_auth, None, None, None, None, None))
+    session_mock = AsyncMock(side_effect=AssertionError("probe must not reach the MCP session manager"))
+    monkeypatch.setattr("litellm.proxy.proxy_server.prisma_client", object())
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.mcp_server_manager.global_mcp_server_manager.get_mcp_server_by_name",
+        MagicMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.mcp_server_manager.global_mcp_server_manager.get_toolset_by_name_cached",
+        fake_get_toolset,
+    )
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.mcp_server_manager.global_mcp_server_manager.resolve_toolset_tool_permissions",
+        AsyncMock(return_value={}),
+    )
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler.process_mcp_request",
+        auth_mock,
+    )
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.server.lazy_session_manager.handle_request",
+        session_mock,
+    )
 
-    monkeypatch.setattr("litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response)
+    response = getattr(TestClient(app), method)(path, headers={"Accept": "application/json"}, follow_redirects=False)
 
-    response = TestClient(app).get("/lazymcp", follow_redirects=False)
+    assert response.status_code == 204
+    assert response.content == b""
+    auth_mock.assert_awaited_once()
+    session_mock.assert_not_awaited()
+
+
+def test_lazymcp_probe_preserves_auth_failure(monkeypatch):
+    from litellm.proxy._types import ProxyException
+    from litellm.proxy.proxy_server import app
+
+    session_mock = AsyncMock(side_effect=AssertionError("unauthorized probe must not reach the MCP session manager"))
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler.process_mcp_request",
+        AsyncMock(side_effect=ProxyException(message="Unauthorized", type="auth_error", param=None, code=401)),
+    )
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.server.lazy_session_manager.handle_request",
+        session_mock,
+    )
+
+    response = TestClient(app).get("/lazymcp", headers={"Accept": "*/*"})
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Unauthorized"
+    session_mock.assert_not_awaited()
+
+
+def test_lazymcp_post_still_dispatches_to_session_manager(monkeypatch):
+    from starlette.responses import Response
+
+    from litellm.proxy._experimental.mcp_server import server as mcp_server_module
+    from litellm.proxy.proxy_server import app
+
+    auth_mock = AsyncMock(return_value=(UserAPIKeyAuth(api_key="test-key"), None, None, None, None, None))
+
+    async def fake_handle_request(scope, receive, send):
+        assert scope["method"] == "POST"
+        await Response("posted", media_type="application/json")(scope, receive, send)
+
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler.process_mcp_request",
+        auth_mock,
+    )
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.server.lazy_session_manager.handle_request",
+        fake_handle_request,
+    )
+    monkeypatch.setattr(mcp_server_module, "_SESSION_MANAGERS_INITIALIZED", True)
+
+    response = TestClient(app).post(
+        "/lazymcp",
+        headers={"Accept": "application/json, text/event-stream"},
+        json={"jsonrpc": "2.0", "method": "notifications/initialized"},
+    )
 
     assert response.status_code == 200
-    assert "location" not in response.headers
+    assert response.text == "posted"
+    auth_mock.assert_awaited_once()
+
+
+@pytest.mark.parametrize(
+    "accept_headers",
+    [
+        [("Accept", "text/event-stream")],
+        [("Accept", "application/json"), ("Accept", "text/event-stream;q=0.5")],
+        [("Accept", "application/json, TEXT/EVENT-STREAM; charset=utf-8; Q=1.000")],
+        [("Accept", "text/event-stream;q=0, text/event-stream;q=0.001")],
+        [("Accept", 'text/event-stream; note="value,with,commas"; q=0.5, application/json')],
+        [("Accept", 'text/event-stream; note="value;with;semicolons"; q=0.5')],
+        [("Accept", 'text/event-stream; note="escaped\\"quote\\\\backslash"; q=0.5')],
+        [("Accept", 'application/json; note="not,sse;still quoted", text/event-stream; version="a;b,c"; q=0.5')],
+    ],
+)
+def test_lazymcp_sse_get_still_dispatches_to_session_manager(monkeypatch, accept_headers):
+    from starlette.responses import Response
+
+    from litellm.proxy._experimental.mcp_server import server as mcp_server_module
+    from litellm.proxy.proxy_server import app
+
+    auth_mock = AsyncMock(return_value=(UserAPIKeyAuth(api_key="test-key"), None, None, None, None, None))
+
+    async def fake_handle_request(scope, receive, send):
+        assert scope["method"] == "GET"
+        await Response("streamed", media_type="text/event-stream")(scope, receive, send)
+
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler.process_mcp_request",
+        auth_mock,
+    )
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.server.lazy_session_manager.handle_request",
+        fake_handle_request,
+    )
+    monkeypatch.setattr(mcp_server_module, "_SESSION_MANAGERS_INITIALIZED", True)
+
+    response = TestClient(app).get("/lazymcp", headers=accept_headers)
+
+    assert response.status_code == 200
+    assert response.text == "streamed"
+    auth_mock.assert_awaited_once()
 
 
 @pytest.fixture(autouse=True)
@@ -611,7 +943,9 @@ async def test_lazymcp_toolset_route_sets_scope_and_streams(monkeypatch):
     )
     monkeypatch.setattr("litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response)
 
-    response = TestClient(app).get("/toolset/dev/lazymcp", follow_redirects=False)
+    response = TestClient(app).get(
+        "/toolset/dev/lazymcp", headers={"Accept": "text/event-stream"}, follow_redirects=False
+    )
 
     assert response.status_code == 200
 
@@ -627,7 +961,7 @@ def test_lazymcp_root_route_streams_without_redirect(monkeypatch):
 
     monkeypatch.setattr("litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response)
 
-    response = TestClient(app).get("/lazymcp", follow_redirects=False)
+    response = TestClient(app).get("/lazymcp", headers={"Accept": "text/event-stream"}, follow_redirects=False)
 
     assert response.status_code == 200
 
@@ -640,7 +974,7 @@ def test_lazymcp_root_route_returns_500_on_unexpected_error(monkeypatch):
 
     monkeypatch.setattr("litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response)
 
-    response = TestClient(app).get("/lazymcp", follow_redirects=False)
+    response = TestClient(app).get("/lazymcp", headers={"Accept": "text/event-stream"}, follow_redirects=False)
 
     assert response.status_code == 500
     assert "boom" in response.json()["detail"]
@@ -677,7 +1011,7 @@ async def test_lazymcp_dynamic_route_handles_toolset_and_fallback(monkeypatch):
     )
     monkeypatch.setattr("litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response)
 
-    response = TestClient(app).get("/lazymcp/dev", follow_redirects=False)
+    response = TestClient(app).get("/lazymcp/dev", headers={"Accept": "text/event-stream"}, follow_redirects=False)
 
     assert response.status_code == 200
 
@@ -709,7 +1043,7 @@ def test_lazymcp_dynamic_route_falls_back_for_non_toolset(monkeypatch):
     )
     monkeypatch.setattr("litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response)
 
-    response = TestClient(app).get("/lazymcp/github", follow_redirects=False)
+    response = TestClient(app).get("/lazymcp/github", headers={"Accept": "text/event-stream"}, follow_redirects=False)
 
     assert response.status_code == 200
 
