@@ -2,6 +2,7 @@
 
 | Date | Task ID | SCR ID | Commit | Summary |
 | :--- | :--- | :--- | :--- | :--- |
+| 2026-08-19 | TASK-2026-08-19-045-start-nas-account3-reauth | none | pending-commit | Reauthenticated and directly verified NAS account3 while preserving routing quarantine and runtime state. |
 | 2026-08-19 | TASK-2026-08-19-044-promote-and-finalize-stream-safe-198 | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Promoted stable directly to the QA-approved replacement manifest and verified unchanged healthy NAS/Fedora runtime state plus final public checks. |
 | 2026-08-19 | TASK-2026-08-19-030-verify-cross-host-stream-safe-198 | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Independently verified both replacement deployments, functionality, clean release logs, evidence chains, and approved stable promotion. |
 | 2026-08-19 | TASK-2026-08-19-043-secure-fedora-release-evidence | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Created secured owner-only Fedora release evidence with independently verified complete hash chain. |

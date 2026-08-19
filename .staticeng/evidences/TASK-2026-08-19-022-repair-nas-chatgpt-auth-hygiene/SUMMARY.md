@@ -23,7 +23,7 @@ NAS deployment remains **REJECTED**. Production independently re-entered account
 - **AC-3: FAIL**. Default and account2 refresh succeeded. Account3 could not be restored from an authenticated account3 session, and production independently held an account3 interactive-auth lock at the gate
 - **AC-4: FAIL**. Default returned HTTP 200 and account2 returned only allowed HTTP 429. Account3 could not be invoked without starting another device flow after its refresh returned HTTP 401
 - **AC-5: PARTIAL**. NAS remains healthy on 1.92.0 with 40 models and all three profile/topology families; Fedora remains healthy on the candidate. The prior stable tag returned not found on two read-only lookups
-- **AC-6: PASS**. `logs/03-preservation-baseline-and-decision.md` defines the fresh metadata baseline and rejects NAS deployment
+- **AC-6: PASS**. `.staticeng/evidences/TASK-2026-08-19-022-repair-nas-chatgpt-auth-hygiene/logs/03-preservation-baseline-and-decision.md` defines the fresh metadata baseline and rejects NAS deployment
 
 ## Documentation Impact
 

@@ -8,7 +8,7 @@ Candidate deployment reference: `docker.staticduo.com/litellm@sha256:35fc520902e
 
 Config digest/image ID: `sha256:9975f878bd5080e95ba6df47f36422b291bcf2123f32b00a81e69ca5bf7c9a3a`
 
-Candidate deployment is **APPROVED FOR INDEPENDENT IMAGE QA AND SEQUENTIAL FEDORA-THEN-NAS DEPLOYMENT**, subject to the gate in `logs/05-sequential-deployment-gate.md`
+Candidate deployment is **APPROVED FOR INDEPENDENT IMAGE QA AND SEQUENTIAL FEDORA-THEN-NAS DEPLOYMENT**, subject to the gate in `.staticeng/evidences/TASK-2026-08-19-035-build-clean-telemetry-198-candidate/logs/05-sequential-deployment-gate.md`
 
 ## Work Performed
 
@@ -22,11 +22,11 @@ Candidate deployment is **APPROVED FOR INDEPENDENT IMAGE QA AND SEQUENTIAL FEDOR
 
 ## Acceptance Criteria Coverage
 
-- **AC-1: PASS**. `logs/01-source-and-tests.log` and `logs/03-build-and-image-verification.log` prove synchronized clean source at the exact commit, package 1.98.0, one `linux/amd64` build, and expected OCI revision/version labels
+- **AC-1: PASS**. `.staticeng/evidences/TASK-2026-08-19-035-build-clean-telemetry-198-candidate/logs/01-source-and-tests.log` and `.staticeng/evidences/TASK-2026-08-19-035-build-clean-telemetry-198-candidate/logs/03-build-and-image-verification.log` prove synchronized clean source at the exact commit, package 1.98.0, one `linux/amd64` build, and expected OCI revision/version labels
 - **AC-2: PASS**. Only `docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260819-clean-telemetry-177c66ef72` was pushed. Manifest and config digests resolved, and stable remained `sha256:b52c0949442e8855289df706621725670d1cff28738a277c245b273b388873e0`
-- **AC-3: PASS**. Bounded installed-package introspection proved sync/async stream guards, sync/async logging-state synchronization, fake-stream bypass, and `_init_cache` resolution/attachment/return behavior. See `logs/03-build-and-image-verification.log`
-- **AC-4: PASS**. Focused source suites passed 350 tests with no failures/skips, and image imports/introspection passed. See `logs/01-source-and-tests.log` and `logs/03-build-and-image-verification.log`
-- **AC-5: PASS**. Current both-host rollback/identity baselines and the mandatory Fedora-then-NAS gate are recorded in `logs/02-both-host-baselines.md` and `logs/05-sequential-deployment-gate.md`
+- **AC-3: PASS**. Bounded installed-package introspection proved sync/async stream guards, sync/async logging-state synchronization, fake-stream bypass, and `_init_cache` resolution/attachment/return behavior. See `.staticeng/evidences/TASK-2026-08-19-035-build-clean-telemetry-198-candidate/logs/03-build-and-image-verification.log`
+- **AC-4: PASS**. Focused source suites passed 350 tests with no failures/skips, and image imports/introspection passed. See `.staticeng/evidences/TASK-2026-08-19-035-build-clean-telemetry-198-candidate/logs/01-source-and-tests.log` and `.staticeng/evidences/TASK-2026-08-19-035-build-clean-telemetry-198-candidate/logs/03-build-and-image-verification.log`
+- **AC-5: PASS**. Current both-host rollback/identity baselines and the mandatory Fedora-then-NAS gate are recorded in `.staticeng/evidences/TASK-2026-08-19-035-build-clean-telemetry-198-candidate/logs/02-both-host-baselines.md` and `.staticeng/evidences/TASK-2026-08-19-035-build-clean-telemetry-198-candidate/logs/05-sequential-deployment-gate.md`
 - **AC-6: PASS**. This evidence contains no credentials, tokens, raw model records, environment contents, or private request payloads. The candidate is approved for the next controlled stage, not deployed or promoted
 
 ## Documentation Impact

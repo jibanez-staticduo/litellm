@@ -5,7 +5,7 @@ Finalized the approved release telemetry/cache correction change set and all int
 
 ## Acceptance Criteria Coverage
 - AC-1: Passed. Status, complete tracked/untracked change inventory, full diff, diff check, staged scope, and secret-pattern review contain only the approved source/tests and intended non-secret StaticEng artifacts
-- AC-2: Passed. TASK-034 is in `tasks/done/` with `status: done`, Active is clear, and the done registry contains its pending-commit row before commit
+- AC-2: Passed. TASK-034 is in `.staticeng/tasks/done/` with `status: done`, Active is clear, and the done registry contains its pending-commit row before commit
 - AC-3: Passed through the direct-path handoff. Main is committed with the PMA-authorized message, pushed without force, and verified clean and synchronized after push
 
 ## Documentation Impact

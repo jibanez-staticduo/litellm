@@ -63,7 +63,7 @@ The application change is limited to two existing Responses API extension points
   - Add a non-ChatGPT control with `supports_native_streaming` returning false and prove fake streaming remains true
 - Existing inheritance and provider behavior must remain covered by `tests/test_litellm/llms/chatgpt/responses/test_chatgpt_responses_transformation.py`
 
-Affected maintained directories are `litellm/llms/custom_httpx/`, `litellm/llms/openai/responses/`, and their mirrored test directories. No maintained `codemap.yml` exists in those paths on current `main`; this task must not broaden into the known repository-wide CodeMap repair. If implementation creates or moves files, PMA must first create a separate CodeMap task
+Affected maintained directories are `litellm/llms/custom_httpx/`, `litellm/llms/openai/responses/`, and their mirrored test directories. No maintained `.staticeng/codemap.yml` exists in those paths on current `main`; this task must not broaden into the known repository-wide CodeMap repair. If implementation creates or moves files, PMA must first create a separate CodeMap task
 
 ### Release And Wrapper Boundaries
 

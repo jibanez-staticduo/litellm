@@ -14,7 +14,7 @@ Reviewed and finalized the approved four-file ChatGPT Responses streaming change
 
 ## Acceptance Criteria Coverage
 
-- **AC-1: PASS**. The staged file list and full diff contain only the approved four source/test files and intended StaticEng artifacts. The final precommit inspection is recorded in `logs/precommit-inspection.log`
+- **AC-1: PASS**. The staged file list and full diff contain only the approved four source/test files and intended StaticEng artifacts. The final precommit inspection is recorded in `.staticeng/evidences/TASK-2026-08-18-013-commit-chatgpt-stream-guards/logs/precommit-inspection.log`
 - **AC-2: PASS**. TASK-013 is in `done` with done frontmatter, `current.md` has no active task, and `done.md` contains its registry row
 - **AC-3: PASS**. PMA authorized the required commit and non-force push. The resulting commit hash, push result, and local/remote synchronization are reported in the signed handback because tracked StaticEng artifacts must not change after the final commit
 

@@ -16,12 +16,12 @@ Captured sanitized preservation and rollback baselines for NAS and Fedora, passe
 
 ## Acceptance Criteria Coverage
 
-- **AC-1: PASS**. `logs/02-nas-preflight.log` and `logs/03-fedora-preflight.log` contain sanitized image/health, exact normalized inventory and router hashes, protected hashes, dependency identities, account topology, auth metadata, and tested rollback references
-- **AC-2: PASS**. `logs/01-source-and-tests.log` and `logs/04-build-and-image-verification.log` prove one build from clean committed `main` revision `b0dfe2e7a7d5191871fa63224f5ed8f9544382fa`, package 1.98.0, `linux/amd64`, and matching OCI labels
+- **AC-1: PASS**. `.staticeng/evidences/TASK-2026-08-18-014-build-stream-safe-198-candidate/logs/02-nas-preflight.log` and `.staticeng/evidences/TASK-2026-08-18-014-build-stream-safe-198-candidate/logs/03-fedora-preflight.log` contain sanitized image/health, exact normalized inventory and router hashes, protected hashes, dependency identities, account topology, auth metadata, and tested rollback references
+- **AC-2: PASS**. `.staticeng/evidences/TASK-2026-08-18-014-build-stream-safe-198-candidate/logs/01-source-and-tests.log` and `.staticeng/evidences/TASK-2026-08-18-014-build-stream-safe-198-candidate/logs/04-build-and-image-verification.log` prove one build from clean committed `main` revision `b0dfe2e7a7d5191871fa63224f5ed8f9544382fa`, package 1.98.0, `linux/amd64`, and matching OCI labels
 - **AC-3: PASS**. Only the unique candidate tag was pushed. The manifest digest is `sha256:42d36549ab561f202748e0f32a1ff9059eb86a51d6957802b3ce08445eab115b`, config digest/image ID is `sha256:45a01917a825fa04dda4d8b0efafd1a780cfbbb9fc16d3846d654d5d49b42c73`, and stable remained `sha256:b52c0949442e8855289df706621725670d1cff28738a277c245b273b388873e0`
-- **AC-4: PASS**. Image import/introspection reports package 1.98.0, expected OCI revision, and all three committed runtime guard locations embedded. See `logs/04-build-and-image-verification.log`
-- **AC-5: PASS**. The committed source suite passed 146 tests with no failures or skips, and bounded image import/version/callable introspection passed. See `logs/01-source-and-tests.log` and `logs/04-build-and-image-verification.log`
-- **AC-6: PASS**. This packet includes the immutable deployment digest, both rollback digests, preservation baselines, postflight non-mutation proof, and reviewed manual sequential gate in `logs/05-sequential-deployment-gate.md`
+- **AC-4: PASS**. Image import/introspection reports package 1.98.0, expected OCI revision, and all three committed runtime guard locations embedded. See `.staticeng/evidences/TASK-2026-08-18-014-build-stream-safe-198-candidate/logs/04-build-and-image-verification.log`
+- **AC-5: PASS**. The committed source suite passed 146 tests with no failures or skips, and bounded image import/version/callable introspection passed. See `.staticeng/evidences/TASK-2026-08-18-014-build-stream-safe-198-candidate/logs/01-source-and-tests.log` and `.staticeng/evidences/TASK-2026-08-18-014-build-stream-safe-198-candidate/logs/04-build-and-image-verification.log`
+- **AC-6: PASS**. This packet includes the immutable deployment digest, both rollback digests, preservation baselines, postflight non-mutation proof, and reviewed manual sequential gate in `.staticeng/evidences/TASK-2026-08-18-014-build-stream-safe-198-candidate/logs/05-sequential-deployment-gate.md`
 
 ## Documentation Impact
 
@@ -29,7 +29,7 @@ No steady-state product or architecture documentation update is required. This t
 
 ## Open Risks
 
-The candidate is not production-validated until the separate Fedora and NAS deployment tasks execute the full runtime matrix. NAS still requires the separately scoped wrapper/Compose migration and a fresh mode-0600 rollback pair before any mutation. `staticeng_validate` remains blocked by pre-existing broken root links and repository-wide missing CodeMaps; its broad repair dry run was reviewed but not applied. See `logs/07-staticeng-validation.log`
+The candidate is not production-validated until the separate Fedora and NAS deployment tasks execute the full runtime matrix. NAS still requires the separately scoped wrapper/Compose migration and a fresh mode-0600 rollback pair before any mutation. `staticeng_validate` remains blocked by pre-existing broken root links and repository-wide missing CodeMaps; its broad repair dry run was reviewed but not applied. See `.staticeng/evidences/TASK-2026-08-18-014-build-stream-safe-198-candidate/logs/07-staticeng-validation.log`
 
 ## Recommended Next Step
 

@@ -4,7 +4,7 @@
 
 Created an exact protected transactional backup, removed only account3 from eight active deployments and eight public fallback chains through supported admin APIs, and reloaded the unchanged NAS 1.92.0 container. Default, account2, public aliases, unrelated routing, credentials, Fedora, and registry state were preserved
 
-The account3 lock released after reload. A 14-minute 58-second post-reload observation found zero account3, device-auth, or refresh-401 log matches. Final default, account2, and public checks all completed HTTP 200 without auth/device-flow errors. The normalized 32-model release baseline is recorded in `logs/04-release-baseline-and-observation.md`
+The account3 lock released after reload. A 14-minute 58-second post-reload observation found zero account3, device-auth, or refresh-401 log matches. Final default, account2, and public checks all completed HTTP 200 without auth/device-flow errors. The normalized 32-model release baseline is recorded in `.staticeng/evidences/TASK-2026-08-19-023-quarantine-nas-invalid-account3/logs/04-release-baseline-and-observation.md`
 
 ## Work Performed
 
@@ -16,7 +16,7 @@ The account3 lock released after reload. A 14-minute 58-second post-reload obser
 
 ## Acceptance Criteria Coverage
 
-- **AC-1: PASS**. `logs/01-protected-backup.md` records the exact affected IDs, fallback scope, protected files, hashes, and atomic restoration procedure
+- **AC-1: PASS**. `.staticeng/evidences/TASK-2026-08-19-023-quarantine-nas-invalid-account3/logs/01-protected-backup.md` records the exact affected IDs, fallback scope, protected files, hashes, and atomic restoration procedure
 - **AC-2: PASS**. All eight fallback updates and eight deployment deletes returned HTTP 200; live and persistent readback show zero account3 deployments and zero account3 fallback references
 - **AC-3: PASS**. All eight public aliases retain their public default primary plus default/account2 qualified targets; eight default and eight account2 qualified deployments remain intact
 - **AC-4: PASS**. The pre-existing account3 lock released on reload; 14 minutes 58 seconds of observation recorded zero account3/device-auth/refresh-401 activity

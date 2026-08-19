@@ -12,7 +12,7 @@ No credential contents were read. No host file, container, service, model, crede
 - Verified all credential entries are regular non-symlink files or expected directories, with current root ownership
 - Correlated the changed file mtime with sanitized service-log event classes only
 - Reviewed the 1.98.0 authenticator write path, which uses a mode-0600 temporary file plus atomic `os.replace` for refresh, device-code request markers, and completed login records
-- Defined the required just-in-time pre/post metadata and sanitized-log gate in `logs/01-read-only-disposition.md`
+- Defined the required just-in-time pre/post metadata and sanitized-log gate in `.staticeng/evidences/TASK-2026-08-19-021-disposition-nas-oauth-mtime/logs/01-read-only-disposition.md`
 
 ## Acceptance Criteria Coverage
 

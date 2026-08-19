@@ -13,7 +13,7 @@ One controlled parent redeployment is **APPROVED**, subject to every corrected g
 - Reviewed the task, parent task, approved SCR, complete parent evidence packet, candidate build identity evidence, prior OAuth disposition, auth hardening evidence, repository CodeMap, and the authenticator lock implementation
 - Verified Docker's container inspect `Image` field is the image ID from which the container was created, while digest-pinned pulls and `RepoDigests` identify registry manifests
 - Verified the Linux lock path is opened as `<auth_file>.lock`, chmodded to 0600, and exclusively locked with `fcntl.flock`
-- Defined corrected identity and credential gates in `logs/01-gate-disposition.md`
+- Defined corrected identity and credential gates in `.staticeng/evidences/TASK-2026-08-19-025-review-nas-identity-lock-gates/logs/01-gate-disposition.md`
 - Performed no credential-content inspection and no host, registry, container, service, configuration, model, route, auth, or tag mutation
 
 ## Acceptance Criteria Coverage
@@ -36,4 +36,4 @@ No product, architecture, technical, or CodeMap update is required. This investi
 
 ## Recommended Next Step
 
-PMA should reopen the parent task for exactly one controlled NAS redeployment from the verified rollback state, replacing only the two false-positive assertions with `logs/01-gate-disposition.md` and preserving every other parent stop and rollback rule
+PMA should reopen the parent task for exactly one controlled NAS redeployment from the verified rollback state, replacing only the two false-positive assertions with `.staticeng/evidences/TASK-2026-08-19-025-review-nas-identity-lock-gates/logs/01-gate-disposition.md` and preserving every other parent stop and rollback rule

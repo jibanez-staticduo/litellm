@@ -17,12 +17,12 @@ The wrapper and candidate are technically compatible, but the deployment decisio
 
 ## Acceptance Criteria Coverage
 
-- **AC-1: PASS**. `logs/01-backup-and-migration.md` records the mode-0600 rollback pair, exact hashes, and current 1.92.0 rollback digest
-- **AC-2: PASS**. `logs/01-backup-and-migration.md` records the minimal wrapper change and preserved startup behavior
-- **AC-3: PASS**. `logs/02-candidate-validation.md` proves the rendered future Compose has no patch mount or runtime patch dependency while both host patch files remain unchanged
-- **AC-4: PASS**. `logs/02-candidate-validation.md` records all final compatibility checks against the immutable candidate digest
-- **AC-5: FAIL STRICT PRESERVATION GATE**. NAS production remained healthy and unchanged in image/container/dependency/inventory/routing terms, and Fedora remained unchanged. One live OAuth token retained the same mode and size but advanced its mtime during the task, so exact credential metadata equality cannot be claimed. See `logs/03-preservation-and-decision.md`
-- **AC-6: PASS**. `logs/03-preservation-and-decision.md` records exact restoration procedures and the deployment rejection
+- **AC-1: PASS**. `.staticeng/evidences/TASK-2026-08-18-020-migrate-nas-198-startup-wrapper/logs/01-backup-and-migration.md` records the mode-0600 rollback pair, exact hashes, and current 1.92.0 rollback digest
+- **AC-2: PASS**. `.staticeng/evidences/TASK-2026-08-18-020-migrate-nas-198-startup-wrapper/logs/01-backup-and-migration.md` records the minimal wrapper change and preserved startup behavior
+- **AC-3: PASS**. `.staticeng/evidences/TASK-2026-08-18-020-migrate-nas-198-startup-wrapper/logs/02-candidate-validation.md` proves the rendered future Compose has no patch mount or runtime patch dependency while both host patch files remain unchanged
+- **AC-4: PASS**. `.staticeng/evidences/TASK-2026-08-18-020-migrate-nas-198-startup-wrapper/logs/02-candidate-validation.md` records all final compatibility checks against the immutable candidate digest
+- **AC-5: FAIL STRICT PRESERVATION GATE**. NAS production remained healthy and unchanged in image/container/dependency/inventory/routing terms, and Fedora remained unchanged. One live OAuth token retained the same mode and size but advanced its mtime during the task, so exact credential metadata equality cannot be claimed. See `.staticeng/evidences/TASK-2026-08-18-020-migrate-nas-198-startup-wrapper/logs/03-preservation-and-decision.md`
+- **AC-6: PASS**. `.staticeng/evidences/TASK-2026-08-18-020-migrate-nas-198-startup-wrapper/logs/03-preservation-and-decision.md` records exact restoration procedures and the deployment rejection
 
 ## Documentation Impact
 
