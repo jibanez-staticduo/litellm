@@ -1,0 +1,1 @@
+{"checks": {"/health/liveliness": 200, "/health/readiness": 200}, "pass": true}

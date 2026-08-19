@@ -3,12 +3,12 @@ id: TASK-2026-08-19-030-verify-cross-host-stream-safe-198
 complexity: standard
 track: investigation
 slice: qa
-status: blocked
+status: done
 scr: SCR-2026-08-18-002-stream-safe-198-both-hosts
 parent: TASK-2026-08-18-010-design-stream-safe-198-release
 assigned_to: qa_engineer
 handoff_from: product_manager
-reopened_count: 0
+reopened_count: 1
 ---
 
 # Task: TASK-2026-08-19-030 - Verify Cross-Host Stream-Safe 1.98.0
@@ -40,3 +40,22 @@ Perform independent read-only cross-host release QA. Do not mutate runtime, tags
 - Fix telemetry callback errors and prove clean logs.
 - Secure/rehash NAS evidence and produce equivalent Fedora hash-chain evidence.
 - Reconcile stable tag, then reopen this same QA task for promotion review.
+
+## Reopen History
+
+### Reopen 1 - 2026-08-19
+- Both hosts now run replacement digest `sha256:35fc520902eb72f5ea91ececccf221883dd5fd78b1d47c78150dfd66eb04f2d3` containing telemetry/cache fixes.
+- Both deployment tasks passed full functional, LazyMCP, topology, preservation, and ten-minute clean release-log observations.
+- NAS evidence hierarchy is secured and hash-verified.
+- Equivalent Fedora owner-only evidence packet and complete hash chain were created and independently reverified.
+- Stable remains held at the prior digest pending this reopened independent promotion review.
+
+## QA Engineer: Reopen 1 Final Result
+- AC-1 through AC-6 passed through independent live verification.
+- Both hosts run replacement manifest `sha256:35fc520902eb72f5ea91ececccf221883dd5fd78b1d47c78150dfd66eb04f2d3`, config `sha256:9975f878bd5080e95ba6df47f36422b291bcf2123f32b00a81e69ca5bf7c9a3a`, version 1.98.0, revision `177c66ef7277`.
+- Health, topology, native/Codex/public functionality, quota dispositions, LazyMCP, clean release-blocker logs, dependencies, and secured evidence chains passed.
+- Stable promotion approved only to the exact replacement digest; no host recreation required.
+
+## PMA Final Closure
+- Independent cross-host QA accepted.
+- Authorized final stable promotion and repository closure.

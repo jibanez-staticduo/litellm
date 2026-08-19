@@ -1,0 +1,1 @@
+{"correction":"Docker containerd image IDs are manifest digests; registry config identity was independently read from the immutable manifest","expected_config_gate":true,"runtime_mutation":false}

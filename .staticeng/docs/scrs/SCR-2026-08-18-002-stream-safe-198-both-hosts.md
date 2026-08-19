@@ -30,5 +30,10 @@ date: 2026-08-18
 - Restore the incomplete Redis usage-cache initialization contract that otherwise emits periodic `resolved_usage_cache` NameError tracebacks.
 - These corrections are required before final stable promotion because both hosts share the affected image.
 
+## Deployment Direction Override
+- Per direct user instruction on 2026-08-19, do not perform automatic rollback for the remaining NAS deployment.
+- Leave the replacement image deployed, inspect any failed check manually, and repair the actual issue in place.
+- Preserve database, credentials, routing intent, dependencies, and rollback artifacts, but rollback is now emergency-only and requires a separate explicit instruction.
+
 ## Approval
 Approved directly by the user on 2026-08-18.

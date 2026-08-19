@@ -2,6 +2,17 @@
 
 | Date | Task ID | SCR ID | Commit | Summary |
 | :--- | :--- | :--- | :--- | :--- |
+| 2026-08-19 | TASK-2026-08-19-044-promote-and-finalize-stream-safe-198 | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Promoted stable directly to the QA-approved replacement manifest and verified unchanged healthy NAS/Fedora runtime state plus final public checks. |
+| 2026-08-19 | TASK-2026-08-19-030-verify-cross-host-stream-safe-198 | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Independently verified both replacement deployments, functionality, clean release logs, evidence chains, and approved stable promotion. |
+| 2026-08-19 | TASK-2026-08-19-043-secure-fedora-release-evidence | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Created secured owner-only Fedora release evidence with independently verified complete hash chain. |
+| 2026-08-19 | TASK-2026-08-19-038-deploy-nas-clean-telemetry-198 | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Deployed replacement digest to NAS without rollback; all functional, topology, LazyMCP, clean-log, and secured-evidence gates passed. |
+| 2026-08-19 | TASK-2026-08-19-042-diagnose-nas-public-primary-gate | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Cancelled separate diagnosis after user ordered in-place deployment and manual repair without rollback. |
+| 2026-08-19 | TASK-2026-08-19-041-harden-nas-docker-credentials | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Hardened NAS Docker credential metadata to 0700/0600 and verified immutable candidate access. |
+| 2026-08-19 | TASK-2026-08-19-040-approve-nas-registry-acquisition | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Defined secure digest-only acquisition and found world-writable NAS Docker credential metadata requiring hardening. |
+| 2026-08-19 | TASK-2026-08-19-039-review-nas-preflight-harness | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Corrected protected mount, credential directory, and Fedora SSH preflight gates for NAS deployment. |
+| 2026-08-19 | TASK-2026-08-19-037-deploy-fedora-clean-telemetry-198 | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Deployed replacement digest to Fedora with 629-second clean telemetry/cache observation and full gates passing. |
+| 2026-08-19 | TASK-2026-08-19-035-build-clean-telemetry-198-candidate | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Built one replacement 1.98.0 image with stream, telemetry, and cache fixes plus 350 passing tests. |
+| 2026-08-19 | TASK-2026-08-19-036-verify-clean-telemetry-candidate | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Independently verified replacement image contracts and approved Fedora-first deployment. |
 | 2026-08-19 | TASK-2026-08-19-034-commit-release-telemetry-fixes | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Finalized approved telemetry/cache fixes and intended StaticEng closure artifacts for commit and push. |
 | 2026-08-19 | TASK-2026-08-19-032-fix-release-telemetry-tracebacks | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Fixed effective stream telemetry state and restored Redis usage-cache initialization with focused regressions. |
 | 2026-08-19 | TASK-2026-08-19-033-review-release-telemetry-fixes | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Independently approved telemetry/cache fixes for commit and replacement image build. |

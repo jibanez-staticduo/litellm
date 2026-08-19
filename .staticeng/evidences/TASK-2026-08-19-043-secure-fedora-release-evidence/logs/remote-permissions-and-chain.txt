@@ -1,0 +1,18 @@
+path_components:
+f: /home/staticduo/docker/litellm/releases/20260819-clean-telemetry-198/secure-fedora-release-evidence-20260819T061927Z
+dr-xr-xr-x root      root      /
+drwxr-xr-x root      root      home
+drwx------ staticduo staticduo staticduo
+drwxr-xr-x staticduo staticduo docker
+drwxr-x--- staticduo staticduo litellm
+drwxr-xr-x staticduo staticduo releases
+drwx------ staticduo staticduo 20260819-clean-telemetry-198
+drwx------ staticduo staticduo secure-fedora-release-evidence-20260819T061927Z
+packet_directory_mode=staticduo:staticduo:700
+directory_count=1
+file_count=23
+symlink_count=0
+world_writable_count=0
+bad_directory_mode_count=0
+bad_file_mode_count=0
+independent_remote_hash_verification=PASS

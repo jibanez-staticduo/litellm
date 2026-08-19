@@ -1,0 +1,1 @@
+{"captured_at": "2026-08-19T06:19:28.371994+00:00", "counts": {"auth_device": 0, "generic_traceback_audit": 4, "migration_schema_patch": 0, "standard_logging": 0, "stream": 0, "usage_cache": 0}, "observed_seconds": 8084, "raw_log_content_retained": false, "release_blocking_zero": true, "started_at": "2026-08-19T04:04:43.818876713Z"}

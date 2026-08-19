@@ -1,0 +1,25 @@
+captured_at_utc: 2026-08-19T03:48:45Z
+branch_source: main
+source_revision: 177c66ef727710a455f058b99f653df9b3e4c0a4
+origin_main_revision: 177c66ef727710a455f058b99f653df9b3e4c0a4
+package_version: 1.98.0
+source_worktree: /tmp/opencode/litellm-build-clean-telemetry-035
+source_worktree_mode: detached clean committed worktree
+source_worktree_porcelain: empty
+
+focused_suites:
+  - tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py
+  - tests/test_litellm/llms/openai/responses/test_openai_responses_transformation.py
+  - tests/test_litellm/llms/chatgpt/responses/test_chatgpt_responses_transformation.py
+  - tests/test_litellm/litellm_core_utils/test_litellm_logging.py
+  - tests/test_litellm/proxy/test_redis_auth_cache_flag.py
+  - tests/test_litellm/proxy/management_endpoints/test_cache_settings_endpoints.py
+result: PASS
+tests_passed: 350
+tests_failed: 0
+tests_skipped: 0
+warnings: 5 pre-existing deprecation, marker, and unawaited-coroutine warnings
+
+candidate_preflight_local_exists: false
+candidate_preflight_registry_exists: false
+stable_before_manifest_digest: sha256:b52c0949442e8855289df706621725670d1cff28738a277c245b273b388873e0

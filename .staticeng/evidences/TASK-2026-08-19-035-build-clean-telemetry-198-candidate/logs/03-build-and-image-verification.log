@@ -1,0 +1,42 @@
+captured_at_utc: 2026-08-19T03:48:45Z
+build_invocation_count: 1
+push_invocation_count: 1
+source_worktree: /tmp/opencode/litellm-build-clean-telemetry-035
+source_worktree_clean: true
+source_revision: 177c66ef727710a455f058b99f653df9b3e4c0a4
+package_source_version: 1.98.0
+platform: linux/amd64
+
+build_command: docker build --platform linux/amd64 --label org.opencontainers.image.revision=177c66ef727710a455f058b99f653df9b3e4c0a4 --label org.opencontainers.image.version=1.98.0 --label org.opencontainers.image.source=https://github.com/jibanez-staticduo/litellm -t docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260819-clean-telemetry-177c66ef72 .
+build_result: PASS
+push_command: docker push docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260819-clean-telemetry-177c66ef72
+push_result: PASS
+
+candidate_tag: docker.staticduo.com/litellm:staticduo-gpt-lazymcp-main-20260819-clean-telemetry-177c66ef72
+deployment_reference: docker.staticduo.com/litellm@sha256:35fc520902eb72f5ea91ececccf221883dd5fd78b1d47c78150dfd66eb04f2d3
+manifest_digest: sha256:35fc520902eb72f5ea91ececccf221883dd5fd78b1d47c78150dfd66eb04f2d3
+manifest_media_type: application/vnd.docker.distribution.manifest.v2+json
+manifest_size: 4723
+config_digest_image_id: sha256:9975f878bd5080e95ba6df47f36422b291bcf2123f32b00a81e69ca5bf7c9a3a
+architecture: amd64
+os: linux
+oci_revision: 177c66ef727710a455f058b99f653df9b3e4c0a4
+oci_version: 1.98.0
+oci_source: https://github.com/jibanez-staticduo/litellm
+image_package_version: 1.98.0
+
+image_import_check: PASS
+sync_native_stream_guard: PASS
+async_native_stream_guard: PASS
+sync_logging_state_synchronization: PASS
+async_logging_state_synchronization: PASS
+chatgpt_fake_stream_bypass: PASS
+restored_init_cache_contract: PASS
+proof_method: imported the installed image package and inspected the bounded runtime callables for required committed contracts
+
+image_repo_tags: exactly one unique candidate tag
+image_repo_digest: docker.staticduo.com/litellm@sha256:35fc520902eb72f5ea91ececccf221883dd5fd78b1d47c78150dfd66eb04f2d3
+stable_before_manifest_digest: sha256:b52c0949442e8855289df706621725670d1cff28738a277c245b273b388873e0
+stable_after_manifest_digest: sha256:b52c0949442e8855289df706621725670d1cff28738a277c245b273b388873e0
+stable_unchanged: true
+stable_or_latest_pushes: 0

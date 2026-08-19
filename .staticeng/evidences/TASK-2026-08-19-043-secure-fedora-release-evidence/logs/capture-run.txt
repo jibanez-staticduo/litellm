@@ -1,0 +1,6 @@
+/home/staticduo/docker/litellm/releases/20260819-clean-telemetry-198/secure-fedora-release-evidence-20260819T061927Z
+remote_packet=/home/staticduo/docker/litellm/releases/20260819-clean-telemetry-198/secure-fedora-release-evidence-20260819T061927Z
+remote_hash_chain=PASS
+packet=/home/staticduo/docker/litellm/releases/20260819-clean-telemetry-198/secure-fedora-release-evidence-20260819T061927Z
+local_copy=/home/staticduo/git/litellm/.staticeng/evidences/TASK-2026-08-19-043-secure-fedora-release-evidence/host-packet
+status=PASS

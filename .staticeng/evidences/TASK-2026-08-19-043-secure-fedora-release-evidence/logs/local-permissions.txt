@@ -1,0 +1,7 @@
+owner_group=staticduo:admin
+directory_count=3
+file_count_before_local_chain=36
+symlink_count=0
+world_writable_count=0
+bad_directory_mode_count=0
+bad_file_mode_count=0
