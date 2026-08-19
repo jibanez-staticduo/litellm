@@ -2,6 +2,8 @@
 
 | Date | Task ID | SCR ID | Commit | Summary |
 | :--- | :--- | :--- | :--- | :--- |
+| 2026-08-19 | TASK-2026-08-19-061-finalize-staging-stop | none | pending-commit | Finalized and pushed the scoped NAS staging-stop records while preserving unrelated Fedora artifacts. |
+| 2026-08-19 | TASK-2026-08-19-060-stop-nas-litellm-staging | none | pending-commit | Stopped only NAS LiteLLM staging, disabled runtime auto-restart, and preserved all data/dependencies. |
 | 2026-08-19 | TASK-2026-08-19-059-finalize-codex-collision-fix | none | pending-commit | Finalized the approved NAS Codex routing and permission-hardening artifacts while preserving unrelated Fedora work. |
 | 2026-08-19 | TASK-2026-08-19-058-harden-nas-litellm-npm-permissions | none | pending-commit | Hardened LiteLLM secret paths and NPM host-62 permissions while preserving regeneration and full functionality. |
 | 2026-08-19 | TASK-2026-08-19-057-verify-nas-upstream-collision-fix | none | pending-commit | Independently verified production-only public routing, staging isolation/current revision, and five successful Codex requests. |
