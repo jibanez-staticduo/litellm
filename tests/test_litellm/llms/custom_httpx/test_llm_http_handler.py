@@ -107,6 +107,7 @@ def test_response_api_handler_preserves_chatgpt_provider_stream_requirement():
         )
     )
     logging_obj = Mock()
+    logging_obj.model_call_details = {}
 
     handler.response_api_handler(
         model="gpt-5.3-codex",
@@ -122,6 +123,8 @@ def test_response_api_handler_preserves_chatgpt_provider_stream_requirement():
 
     assert client.post.call_args.kwargs["stream"] is True
     assert client.post.call_args.kwargs["json"]["stream"] is True
+    assert logging_obj.stream is True
+    assert logging_obj.model_call_details["stream"] is True
 
 
 @pytest.mark.parametrize(
@@ -291,6 +294,7 @@ async def test_async_response_api_handler_preserves_chatgpt_provider_stream_requ
     )
     logging_obj = Mock()
     logging_obj.dynamic_success_callbacks = []
+    logging_obj.model_call_details = {}
 
     await handler.async_response_api_handler(
         model="gpt-5.3-codex",
@@ -306,6 +310,8 @@ async def test_async_response_api_handler_preserves_chatgpt_provider_stream_requ
 
     assert client.post.call_args.kwargs["stream"] is True
     assert client.post.call_args.kwargs["json"]["stream"] is True
+    assert logging_obj.stream is True
+    assert logging_obj.model_call_details["stream"] is True
 
 
 def test_get_agentic_loop_settings_defaults_and_overrides():

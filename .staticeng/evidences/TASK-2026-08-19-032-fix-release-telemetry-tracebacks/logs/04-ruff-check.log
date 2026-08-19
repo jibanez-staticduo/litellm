@@ -1,0 +1,292 @@
+warning: Invalid `# noqa` directive on tests/test_litellm/proxy/test_redis_auth_cache_flag.py:32: expected a comma-separated list of codes (e.g., `# noqa: F401, F841`).
+I001 [*] Import block is un-sorted or un-formatted
+ --> tests/test_litellm/litellm_core_utils/test_litellm_logging.py:1:1
+  |
+1 | / import os
+2 | | import sys
+3 | | import asyncio
+4 | | from unittest.mock import AsyncMock, MagicMock, patch
+5 | |
+6 | | import pytest
+  | |_____________^
+7 |
+8 |   sys.path.insert(0, os.path.abspath("../../.."))  # Adds the parent directory to the system path
+  |
+help: Organize imports
+
+E721 Use `is` and `is not` for type comparisons, or `isinstance()` for isinstance checks
+  --> tests/test_litellm/litellm_core_utils/test_litellm_logging.py:54:12
+   |
+52 |     masked_api_base = logging_obj._get_masked_api_base(api_base)
+53 |     assert masked_api_base == "https://api.openai.com/v1"
+54 |     assert type(masked_api_base) == str
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+T201 `print` found
+  --> tests/test_litellm/litellm_core_utils/test_litellm_logging.py:88:9
+   |
+86 |         assert os.environ.get("SENTRY_API_SAMPLE_RATE") == "0.5"
+87 |     except Exception as e:
+88 |         print(f"Error: {e}")
+   |         ^^^^^
+89 |     finally:
+90 |         # Restore the original environment variable
+   |
+help: Remove `print`
+
+T201 `print` found
+   --> tests/test_litellm/litellm_core_utils/test_litellm_logging.py:155:9
+    |
+154 |     except Exception as e:
+155 |         print(f"Error: {e}")
+    |         ^^^^^
+156 |         raise
+157 |     finally:
+    |
+help: Remove `print`
+
+E712 Avoid equality comparisons to `True`; use `use_custom_pricing_for_model(litellm_params):` for truth checks
+   --> tests/test_litellm/litellm_core_utils/test_litellm_logging.py:179:12
+    |
+177 |         "input_cost_per_pixel": 10,
+178 |     }
+179 |     assert use_custom_pricing_for_model(litellm_params) == True
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+help: Replace with `use_custom_pricing_for_model(litellm_params)`
+
+E712 Avoid equality comparisons to `False`; use `not ...:` for false checks
+   --> tests/test_litellm/litellm_core_utils/test_litellm_logging.py:560:12
+    |
+558 |     logging_obj.stream = False
+559 |     logging_obj.has_run_logging(event_type="sync_success")
+560 |     assert logging_obj.should_run_logging(event_type="sync_success") == False
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+561 |     assert logging_obj.should_run_logging(event_type="sync_failure") == True
+562 |     assert logging_obj.should_run_logging(event_type="async_success") == True
+    |
+help: Replace comparison
+
+E712 Avoid equality comparisons to `True`; use `...:` for truth checks
+   --> tests/test_litellm/litellm_core_utils/test_litellm_logging.py:561:12
+    |
+559 |     logging_obj.has_run_logging(event_type="sync_success")
+560 |     assert logging_obj.should_run_logging(event_type="sync_success") == False
+561 |     assert logging_obj.should_run_logging(event_type="sync_failure") == True
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+562 |     assert logging_obj.should_run_logging(event_type="async_success") == True
+563 |     assert logging_obj.should_run_logging(event_type="async_failure") == True
+    |
+help: Replace comparison
+
+E712 Avoid equality comparisons to `True`; use `...:` for truth checks
+   --> tests/test_litellm/litellm_core_utils/test_litellm_logging.py:562:12
+    |
+560 |     assert logging_obj.should_run_logging(event_type="sync_success") == False
+561 |     assert logging_obj.should_run_logging(event_type="sync_failure") == True
+562 |     assert logging_obj.should_run_logging(event_type="async_success") == True
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+563 |     assert logging_obj.should_run_logging(event_type="async_failure") == True
+    |
+help: Replace comparison
+
+E712 Avoid equality comparisons to `True`; use `...:` for truth checks
+   --> tests/test_litellm/litellm_core_utils/test_litellm_logging.py:563:12
+    |
+561 |     assert logging_obj.should_run_logging(event_type="sync_failure") == True
+562 |     assert logging_obj.should_run_logging(event_type="async_success") == True
+563 |     assert logging_obj.should_run_logging(event_type="async_failure") == True
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+help: Replace comparison
+
+F401 [*] `unittest.mock.AsyncMock` imported but unused
+    --> tests/test_litellm/litellm_core_utils/test_litellm_logging.py:1914:31
+     |
+1912 |     """
+1913 |     from datetime import datetime, timezone
+1914 |     from unittest.mock import AsyncMock, MagicMock, patch
+     |                               ^^^^^^^^^
+1915 |
+1916 |     from litellm.litellm_core_utils.litellm_logging import StandardLoggingPayloadSetup
+     |
+help: Remove unused import: `unittest.mock.AsyncMock`
+
+F401 [*] `unittest.mock.AsyncMock` imported but unused
+    --> tests/test_litellm/litellm_core_utils/test_litellm_logging.py:1961:31
+     |
+1959 |     """
+1960 |     from datetime import datetime, timezone
+1961 |     from unittest.mock import AsyncMock, MagicMock, patch
+     |                               ^^^^^^^^^
+1962 |
+1963 |     from litellm.litellm_core_utils.litellm_logging import StandardLoggingPayloadSetup
+     |
+help: Remove unused import: `unittest.mock.AsyncMock`
+
+UP012 [*] Unnecessary UTF-8 `encoding` argument to `encode`
+    --> tests/test_litellm/litellm_core_utils/test_litellm_logging.py:3977:13
+     |
+3975 |         },
+3976 |     ]
+3977 |     return [f"data: {json.dumps(e)}\n\n".encode("utf-8") for e in events]
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+help: Remove unnecessary `encoding` argument
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py:11:1
+   |
+10 |   sys.path.insert(0, os.path.abspath("../../../.."))  # Adds the parent directory to the system path
+11 | / import litellm
+12 | | from litellm.integrations.code_interpreter_interception.handler import (
+13 | |     CodeInterpreterInterceptionLogger,
+14 | |     LITELLM_CODE_EXECUTION_TOOL_NAME,
+15 | | )
+16 | | from litellm.llms.base_llm.audio_transcription.transformation import (
+17 | |     AudioTranscriptionRequestData,
+18 | |     BaseAudioTranscriptionConfig,
+19 | | )
+20 | | from litellm.llms.base_llm.chat.transformation import BaseLLMException
+21 | | from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
+22 | | from litellm.llms.custom_httpx.llm_http_handler import (
+23 | |     BaseLLMHTTPHandler,
+24 | |     _google_genai_streaming_hidden_params,
+25 | | )
+26 | | from litellm.types.llms.openai import ResponsesAPIResponse
+27 | | from litellm.types.router import GenericLiteLLMParams
+28 | | from litellm.types.utils import TranscriptionResponse
+   | |_____________________________________________________^
+29 |
+30 |   _ACTIVE_KEY = "_code_interpreter_interception_active"
+   |
+help: Organize imports
+
+I001 [*] Import block is un-sorted or un-formatted
+    --> tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py:1425:5
+     |
+1423 |       signing provider (e.g. Bedrock Mantle).
+1424 |       """
+1425 | /     from unittest.mock import MagicMock
+1426 | |     from litellm.llms.custom_httpx.http_handler import HTTPHandler
+1427 | |     from litellm.llms.custom_httpx.llm_http_handler import BaseLLMHTTPHandler
+1428 | |     from litellm.types.router import GenericLiteLLMParams
+     | |_________________________________________________________^
+1429 |
+1430 |       provider_config = MagicMock()
+     |
+help: Organize imports
+
+I001 [*] Import block is un-sorted or un-formatted
+    --> tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py:1480:5
+     |
+1478 |       We snapshot request_data at sign time and assert "stream" is already gone.
+1479 |       """
+1480 | /     from unittest.mock import MagicMock
+1481 | |     from litellm.llms.custom_httpx.http_handler import HTTPHandler
+1482 | |     from litellm.llms.custom_httpx.llm_http_handler import BaseLLMHTTPHandler
+1483 | |     from litellm.types.llms.openai import ResponsesAPIResponse
+1484 | |     from litellm.types.router import GenericLiteLLMParams
+     | |_________________________________________________________^
+1485 |
+1486 |       provider_config = MagicMock()
+     |
+help: Organize imports
+
+I001 [*] Import block is un-sorted or un-formatted
+    --> tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py:1543:5
+     |
+1541 |       signing provider (e.g. Bedrock Mantle SigV4 / bearer).
+1542 |       """
+1543 | /     from unittest.mock import MagicMock
+1544 | |     from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
+1545 | |     from litellm.llms.custom_httpx.llm_http_handler import BaseLLMHTTPHandler
+1546 | |     from litellm.types.router import GenericLiteLLMParams
+     | |_________________________________________________________^
+1547 |
+1548 |       compact_url = "https://bedrock-mantle.us-east-2.api.aws/openai/v1/responses/compact"
+     |
+help: Organize imports
+
+F401 [*] `litellm.proxy.management_endpoints.cache_settings_endpoints._redact_credentials` imported but unused
+  --> tests/test_litellm/proxy/management_endpoints/test_cache_settings_endpoints.py:27:5
+   |
+25 |     _overlay_environment,
+26 |     _parse_stored_settings,
+27 |     _redact_credentials,
+   |     ^^^^^^^^^^^^^^^^^^^
+28 |     _resolve_cache_url_precedence,
+29 |     get_cache_settings,
+   |
+help: Remove unused import: `litellm.proxy.management_endpoints.cache_settings_endpoints._redact_credentials`
+
+PLR0402 [*] Use `from litellm.proxy import proxy_server` in lieu of alias
+   --> tests/test_litellm/proxy/management_endpoints/test_cache_settings_endpoints.py:420:16
+    |
+418 |     @pytest.mark.asyncio
+419 |     async def test_init_cache_settings_in_db_uses_default_auth_cache_flag(self):
+420 |         import litellm.proxy.proxy_server as proxy_server
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+421 |
+422 |         CacheSettingsManager._last_cache_params = None
+    |
+help: Replace with `from litellm.proxy import proxy_server`
+
+RET501 [*] Do not explicitly `return None` in function if it is the only possible return value
+   --> tests/test_litellm/proxy/management_endpoints/test_cache_settings_endpoints.py:499:13
+    |
+497 |             if len(invocations) == 1:
+498 |                 raise prisma.errors.ClientNotConnectedError()
+499 |             return None  # No config → function returns early after retry.
+    |             ^^^^^^^^^^^
+500 |
+501 |         mock_prisma_client = MagicMock()
+    |
+help: Remove explicit `return None`
+
+PLR1711 [*] Useless `return` statement at end of function
+   --> tests/test_litellm/proxy/management_endpoints/test_cache_settings_endpoints.py:499:13
+    |
+497 |             if len(invocations) == 1:
+498 |                 raise prisma.errors.ClientNotConnectedError()
+499 |             return None  # No config → function returns early after retry.
+    |             ^^^^^^^^^^^
+500 |
+501 |         mock_prisma_client = MagicMock()
+    |
+help: Remove useless `return` statement
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/test_litellm/proxy/test_redis_auth_cache_flag.py:8:1
+   |
+ 6 |   """
+ 7 |
+ 8 | / from contextlib import contextmanager
+ 9 | | import json
+10 | | from unittest.mock import MagicMock, patch
+11 | |
+12 | | import pytest
+13 | |
+14 | | import litellm
+15 | | import litellm.proxy.proxy_server as ps
+16 | | from litellm.caching.caching import RedisCache
+17 | | from litellm.caching.dual_cache import DualCache
+   | |________________________________________________^
+   |
+help: Organize imports
+
+F401 [*] `pytest` imported but unused
+  --> tests/test_litellm/proxy/test_redis_auth_cache_flag.py:12:8
+   |
+10 | from unittest.mock import MagicMock, patch
+11 |
+12 | import pytest
+   |        ^^^^^^
+13 |
+14 | import litellm
+   |
+help: Remove unused import: `pytest`
+
+Found 22 errors.
+[*] 14 fixable with the `--fix` option (7 hidden fixes can be enabled with the `--unsafe-fixes` option).

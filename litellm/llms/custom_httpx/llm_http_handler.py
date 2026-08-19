@@ -2561,6 +2561,8 @@ class BaseLLMHTTPHandler:
         request_context["litellm_params"] = dict(litellm_params)
 
         is_stream_request: Final = bool(stream)
+        logging_obj.stream = is_stream_request
+        logging_obj.model_call_details.update({"stream": is_stream_request})
         if is_stream_request and fake_stream is True:
             stream, data = self._prepare_fake_stream_request(
                 stream=stream,
@@ -2742,6 +2744,8 @@ class BaseLLMHTTPHandler:
         request_context["litellm_params"] = dict(litellm_params)
 
         is_stream_request: Final = bool(stream)
+        logging_obj.stream = is_stream_request
+        logging_obj.model_call_details.update({"stream": is_stream_request})
         if is_stream_request and fake_stream is True:
             stream, data = self._prepare_fake_stream_request(
                 stream=stream,

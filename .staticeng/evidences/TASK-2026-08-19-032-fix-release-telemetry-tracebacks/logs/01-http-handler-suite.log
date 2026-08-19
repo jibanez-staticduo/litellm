@@ -1,0 +1,17 @@
+...........................................................              [100%]
+=============================== warnings summary ===============================
+tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py::test_async_anthropic_messages_handler_agentic_streaming_forwards_provider_response_headers
+tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py::test_async_anthropic_messages_handler_streaming_forwards_provider_response_headers
+  /home/staticduo/.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/asyncio/runners.py:70: RuntimeWarning: coroutine 'PassThroughStreamingHandler._route_streaming_logging_to_handler' was never awaited
+    _cancel_all_tasks(loop)
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_litellm/llms/custom_httpx/test_llm_http_handler.py::test_async_delete_responses_sets_json_content_type
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/logging_worker.py:76: RuntimeWarning: coroutine 'Logging.async_success_handler' was never awaited
+    self._queue = None
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+59 passed, 3 warnings in 1.16s

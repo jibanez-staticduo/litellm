@@ -1,0 +1,3 @@
+FAIL: strict-rule totals exceed their limit (base origin/main):
+  EXE002: total 2196 over limit 3 (this change added 2193)
+Reduce the new violations or remove an equal number elsewhere; the ceiling is the limit in ruff-strict-budget.json.

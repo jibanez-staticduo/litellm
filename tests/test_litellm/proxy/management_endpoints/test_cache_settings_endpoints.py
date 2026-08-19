@@ -416,6 +416,35 @@ class TestCacheSettingsManager:
         assert "redis_type" not in CacheSettingsManager._last_cache_params
 
     @pytest.mark.asyncio
+    async def test_init_cache_settings_in_db_uses_default_auth_cache_flag(self):
+        from litellm.proxy import proxy_server
+
+        CacheSettingsManager._last_cache_params = None
+        mock_cache_config = MagicMock()
+        mock_cache_config.cache_settings = '{"type": "local"}'
+        mock_prisma_client = MagicMock()
+        mock_prisma_client.db.litellm_cacheconfig.find_unique = AsyncMock(return_value=mock_cache_config)
+        proxy_config = proxy_server.ProxyConfig()
+        proxy_config._decrypt_db_variables = MagicMock(return_value={"type": "local"})
+        proxy_config.switch_on_llm_response_caching = MagicMock()
+        mock_litellm_cache = MagicMock()
+        mock_litellm_cache.cache = object()
+
+        with (
+            patch.object(proxy_server, "redis_usage_cache", None),
+            patch.object(proxy_server, "litellm_config_cache", MagicMock(redis_cache=None)),
+            patch.object(proxy_server, "_build_redis_usage_cache_from_environment", return_value=None),
+            patch("litellm.Cache", return_value=mock_litellm_cache),
+        ):
+            await CacheSettingsManager.init_cache_settings_in_db(
+                prisma_client=mock_prisma_client,
+                proxy_config=proxy_config,
+            )
+
+        assert CacheSettingsManager._last_cache_params == {"type": "local"}
+        proxy_config.switch_on_llm_response_caching.assert_called_once()
+
+    @pytest.mark.asyncio
     async def test_init_cache_settings_in_db_skips_when_params_unchanged(self):
         """
         Test that init_cache_settings_in_db skips initialization when params unchanged.

@@ -77,7 +77,8 @@ def _patched_init_cache(litellm_settings: dict, cache_params: dict):
         patch("litellm.Cache", return_value=mock_litellm_cache),
     ):
         litellm.cache = None
-        ps.ProxyConfig()._init_cache(cache_params, enable_redis_auth_cache)
+        resolved_usage_cache = ps.ProxyConfig()._init_cache(cache_params, enable_redis_auth_cache)
+        assert resolved_usage_cache is fake_redis
         yield fresh_user_cache, fresh_spend_cache, fresh_cli_sso_cache
 
 

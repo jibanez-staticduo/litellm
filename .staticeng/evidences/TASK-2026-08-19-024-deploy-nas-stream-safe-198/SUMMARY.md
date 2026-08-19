@@ -2,9 +2,35 @@
 
 ## Summary
 
-The NAS release is **REJECTED AND ROLLED BACK**. Three bounded deployment attempts were stopped by verification-harness assertions before candidate functional testing. Every attempt restored NAS to the protected 1.92.0 digest and exact wrapper/Compose rollback pair. After the first failed attempt, Fedora was restored to its pre-release digest as required to avoid a split release. Stable remained in its inherited unresolved state and was not mutated
+The NAS release is **APPROVED AND RUNNING** after Reopen 4. NAS runs the exact immutable 1.98.0 candidate through the migrated wrapper, with every functional, LazyMCP, topology, credential, observation, persistence, preservation, and isolation gate passing. Earlier attempts and their automatic rollbacks remain recorded below as release history
 
-The final NAS rollback is healthy with the exact 32-model default/account2 topology, account3 quarantine, protected routing hashes, dependencies, volumes, and networks. The strict credential gate also detected recurring ctime-only drift on one salted lock-file path without size, mtime, inode, owner, mode, or log-event changes. Because the Tech Lead gate requires exact ctime equality for unaffected entries, this is independently release-blocking and requires Tech Lead disposition before another attempt
+Fedora remained unchanged on its inherited pre-release digest and stable remained unresolved/untouched, as required by the Reopen 4 isolation boundary. The tested NAS rollback image, wrapper/Compose pair, and account3 restoration backup remain protected and available
+
+## Reopen 1 Result
+
+Tech Lead approved exactly one corrected redeployment. The fresh T0, manifest/config identity, candidate health, immediate credential metadata, exact topology, dependency, mount, and network gates passed. One approved lock path advanced only ctime as expected
+
+The first functional request returned HTTP 200, but the harness then attempted to parse the native Responses event lifecycle as JSON because the client request specified `stream=false`. This was a harness false assumption: the previously accepted release contract records HTTP 200 `text/event-stream` and a native Responses lifecycle for this probe. The mandatory stop nevertheless fired before the remaining Codex and LazyMCP gates, and NAS automatically restored the exact 1.92.0 image plus wrapper/Compose pair. The one authorized attempt is exhausted, so final promotion remains **REJECTED** without another retry
+
+## Reopen 2 Result
+
+The final Tech Lead-authorized attempt used Content-Type-driven SSE parsing. The native client `stream=false` request and direct default Codex request each returned HTTP 200 `text/event-stream` with nine valid blank-line-delimited JSON events, ordered created/in-progress/completed lifecycle, one terminal event, consistent response IDs and contiguous sequence numbers, correct deployment selection, and no forbidden errors
+
+The next direct account2 request returned HTTP 429 instead of the required HTTP 200. The mandatory stop fired before the public and LazyMCP gates, and NAS automatically restored the exact 1.92.0 rollback unit. A 10-minute rollback observation passed. The final authorized retry is exhausted, so cross-host promotion remains **REJECTED**
+
+## Reopen 3 Result
+
+Reopen 3 applied Tech Lead's exact account2 quota disposition. Native `stream=false`, direct default, and public default-primary requests each passed HTTP 200 with the complete nine-event SSE contract and correct selection. Direct account2 returned the allowed provider-quota HTTP 429 with correct account2 selection and no forbidden error category. The full LazyMCP status, describe, three-tool list, and harmless `memory-find` smoke passed
+
+After the 10-minute candidate interval, credential metadata, exact candidate identity, and exact 32-model/16-rule topology still passed. A subsequent assertion inside the final observation aggregate failed before the success marker. The harness did not persist the individual failed assertion or sanitized candidate log category before automatic rollback removed the candidate container, so release acceptance cannot be established. NAS was rolled back and passed another 10-minute rollback observation. Reopen 3 authorization is exhausted and promotion remains **REJECTED**
+
+## Reopen 4 Result
+
+Reopen 4 implemented the Tech Lead atomic evidence-first contract before mutation. Attempt `reopen4-20260819T020916Z` persisted every required functional and observation sub-gate as an atomic artifact/result pair under the protected host release directory, including expected/actual values, status, classification, container identity, artifact path, and SHA-256. A canonical aggregate was persisted before acceptance
+
+All required sub-gates and the aggregate passed. The external chain contains 19 result records with all 19 supporting artifact hashes independently verified. Sanitized candidate-log categories were persisted before success; concrete stream, auth, device-flow, migration, schema, and patch failures were zero. Generic tracebacks were retained as an audit count but were not themselves treated as a concrete blocking category under the approved account2-quota contract
+
+NAS remains healthy on candidate manifest `42d365...115b` and config/image ID `45a019...c73`, with zero restarts/OOM and five expected mounts. Promotion status is **APPROVE NAS**
 
 ## Work Performed
 
@@ -13,17 +39,19 @@ The final NAS rollback is healthy with the exact 32-model default/account2 topol
 - Applied the mandatory rollback after each failed assertion, restoring NAS digest `sha256:264774f4a3bb1d01a393b844270f7e71629da996a182295c77675fe2793c6018` plus wrapper/Compose hashes `ada13e55...c8778` and `e55a6827...4129`
 - Restored Fedora to pre-release digest `sha256:2e947963eddbd9385e618d5bd3e122f41a5677a05b843b5add29cef3d52991e9` after the first failed NAS release attempt
 - Stopped after three attempts and requested Tech Lead help through PMA as required
+- Executed one Reopen 1 attempt with corrected identity/lock gates and one final Reopen 2 attempt with the Content-Type-driven SSE parser; both automatic rollbacks passed
+- Executed Reopen 3 to prove the full functional/LazyMCP matrix, then Reopen 4 with atomic per-sub-gate evidence persistence; Reopen 4 passed and remains deployed
 
 ## Acceptance Criteria Coverage
 
-- **AC-1: FAIL STRICT GATE**. T0 pre-deploy checks passed, but one salted lock-file path showed recurring ctime-only drift after rollback without a permitted successful-refresh correlation
-- **AC-2: FAIL**. The candidate was selected by exact digest and only LiteLLM was recreated, but the deployment was rolled back before acceptance; NAS does not remain on 1.98.0
-- **AC-3: NOT COMPLETED**. Candidate health was reached during attempts, but the mandatory assertion stop prevented the candidate 10-minute observation and full startup/log acceptance matrix
-- **AC-4: PASS AFTER ROLLBACK**. The exact 32-model inventory, 16-rule routing hash, default/account2 topology, zero account3 rows/references, dependencies, protected files, volumes, and networks are preserved on restored 1.92.0
-- **AC-5: NOT RUN AFTER STOP**. Native Responses and corrected Codex gates were not invoked after the mandatory deployment assertion failure
-- **AC-6: NOT RUN AFTER STOP**. LazyMCP status, describe, tool-list, and harmless tool smoke were not invoked after the mandatory deployment assertion failure
-- **AC-7: FAIL ORIGINAL PRESERVATION, PASS ABORT SAFETY**. Fedora could not remain on the candidate after release failure; it was restored to its pre-release digest by the explicit reverse-rollback rule. Stable was not changed
-- **AC-8: PASS REJECTION EVIDENCE**. Logs record T0 approval, all attempts, exact rollback state, preservation, rejection, and escalation
+- **AC-1: PASS**. Fresh T0 passed with safe auth metadata, corrected lock handling, zero recent auth/device failures, exact topology/dependencies, and rollback readiness
+- **AC-2: PASS**. NAS runs the immutable 1.98.0 manifest/config/version/revision through the migrated wrapper; only LiteLLM was recreated
+- **AC-3: PASS**. Health/readiness/liveliness, zero restart/OOM, ten-minute observation, startup/preservation, and concrete clean-log gates passed with atomic per-sub-gate evidence
+- **AC-4: PASS**. Exact 32-model and 16-rule hashes, default/account2/public topology, zero account3, protected hashes, credential metadata, dependencies, five mounts, and two networks are preserved
+- **AC-5: PASS**. Native `stream=false`, direct default, allowed direct account2 quota response, and public default-primary passed exact selection and SSE/error assertions
+- **AC-6: PASS**. LazyMCP status, describe, exact three-tool list, and harmless configured `memory-find` smoke passed
+- **AC-7: PASS REOPEN ISOLATION**. Fedora remained healthy and byte-for-byte unchanged on its inherited pre-release baseline; stable remained unresolved and untouched
+- **AC-8: PASS, APPROVE NAS**. Complete historical rollback proof and the final atomic evidence-first deployment packet support NAS promotion
 
 ## Documentation Impact
 
@@ -31,12 +59,11 @@ No product, architecture, technical, or CodeMap update is required. No applicati
 
 ## Open Risks
 
-- The NAS release remains incomplete and both hosts are now on their pre-release images
-- The candidate manifest digest and NAS-local config ID are distinct (`42d365...` manifest, `45a019...` config); the next harness must validate both fields against their correct identities
-- One protected lock-file ctime changes repeatedly while every other captured field and sanitized log gate remains stable; the current strict gate rejects this and needs Tech Lead classification
+- Account2 remains provider quota/rate limited and may be unavailable as fallback until external quota recovers; default/public functionality is healthy
+- Fedora remains on its inherited pre-release digest because Reopen 4 required isolation, so PMA must account for that state in cross-host release closure
 - Stable remains unresolved exactly as inherited from the preceding tasks
 - `staticeng_validate` remains blocked by pre-existing broken links and repository-wide missing CodeMaps; repair dry-run proposed broad unrelated changes and was not applied
 
 ## Recommended Next Step
 
-PMA should route this evidence to Tech Lead. Tech Lead should correct the manifest-versus-config identity assertion, disposition the lock-file ctime behavior without weakening credential-file checks, then reopen this task for one controlled redeployment from the verified rollback state
+PMA should advance the successful NAS deployment to cross-host QA/closure while preserving the stable-tag hold. Record Fedora's inherited pre-release digest explicitly before deciding any separate Fedora alignment action

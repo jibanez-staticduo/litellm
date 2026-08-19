@@ -2831,6 +2831,33 @@ def test_get_assembled_streaming_response_transforms_typed_response_usage():
     assert assembled.usage["total_tokens"] == 10
 
 
+def test_response_completed_event_builds_standard_logging_payload():
+    import datetime
+
+    logging_obj = _make_logging_obj(stream=True)
+    response = ResponsesAPIResponse(
+        id="resp-1",
+        created_at=0,
+        object="response",
+        output=[],
+        status="completed",
+        model="openai/codex-mini-latest",
+        usage=ResponseAPIUsage(input_tokens=7, output_tokens=3, total_tokens=10),
+    )
+    result = ResponseCompletedEvent(
+        type=ResponsesAPIStreamEvents.RESPONSE_COMPLETED,
+        response=response,
+    )
+
+    logging_obj.success_handler(
+        result=result,
+        start_time=datetime.datetime.now(),
+        end_time=datetime.datetime.now(),
+    )
+
+    assert logging_obj.model_call_details["standard_logging_object"] is not None
+
+
 def test_get_assembled_streaming_response_returns_none_for_non_streaming_text_completion():
     """Non-streaming TextCompletionResponse should also return None."""
     import datetime

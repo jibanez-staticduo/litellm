@@ -1,0 +1,10 @@
+FAIL: basedpyright errors exceed the per-rule limit:
+  reportGeneralTypeIssues: total 161 over limit 157 (this change added 4)
+  reportOperatorIssue: total 1 over limit 0 (this change added 1)
+  reportPrivateUsage: total 1831 over limit 1824 (this change added 7)
+  reportUndefinedVariable: total 3 over limit 0 (this change added 3)
+  reportUnnecessaryComparison: total 700 over limit 699 (this change added 2)
+  reportUnusedClass: total 25 over limit 23 (this change added 2)
+  reportUnusedFunction: total 142 over limit 139 (this change added 4)
+Reduce the new errors or remove an equal number elsewhere; the ceiling is the limit in basedpyright-code-budget.json.
+BREACHED RULES: reportGeneralTypeIssues 161/157 (+4); reportOperatorIssue 1/0 (+1); reportPrivateUsage 1831/1824 (+7); reportUndefinedVariable 3/0 (+3); reportUnnecessaryComparison 700/699 (+2); reportUnusedClass 25/23 (+2); reportUnusedFunction 142/139 (+4)

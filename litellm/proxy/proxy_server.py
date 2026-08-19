@@ -4377,8 +4377,8 @@ class ProxyConfig:
     def _init_cache(
         self,
         cache_params: dict,
-    ):
-        global redis_usage_cache, llm_router
+        enable_redis_auth_cache: bool = False,
+    ) -> RedisCache | None:
         from litellm import Cache
 
         if "default_in_memory_ttl" in cache_params:
@@ -4389,11 +4389,26 @@ class ProxyConfig:
 
         litellm.cache = Cache(**cache_params)
 
-        if litellm.cache is not None and isinstance(litellm.cache.cache, (RedisCache, RedisClusterCache)):
-            ## INIT PROXY REDIS USAGE CLIENT ##
-            redis_usage_cache = litellm.cache.cache
-            spend_counter_cache.redis_cache = redis_usage_cache
-            litellm_config_cache.redis_cache = redis_usage_cache
+        resolved_usage_cache: RedisCache | None = (  # rebind-ok: resolved from the configured fallback chain below
+            redis_usage_cache
+        )
+        cache_backend: Final = litellm.cache.cache
+        if resolved_usage_cache is None:
+            if isinstance(cache_backend, (RedisCache, RedisClusterCache)):
+                resolved_usage_cache = cache_backend  # rebind-ok: resolve the usage cache from configured fallbacks
+            else:
+                resolved_usage_cache = (  # rebind-ok: resolve the usage cache from configured fallbacks
+                    _build_redis_usage_cache_from_environment()
+                )
+                if resolved_usage_cache is not None:
+                    verbose_proxy_logger.info(
+                        "Cache backend %s is not a Redis KV cache; built a standalone "
+                        "Redis from REDIS_* environment variables for usage tracking, "
+                        "rate limiting, and cross-pod coordination.",
+                        type(cache_backend).__name__,
+                    )
+
+        if resolved_usage_cache is not None:
             # Note: PKCE verifier storage uses redis_usage_cache directly (not
             # user_api_key_cache) to avoid routing all API-key lookups through Redis.
             _attach_redis_usage_cache(resolved_usage_cache, enable_redis_auth_cache)

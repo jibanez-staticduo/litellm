@@ -25,5 +25,10 @@ date: 2026-08-18
 - Functional default/account2 routing takes priority over retaining an invalid profile that repeatedly triggers device authentication.
 - The quarantined profile may be restored later through a separate user-assisted reauthorization task.
 
+## Release-Blocking Corrections
+- Persist telemetry state for provider-forced native Responses streaming so successful requests produce valid standard logging payloads.
+- Restore the incomplete Redis usage-cache initialization contract that otherwise emits periodic `resolved_usage_cache` NameError tracebacks.
+- These corrections are required before final stable promotion because both hosts share the affected image.
+
 ## Approval
 Approved directly by the user on 2026-08-18.

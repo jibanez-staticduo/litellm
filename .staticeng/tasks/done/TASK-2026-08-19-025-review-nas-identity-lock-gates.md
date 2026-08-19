@@ -3,7 +3,7 @@ id: TASK-2026-08-19-025-review-nas-identity-lock-gates
 complexity: standard
 track: investigation
 slice: qa
-status: active
+status: done
 scr: SCR-2026-08-18-002-stream-safe-198-both-hosts
 parent: TASK-2026-08-19-024-deploy-nas-stream-safe-198
 assigned_to: tech_lead
@@ -30,6 +30,14 @@ Classify the candidate manifest/config identity mismatch assertion and recurring
 [Agent Message] From: product_manager To: tech_lead
 
 Review the false-positive candidate identity and lock-file gates read-only. Return exact corrected assertions and an approve/reject decision for one controlled redeployment.
+
+# Post Implementation Task Updates
+
+## Tech Lead: Post Investigation Expectations
+- AC-1 through AC-4 passed.
+- Manifest/config digest semantics and exact corrected assertions are recorded.
+- Lock ctime-only drift is expected chmod behavior on three allowlisted zero-byte lock files; no credential/auth drift occurred.
+- Exactly one controlled NAS redeployment approved.
 
 # Post Implementation Task Updates
 

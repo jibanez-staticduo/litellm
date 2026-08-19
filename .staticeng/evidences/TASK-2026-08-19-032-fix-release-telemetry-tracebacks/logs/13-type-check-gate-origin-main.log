@@ -1,0 +1,2 @@
+no usable CI artifact named basedpyright-counts-2dc165b1c279ddc2; computing base counts locally
+OK: every rule is within its basedpyright limit or no higher than base (145735 errors total)

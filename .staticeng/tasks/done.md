@@ -2,6 +2,16 @@
 
 | Date | Task ID | SCR ID | Commit | Summary |
 | :--- | :--- | :--- | :--- | :--- |
+| 2026-08-19 | TASK-2026-08-19-034-commit-release-telemetry-fixes | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Finalized approved telemetry/cache fixes and intended StaticEng closure artifacts for commit and push. |
+| 2026-08-19 | TASK-2026-08-19-032-fix-release-telemetry-tracebacks | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Fixed effective stream telemetry state and restored Redis usage-cache initialization with focused regressions. |
+| 2026-08-19 | TASK-2026-08-19-033-review-release-telemetry-fixes | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Independently approved telemetry/cache fixes for commit and replacement image build. |
+| 2026-08-19 | TASK-2026-08-19-031-diagnose-success-telemetry-tracebacks | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Identified missing effective-stream logging state and incomplete Redis cache initialization as shared traceback causes. |
+| 2026-08-19 | TASK-2026-08-19-029-deploy-fedora-final-stream-safe-198 | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Aligned Fedora to the same stream-safe 1.98.0 digest as NAS with full functional and preservation gates passing. |
+| 2026-08-19 | TASK-2026-08-19-024-deploy-nas-stream-safe-198 | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Deployed and verified NAS on stream-safe LiteLLM 1.98.0 with 19 atomically persisted gates passing. |
+| 2026-08-19 | TASK-2026-08-19-028-review-nas-observation-gate | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Classified opaque observation failure as harness evidence defect and approved one atomic evidence-first retry. |
+| 2026-08-19 | TASK-2026-08-19-027-disposition-nas-account2-429 | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Classified account2 429 as provider quota and approved final NAS release with mandatory public default-primary success. |
+| 2026-08-19 | TASK-2026-08-19-026-review-nas-responses-parser-gate | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Corrected the NAS native Responses parser gate and approved one final controlled retry. |
+| 2026-08-19 | TASK-2026-08-19-025-review-nas-identity-lock-gates | SCR-2026-08-18-002-stream-safe-198-both-hosts | 209adfddbc | Corrected manifest/config identity assertions and allowlisted lock-file ctime semantics for one NAS retry. |
 | 2026-08-19 | TASK-2026-08-18-020-migrate-nas-198-startup-wrapper | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Migrated and compatibility-tested the NAS 1.98.0 wrapper/Compose with exact protected rollback pair. |
 | 2026-08-19 | TASK-2026-08-19-023-quarantine-nas-invalid-account3 | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Quarantined invalid account3 after backup, preserving functional default/account2 routing and a clean 32-model baseline. |
 | 2026-08-19 | TASK-2026-08-19-022-repair-nas-chatgpt-auth-hygiene | SCR-2026-08-18-002-stream-safe-198-both-hosts | pending-commit | Hardened NAS auth files and refreshed default/account2; account3 remained invalid and required quarantine. |
