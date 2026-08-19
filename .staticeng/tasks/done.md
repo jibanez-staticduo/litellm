@@ -2,6 +2,11 @@
 
 | Date | Task ID | SCR ID | Commit | Summary |
 | :--- | :--- | :--- | :--- | :--- |
+| 2026-08-19 | TASK-2026-08-19-059-finalize-codex-collision-fix | none | pending-commit | Finalized the approved NAS Codex routing and permission-hardening artifacts while preserving unrelated Fedora work. |
+| 2026-08-19 | TASK-2026-08-19-058-harden-nas-litellm-npm-permissions | none | pending-commit | Hardened LiteLLM secret paths and NPM host-62 permissions while preserving regeneration and full functionality. |
+| 2026-08-19 | TASK-2026-08-19-057-verify-nas-upstream-collision-fix | none | pending-commit | Independently verified production-only public routing, staging isolation/current revision, and five successful Codex requests. |
+| 2026-08-19 | TASK-2026-08-19-056-fix-nas-litellm-upstream-collision | none | pending-commit | Isolated public LiteLLM routing to a unique production alias and upgraded staging to the stable stream-safe revision. |
+| 2026-08-19 | TASK-2026-08-19-055-diagnose-local-codex-failure | none | pending-commit | Traced Codex stream errors to public Docker DNS round-robin between fixed production and stale staging. |
 | 2026-08-19 | TASK-2026-08-19-054-finalize-lazymcp-release | none | pending-commit | Finalized the approved LazyMCP release closure artifacts while preserving unrelated Fedora worktree changes. |
 | 2026-08-19 | TASK-2026-08-19-052-release-lazymcp-probe-fix | none | pending-commit | Released LazyMCP probe compatibility to Fedora/NAS/stable with full protocol and functional gates passing. |
 | 2026-08-19 | TASK-2026-08-19-053-verify-lazymcp-probe-release | none | pending-commit | Independently verified and approved the live LazyMCP compatibility release on both hosts. |
