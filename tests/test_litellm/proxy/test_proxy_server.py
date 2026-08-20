@@ -3477,7 +3477,10 @@ async def test_async_data_generator_midstream_error():
         return chunk
 
     mock_proxy_logging_obj.async_post_call_streaming_hook = AsyncMock(side_effect=mock_streaming_hook)
-    mock_proxy_logging_obj.post_call_failure_hook = AsyncMock()
+    async def remove_logging_obj(**kwargs):
+        kwargs["request_data"].pop("litellm_logging_obj", None)
+
+    mock_proxy_logging_obj.post_call_failure_hook = AsyncMock(side_effect=remove_logging_obj)
 
     # Mock the global proxy_logging_obj
     with patch("litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj):
@@ -3518,6 +3521,91 @@ async def test_async_data_generator_midstream_error():
 
     # Verify that post_call_failure_hook was NOT called (since this is not an exception case)
     mock_proxy_logging_obj.post_call_failure_hook.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_async_data_generator_responses_midstream_error_is_typed_terminal_event():
+    """Responses streams must not turn an upstream error into an unexplained EOF."""
+    from litellm.proxy._types import UserAPIKeyAuth
+    from litellm.proxy.proxy_server import async_data_generator
+    from litellm.proxy.utils import ProxyLogging
+
+    async def failing_stream():
+        yield {"type": "response.created"}
+        raise RuntimeError("upstream rejected the prompt")
+
+    mock_proxy_logging_obj = MagicMock(spec=ProxyLogging)
+    mock_proxy_logging_obj.needs_iterator_wrap.return_value = False
+    mock_proxy_logging_obj.needs_per_chunk_streaming_hook.return_value = False
+    async def remove_logging_obj(**kwargs):
+        kwargs["request_data"].pop("litellm_logging_obj", None)
+
+    mock_proxy_logging_obj.post_call_failure_hook = AsyncMock(side_effect=remove_logging_obj)
+    logging_obj = MagicMock()
+    logging_obj.call_type = "aresponses"
+    request_data = {
+        "model": "gpt-test",
+        "litellm_logging_obj": logging_obj,
+        "_litellm_skip_openai_stream_done": True,
+    }
+
+    with patch("litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj):
+        frames = [
+            frame
+            async for frame in async_data_generator(
+                failing_stream(),
+                MagicMock(spec=UserAPIKeyAuth),
+                request_data,
+            )
+        ]
+
+    assert frames[-1].startswith("event: response.failed\ndata: ")
+    payload = json.loads(frames[-1].split("data: ", 1)[1])
+    assert payload["type"] == "response.failed"
+    assert payload["response"]["status"] == "failed"
+    assert payload["response"]["error"] == {
+        "code": "api_error",
+        "message": "upstream rejected the prompt",
+    }
+    assert "[DONE]" not in "".join(frames)
+    mock_proxy_logging_obj.post_call_failure_hook.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_async_data_generator_responses_serializes_http_exception_after_stream_start():
+    from fastapi import HTTPException
+
+    from litellm.proxy._types import UserAPIKeyAuth
+    from litellm.proxy.proxy_server import async_data_generator
+    from litellm.proxy.utils import ProxyLogging
+
+    async def failing_stream():
+        raise HTTPException(status_code=400, detail="Invalid prompt: blocked")
+        yield
+
+    mock_proxy_logging_obj = MagicMock(spec=ProxyLogging)
+    mock_proxy_logging_obj.needs_iterator_wrap.return_value = False
+    mock_proxy_logging_obj.needs_per_chunk_streaming_hook.return_value = False
+    mock_proxy_logging_obj.post_call_failure_hook = AsyncMock()
+    logging_obj = MagicMock()
+    logging_obj.call_type = "aresponses"
+
+    with patch("litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj):
+        frames = [
+            frame
+            async for frame in async_data_generator(
+                failing_stream(),
+                MagicMock(spec=UserAPIKeyAuth),
+                {"model": "gpt-test", "litellm_logging_obj": logging_obj},
+            )
+        ]
+
+    payload = json.loads(frames[-1].split("data: ", 1)[1])
+    assert payload["type"] == "response.failed"
+    assert payload["response"]["error"] == {
+        "code": "invalid_prompt",
+        "message": "400: Invalid prompt: blocked",
+    }
 
 
 def _has_nested_none_values(obj, path="root"):

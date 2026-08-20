@@ -8230,6 +8230,8 @@ async def async_data_generator(
         raise
     except Exception as e:
         verbose_proxy_logger.exception("litellm.proxy.proxy_server.async_data_generator(): Exception occured - %s", e)
+        call_type: Final = getattr(request_data.get("litellm_logging_obj"), "call_type", None)
+        is_responses_stream: Final = call_type in ("aresponses", "responses")
         await proxy_logging_obj.post_call_failure_hook(
             user_api_key_dict=user_api_key_dict,
             original_exception=e,
@@ -8240,9 +8242,9 @@ async def async_data_generator(
             e,
         )
 
-        if isinstance(e, HTTPException):
+        if isinstance(e, HTTPException) and not is_responses_stream:
             raise e
-        elif isinstance(e, StreamingCallbackError):
+        if isinstance(e, StreamingCallbackError):
             error_msg = str(e)
         else:
             # Only include the error message, not the traceback.
@@ -8256,7 +8258,34 @@ async def async_data_generator(
             param=getattr(e, "param", "None"),
             code=getattr(e, "status_code", 500),
         )
-        error_returned: Final = json.dumps({"error": proxy_exception.to_dict()})
+        if is_responses_stream:
+            upstream_code: Final = getattr(e, "code", None)
+            error_code: Final = (
+                upstream_code
+                if isinstance(upstream_code, str) and upstream_code
+                else "invalid_prompt"
+                if str(proxy_exception.code) == "400" and "invalid prompt" in proxy_exception.message.lower()
+                else "api_error"
+            )
+            error_returned: Final = json.dumps(
+                {
+                    "type": "response.failed",
+                    "response": {
+                        "id": "resp_litellm_error",
+                        "object": "response",
+                        "status": "failed",
+                        "error": {
+                            "code": error_code,
+                            "message": proxy_exception.message,
+                        },
+                        "output": [],
+                    },
+                }
+            )
+            stream_completed = True
+            yield f"event: response.failed\ndata: {error_returned}\n\n"
+            return
+        error_returned = json.dumps({"error": proxy_exception.to_dict()})
         stream_completed = True
         yield f"data: {error_returned}\n\n"
     finally:
