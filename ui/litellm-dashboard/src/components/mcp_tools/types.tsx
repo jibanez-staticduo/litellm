@@ -379,6 +379,7 @@ export interface MCPToolsViewerProps {
   userRole: string | null;
   userID: string | null;
   serverAlias?: string | null;
+  loopbackOAuth?: boolean;
   extraHeaders?: string[] | null;
 }
 
@@ -460,6 +461,30 @@ export interface MCPServer {
    */
   env_vars?: MCPEnvVar[] | null;
 }
+
+export const LOVABLE_LOOPBACK_SERVER_ID = "74d40886-9a8d-44da-941a-4c490bb7c8da";
+
+export const isLovableLoopbackOAuthServer = (
+  server: Pick<
+    MCPServer,
+    | "server_id"
+    | "url"
+    | "auth_type"
+    | "oauth2_flow"
+    | "issuer"
+    | "authorization_url"
+    | "token_url"
+    | "registration_url"
+  >,
+): boolean =>
+  server.server_id === LOVABLE_LOOPBACK_SERVER_ID &&
+  server.url === "https://mcp.lovable.dev" &&
+  server.auth_type === AUTH_TYPE.OAUTH2 &&
+  server.oauth2_flow === "authorization_code" &&
+  server.issuer === "https://lovable.dev/oauth" &&
+  server.authorization_url === "https://lovable.dev/oauth/authorize" &&
+  server.token_url === "https://lovable.dev/oauth/token" &&
+  server.registration_url === "https://lovable.dev/oauth/register";
 
 /** One environment variable entry on an MCP server. */
 export type MCPEnvVarScope = "global" | "user";

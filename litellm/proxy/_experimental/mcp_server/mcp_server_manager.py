@@ -5059,6 +5059,12 @@ class MCPServerManager:
             verbose_logger.warning(
                 "Failed to drop legacy cached MCP OAuth token for user=%s server=%s: %s", user_id, server_id, exc
             )
+        try:
+            from litellm.proxy._experimental.mcp_server.server import invalidate_lazymcp_cache
+
+            invalidate_lazymcp_cache()
+        except Exception as exc:  # noqa: BLE001 - catalog cache TTL remains the backstop
+            verbose_logger.warning("Failed to invalidate LazyMCP catalog after MCP OAuth update: %s", exc)
 
     async def _resolve_oauth2_headers_for_tool_call(
         self,

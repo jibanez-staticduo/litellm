@@ -2465,6 +2465,7 @@ if MCP_AVAILABLE:
     LAZYMCP_TOOL_NAMES = ("mcp_describe", "mcp_call", "mcp_status")
     LAZYMCP_CACHE_TTL_SECONDS = 300
     LAZYMCP_UNAVAILABLE_SERVER_ERROR = {"error": "MCP server is not available for this request."}
+    LAZYMCP_AUTH_REQUIRED_ERROR = {"error": "MCP server authentication is required for this user."}
     LAZYMCP_UNAVAILABLE_TOOL_ERROR = {"error": "Tool is not available for this request."}
     LAZYMCP_AMBIGUOUS_TOOL_ERROR: Final[dict[str, str]] = {  # mutable-ok: MCP errors are JSON object payloads
         "error": "Tool name is ambiguous within the selected MCP server."
@@ -2660,6 +2661,8 @@ if MCP_AVAILABLE:
             extra_headers=extra_headers,
             add_prefix=True,
             raw_headers=raw_headers,
+            user_api_key_auth=user_api_key_auth,
+            oauth2_headers=oauth2_headers,
         )
         tools = filter_tools_by_allowed_tools(tools, server)
         tools = await filter_tools_by_key_team_permissions(
@@ -2687,26 +2690,39 @@ if MCP_AVAILABLE:
             raw_headers=raw_headers,
             client_ip=client_ip,
         )
-        cache_key = f"lazymcp:catalog:{scope_hash}"
-        cached = await _lazymcp_cache_get(cache_key)
-        if isinstance(cached, dict):
-            return cached
-
         allowed_servers = await _get_lazymcp_allowed_servers(
             user_api_key_auth=user_api_key_auth,
             mcp_servers=mcp_servers,
             client_ip=client_ip,
         )
+        cache_key = f"lazymcp:catalog:{scope_hash}"
+        has_user_oauth_server: Final = any(server.needs_user_oauth_token for server in allowed_servers)
+        if not has_user_oauth_server:
+            cached = await _lazymcp_cache_get(cache_key)
+            if isinstance(cached, dict):
+                return cached
+
         servers: list[dict[str, Any]] = []
         for server_item in allowed_servers:
+            auth_status = "not_required"
+            if server_item.needs_user_oauth_token:
+                auth_status = (
+                    "connected"
+                    if await global_mcp_server_manager.has_user_oauth_token(server_item, user_api_key_auth)
+                    else "auth_required"
+                )
             try:
-                tools = await _get_lazymcp_server_tools(
-                    server=server_item,
-                    user_api_key_auth=user_api_key_auth,
-                    mcp_auth_header=mcp_auth_header,
-                    mcp_server_auth_headers=mcp_server_auth_headers,
-                    oauth2_headers=oauth2_headers,
-                    raw_headers=raw_headers,
+                tools = (
+                    await _get_lazymcp_server_tools(
+                        server=server_item,
+                        user_api_key_auth=user_api_key_auth,
+                        mcp_auth_header=mcp_auth_header,
+                        mcp_server_auth_headers=mcp_server_auth_headers,
+                        oauth2_headers=oauth2_headers,
+                        raw_headers=raw_headers,
+                    )
+                    if auth_status != "auth_required"
+                    else []
                 )
             except Exception as e:
                 verbose_logger.exception(
@@ -2715,6 +2731,8 @@ if MCP_AVAILABLE:
                     e,
                 )
                 tools = []
+                if server_item.needs_user_oauth_token:
+                    auth_status = "authentication_failed"
             servers.append(
                 {
                     "server_id": server_item.server_id,
@@ -2722,6 +2740,7 @@ if MCP_AVAILABLE:
                     "description": _get_lazymcp_server_description(server_item),
                     "tool_count": len(tools),
                     "tools": [_lazymcp_tool_to_summary(tool) for tool in tools],
+                    "auth_status": auth_status,
                 }
             )
 
@@ -2748,7 +2767,8 @@ if MCP_AVAILABLE:
             "server_count": len(servers),
             "tool_count": sum(item["tool_count"] for item in servers),
         }
-        await _lazymcp_cache_set(cache_key, catalog)
+        if not has_user_oauth_server:
+            await _lazymcp_cache_set(cache_key, catalog)
         return catalog
 
     def _find_lazymcp_server(catalog: dict[str, Any], server_name: str) -> dict[str, Any] | None:
@@ -2809,6 +2829,13 @@ if MCP_AVAILABLE:
         server_item = _find_lazymcp_server(catalog, str(server_name))
         if server_item is None:
             return LAZYMCP_UNAVAILABLE_SERVER_ERROR
+        if server_item.get("auth_status") == "auth_required":
+            return {
+                "server": server_item["name"],
+                "description": server_item["description"],
+                "tools": [],
+                "auth_status": "auth_required",
+            }
 
         allowed_servers = await _get_lazymcp_allowed_servers(
             user_api_key_auth=user_api_key_auth,
@@ -2884,6 +2911,14 @@ if MCP_AVAILABLE:
             "route_restricted": bool(mcp_servers),
             "requested_server_count": len(mcp_servers or []),
             "toolset_scoped": _mcp_active_toolset_id.get() is not None,
+            "servers": [
+                {
+                    "name": item["name"],
+                    "tool_count": item["tool_count"],
+                    "auth_status": item.get("auth_status", "not_required"),
+                }
+                for item in catalog.get("servers", [])
+            ],
         }
 
     async def _lazymcp_call(arguments: dict[str, Any]) -> CallToolResult:
@@ -2927,6 +2962,13 @@ if MCP_AVAILABLE:
         if selected_server is None:
             return CallToolResult(
                 content=[TextContent(text=json.dumps(LAZYMCP_UNAVAILABLE_SERVER_ERROR), type="text")],
+                isError=True,
+            )
+        if selected_server.needs_user_oauth_token and not await global_mcp_server_manager.has_user_oauth_token(
+            selected_server, user_api_key_auth
+        ):
+            return CallToolResult(
+                content=[TextContent(text=json.dumps(LAZYMCP_AUTH_REQUIRED_ERROR), type="text")],
                 isError=True,
             )
         visible_tools = await _get_lazymcp_server_tools(

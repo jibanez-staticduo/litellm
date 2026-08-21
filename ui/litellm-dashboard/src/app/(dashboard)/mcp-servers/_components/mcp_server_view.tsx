@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { MCPServer, handleTransport, handleAuth } from "@/components/mcp_tools/types";
+import { MCPServer, handleTransport, handleAuth, isLovableLoopbackOAuthServer } from "@/components/mcp_tools/types";
 // TODO: Move Tools viewer from index file
 import { MCPToolsViewer } from ".";
 import MCPServerEdit, { EDIT_OAUTH_UI_STATE_KEY } from "./mcp_server_edit";
@@ -204,6 +204,7 @@ export const MCPServerView: React.FC<MCPServerViewProps> = ({
             userRole={userRole}
             userID={userID}
             serverAlias={mcpServer.alias}
+            loopbackOAuth={isLovableLoopbackOAuthServer(mcpServer)}
             extraHeaders={mcpServer.extra_headers}
           />
         </TabsContent>

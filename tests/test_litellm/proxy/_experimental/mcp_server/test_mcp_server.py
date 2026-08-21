@@ -582,6 +582,113 @@ async def test_lazymcp_lists_only_gateway_tools_and_describes_visible_servers():
 
 
 @pytest.mark.asyncio
+async def test_lazymcp_user_oauth_is_principal_scoped_and_not_catalog_cached():
+    from mcp.types import Tool as MCPTool
+
+    from litellm.proxy._experimental.mcp_server import server as mcp_server_module
+
+    oauth_server = MCPServer(
+        server_id="oauth-server",
+        name="lovable",
+        alias="lovable",
+        server_name="lovable",
+        url="https://mcp.example.test",
+        transport=MCPTransport.http,
+        auth_type=MCPAuth.oauth2,
+        oauth2_flow="authorization_code",
+    )
+    tool = MCPTool(name="lovable-list_workspaces", inputSchema={"type": "object"})
+    connected_users = {"user-a"}
+
+    async def has_user_token(_server, auth):
+        return auth is not None and auth.user_id in connected_users
+
+    async def list_tools(**kwargs):
+        assert kwargs["user_api_key_auth"].user_id == "user-a"
+        return [tool]
+
+    cache_get = AsyncMock(return_value={"servers": [{"name": "stale"}]})
+    cache_set = AsyncMock()
+    with (
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
+            AsyncMock(return_value=[oauth_server]),
+        ),
+        patch.object(mcp_server_module.global_mcp_server_manager, "has_user_oauth_token", has_user_token),
+        patch.object(mcp_server_module.global_mcp_server_manager, "_get_tools_from_server", list_tools),
+        patch.object(mcp_server_module, "_lazymcp_cache_get", cache_get),
+        patch.object(mcp_server_module, "_lazymcp_cache_set", cache_set),
+    ):
+        mcp_server_module.set_auth_context(UserAPIKeyAuth(api_key="sk-a", user_id="user-a"))
+        connected = await mcp_server_module._lazymcp_describe({"server": "lovable"})
+        status_a = await mcp_server_module._lazymcp_status()
+
+        mcp_server_module.set_auth_context(UserAPIKeyAuth(api_key="sk-b", user_id="user-b"))
+        denied = await mcp_server_module._lazymcp_describe({"server": "lovable"})
+        denied_call = await mcp_server_module._lazymcp_call(
+            {"server": "lovable", "tool": "list_workspaces", "arguments": {}}
+        )
+        status_b = await mcp_server_module._lazymcp_status()
+
+    assert connected["tools"][0]["name"] == "lovable-list_workspaces"
+    assert denied["tools"] == []
+    assert denied["auth_status"] == "auth_required"
+    assert json.loads(denied_call.content[0].text) == {"error": "MCP server authentication is required for this user."}
+    assert status_a["servers"] == [{"name": "lovable", "tool_count": 1, "auth_status": "connected"}]
+    assert status_b["servers"] == [{"name": "lovable", "tool_count": 0, "auth_status": "auth_required"}]
+    cache_get.assert_not_awaited()
+    cache_set.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_lazymcp_call_preserves_user_team_and_resolved_oauth_path():
+    from mcp.types import Tool as MCPTool
+
+    from litellm.proxy._experimental.mcp_server import server as mcp_server_module
+
+    oauth_server = MCPServer(
+        server_id="oauth-server",
+        name="lovable",
+        alias="lovable",
+        server_name="lovable",
+        url="https://mcp.example.test",
+        transport=MCPTransport.http,
+        auth_type=MCPAuth.oauth2,
+        oauth2_flow="authorization_code",
+    )
+    auth = UserAPIKeyAuth(api_key="sk-a", user_id="user-a", team_id="team-a")
+    tool = MCPTool(name="lovable-list_workspaces", inputSchema={"type": "object"})
+    delegated_result = MagicMock()
+    mcp_server_module.set_auth_context(auth)
+    with (
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._get_lazymcp_allowed_servers",
+            AsyncMock(return_value=[oauth_server]),
+        ),
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._get_lazymcp_server_tools",
+            AsyncMock(return_value=[tool]),
+        ),
+        patch.object(
+            mcp_server_module.global_mcp_server_manager,
+            "has_user_oauth_token",
+            AsyncMock(return_value=True),
+        ),
+        patch(
+            "litellm.proxy._experimental.mcp_server.server.call_mcp_tool",
+            AsyncMock(return_value=delegated_result),
+        ) as call_mock,
+    ):
+        result = await mcp_server_module._lazymcp_call(
+            {"server": "lovable", "tool": "list_workspaces", "arguments": {}}
+        )
+
+    assert result is delegated_result
+    assert call_mock.await_args.kwargs["user_api_key_auth"].user_id == "user-a"
+    assert call_mock.await_args.kwargs["user_api_key_auth"].team_id == "team-a"
+
+
+@pytest.mark.asyncio
 async def test_lazymcp_call_rechecks_permissions_and_delegates_to_mcp_call():
     try:
         from mcp.types import Tool as MCPTool
@@ -763,6 +870,24 @@ def test_lazymcp_cache_helpers_tolerate_cache_errors(monkeypatch):
     assert asyncio.run(mcp_server_module._lazymcp_cache_get("lazymcp:broken")) is None
     asyncio.run(mcp_server_module._lazymcp_cache_set("lazymcp:broken", {}))
     fake_cache.async_set_cache.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_oauth_credential_invalidation_also_evicts_lazymcp_catalog():
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import MCPServerManager
+
+    manager = MCPServerManager()
+    manager._per_user_oauth_token_store = MagicMock(invalidate=AsyncMock())
+    manager._per_user_token_cache = MagicMock(delete=AsyncMock())
+    with patch(
+        "litellm.proxy._experimental.mcp_server.server.invalidate_lazymcp_cache",
+        MagicMock(),
+    ) as invalidate_catalog:
+        await manager.invalidate_user_oauth_token_cache("user-a", "oauth-server")
+
+    manager._per_user_oauth_token_store.invalidate.assert_awaited_once_with("user-a", "oauth-server")
+    manager._per_user_token_cache.delete.assert_awaited_once_with("user-a", "oauth-server")
+    invalidate_catalog.assert_called_once_with()
 
 
 def test_invalidating_toolset_cache_tolerates_lazymcp_invalidation_error():

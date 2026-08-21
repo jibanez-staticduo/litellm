@@ -37,6 +37,7 @@ const MCPToolsViewer = ({
   userRole,
   userID,
   serverAlias,
+  loopbackOAuth,
   extraHeaders,
 }: MCPToolsViewerProps) => {
   const [selectedTool, setSelectedTool] = useState<MCPTool | null>(null);
@@ -181,9 +182,9 @@ const MCPToolsViewer = ({
     },
     // Passthrough blocks until a browser session token exists; authorization_code blocks until
     // the user has a valid DB credential (else the backend returns no tools).
-    enabled:
-      !!accessToken &&
-      (usesBrowserHeldToken ? oauthToken !== null : isAuthorizationCode ? hasAuthorizationCodeCred : true),
+    enabled: Boolean(
+      accessToken && (usesBrowserHeldToken ? oauthToken !== null : !isAuthorizationCode || hasAuthorizationCodeCred),
+    ),
     staleTime: 30000, // Consider data fresh for 30 seconds
     retry: (failureCount, error: any) => {
       // Don't retry on 401 — token is invalid, user must re-authenticate
@@ -201,12 +202,14 @@ const MCPToolsViewer = ({
 
   const {
     startOAuthFlow: startDbOAuthFlow,
+    cancelOAuthFlow: cancelDbOAuthFlow,
     status: dbOAuthStatus,
     error: dbOAuthError,
   } = useUserMcpOAuthFlow({
     accessToken: accessToken ?? "",
     serverId,
     serverAlias,
+    useLoopbackOAuth: loopbackOAuth,
     onSuccess: onAuthorizationCodeAuthSuccess,
   });
 
@@ -403,14 +406,30 @@ const MCPToolsViewer = ({
                     <p className="mb-3 text-xs text-muted-foreground">
                       Authenticate with the upstream provider to view available tools
                     </p>
-                    <Button
-                      size="sm"
-                      onClick={startAuthorizationCodeAuthorize}
-                      disabled={!accessToken || dbOAuthStatus === "authorizing" || dbOAuthStatus === "exchanging"}
-                    >
-                      Authorize
-                    </Button>
-                    {dbOAuthError && <p className="mt-2 text-xs text-destructive">{dbOAuthError}</p>}
+                    <div className="flex justify-center gap-2" role="status" aria-live="polite">
+                      <Button
+                        size="sm"
+                        onClick={startAuthorizationCodeAuthorize}
+                        disabled={
+                          !accessToken ||
+                          ["preflighting", "authorizing", "waiting", "exchanging"].includes(dbOAuthStatus)
+                        }
+                      >
+                        {dbOAuthStatus === "preflighting" && "Checking tunnel..."}
+                        {dbOAuthStatus === "waiting" && "Waiting for provider..."}
+                        {!["preflighting", "waiting"].includes(dbOAuthStatus) && "Authorize"}
+                      </Button>
+                      {["preflighting", "authorizing", "waiting", "exchanging"].includes(dbOAuthStatus) && (
+                        <Button size="sm" variant="outline" onClick={cancelDbOAuthFlow}>
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
+                    {dbOAuthError && (
+                      <p role="alert" className="mt-2 text-xs text-destructive">
+                        {dbOAuthError}
+                      </p>
+                    )}
                   </div>
                 )}
 

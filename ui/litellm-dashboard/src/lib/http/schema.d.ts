@@ -2919,6 +2919,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/coordination_redis/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Coordination Redis Settings
+         * @description Get the coordination Redis configuration and available settings.
+         *
+         *     Returns:
+         *     - values: current coordination Redis settings, with password/sentinel_password/url redacted
+         *     - fields: all configurable settings with their metadata (type, description, default, section)
+         *     - source: "coordination_redis" | "cache_backend" | "environment" | null
+         */
+        get: operations["get_coordination_redis_settings_coordination_redis_settings_get"];
+        put?: never;
+        /**
+         * Update Coordination Redis Settings
+         * @description Save coordination Redis settings under `general_settings.coordination_redis`.
+         *
+         *     Parameters:
+         *     - settings: dict - Redis connection params (host, port, username, password, url, ssl, startup_nodes, sentinel_nodes, sentinel_password, service_name). Values may be `os.environ/VAR` references, which are stored as written and resolved at startup
+         *
+         *     The settings are written to the `general_settings` row of LiteLLM_Config,
+         *     which startup merges over the yaml config; the proxy picks them up on its
+         *     next restart.
+         */
+        post: operations["update_coordination_redis_settings_coordination_redis_settings_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/coordination_redis/settings/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check Coordination Redis Connection
+         * @description Test a coordination Redis connection with the provided credentials.
+         *
+         *     Parameters:
+         *     - settings: dict - Redis connection params to test. Credential fields sent back as `***REDACTED***` fall back to the saved value
+         *
+         *     Builds a throwaway client (never touching global state) and pings it.
+         */
+        post: operations["check_coordination_redis_connection_coordination_redis_settings_test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cost/estimate": {
         parameters: {
             query?: never;
@@ -17598,6 +17659,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/mcp/loopback-oauth/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete Mcp Loopback Oauth */
+        post: operations["complete_mcp_loopback_oauth_v1_mcp_loopback_oauth_complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/mcp/loopback-oauth/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ready Mcp Loopback Oauth */
+        post: operations["ready_mcp_loopback_oauth_v1_mcp_loopback_oauth_ready_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/mcp/make_public": {
         parameters: {
             query?: never;
@@ -17932,6 +18027,40 @@ export interface paths {
          * @description Approve a pending MCP server submission (admin only). Mirrors PUT /guardrails/{id}/approve.
          */
         put: operations["approve_mcp_server_submission_v1_mcp_server__server_id__approve_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/mcp/server/{server_id}/loopback-oauth/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Mcp Loopback Oauth */
+        post: operations["start_mcp_loopback_oauth_v1_mcp_server__server_id__loopback_oauth_start_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/mcp/server/{server_id}/loopback-oauth/status/{transaction_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Mcp Loopback Oauth Status */
+        get: operations["get_mcp_loopback_oauth_status_v1_mcp_server__server_id__loopback_oauth_status__transaction_id__get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -25062,6 +25191,69 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** CoordinationRedisSettingsField */
+        CoordinationRedisSettingsField: {
+            /** Field Default */
+            field_default?: unknown | null;
+            /** Field Description */
+            field_description: string;
+            /** Field Name */
+            field_name: string;
+            /** Field Type */
+            field_type: string;
+            /** Field Value */
+            field_value?: unknown | null;
+            /**
+             * Section
+             * @enum {string}
+             */
+            section: "connection" | "cluster" | "sentinel";
+            /** Ui Field Name */
+            ui_field_name: string;
+        };
+        /** CoordinationRedisSettingsRequest */
+        CoordinationRedisSettingsRequest: {
+            /**
+             * Settings
+             * @description Coordination Redis connection params
+             */
+            settings: {
+                [key: string]: unknown;
+            };
+        };
+        /** CoordinationRedisSettingsResponse */
+        CoordinationRedisSettingsResponse: {
+            /**
+             * Fields
+             * @description List of all configurable coordination Redis settings with metadata
+             */
+            fields: components["schemas"]["CoordinationRedisSettingsField"][];
+            /**
+             * Source
+             * @description Where the proxy's coordination Redis comes from; null when it has none
+             */
+            source: ("coordination_redis" | "cache_backend" | "environment") | null;
+            /**
+             * Values
+             * @description Current coordination Redis settings, with credentials redacted
+             */
+            values: {
+                [key: string]: unknown;
+            };
+        };
+        /** CoordinationRedisTestResponse */
+        CoordinationRedisTestResponse: {
+            /**
+             * Error
+             * @description Error message if the connection failed
+             */
+            error?: string | null;
+            /**
+             * Status
+             * @description Connection status: 'healthy' or 'unhealthy'
+             */
+            status: string;
+        };
         /**
          * CostEstimateRequest
          * @description Request body for /cost/estimate endpoint.
@@ -29651,6 +29843,51 @@ export interface components {
              * @enum {string}
              */
             status?: "healthy" | "unhealthy";
+        };
+        /** LoopbackOAuthCompletionRequest */
+        LoopbackOAuthCompletionRequest: {
+            /** Code */
+            code?: string | null;
+            /** Error */
+            error?: string | null;
+            /** Error Description */
+            error_description?: string | null;
+            /** State */
+            state: string;
+        };
+        /** LoopbackOAuthCompletionResponse */
+        LoopbackOAuthCompletionResponse: {
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "connected" | "denied";
+        };
+        /** LoopbackOAuthReadyRequest */
+        LoopbackOAuthReadyRequest: {
+            /** Transaction Id */
+            transaction_id: string;
+        };
+        /** LoopbackOAuthStartResponse */
+        LoopbackOAuthStartResponse: {
+            /** Authorization Url */
+            authorization_url: string;
+            /**
+             * Expires In
+             * @default 300
+             * @constant
+             */
+            expires_in: 300;
+            /** Transaction Id */
+            transaction_id: string;
+        };
+        /** LoopbackOAuthStatusResponse */
+        LoopbackOAuthStatusResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "ready" | "connected" | "denied" | "failed";
         };
         /** MCPCredentials */
         MCPCredentials: {
@@ -41888,6 +42125,97 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_coordination_redis_settings_coordination_redis_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinationRedisSettingsResponse"];
+                };
+            };
+        };
+    };
+    update_coordination_redis_settings_coordination_redis_settings_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description The litellm-changed-by header enables tracking of actions performed by authorized users on behalf of other users, providing an audit trail for accountability */
+                "litellm-changed-by"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoordinationRedisSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_coordination_redis_connection_coordination_redis_settings_test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoordinationRedisSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinationRedisTestResponse"];
                 };
             };
             /** @description Validation Error */
@@ -60199,6 +60527,76 @@ export interface operations {
             };
         };
     };
+    complete_mcp_loopback_oauth_v1_mcp_loopback_oauth_complete_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoopbackOAuthCompletionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoopbackOAuthCompletionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ready_mcp_loopback_oauth_v1_mcp_loopback_oauth_ready_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoopbackOAuthReadyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoopbackOAuthStatusResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     make_mcp_servers_public_v1_mcp_make_public_post: {
         parameters: {
             query?: never;
@@ -60810,6 +61208,69 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LiteLLM_MCPServerTable"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_mcp_loopback_oauth_v1_mcp_server__server_id__loopback_oauth_start_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoopbackOAuthStartResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_mcp_loopback_oauth_status_v1_mcp_server__server_id__loopback_oauth_status__transaction_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                server_id: string;
+                transaction_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoopbackOAuthStatusResponse"];
                 };
             };
             /** @description Validation Error */

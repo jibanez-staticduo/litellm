@@ -1,0 +1,28 @@
+services:
+  loopback-oauth-relay:
+    build:
+      context: .
+    restart: unless-stopped
+    user: "65532:65532"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 64m
+    cpus: 0.50
+    ports:
+      - "127.0.0.1:43119:8080"
+    networks:
+      - llm-net
+    secrets:
+      - litellm_loopback_oauth_relay
+
+networks:
+  llm-net:
+    external: true
+
+secrets:
+  litellm_loopback_oauth_relay:
+    external: true

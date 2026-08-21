@@ -13,7 +13,14 @@ import {
   getMCPOAuthUserCredentialStatus,
   listMCPTools,
 } from "../networking";
-import { AUTH_TYPE, MCPServer, MCPTool, handleTransport, isUnsupportedOnGatewayConnect } from "../mcp_tools/types";
+import {
+  AUTH_TYPE,
+  MCPServer,
+  MCPTool,
+  handleTransport,
+  isLovableLoopbackOAuthServer,
+  isUnsupportedOnGatewayConnect,
+} from "../mcp_tools/types";
 import { Logo } from "@/components/molecules/logo/Logo";
 import MessageManager from "@/components/molecules/message_manager";
 import { useUserMcpOAuthFlow } from "@/hooks/useUserMcpOAuthFlow";
@@ -32,38 +39,59 @@ const OAuth2ConnectButton: React.FC<OAuth2ConnectButtonProps> = ({
   variant = "badge",
 }) => {
   const name = server.server_name ?? server.alias ?? server.server_id;
-  const { startOAuthFlow, status } = useUserMcpOAuthFlow({
+  const { startOAuthFlow, cancelOAuthFlow, status, error } = useUserMcpOAuthFlow({
     accessToken,
     serverId: server.server_id,
     serverAlias: name,
+    useLoopbackOAuth: isLovableLoopbackOAuthServer(server),
     onSuccess: useCallback(() => onConnect(server.server_id), [onConnect, server.server_id]),
   });
 
-  const loading = status === "authorizing" || status === "exchanging";
+  const loading = ["preflighting", "authorizing", "waiting", "exchanging"].includes(status);
+  let statusLabel = "Connecting…";
+  if (status === "preflighting") statusLabel = "Checking tunnel…";
+  if (status === "waiting") statusLabel = "Waiting for Lovable…";
 
   if (variant === "button") {
     return (
-      <Button onClick={startOAuthFlow} disabled={loading} className="font-semibold h-[38px] min-w-[110px]">
-        {loading && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />}
-        {loading ? "Connecting\u2026" : "Connect"}
-      </Button>
+      <div className="flex flex-col items-end gap-2" role="status" aria-live="polite">
+        <div className="flex gap-2">
+          <Button onClick={startOAuthFlow} disabled={loading} className="font-semibold h-[38px] min-w-[110px]">
+            {loading && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />}
+            {loading ? statusLabel : "Connect"}
+          </Button>
+          {loading && (
+            <Button variant="outline" onClick={cancelOAuthFlow}>
+              Cancel
+            </Button>
+          )}
+        </div>
+        {error && (
+          <p role="alert" className="max-w-sm text-right text-xs text-destructive">
+            {error}
+          </p>
+        )}
+      </div>
     );
   }
 
   return (
-    <span
+    <Button
+      size="xs"
+      variant={loading ? "outline" : "default"}
+      aria-label={loading ? `Cancel ${name} connection` : `Connect ${name}`}
       onClick={(e) => {
         e.stopPropagation();
-        if (!loading) startOAuthFlow();
+        if (loading) cancelOAuthFlow();
+        else startOAuthFlow();
       }}
-      className={`text-[11px] font-semibold rounded-md px-2 py-0.5 shrink-0 whitespace-nowrap ${
-        loading
-          ? "text-muted-foreground bg-muted cursor-default"
-          : "text-primary-foreground bg-primary cursor-pointer hover:bg-primary/90"
-      }`}
+      className="shrink-0 text-[11px] font-semibold"
     >
-      {loading ? "Connecting\u2026" : "Connect"}
-    </span>
+      {loading ? "Cancel" : "Connect"}
+      <span className="sr-only" aria-live="polite">
+        {loading ? statusLabel : error}
+      </span>
+    </Button>
   );
 };
 
@@ -445,6 +473,8 @@ const MCPAppsPanel: React.FC<Props> = ({ accessToken, selectedServers, onChange,
             </span>
           )}
         </div>
+        {/* Existing three-state rendering is clearer here than duplicated condition blocks. */}
+        {/* eslint-disable-next-line no-nested-ternary */}
         {loadingTools ? (
           <div className="flex flex-col gap-2">
             {Array.from({ length: 3 }, (_, i) => (
@@ -490,6 +520,7 @@ const MCPAppsPanel: React.FC<Props> = ({ accessToken, selectedServers, onChange,
           ) : (
             <div className="flex items-center gap-3">
               <p className="m-0 text-[13px] text-muted-foreground">Browse tools, authenticate once, use in chat</p>
+              {/* eslint-disable-next-line no-nested-ternary */}
               {loadingCounts ? (
                 <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -526,6 +557,7 @@ const MCPAppsPanel: React.FC<Props> = ({ accessToken, selectedServers, onChange,
         </TabsList>
       </Tabs>
 
+      {/* eslint-disable-next-line no-nested-ternary */}
       {loading ? (
         <div className="grid grid-cols-2 border rounded-lg overflow-hidden">
           {Array.from({ length: 6 }, (_, idx) => (
@@ -580,6 +612,7 @@ const MCPAppsPanel: React.FC<Props> = ({ accessToken, selectedServers, onChange,
                   <div className="text-sm font-medium text-foreground truncate">{name}</div>
                   <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
                     <span className="truncate">{server.description ?? "MCP server"}</span>
+                    {/* eslint-disable-next-line no-nested-ternary */}
                     {count !== undefined ? (
                       count > 0 ? (
                         <span className="shrink-0 flex items-center gap-1 text-muted-foreground">

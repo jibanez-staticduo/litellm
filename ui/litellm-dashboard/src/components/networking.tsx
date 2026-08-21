@@ -7788,6 +7788,51 @@ export interface MCPOAuthUserCredentialStatus {
   connected_at?: string | null;
 }
 
+export interface LoopbackOAuthStartResponse {
+  authorization_url: string;
+  transaction_id: string;
+  expires_in: 300;
+}
+
+export interface LoopbackOAuthStatusResponse {
+  status: "pending" | "ready" | "connected" | "denied" | "failed";
+}
+
+export const startMCPLoopbackOAuth = async (
+  accessToken: string,
+  serverId: string,
+): Promise<LoopbackOAuthStartResponse> => {
+  return apiClient.post<LoopbackOAuthStartResponse>(`/v1/mcp/server/${serverId}/loopback-oauth/start`, {
+    accessToken,
+  });
+};
+
+export const markMCPLoopbackTunnelReady = async (transactionId: string, signal: AbortSignal): Promise<void> => {
+  const url = new URL("http://127.0.0.1:43119/ready");
+  url.searchParams.set("transaction_id", transactionId);
+  // Loopback preflight intentionally cannot use the proxy API client.
+  // eslint-disable-next-line no-restricted-syntax
+  await fetch(url, {
+    method: "GET",
+    mode: "no-cors",
+    cache: "no-store",
+    credentials: "omit",
+    referrerPolicy: "no-referrer",
+    signal,
+  });
+};
+
+export const getMCPLoopbackOAuthStatus = async (
+  accessToken: string,
+  serverId: string,
+  transactionId: string,
+): Promise<LoopbackOAuthStatusResponse> => {
+  const path = `/v1/mcp/server/${serverId}/loopback-oauth/status/${encodeURIComponent(transactionId)}`;
+  return apiClient.get<LoopbackOAuthStatusResponse>(path, {
+    accessToken,
+  });
+};
+
 export interface MCPUserCredentialListItem {
   server_id: string;
   server_name?: string | null;

@@ -7,6 +7,8 @@ import { fetchMCPServers, listMCPTools } from "../networking";
 import type { MCPServer } from "../mcp_tools/types";
 import { setServerRootPath } from "@/lib/serverRootPath";
 
+const oauthHook = vi.fn(() => ({ startOAuthFlow: vi.fn(), cancelOAuthFlow: vi.fn(), status: "idle", error: null }));
+
 vi.mock("../networking", () => ({
   fetchMCPServers: vi.fn(),
   getMCPOAuthUserCredentialStatus: vi.fn(),
@@ -15,7 +17,7 @@ vi.mock("../networking", () => ({
 }));
 
 vi.mock("@/hooks/useUserMcpOAuthFlow", () => ({
-  useUserMcpOAuthFlow: () => ({ startOAuthFlow: vi.fn(), status: "idle" }),
+  useUserMcpOAuthFlow: (options: unknown) => oauthHook(options),
 }));
 
 const servers = [
@@ -84,6 +86,34 @@ describe("MCPAppsPanel logos", () => {
 
     expect(await screen.findByRole("heading", { name: "local_logo" })).toBeInTheDocument();
     expect(screen.getByAltText("local_logo logo").getAttribute("src")).toBe("/litellm/ui/assets/logos/github.svg");
+  });
+});
+
+describe("MCPAppsPanel Lovable routing", () => {
+  it("passes loopback routing only for the reviewed immutable registration", async () => {
+    vi.mocked(fetchMCPServers).mockResolvedValue([
+      {
+        server_id: "74d40886-9a8d-44da-941a-4c490bb7c8da",
+        alias: "lovable",
+        url: "https://mcp.lovable.dev",
+        auth_type: "oauth2",
+        oauth2_flow: "authorization_code",
+        issuer: "https://lovable.dev/oauth",
+        authorization_url: "https://lovable.dev/oauth/authorize",
+        token_url: "https://lovable.dev/oauth/token",
+        registration_url: "https://lovable.dev/oauth/register",
+      },
+      { server_id: "other", alias: "lovable", auth_type: "oauth2" },
+    ] as MCPServer[]);
+    vi.mocked(listMCPTools).mockResolvedValue({ tools: [] });
+
+    renderPanel();
+    await screen.findAllByText("lovable");
+
+    expect(oauthHook).toHaveBeenCalledWith(
+      expect.objectContaining({ serverId: "74d40886-9a8d-44da-941a-4c490bb7c8da", useLoopbackOAuth: true }),
+    );
+    expect(oauthHook).toHaveBeenCalledWith(expect.objectContaining({ serverId: "other", useLoopbackOAuth: false }));
   });
 });
 

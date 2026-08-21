@@ -151,6 +151,21 @@ if MCP_AVAILABLE:
         register_client_with_server,
         resolve_ephemeral_dcr_client,
     )
+    from litellm.proxy._experimental.mcp_server.loopback_oauth import (
+        LoopbackOAuthCompletionRequest,
+        LoopbackOAuthCompletionResponse,
+        LoopbackOAuthReadyRequest,
+        LoopbackOAuthStartResponse,
+        LoopbackOAuthStatusResponse,
+        authenticate_loopback_oauth_relay,
+        complete_loopback_oauth,
+        get_loopback_oauth_http_client,
+        get_loopback_oauth_redis,
+        get_loopback_oauth_status,
+        is_loopback_oauth_server_candidate,
+        mark_loopback_oauth_ready,
+        start_loopback_oauth,
+    )
     from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
         global_mcp_server_manager,
     )
@@ -1179,9 +1194,24 @@ if MCP_AVAILABLE:
         """
         user_mcp_management_mode: Final = _get_user_mcp_management_mode()
 
+        async def principal_health(server_record: LiteLLM_MCPServerTable, auth_context: UserAPIKeyAuth) -> str | None:
+            server = global_mcp_server_manager.get_mcp_server_by_id(server_record.server_id)
+            if server is None or not server.needs_user_oauth_token:
+                return server_record.status
+            if not await global_mcp_server_manager.has_user_oauth_token(server, auth_context):
+                return "auth_required"
+            try:
+                await global_mcp_server_manager._get_tools_from_server(server=server, user_api_key_auth=auth_context)
+                return "healthy"
+            except Exception:
+                return "unhealthy"
+
         if user_mcp_management_mode == "view_all":
             servers = await global_mcp_server_manager.get_all_mcp_servers_with_health_unfiltered(server_ids=server_ids)
-            return [{"server_id": server.server_id, "status": server.status} for server in servers]
+            return [
+                {"server_id": server.server_id, "status": await principal_health(server, user_api_key_dict)}
+                for server in servers
+            ]
 
         auth_contexts: Final = await build_effective_auth_contexts(user_api_key_dict)
 
@@ -1193,7 +1223,7 @@ if MCP_AVAILABLE:
             )
             for server in servers:
                 if server.server_id not in server_status_map:
-                    server_status_map[server.server_id] = server.status
+                    server_status_map[server.server_id] = await principal_health(server, auth_context)
 
         return [{"server_id": server_id, "status": status} for server_id, status in server_status_map.items()]
 
@@ -2087,6 +2117,114 @@ if MCP_AVAILABLE:
         return MCPUserCredentialResponse(server_id=server_id, has_credential=False)
 
     # ── OAuth2 user-credential endpoints ──────────────────────────────────────
+
+    @router.post(
+        "/server/{server_id}/loopback-oauth/start",
+        dependencies=[Depends(user_api_key_auth)],
+        response_model=LoopbackOAuthStartResponse,
+    )
+    @management_endpoint_wrapper
+    async def start_mcp_loopback_oauth(
+        server_id: str,
+        user_api_key_dict: UserAPIKeyAuth = Depends(user_api_key_auth),
+    ) -> LoopbackOAuthStartResponse:
+        prisma_client: Final = get_prisma_client_or_throw("Database not connected. Connect a database to your proxy")
+        await _authorize_and_fetch_mcp_server(prisma_client, user_api_key_dict, server_id)
+        user_id: Final = user_api_key_dict.user_id or ""
+        if not user_id:
+            raise HTTPException(status_code=400, detail={"error": "User ID not found in token"})
+        server: Final = global_mcp_server_manager.get_mcp_server_by_id(server_id)
+        if server is None:
+            raise HTTPException(status_code=400, detail={"error": "Server is not configured for loopback OAuth"})
+        candidates: Final = tuple(
+            candidate.server_id
+            for candidate in global_mcp_server_manager.get_registry().values()
+            if is_loopback_oauth_server_candidate(candidate)
+        )
+        if candidates != (server_id,):
+            raise HTTPException(status_code=400, detail={"error": "Server is not configured for loopback OAuth"})
+        return await start_loopback_oauth(redis=get_loopback_oauth_redis(), server=server, user_id=user_id)
+
+    @router.post(
+        "/loopback-oauth/ready",
+        response_model=LoopbackOAuthStatusResponse,
+    )
+    async def ready_mcp_loopback_oauth(
+        payload: LoopbackOAuthReadyRequest,
+        authorization: str | None = Header(default=None),
+    ) -> LoopbackOAuthStatusResponse:
+        authenticate_loopback_oauth_relay(authorization)
+        return await mark_loopback_oauth_ready(redis=get_loopback_oauth_redis(), transaction_id=payload.transaction_id)
+
+    @router.get(
+        "/server/{server_id}/loopback-oauth/status/{transaction_id}",
+        dependencies=[Depends(user_api_key_auth)],
+        response_model=LoopbackOAuthStatusResponse,
+    )
+    @management_endpoint_wrapper
+    async def get_mcp_loopback_oauth_status(
+        server_id: str,
+        transaction_id: str,
+        user_api_key_dict: UserAPIKeyAuth = Depends(user_api_key_auth),
+    ) -> LoopbackOAuthStatusResponse:
+        prisma_client: Final = get_prisma_client_or_throw("Database not connected. Connect a database to your proxy")
+        await _authorize_and_fetch_mcp_server(prisma_client, user_api_key_dict, server_id)
+        user_id: Final = user_api_key_dict.user_id or ""
+        if not user_id:
+            raise HTTPException(status_code=400, detail={"error": "User ID not found in token"})
+        return await get_loopback_oauth_status(
+            redis=get_loopback_oauth_redis(),
+            transaction_id=transaction_id,
+            user_id=user_id,
+            server_id=server_id,
+        )
+
+    @router.post(
+        "/loopback-oauth/complete",
+        response_model=LoopbackOAuthCompletionResponse,
+    )
+    async def complete_mcp_loopback_oauth(
+        payload: LoopbackOAuthCompletionRequest,
+        authorization: str | None = Header(default=None),
+    ) -> LoopbackOAuthCompletionResponse:
+        authenticate_loopback_oauth_relay(authorization)
+        prisma_client: Final = get_prisma_client_or_throw("Database not connected. Connect a database to your proxy")
+
+        async def get_server(server_id: str):
+            server: Final = global_mcp_server_manager.get_mcp_server_by_id(server_id)
+            candidates: Final = tuple(
+                candidate.server_id
+                for candidate in global_mcp_server_manager.get_registry().values()
+                if is_loopback_oauth_server_candidate(candidate)
+            )
+            return server if candidates == (server_id,) else None
+
+        async def store_credential(
+            user_id: str,
+            server_id: str,
+            access_token: str,
+            refresh_token: str | None,
+            expires_in: int | None,
+            scopes: list[str],
+        ) -> None:
+            await store_user_oauth_credential(
+                prisma_client,
+                user_id,
+                server_id,
+                access_token,
+                refresh_token=refresh_token,
+                expires_in=expires_in,
+                scopes=scopes,
+            )
+
+        return await complete_loopback_oauth(
+            redis=get_loopback_oauth_redis(),
+            http_client=get_loopback_oauth_http_client(),
+            payload=payload,
+            get_server=get_server,
+            store_credential=store_credential,
+            invalidate_cache=global_mcp_server_manager.invalidate_user_oauth_token_cache,
+        )
 
     @router.post(
         "/server/{server_id}/oauth-user-credential",
