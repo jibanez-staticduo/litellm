@@ -379,6 +379,7 @@ _REDACTED_THIRD_PARTY_LOGGERS: Final[tuple[str, ...]] = (
     "asyncio",
     "backoff",
     "httpx",
+    "uvicorn.access",
     "uvicorn.error",
 )
 

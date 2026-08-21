@@ -87,8 +87,8 @@ class KeyDeleteBody(BaseModel):
     keys: list[str]
 
 
-class KeyInfoParams(BaseModel):
-    key: str
+class KeyInfoBody(BaseModel):
+    keys: list[str]
 
 
 class LiteLLMBudgetTable(BaseModel):
@@ -114,8 +114,8 @@ class KeyInfo(BaseModel):
     budget_limits: list[BudgetWindowState] | None = None
 
 
-class KeyInfoResponse(BaseModel):
-    info: KeyInfo
+class KeyInfoListResponse(BaseModel):
+    info: list[KeyInfo]
 
 
 # ---------- customers ----------

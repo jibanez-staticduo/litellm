@@ -495,3 +495,19 @@ def test_redaction_survives_uvicorn_logging_reconfiguration():
             lg.handlers[:] = handlers
             lg.setLevel(level)
             lg.propagate = True
+
+
+@pytest.mark.parametrize(
+    "parameter_name",
+    ("key", "api_key", "api-key", "token", "access_token", "refresh-token", "auth_token"),
+)
+def test_uvicorn_access_logs_redact_sensitive_query_parameters(parameter_name: str):
+    output = _capture_from_logger(
+        "uvicorn.access",
+        lambda logger: logger.info('127.0.0.1 - "GET /key/info?%s=%s&safe=value HTTP/1.1" 200', parameter_name, SECRET),
+    )
+
+    assert output.strip(), "no uvicorn access record captured"
+    assert SECRET not in output
+    assert "REDACTED" in output
+    assert "safe=value" in output

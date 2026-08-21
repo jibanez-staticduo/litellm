@@ -14,6 +14,15 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 
+from e2e_config import (
+    CONTROL_PLANE_BASE_URL,
+    MASTER_KEY,
+    POLL_INTERVAL,
+    POLL_TIMEOUT,
+    PROXY_BASE_URL,
+    REQUEST_TIMEOUT,
+    settle_propagation,
+)
 from e2e_http import (
     AnthropicHeaders,
     NoBody,
@@ -43,8 +52,8 @@ from models import (
     KeyGenerateBody,
     KeyGenerateResponse,
     KeyInfo,
-    KeyInfoParams,
-    KeyInfoResponse,
+    KeyInfoBody,
+    KeyInfoListResponse,
     LiteLLMParamsBody,
     ModelDeleteBody,
     ModelInfoBody,
@@ -62,15 +71,6 @@ from models import (
     SpendLogsPage,
     SpendLogsPageParams,
     SpendLogsParams,
-)
-from e2e_config import (
-    CONTROL_PLANE_BASE_URL,
-    MASTER_KEY,
-    POLL_INTERVAL,
-    POLL_TIMEOUT,
-    PROXY_BASE_URL,
-    REQUEST_TIMEOUT,
-    settle_propagation,
 )
 from transport import HttpTransport, SplitTransport, Transport
 
@@ -230,13 +230,13 @@ class ProxyClient:
 
     def key_info(self, key: str) -> KeyInfo:
         return unwrap(
-            self.transport.get(
-                "/key/info",
+            self.transport.post(
+                "/v2/key/info",
                 headers=self.transport.master,
-                params=KeyInfoParams(key=key),
-                response_type=KeyInfoResponse,
+                json=KeyInfoBody(keys=[key]),
+                response_type=KeyInfoListResponse,
             )
-        ).info
+        ).info[0]
 
     def model_info(self) -> list[ModelInfoEntry]:
         """Every configured deployment with the price the proxy resolved for it

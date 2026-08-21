@@ -34,16 +34,15 @@ def _build_secret_patterns() -> "re.Pattern[str]":
         # OpenAI / Anthropic sk- prefixed keys
         rf"sk-[A-Za-z0-9\-_]{{{MINIMUM_CUSTOM_KEY_LENGTH - len('sk-')},}}",
         # Generic api_key / api-key / apikey (handles 'key': 'value' dict repr)
-        r"(?:api[_-]?key)['\"]?\s*[:=]\s*['\"]?[^\s,'\"})\]{}>]{8,}",
+        r"(?:api[_-]?key)['\"]?\s*[:=]\s*['\"]?[^\s&,'\"})\]{}>]{8,}",
         # x-api-key / api-key header values (handles 'key': 'value' dict repr)
-        r"(?:x-api-key|api-key)['\"]?\s*[:=]\s*['\"]?[^\s,'\"})\]{}>]+",
+        r"(?:x-api-key|api-key)['\"]?\s*[:=]\s*['\"]?[^\s&,'\"})\]{}>]+",
         # Anthropic internal header keys
         r"x-ak-[A-Za-z0-9\-_]{20,}",
         # Google API keys (bare key value)
         r"AIza[0-9A-Za-z\-_]{35}",
-        # URL query-param key=VALUE (e.g. ?key=AIza... or &key=...) — catches the
-        # full "key=<secret>" fragment so the value is redacted regardless of format.
-        r"(?<=[?&])key=[^\s&'\"]{8,}",
+        r"(?<=[?&])(?:key|api[_-]?key|access[_-]?token|refresh[_-]?token|auth[_-]?token|token)="
+        r"[^\s&#'\"]*",
         # Password / secret params (handles key=value and 'key': 'value')
         # Word boundary prevents O(n^2) backtracking on long word-char runs.
         r"(?:^|(?<=\W))\w*(?:password|passwd|client_secret|secret_key|_secret)"
