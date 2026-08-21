@@ -10722,6 +10722,42 @@ def test_env_fallback_builds_client_from_sentinel_nodes_env():
     assert isinstance(result, _EnvBuiltRedisCache)
 
 
+def test_coordination_redis_wiring_is_registered_once():
+    from litellm.proxy.management_endpoints.coordination_redis_endpoints import (
+        get_coordination_redis_settings,
+        get_persisted_coordination_redis_settings,
+    )
+
+    assert proxy_server_module.get_persisted_coordination_redis_settings is get_persisted_coordination_redis_settings
+    matching_routes = [
+        route
+        for route in app.routes
+        if getattr(route, "path", None) == "/coordination_redis/settings" and "GET" in getattr(route, "methods", set())
+    ]
+    assert len(matching_routes) == 1
+    assert matching_routes[0].endpoint is get_coordination_redis_settings
+
+
+def test_coordination_redis_settings_route_is_available_to_admin():
+    from litellm.proxy.auth.user_api_key_auth import user_api_key_auth as auth_dependency
+    from litellm.proxy.management_endpoints import coordination_redis_endpoints
+
+    original_overrides = app.dependency_overrides.copy()
+    app.dependency_overrides[auth_dependency] = lambda: UserAPIKeyAuth(user_role=LitellmUserRoles.PROXY_ADMIN)
+    try:
+        with patch.object(
+            coordination_redis_endpoints,
+            "_current_coordination_redis_settings",
+            AsyncMock(return_value=None),
+        ):
+            response = TestClient(app).get("/coordination_redis/settings")
+    finally:
+        app.dependency_overrides = original_overrides
+
+    assert response.status_code == 200
+    assert response.json()["source"] is None
+
+
 @pytest.mark.asyncio
 async def test_startup_applies_coordination_redis_saved_in_database():
     """A coordination_redis block saved from the admin UI lives only in the
