@@ -16,7 +16,7 @@ Reviewed, sanitized, and scoped the approved TASK-052/053/054 LazyMCP release cl
 ## Acceptance Criteria Coverage
 
 - **AC-1: PASS**. Status and full-diff review separated the intended LazyMCP packet from unrelated Fedora artifacts, and the intended packet secret scan reported no findings
-- **AC-2: PASS**. TASK-054 is in `tasks/done` with `status: done`, the Active registry is clear, and the done registry contains TASK-052/053/054 rows
+- **AC-2: PASS**. TASK-054 is in `.staticeng/tasks/done` with `status: done`, the Active registry is clear, and the done registry contains TASK-052/053/054 rows
 - **AC-3: PASS**. The final staged diff contains only TASK-052/053/054 task/evidence artifacts and their done-registry rows; push uses the tracked `origin/main` branch without force, and unrelated Fedora files remain unstaged
 
 ## Documentation Impact
