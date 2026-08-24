@@ -964,39 +964,23 @@ async def test_lazymcp_lifespan_initializes_and_shuts_down(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_lazymcp_list_tools_endpoint_returns_gateway_tools_and_fallback(
-    monkeypatch,
-):
+async def test_lazymcp_list_tools_endpoint_does_not_fetch_catalog(monkeypatch):
     try:
         from litellm.proxy._experimental.mcp_server import server as mcp_server_module
     except ImportError:
         pytest.skip("MCP server not available")
 
-    monkeypatch.setattr(
-        mcp_server_module,
-        "get_auth_context",
-        MagicMock(return_value=(None, None, None, None, None, None, "127.0.0.1")),
-    )
+    catalog_mock = AsyncMock(side_effect=RuntimeError("catalog must remain lazy"))
     monkeypatch.setattr(
         mcp_server_module,
         "_get_lazymcp_catalog",
-        AsyncMock(return_value={"description": "custom catalog"}),
+        catalog_mock,
     )
 
     tools = await mcp_server_module.list_lazymcp_tools()
 
-    assert tools[0].name == "mcp_describe"
-    assert tools[0].description == "custom catalog"
-
-    monkeypatch.setattr(
-        mcp_server_module,
-        "_get_lazymcp_catalog",
-        AsyncMock(side_effect=RuntimeError("catalog failed")),
-    )
-
-    fallback_tools = await mcp_server_module.list_lazymcp_tools()
-
-    assert fallback_tools[0].name == "mcp_describe"
+    assert [tool.name for tool in tools] == ["mcp_describe", "mcp_call", "mcp_status"]
+    catalog_mock.assert_not_awaited()
 
 
 @pytest.mark.asyncio

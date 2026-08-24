@@ -1165,29 +1165,7 @@ if MCP_AVAILABLE:
 
     @lazymcp_server.list_tools()
     async def list_lazymcp_tools() -> list[MCPTool]:
-        try:
-            (
-                user_api_key_auth,
-                mcp_auth_header,
-                mcp_servers,
-                mcp_server_auth_headers,
-                oauth2_headers,
-                raw_headers,
-                client_ip,
-            ) = get_auth_context()
-            catalog = await _get_lazymcp_catalog(
-                user_api_key_auth=user_api_key_auth,
-                mcp_auth_header=mcp_auth_header,
-                mcp_servers=mcp_servers,
-                mcp_server_auth_headers=mcp_server_auth_headers,
-                oauth2_headers=oauth2_headers,
-                raw_headers=raw_headers,
-                client_ip=client_ip,
-            )
-            return _get_lazymcp_gateway_tools(catalog.get("description"))
-        except Exception as e:
-            verbose_logger.exception("Error in LazyMCP list_tools endpoint: %s", e)
-            return _get_lazymcp_gateway_tools()
+        return _get_lazymcp_gateway_tools()
 
     @lazymcp_server.call_tool()
     async def lazymcp_tool_call(name: str, arguments: dict[str, Any] | None) -> CallToolResult:
