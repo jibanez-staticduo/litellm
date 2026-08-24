@@ -641,6 +641,171 @@ async def test_lazymcp_user_oauth_is_principal_scoped_and_not_catalog_cached():
 
 
 @pytest.mark.asyncio
+async def test_lazymcp_catalog_lists_servers_concurrently_and_preserves_order():
+    from mcp.types import Tool as MCPTool
+
+    from litellm.proxy._experimental.mcp_server import server as mcp_server_module
+
+    servers = [
+        MCPServer(server_id="slow", name="slow", alias="slow", transport=MCPTransport.http),
+        MCPServer(server_id="fast", name="fast", alias="fast", transport=MCPTransport.http),
+    ]
+    both_started = asyncio.Event()
+    started: set[str] = set()
+
+    async def list_tools(server, **kwargs):
+        started.add(server.server_id)
+        if len(started) == 2:
+            both_started.set()
+        await asyncio.wait_for(both_started.wait(), timeout=1)
+        if server.server_id == "slow":
+            await asyncio.sleep(0.02)
+        return [MCPTool(name=f"{server.server_id}-tool", inputSchema={"type": "object"})]
+
+    with (
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
+            AsyncMock(return_value=servers),
+        ),
+        patch.object(mcp_server_module.global_mcp_server_manager, "_get_tools_from_server", list_tools),
+        patch.object(mcp_server_module, "_lazymcp_cache_get", AsyncMock(return_value=None)),
+        patch.object(mcp_server_module, "_lazymcp_cache_set", AsyncMock()),
+    ):
+        catalog = await mcp_server_module._get_lazymcp_catalog(
+            user_api_key_auth=UserAPIKeyAuth(api_key="sk-test", user_id="user"),
+            mcp_auth_header=None,
+            mcp_servers=None,
+            mcp_server_auth_headers=None,
+            oauth2_headers=None,
+            raw_headers=None,
+            client_ip="127.0.0.1",
+        )
+
+    assert [server["name"] for server in catalog["servers"]] == ["slow", "fast"]
+    assert [server["tool_count"] for server in catalog["servers"]] == [1, 1]
+
+
+@pytest.mark.asyncio
+async def test_lazymcp_catalog_times_out_one_server_without_losing_healthy_siblings(monkeypatch):
+    from mcp.types import Tool as MCPTool
+
+    from litellm.proxy._experimental.mcp_server import server as mcp_server_module
+
+    servers = [
+        MCPServer(server_id="stuck", name="stuck", alias="stuck", transport=MCPTransport.http),
+        MCPServer(server_id="healthy", name="healthy", alias="healthy", transport=MCPTransport.http),
+    ]
+
+    async def list_tools(server, **kwargs):
+        if server.server_id == "stuck":
+            await asyncio.Event().wait()
+        return [MCPTool(name="healthy-tool", inputSchema={"type": "object"})]
+
+    monkeypatch.setattr(mcp_server_module, "LAZYMCP_CATALOG_SERVER_TIMEOUT_SECONDS", 0.01)
+    with (
+        patch(
+            "litellm.proxy._experimental.mcp_server.server._get_allowed_mcp_servers",
+            AsyncMock(return_value=servers),
+        ),
+        patch.object(mcp_server_module.global_mcp_server_manager, "_get_tools_from_server", list_tools),
+        patch.object(mcp_server_module, "_lazymcp_cache_get", AsyncMock(return_value=None)),
+        patch.object(mcp_server_module, "_lazymcp_cache_set", AsyncMock()),
+    ):
+        catalog = await mcp_server_module._get_lazymcp_catalog(
+            user_api_key_auth=UserAPIKeyAuth(api_key="sk-test", user_id="user"),
+            mcp_auth_header=None,
+            mcp_servers=None,
+            mcp_server_auth_headers=None,
+            oauth2_headers=None,
+            raw_headers=None,
+            client_ip="127.0.0.1",
+        )
+
+    assert catalog["servers"][0]["tool_count"] == 0
+    assert catalog["servers"][0]["auth_status"] == "listing_failed"
+    assert catalog["servers"][1]["tool_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_lazymcp_describe_target_respects_explicit_empty_route_scope():
+    from litellm.proxy._experimental.mcp_server import server as mcp_server_module
+
+    auth = UserAPIKeyAuth(api_key="sk-test", user_id="user")
+    mcp_server_module.set_auth_context(auth, mcp_servers=[])
+    allowed_mock = AsyncMock(return_value=[])
+    tools_mock = AsyncMock()
+    with (
+        patch.object(mcp_server_module, "_get_lazymcp_allowed_servers", allowed_mock),
+        patch.object(mcp_server_module, "_get_lazymcp_server_tools", tools_mock),
+    ):
+        result = await mcp_server_module._lazymcp_describe({"server": "hidden"})
+
+    assert result == {"error": "MCP server is not available for this request."}
+    assert allowed_mock.await_args.kwargs["mcp_servers"] == []
+    tools_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_lazymcp_describe_target_lists_only_selected_server_once():
+    from mcp.types import Tool as MCPTool
+
+    from litellm.proxy._experimental.mcp_server import server as mcp_server_module
+
+    selected = MCPServer(server_id="selected", name="selected", alias="selected", transport=MCPTransport.http)
+    tool = MCPTool(name="selected-tool", inputSchema={"type": "object"})
+    mcp_server_module.set_auth_context(UserAPIKeyAuth(api_key="sk-test", user_id="user"))
+    tools_mock = AsyncMock(return_value=[tool])
+    with (
+        patch.object(mcp_server_module, "_get_lazymcp_allowed_servers", AsyncMock(return_value=[selected])),
+        patch.object(mcp_server_module, "_get_lazymcp_server_tools", tools_mock),
+        patch.object(
+            mcp_server_module,
+            "_get_lazymcp_catalog",
+            AsyncMock(side_effect=AssertionError("targeted describe must not build the full catalog")),
+        ),
+    ):
+        result = await mcp_server_module._lazymcp_describe({"server": "selected"})
+
+    assert result["tools"][0]["name"] == "selected-tool"
+    tools_mock.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_lazymcp_describe_target_returns_at_deadline_during_slow_cancellation(monkeypatch):
+    from litellm.proxy._experimental.mcp_server import server as mcp_server_module
+
+    selected = MCPServer(server_id="stuck", name="stuck", alias="stuck", transport=MCPTransport.http)
+    cancellation_seen = asyncio.Event()
+    cleanup_release = asyncio.Event()
+
+    async def stubborn_listing(*args, **kwargs):
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            cancellation_seen.set()
+            await cleanup_release.wait()
+            return []
+
+    monkeypatch.setattr(mcp_server_module, "LAZYMCP_CATALOG_SERVER_TIMEOUT_SECONDS", 0.01)
+    mcp_server_module.set_auth_context(UserAPIKeyAuth(api_key="sk-test", user_id="user"))
+    with (
+        patch.object(mcp_server_module, "_get_lazymcp_allowed_servers", AsyncMock(return_value=[selected])),
+        patch.object(mcp_server_module, "_get_lazymcp_server_tools", stubborn_listing),
+    ):
+        started = asyncio.get_running_loop().time()
+        result = await mcp_server_module._lazymcp_describe({"server": "stuck"})
+        elapsed = asyncio.get_running_loop().time() - started
+
+    assert elapsed < 0.1
+    assert result["tools"] == []
+    assert result["auth_status"] == "listing_failed"
+    await asyncio.sleep(0)
+    assert cancellation_seen.is_set()
+    cleanup_release.set()
+    await asyncio.sleep(0)
+
+
+@pytest.mark.asyncio
 async def test_lazymcp_call_preserves_user_team_and_resolved_oauth_path():
     from mcp.types import Tool as MCPTool
 
