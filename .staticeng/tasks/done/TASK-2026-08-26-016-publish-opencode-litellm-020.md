@@ -3,7 +3,7 @@ id: TASK-2026-08-26-016-publish-opencode-litellm-020
 complexity: standard
 track: implementation
 slice: polish
-status: active
+status: done
 scr: SCR-2026-08-26-002-client-model-contracts-020
 parent: TASK-2026-08-26-015-implement-020-model-contracts
 assigned_to: tech_lead
