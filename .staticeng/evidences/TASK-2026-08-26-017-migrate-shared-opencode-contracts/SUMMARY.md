@@ -2,48 +2,51 @@
 
 ## Result
 
-ROLLED BACK after Reopen 3. The fresh connected-scope preflight passed and the exact NAS-only atomic cleanup was applied, but a newly connected expected peer failed the post-mutation convergence gate. The protected NAS backup was restored atomically before cache or process changes
+ROLLED BACK after Reopen 4. The NAS-only candidate and final connected-set convergence passed, but the first required fresh official OpenCode package/version gate failed. The exact protected backup was restored atomically and converged to every still-connected peer
 
-Reopen 3 began with six connected expected peers complete, conflict-free, and checksum-aligned with the NAS send-only source. During rollout a seventh expected peer connected. It did not converge within the bounded wait, remaining one item behind, and then disconnected. Per the post-mutation stop condition, the exact mode-`0600` backup was restored from NAS, Syncthing returned the six still-connected peers to the prior checksum, and no plugin cache or process was changed
+Reopen 4 used the approved stable final-connected-set rule. Six connected expected peers passed preflight and post-mutation stabilization at 100%, with matching candidate checksums and no conflicts. Stale unversioned plugin cache state was removed only on NAS and six reachable connected hosts. Fresh official OpenCode `1.18.23` then failed to load published `@staticeng/opencode-litellm@0.2.0`: plugin initialization raised `models.filter is not a function`, model discovery exited nonzero, and no resolved `0.2.0` installation remained. This is a package/runtime behavior failure and triggered required rollback before selector or wire probes
 
 ## Acceptance Criteria Coverage
 
-- **T3-AC-1: ROLLED BACK.** A protected mode-`0600` exact backup was created. The candidate removed exactly 25 approved keys and structural restoration comparison proved every unrelated path unchanged, but the candidate was rolled back after convergence failure
-- **T3-AC-2: ROLLED BACK.** Candidate JSON parsed, retained exact unversioned `@staticeng/opencode-litellm`, had no `file://` reference, and remained mode `0600`; the prior valid configuration was restored
-- **T3-AC-3: FAIL/ROLLED BACK.** Six initial connected peers converged to the candidate. A seventh expected peer connected during rollout, remained one item behind through the bounded wait, and disconnected; rollback restored NAS and the six remaining connected peers to the prior checksum with no conflicts
-- **T3-AC-4: NOT RUN.** No package cache was invalidated because convergence failed first
-- **T3-AC-5: PASS for safety.** No control, pre-existing, or unrelated process was terminated; no fresh process was launched because the preceding gate failed
-- **T3-AC-6: NOT RUN.** Runtime selector validation did not begin
-- **T3-AC-7: NOT RUN.** Isolated wire and override validation did not begin
-- **T3-AC-8: PASS.** Evidence contains no credentials, prompts, responses, raw configuration, device IDs, network addresses, secret hashes, or backup path
+- **T3-AC-1: ROLLED BACK.** Protected mode-`0600` exact backup created; candidate removed exactly 25 approved keys; whole-object restoration comparison proved unrelated paths unchanged; exact backup restored after package failure
+- **T3-AC-2: ROLLED BACK.** Candidate parsed, retained exact unversioned `@staticeng/opencode-litellm`, contained no `file://` reference, and remained mode `0600`; prior valid file restored
+- **T3-AC-3: PASS for candidate and rollback.** NAS was sole writer. All six peers connected at the end of each stabilization window reached 100%, matching checksum, zero need, zero errors, and zero conflicts
+- **T3-AC-4: FAIL/ROLLED BACK.** Only stale unversioned plugin cache state was invalidated on seven reachable hosts. Fresh official OpenCode failed plugin initialization and did not prove installed `0.2.0`
+- **T3-AC-5: PASS for safety.** No control, pre-existing, or unrelated session was terminated. Fresh short-lived official commands were isolated and exited; pre-existing processes require user restart only after a successful future rollout
+- **T3-AC-6: BLOCKED.** Selector validation could not begin because the official runtime package gate failed
+- **T3-AC-7: BLOCKED.** Wire/default/override matrix could not begin because the official runtime package gate failed
+- **T3-AC-8: PASS.** Evidence contains no credentials, prompts, responses, raw configuration, device IDs, addresses, protected checksums, or backup path
 
 ## Verification
 
-- Initial scope: NAS plus six connected expected peers; all complete, checksum-aligned, mode `0600`, JSON-valid, and conflict-free
-- Candidate backup: exact, protected mode `0600`, file-fsynced outside the synchronized tree
-- Candidate mutation: NAS-only, JSON parse before rename, atomic rename, file fsync, directory fsync, mode `0600`
-- Candidate cleanup: 25 approved overrides removed; 5 unrelated overrides preserved; whole-object restoration comparison passed
-- Candidate plugin contract: exact unversioned package reference; zero `file://` references
-- Failure: newly connected seventh expected peer stayed one item behind during bounded convergence and then disconnected
-- Rollback: exact backup restored atomically from NAS with file and directory fsync; checksum and mode matched backup
-- Post-rollback: six currently connected expected peers at 100%, matching prior active checksum, zero conflict files; NAS idle/error-free
-- Cache invalidation count: zero
-- Process change count: zero
+- Fresh preflight: NAS send-only/idle/error-free; six connected expected peers complete, checksum-aligned, mode `0600`, JSON-valid, and conflict-free
+- Backup: exact, protected mode `0600`, outside synchronized tree, file-fsynced
+- Candidate: NAS-only atomic rename, JSON parse, file and directory fsync, mode `0600`
+- Cleanup: 25 approved overrides removed; 5 unrelated overrides preserved; full unrelated structure comparison passed
+- Final connected set: six peers; all 100%, matching candidate checksum, zero conflicts/errors
+- Cache scope: only stale unversioned `@staticeng/opencode-litellm` package cache directory on NAS and six reachable connected hosts
+- Official runtime: OpenCode `1.18.23`; fresh model command failed with plugin initialization type error; installed `0.2.0` proof failed
+- Selector/wire matrix: not executed after mandatory package gate failure
+- Rollback: exact backup restored atomically from NAS; file and directory fsync; mode `0600`
+- Post-rollback: NAS idle/error-free; six final connected peers 100%, matching prior checksum, zero conflicts
+- Cache cleanup after rollback: no candidate cache remained
+- Process termination count: zero
+- Peer direct configuration edit count: zero
 - Codex/LiteLLM registry edit count: zero
 - `staticeng_validate`: remains blocked by the pre-existing repository-wide manual CodeMap backlog recorded in `logs/02-staticeng-validation.log`
 
-See `logs/05-reopen3-migration-rollback.log` for the redacted Reopen 3 sequence
+See `logs/06-reopen4-package-failure-rollback.log` for the redacted execution sequence
 
 ## Documentation Impact
 
-Product and architecture documentation are not changed because the candidate behavior was rolled back. Task and operational evidence record the attempted migration and exact restored state
+No steady-state product or architecture documentation was changed because the candidate was rolled back. Task and evidence document the runtime incompatibility requiring package remediation
 
 ## Open Risks
 
-The newly connected expected peer is not directly reachable from this control host and disconnected before receiving the candidate or rollback version. It should automatically receive the current authoritative NAS file when it reconnects, but another migration attempt must treat it according to the then-current connected-peer scope
+Published plugin `0.2.0` is not loadable in the live official OpenCode `1.18.23` environment with the production discovery response shape. The release evidence used an isolated fixture path that did not expose this runtime `models.filter` failure. Retrying configuration rollout without a corrected published package will fail again
 
-The repository also retains its pre-existing broad manual CodeMap backlog; this task did not add, move, or rewire source files
+Offline expected peers remain untouched and will automatically receive the currently restored NAS configuration when they reconnect
 
 ## Recommended Next Step
 
-PMA should confirm the transient peer is either offline before the next fresh preflight or connected and 100% complete. Then reopen the original task and retry the same protected NAS-only migration. Do not invalidate cache or run the behavior matrix until post-mutation connected-peer convergence passes
+PMA should reopen the plugin implementation/release work to reproduce the official `models.filter is not a function` failure against the production discovery response shape, publish a corrected package under the approved versioning process, and verify it with fresh official OpenCode before reopening this migration

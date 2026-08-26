@@ -8,7 +8,7 @@ scr: SCR-2026-08-26-002-client-model-contracts-020
 parent: null
 assigned_to: tech_lead
 handoff_from: product_manager
-reopened_count: 3
+reopened_count: 4
 ---
 
 # Task: TASK-2026-08-26-017 - Migrate Shared OpenCode Contracts
@@ -57,6 +57,14 @@ Stop on unexpected path changes, secret exposure, Syncthing conflict/divergence,
 - The post-mutation convergence stop condition triggered exact atomic rollback from NAS before any cache invalidation, process launch, or behavior matrix.
 - Post-rollback NAS and the six remaining connected peers match the prior checksum, are 100% complete and conflict-free, and no peer was directly edited.
 
+### Reopen 4 - 2026-08-26
+- User clarified convergence is evaluated against the stable connected set at the end of the bounded window; transient disconnected peers are future convergence and are not alone a rollback trigger.
+- Fresh preflight and the exact NAS-only candidate passed; all six final connected peers converged to the candidate at 100% with matching checksums and zero conflicts.
+- Only stale unversioned plugin package cache state was invalidated on NAS and six reachable connected hosts.
+- Fresh official OpenCode `1.18.23` failed to initialize published plugin `0.2.0` with a discovery-response type error and could not prove an installed `0.2.0` runtime.
+- The package/behavior stop condition triggered exact atomic NAS rollback before selector or wire matrix execution.
+- Post-rollback NAS and all six connected peers match the prior checksum, are 100% complete and conflict-free; no process was terminated and no peer configuration was directly edited.
+
 # Post Implementation Task Updates
 
 ## Tech Lead: Post Implementation Expectations
@@ -72,4 +80,6 @@ Stop on unexpected path changes, secret exposure, Syncthing conflict/divergence,
 - Reopen 2 confirmed all connected peers complete, but one connected peer contained six conflict files; no production configuration or process mutation occurred
 - Reopen 3 passed fresh preflight and applied the exact protected NAS-only candidate, but a newly connected seventh expected peer failed bounded convergence and disconnected
 - Exact rollback restored the prior NAS configuration and converged the six remaining connected peers; no cache, process, Codex registry, LiteLLM registry, or peer configuration change occurred
-- Resume only after PMA confirms the transient peer is offline or connected and complete, then rerun fresh preflight and the same migration
+- Reopen 4 passed candidate configuration and final-connected-set convergence, then failed the fresh official OpenCode package gate because plugin `0.2.0` raised a discovery-response type error
+- Exact rollback again restored the prior NAS configuration and all six connected peers; no process was terminated and no selector/wire probe ran after the mandatory package failure
+- Resume only after plugin implementation/release work corrects and republishes the package and proves it loads under fresh official OpenCode against the production discovery response shape
