@@ -8,7 +8,7 @@ scr: SCR-2026-08-26-002-client-model-contracts-020
 parent: null
 assigned_to: tech_lead
 handoff_from: product_manager
-reopened_count: 0
+reopened_count: 1
 ---
 
 # Task: TASK-2026-08-26-017 - Migrate Shared OpenCode Contracts
@@ -35,6 +35,15 @@ Restore the exact NAS backup atomically from NAS only, wait for Syncthing conver
 ## Stop Conditions
 Stop on unexpected path changes, secret exposure, Syncthing conflict/divergence, package version mismatch, selector/payload failure, or inability to identify/protect active sessions.
 
+## Reopen History
+
+### Reopen 1 - 2026-08-26
+- Initial all-peer preflight found 6 connected/complete and 6 offline/incomplete peers, so no mutation occurred.
+- User approved immediate scope as NAS plus every currently connected expected peer.
+- Offline peers remain untouched and will receive the authoritative NAS file automatically on reconnect; record them as eventual-convergence follow-up.
+- Fresh preflight found five of six connected expected peers at 100% completion; one connected expected peer remained below 100% after bounded NAS and peer scans.
+- The connected-peer convergence stop condition was enforced before configuration inspection, backup, cache invalidation, or process changes.
+
 # Post Implementation Task Updates
 
 ## Tech Lead: Post Implementation Expectations
@@ -46,4 +55,5 @@ Stop on unexpected path changes, secret exposure, Syncthing conflict/divergence,
 - Redacted blocker evidence is under `.staticeng/evidences/TASK-2026-08-26-017-migrate-shared-opencode-contracts/`
 - Product and architecture documentation are not required for this blocked preflight
 - `staticeng_validate` remains blocked by the pre-existing repository-wide manual CodeMap backlog; mandatory repair dry-run and apply found no deterministic fix
-- Resume only after PMA confirms every expected peer is reachable and 100% complete, or routes an explicitly approved expected-peer scope change
+- Reopen 1 applied the user-approved connected-peer scope, but one connected expected peer remained incomplete after bounded scans; no production configuration or process mutation occurred
+- Resume only after the incomplete connected peer reaches 100% completion and all connected-peer preflight gates pass

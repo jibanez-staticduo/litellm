@@ -1,0 +1,24 @@
+RESULT BLOCKED
+scope=NAS plus all currently connected expected peers
+target_folder_type=sendonly
+target_folder_state=idle
+target_folder_need_files=0
+target_folder_pull_errors=0
+target_system_errors=0
+connected_expected_peer_count=6
+connected_completion_100_peer_count=5
+connected_completion_below_100_peer_count=1
+incomplete_connected_peer_need_items=1
+incomplete_connected_peer_need_deletes=0
+bounded_nas_scan=completed
+bounded_connected_peer_scan=completed
+completion_after_scans=below_100
+offline_expected_peer_count=6
+offline_follow_up_labels=offline-peer-01,offline-peer-02,offline-peer-03,offline-peer-04,offline-peer-05,offline-peer-06
+offline_direct_edit_count=0
+production_config_read_count=0
+production_config_write_count=0
+cache_invalidation_count=0
+process_change_count=0
+stop_reason=one connected expected peer failed the completion gate
+redaction=device IDs, host names, network addresses, configuration contents, credentials, prompts, and responses omitted
