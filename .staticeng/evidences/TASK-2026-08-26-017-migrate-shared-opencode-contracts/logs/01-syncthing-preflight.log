@@ -1,0 +1,16 @@
+RESULT BLOCKED
+target_host=NAS
+target_folder=opencode
+target_folder_type=sendonly
+target_folder_state=idle
+target_folder_need_files=0
+target_folder_pull_errors=0
+target_system_errors=0
+expected_peer_count=12
+connected_expected_peer_count=6
+offline_expected_peer_count=6
+completion_100_peer_count=6
+completion_below_100_peer_count=6
+mutation_count=0
+stop_reason=all expected peers were not reachable and up to date
+redaction=device IDs, network addresses, configuration contents, credentials, prompts, and responses omitted

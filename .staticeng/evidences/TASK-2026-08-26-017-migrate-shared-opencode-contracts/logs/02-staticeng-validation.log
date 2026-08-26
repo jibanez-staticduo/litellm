@@ -1,0 +1,6 @@
+RESULT FAIL_PREEXISTING
+staticeng_validate=failed on repository-wide missing CodeMap backlog unrelated to this runtime preflight
+staticeng_repair_dry_run=completed
+staticeng_repair_apply=completed with no deterministic fixes applied
+staticeng_repair_validation=failed on the same unresolved manual CodeMap boundary backlog
+task_codemap_change=none
