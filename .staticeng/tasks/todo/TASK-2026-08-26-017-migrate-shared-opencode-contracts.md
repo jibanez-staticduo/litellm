@@ -8,7 +8,7 @@ scr: SCR-2026-08-26-002-client-model-contracts-020
 parent: null
 assigned_to: tech_lead
 handoff_from: product_manager
-reopened_count: 2
+reopened_count: 3
 ---
 
 # Task: TASK-2026-08-26-017 - Migrate Shared OpenCode Contracts
@@ -48,8 +48,14 @@ Stop on unexpected path changes, secret exposure, Syncthing conflict/divergence,
 - The sole connected-peer divergence was repaired through authorized backup and Syncthing receive-only revert on cachyos.
 - Connected peer now reports 100%, zero pending items/errors/conflicts, aligned sequences, and stable bounded scan.
 - Resume full migration from fresh preflight.
-- Reopen 2 fresh preflight confirmed all six connected expected peers at 100% completion with matching active configuration checksums, but found six Syncthing conflict files on one connected peer.
-- Execution stopped before backup, configuration write, cache invalidation, or process changes; the connected peer was not edited.
+
+### Reopen 3 - 2026-08-26
+- Six standard Syncthing conflict artifacts on non-NAS Fedora were deleted under the user-approved standing NAS-wins policy.
+- Fresh verification reported all six connected peers at 100%, zero needed items/bytes/deletes, zero conflicts/errors, and matching authoritative `opencode.json`.
+- A protected mode-`0600` exact backup was created outside the synchronized tree, and the NAS-only atomic candidate removed exactly the 25 approved GPT/retired/defend overrides while preserving all unrelated structure.
+- A seventh expected peer connected during post-mutation convergence, remained one item behind through the bounded wait, and disconnected.
+- The post-mutation convergence stop condition triggered exact atomic rollback from NAS before any cache invalidation, process launch, or behavior matrix.
+- Post-rollback NAS and the six remaining connected peers match the prior checksum, are 100% complete and conflict-free, and no peer was directly edited.
 
 # Post Implementation Task Updates
 
@@ -64,4 +70,6 @@ Stop on unexpected path changes, secret exposure, Syncthing conflict/divergence,
 - `staticeng_validate` remains blocked by the pre-existing repository-wide manual CodeMap backlog; mandatory repair dry-run and apply found no deterministic fix
 - Reopen 1 applied the user-approved connected-peer scope, but one connected expected peer remained incomplete after bounded scans; no production configuration or process mutation occurred
 - Reopen 2 confirmed all connected peers complete, but one connected peer contained six conflict files; no production configuration or process mutation occurred
-- Resume only after the connected-peer conflict files are investigated and removed through a separately authorized peer repair, then rerun fresh preflight
+- Reopen 3 passed fresh preflight and applied the exact protected NAS-only candidate, but a newly connected seventh expected peer failed bounded convergence and disconnected
+- Exact rollback restored the prior NAS configuration and converged the six remaining connected peers; no cache, process, Codex registry, LiteLLM registry, or peer configuration change occurred
+- Resume only after PMA confirms the transient peer is offline or connected and complete, then rerun fresh preflight and the same migration
