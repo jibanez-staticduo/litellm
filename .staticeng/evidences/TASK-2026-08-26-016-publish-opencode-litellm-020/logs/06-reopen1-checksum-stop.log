@@ -1,0 +1,16 @@
+PASS existing tag v0.2.0 unchanged; target=21f6583e9b4a112c0d2be79bbd102333de72bd89
+PASS protected .npmjs exists, is ignored, and remained mode 0600
+PASS credential was not read, printed, copied, modified, or used
+PASS fresh detached clean worktree of v0.2.0
+PASS npm ci
+PASS npm run build
+PASS npm test: 62 passed, 0 failed, 0 skipped, 0 todo
+PASS tracked dist clean
+PASS package inventory=19 files
+OBSERVED clean-checkout packaged file modes=0644
+OBSERVED prior reviewed package metadata file modes=0755
+EXPECTED sha256=40b2ce710ec8cba570742d8f86c541ef06dba0e8d119db0d66bb91185487fcba
+ACTUAL clean-tag sha256=2ac50fc9ab952c2ac244b73bcbe23eadf4b0fd530085e4a0c8d823749d7c82c6
+FAIL immutable artifact checksum mismatch
+STOP npm publish was not invoked
+PASS npm latest remains 0.1.9; 0.2.0 absent
