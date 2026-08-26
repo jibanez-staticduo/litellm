@@ -8,7 +8,7 @@ scr: SCR-2026-08-26-002-client-model-contracts-020
 parent: null
 assigned_to: tech_lead
 handoff_from: product_manager
-reopened_count: 1
+reopened_count: 2
 ---
 
 # Task: TASK-2026-08-26-017 - Migrate Shared OpenCode Contracts
@@ -44,6 +44,13 @@ Stop on unexpected path changes, secret exposure, Syncthing conflict/divergence,
 - Fresh preflight found five of six connected expected peers at 100% completion; one connected expected peer remained below 100% after bounded NAS and peer scans.
 - The connected-peer convergence stop condition was enforced before configuration inspection, backup, cache invalidation, or process changes.
 
+### Reopen 2 - 2026-08-26
+- The sole connected-peer divergence was repaired through authorized backup and Syncthing receive-only revert on cachyos.
+- Connected peer now reports 100%, zero pending items/errors/conflicts, aligned sequences, and stable bounded scan.
+- Resume full migration from fresh preflight.
+- Reopen 2 fresh preflight confirmed all six connected expected peers at 100% completion with matching active configuration checksums, but found six Syncthing conflict files on one connected peer.
+- Execution stopped before backup, configuration write, cache invalidation, or process changes; the connected peer was not edited.
+
 # Post Implementation Task Updates
 
 ## Tech Lead: Post Implementation Expectations
@@ -56,4 +63,5 @@ Stop on unexpected path changes, secret exposure, Syncthing conflict/divergence,
 - Product and architecture documentation are not required for this blocked preflight
 - `staticeng_validate` remains blocked by the pre-existing repository-wide manual CodeMap backlog; mandatory repair dry-run and apply found no deterministic fix
 - Reopen 1 applied the user-approved connected-peer scope, but one connected expected peer remained incomplete after bounded scans; no production configuration or process mutation occurred
-- Resume only after the incomplete connected peer reaches 100% completion and all connected-peer preflight gates pass
+- Reopen 2 confirmed all connected peers complete, but one connected peer contained six conflict files; no production configuration or process mutation occurred
+- Resume only after the connected-peer conflict files are investigated and removed through a separately authorized peer repair, then rerun fresh preflight

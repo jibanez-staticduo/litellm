@@ -1,0 +1,23 @@
+RESULT BLOCKED
+scope=NAS plus all currently connected expected peers
+target_folder_type=sendonly
+target_folder_state=idle
+target_folder_need_files=0
+target_folder_pull_errors=0
+target_system_errors=0
+connected_expected_peer_count=6
+connected_completion_100_peer_count=6
+active_config_checksum_match_count=7
+active_config_json_parse_count=7
+active_config_mode_0600_count=7
+nas_conflict_count=0
+connected_peer_conflict_host_count=1
+connected_peer_conflict_file_count=6
+offline_expected_peer_count=6
+offline_direct_edit_count=0
+protected_backup_created=false
+production_config_write_count=0
+cache_invalidation_count=0
+process_change_count=0
+stop_reason=connected peer failed the no-conflict gate
+redaction=device IDs, affected host name, network addresses, conflict paths, configuration contents, credentials, prompts, and responses omitted
