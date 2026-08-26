@@ -1,0 +1,8 @@
+PASS fetched origin; local HEAD=origin/main=merge-base 1e32745a9d30d3a83d37a37dc197b47c86fb5339
+PASS no existing local/remote v0.2.0 tag or GitHub release
+PASS npm latest before release=0.1.9; npm 0.2.0 absent
+PASS exact reviewed implementation scope=20 files; unrelated .staticeng artifacts excluded
+PASS npm ci; npm run build; npm test: 62 passed, 0 failed, 0 skipped, 0 todo
+PASS package inventory=19 files
+PASS candidate sha256=40b2ce710ec8cba570742d8f86c541ef06dba0e8d119db0d66bb91185487fcba
+PASS second/post-commit pack reproduced the approved sha256

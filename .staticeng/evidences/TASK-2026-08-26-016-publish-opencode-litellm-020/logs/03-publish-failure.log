@@ -1,0 +1,11 @@
+WORKFLOW https://github.com/jibanez-staticduo/opencode-litellm/actions/runs/32964753523
+PASS release identity and ancestry
+PASS npm ci
+PASS npm run build
+PASS npm test
+PASS tracked dist
+PASS npm pack --dry-run; 19 files
+PASS npm publish invoked with --access public --provenance through the OIDC workflow
+PASS Sigstore provenance statement signed before registry rejection; transparency log index=2601454144
+FAIL npm registry PUT returned HTTP 404 for @staticeng/opencode-litellm@0.2.0
+STOP no workflow retry, package-token fallback, dist-tag mutation, or client probe performed

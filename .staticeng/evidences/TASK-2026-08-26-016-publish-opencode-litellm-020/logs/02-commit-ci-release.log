@@ -1,0 +1,6 @@
+PASS commit=21f6583e9b4a112c0d2be79bbd102333de72bd89
+PASS non-force push main -> origin/main
+PASS tracked dist clean against release commit
+PASS CI=https://github.com/jibanez-staticduo/opencode-litellm/actions/runs/32964692665
+PASS annotated tag=v0.2.0 object=5fce7f28dc5710cbf3ce38c097125f590ff020ff target=21f6583e9b4a112c0d2be79bbd102333de72bd89
+PASS release=https://github.com/jibanez-staticduo/opencode-litellm/releases/tag/v0.2.0

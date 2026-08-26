@@ -1,0 +1,6 @@
+npm package=https://www.npmjs.com/package/@staticeng/opencode-litellm
+published version=0.1.9
+latest dist-tag=0.1.9
+0.2.0=absent
+rollback=no unpublish and no dist-tag change required
+client rollout=blocked
