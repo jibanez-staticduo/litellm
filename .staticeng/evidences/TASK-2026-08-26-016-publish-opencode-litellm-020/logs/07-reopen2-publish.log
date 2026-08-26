@@ -1,0 +1,12 @@
+PASS unchanged tag v0.2.0 target=21f6583e9b4a112c0d2be79bbd102333de72bd89
+PASS fresh detached clean worktree
+PASS npm ci
+PASS npm run build
+PASS npm test: 62 passed, 0 failed, 0 skipped, 0 todo
+PASS tracked dist clean
+PASS package inventory=19 files, all mode 0644
+PASS approved sha256=2ac50fc9ab952c2ac244b73bcbe23eadf4b0fd530085e4a0c8d823749d7c82c6
+PASS protected ignored .npmjs remained mode 0600
+PASS shell tracing disabled; credential not read, printed, copied, modified, committed, or persisted elsewhere
+PASS exact verified tarball published once with user-authorized .npmjs fallback
+PASS @staticeng/opencode-litellm@0.2.0 publication accepted

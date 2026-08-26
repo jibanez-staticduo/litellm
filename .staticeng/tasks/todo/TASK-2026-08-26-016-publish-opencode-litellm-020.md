@@ -8,7 +8,7 @@ scr: SCR-2026-08-26-002-client-model-contracts-020
 parent: TASK-2026-08-26-015-implement-020-model-contracts
 assigned_to: tech_lead
 handoff_from: product_manager
-reopened_count: 1
+reopened_count: 2
 ---
 
 # Task: TASK-2026-08-26-016 - Publish opencode-litellm 0.2.0
@@ -37,6 +37,11 @@ Stop before further mutation on scope/checksum drift, non-fast-forward/conflict,
 - User authorized a one-time `.npmjs` token fallback for the exact immutable `v0.2.0` artifact.
 - Resume only publication, registry verification, and isolated unversioned resolution; do not move/recreate the tag or alter source.
 
+### Reopen 2 - 2026-08-26
+- Independent clean-artifact review proved the prior checksum drift was solely nonstandard tar file-mode metadata.
+- Exact standard clean-checkout publication baseline is SHA-256 `2ac50fc9ab952c2ac244b73bcbe23eadf4b0fd530085e4a0c8d823749d7c82c6`, with all 19 regular files mode `0644`.
+- Resume token publication from an unchanged clean `v0.2.0` checkout using this checksum.
+
 # Post Implementation Task Updates
 
 ## Tech Lead: Post Implementation Expectations
@@ -57,3 +62,13 @@ Stop before further mutation on scope/checksum drift, non-fast-forward/conflict,
 - Clean `npm ci`, build, 62/62 tests, and tracked-dist comparison passed. The clean-tag pack contained the expected 19 files, but its SHA-256 was `2ac50fc9ab952c2ac244b73bcbe23eadf4b0fd530085e4a0c8d823749d7c82c6`, not the authorized reviewed SHA-256 `40b2ce710ec8cba570742d8f86c541ef06dba0e8d119db0d66bb91185487fcba`.
 - The mismatch occurred before `npm publish`; the stop condition was enforced immediately. No credential-backed command, npm mutation, source/tag/release change, shared configuration change, or OpenCode probe occurred. npm `latest` remains `0.1.9` and `0.2.0` remains absent.
 - Reopen 1 remains blocked pending PMA direction. The reviewed checksum cannot currently be reproduced from a standard clean checkout of the immutable tag, and publication is not authorized without resolving that discrepancy.
+
+### Reopen 2 - Tech Lead Publication and Verification
+
+- A second fresh detached worktree of unchanged tag `v0.2.0` resolved to commit `21f6583e9b4a112c0d2be79bbd102333de72bd89`. Clean install, build, 62/62 tests, tracked-dist, 19-file inventory, and all-file mode `0644` checks passed.
+- The independently approved standard artifact reproduced exact SHA-256 `2ac50fc9ab952c2ac244b73bcbe23eadf4b0fd530085e4a0c8d823749d7c82c6` before publication.
+- The exact verified tarball was published once through the user-authorized protected `.npmjs` fallback with shell tracing disabled. The credential was not read, printed, copied, modified, committed, or persisted elsewhere and remained ignored mode `0600`.
+- npm reports version/latest `0.2.0`, integrity `sha512-XIdt55Qm1wHAPSFQ9xAc/vWCs9WjIJVIjWYRhoK4THOt5fUsXrRU5IPMZgLmrgN0T8HU3aGE5Q36aZPzGyysCg==`, shasum `3716c395fbd9e87fe7174511f6a6586d2026a661`, 19 files, and unpacked size 49,521 bytes. The downloaded registry tarball reproduced exact SHA-256 `2ac50fc9ab952c2ac244b73bcbe23eadf4b0fd530085e4a0c8d823749d7c82c6`; every file is mode `0644`.
+- Official OpenCode `1.18.23` with exact unversioned package reference resolved installed `@staticeng/opencode-litellm@0.2.0`. Seven strict loopback probes passed: GPT default, GPT explicit max, explicit override, DeepSeek default/off, Qwen default/off, plus retired normal GPT-5.3 absence and Spark presence.
+- No shared configuration, source, tag, release, client cache outside the isolated temporary roots, or runtime deployment was changed.
+- Direct credential fallback carries the npm registry signature but not trusted-publishing provenance; this is the explicit user-approved Reopen 2 exception after the OIDC workflow failure.

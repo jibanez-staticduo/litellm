@@ -1,0 +1,14 @@
+PASS official OpenCode version=1.18.23
+PASS official binary sha256=de0724a36eaf3166e7f1ff38d0f4478b95ccc47725e9597b3fe66d3d3e18baa2
+PASS isolated configuration uses exact unversioned @staticeng/opencode-litellm reference
+PASS isolated OpenCode package cache installed version=0.2.0
+PASS resolved catalog excludes retired gpt-5.3-codex and includes gpt-5.3-codex-spark
+PASS GPT-5.4 default -> reasoning_effort=none
+PASS explicit gpt-5.5 override default -> reasoning_effort=high
+PASS DeepSeek default -> reasoning_effort=max
+PASS Qwen default -> reasoning_effort=xhigh
+PASS GPT-5.6 Sol explicit max -> reasoning_effort=max
+PASS DeepSeek explicit off -> reasoning_effort=none
+PASS Qwen explicit off -> enable_thinking=false with reasoning_effort absent
+PASS representative probes=7
+INFO initial package-version locator assumed config node_modules; official OpenCode stores unversioned plugins in its isolated package cache. Locator was corrected before behavior probes; the complete check then passed.

@@ -1,0 +1,12 @@
+package=https://www.npmjs.com/package/@staticeng/opencode-litellm
+tarball=https://registry.npmjs.org/@staticeng/opencode-litellm/-/opencode-litellm-0.2.0.tgz
+PASS published version=0.2.0
+PASS latest dist-tag=0.2.0
+PASS integrity=sha512-XIdt55Qm1wHAPSFQ9xAc/vWCs9WjIJVIjWYRhoK4THOt5fUsXrRU5IPMZgLmrgN0T8HU3aGE5Q36aZPzGyysCg==
+PASS shasum=3716c395fbd9e87fe7174511f6a6586d2026a661
+PASS fileCount=19 unpackedSize=49521
+PASS registry tarball sha256=2ac50fc9ab952c2ac244b73bcbe23eadf4b0fd530085e4a0c8d823749d7c82c6
+PASS registry tarball byte-identical to approved publication artifact
+PASS all 19 files mode 0644
+PASS npm registry signature present
+INFO trusted-publishing provenance absent under explicitly approved credential fallback
