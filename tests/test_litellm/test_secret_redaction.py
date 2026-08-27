@@ -1,11 +1,12 @@
 import logging
 import logging.config
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from io import StringIO
 from unittest.mock import patch
 
 import pytest
+from uvicorn.logging import AccessFormatter
 
 from litellm._logging import (
     JsonFormatter,
@@ -504,10 +505,85 @@ def test_redaction_survives_uvicorn_logging_reconfiguration():
 def test_uvicorn_access_logs_redact_sensitive_query_parameters(parameter_name: str):
     output = _capture_from_logger(
         "uvicorn.access",
-        lambda logger: logger.info('127.0.0.1 - "GET /key/info?%s=%s&safe=value HTTP/1.1" 200', parameter_name, SECRET),
+        lambda logger: logger.info(
+            '%s - "%s %s HTTP/%s" %d',
+            "127.0.0.1:1234",
+            "GET",
+            f"/key/info?{parameter_name}={SECRET}&safe=value",
+            "1.1",
+            200,
+        ),
     )
 
     assert output.strip(), "no uvicorn access record captured"
     assert SECRET not in output
     assert "REDACTED" in output
     assert "safe=value" in output
+
+
+def _uvicorn_access_record(args: tuple[object, ...] | Mapping[str, object] | None) -> logging.LogRecord:
+    record = logging.LogRecord(
+        name="uvicorn.access",
+        level=logging.INFO,
+        pathname="",
+        lineno=0,
+        msg='%s - "%s %s HTTP/%s" %d',
+        args=(),
+        exc_info=None,
+    )
+    record.args = args
+    return record
+
+
+def test_uvicorn_access_formatter_preserves_structured_redacted_args():
+    record = _uvicorn_access_record(("127.0.0.1:1234", "GET", f"/key/info?api_key={SECRET}", "1.1", 200))
+
+    assert _secret_filter.filter(record) is True
+    assert isinstance(record.args, tuple)
+    assert len(record.args) == 5
+    assert tuple(type(value) for value in record.args) == (str, str, str, str, int)
+    assert record.args[4] == 200
+
+    output = AccessFormatter('%(client_addr)s - "%(request_line)s" %(status_code)s').format(record)
+    assert SECRET not in output
+    assert "REDACTED" in output
+    assert "GET" in output
+    assert "/key/info" in output
+    assert "200 OK" in output
+
+
+@pytest.mark.parametrize("args", (None, {}, (), ("host", "GET", "/", "1.1"), ("host", "GET", "/", "1.1", 200, "extra")))
+def test_uvicorn_access_filter_drops_malformed_args(args: tuple[object, ...] | Mapping[str, object] | None):
+    record = _uvicorn_access_record(args)
+
+    assert _secret_filter.filter(record) is False
+
+
+@pytest.mark.parametrize("failure_stage", ("message", "tuple_member", "traceback", "extra_field"))
+def test_uvicorn_access_filter_drops_record_when_redaction_fails(failure_stage: str):
+    record = _uvicorn_access_record(("127.0.0.1:1234", "GET", f"/?api_key={SECRET}", "1.1", 200))
+    if failure_stage == "traceback":
+        try:
+            raise ValueError(f"traceback secret {SECRET}")
+        except ValueError:
+            record.exc_info = sys.exc_info()
+    record.probe = f"extra secret {SECRET}"
+    output = StringIO()
+    handler = logging.StreamHandler(output)
+    handler.addFilter(_secret_filter)
+
+    def redact_or_fail(value: str) -> str:
+        should_fail = {
+            "message": value == record.msg,
+            "tuple_member": value.startswith("/?api_key="),
+            "traceback": "Traceback (most recent call last)" in value,
+            "extra_field": value.startswith("extra secret "),
+        }[failure_stage]
+        if should_fail:
+            raise RuntimeError("redaction failed")
+        return redact_string(value)
+
+    with patch("litellm._logging._redact_string", side_effect=redact_or_fail):
+        handler.handle(record)
+
+    assert output.getvalue() == ""

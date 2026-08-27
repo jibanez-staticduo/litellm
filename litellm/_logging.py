@@ -85,12 +85,30 @@ class SecretRedactionFilter(logging.Filter):
         if not _ENABLE_SECRET_REDACTION:
             return True
 
-        try:
-            record.msg = _redact_string(record.getMessage())
-            record.args = None
-        except Exception:
-            if isinstance(record.msg, str):
-                record.msg = _redact_string(record.msg)
+        if record.name == "uvicorn.access":
+            try:
+                if not isinstance(record.args, tuple) or len(record.args) != 5:
+                    return False
+                if isinstance(record.msg, str):
+                    record.msg = _redact_string(record.msg)
+                record.args = tuple(_redact_string(value) if isinstance(value, str) else value for value in record.args)
+                record.getMessage()
+                if record.exc_info and record.exc_info[1] is not None:
+                    record.exc_text = _redact_string(self._formatter.formatException(record.exc_info))
+                for key in tuple(record.__dict__):
+                    value: object = record.__dict__[key]  # pyright: ignore[reportAny]  # LogRecord extras are dynamic
+                    if key not in _STANDARD_RECORD_ATTRS and isinstance(value, str):
+                        setattr(record, key, _redact_string(value))
+            except Exception:
+                return False
+            return True
+        else:
+            try:
+                record.msg = _redact_string(record.getMessage())
+                record.args = None
+            except Exception:
+                if isinstance(record.msg, str):
+                    record.msg = _redact_string(record.msg)
 
         # Redact exception tracebacks
         if record.exc_info and record.exc_info[1] is not None:

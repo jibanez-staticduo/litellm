@@ -1,0 +1,60 @@
+The push refers to repository [docker.staticduo.com/litellm]
+89377949e61f: Preparing
+4b9d22b56c9b: Preparing
+15515651b1f2: Preparing
+ad5bf9889288: Preparing
+0ba54ca47f40: Preparing
+f114674deedc: Preparing
+9b1d27010691: Preparing
+bce1ffc48d8e: Preparing
+006b6336b041: Preparing
+a0c1cc5631ba: Preparing
+baa2ac7231d1: Preparing
+b8195249dcd9: Preparing
+852a2b932582: Preparing
+90cfe0bd8cd6: Preparing
+b908d1208e46: Preparing
+c51a24e0862e: Preparing
+caaccf89b866: Preparing
+d691fe338bf4: Preparing
+e4ec9eb458d8: Preparing
+c20a196e0a85: Preparing
+018d3987342b: Preparing
+f114674deedc: Waiting
+9b1d27010691: Waiting
+bce1ffc48d8e: Waiting
+006b6336b041: Waiting
+a0c1cc5631ba: Waiting
+baa2ac7231d1: Waiting
+b8195249dcd9: Waiting
+852a2b932582: Waiting
+90cfe0bd8cd6: Waiting
+b908d1208e46: Waiting
+c51a24e0862e: Waiting
+caaccf89b866: Waiting
+d691fe338bf4: Waiting
+e4ec9eb458d8: Waiting
+c20a196e0a85: Waiting
+018d3987342b: Waiting
+0ba54ca47f40: Pushed
+f114674deedc: Pushed
+9b1d27010691: Pushed
+ad5bf9889288: Pushed
+006b6336b041: Layer already exists
+a0c1cc5631ba: Layer already exists
+15515651b1f2: Pushed
+baa2ac7231d1: Layer already exists
+b8195249dcd9: Layer already exists
+90cfe0bd8cd6: Layer already exists
+852a2b932582: Layer already exists
+b908d1208e46: Layer already exists
+c51a24e0862e: Layer already exists
+caaccf89b866: Layer already exists
+e4ec9eb458d8: Layer already exists
+d691fe338bf4: Layer already exists
+c20a196e0a85: Layer already exists
+018d3987342b: Layer already exists
+4b9d22b56c9b: Pushed
+89377949e61f: Pushed
+bce1ffc48d8e: Pushed
+task-20260827-uvicorn-redaction-20260827T091942Z-73699327: digest: sha256:8a688990cb66fa7bd804fc8ac7423dd487dfd876d10fa7ef384096ab373ff6e5 size: 4724

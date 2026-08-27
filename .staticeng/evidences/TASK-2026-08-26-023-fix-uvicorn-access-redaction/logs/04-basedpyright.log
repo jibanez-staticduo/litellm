@@ -1,0 +1,102 @@
+/home/staticduo/git/litellm/litellm/_logging.py
+  /home/staticduo/git/litellm/litellm/_logging.py:48:4 - error: Condition will always evaluate to False since the types "Literal[False]" and "Literal[True]" have no overlap (reportUnnecessaryComparison)
+  /home/staticduo/git/litellm/litellm/_logging.py:114:18 - error: Type of "value" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/_logging.py:149:1 - error: Type of "numeric_level" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/_logging.py:156:56 - error: Type `Any` is not allowed (reportExplicitAny)
+  /home/staticduo/git/litellm/litellm/_logging.py:162:27 - error: Unnecessary isinstance call; "str" is always an instance of "str" (reportUnnecessaryIsInstance)
+  /home/staticduo/git/litellm/litellm/_logging.py:167:5 - error: Type of "parsed" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/_logging.py:170:12 - error: Return type, "dict[Unknown, Unknown]", is partially unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/_logging.py:173:64 - error: Type `Any` is not allowed (reportExplicitAny)
+  /home/staticduo/git/litellm/litellm/_logging.py:180:27 - error: Unnecessary isinstance call; "str" is always an instance of "str" (reportUnnecessaryIsInstance)
+  /home/staticduo/git/litellm/litellm/_logging.py:197:25 - error: Type of "result" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/_logging.py:198:61 - error: Argument type is partially unknown
+    Argument corresponds to parameter "obj" in function "len"
+    Argument type is "dict[Unknown, Unknown]" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/_logging.py:199:36 - error: Return type, "dict[Unknown, Unknown]", is partially unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/_logging.py:209:5 - error: Return type, "frozenset[Unknown]", is partially unknown (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/_logging.py:209:37 - error: Expected type arguments for generic class "frozenset" (reportMissingTypeArgument)
+  /home/staticduo/git/litellm/litellm/_logging.py:214:1 - error: Type of "_STANDARD_RECORD_ATTRS" is partially unknown
+    Type of "_STANDARD_RECORD_ATTRS" is "frozenset[Unknown]" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/_logging.py:226:26 - error: Type annotation is missing for parameter "record" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/_logging.py:226:34 - error: Type annotation is missing for parameter "datefmt" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/_logging.py:231:22 - error: Type annotation is missing for parameter "record" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/_logging.py:233:38 - error: Type `Any` is not allowed (reportExplicitAny)
+  /home/staticduo/git/litellm/litellm/_logging.py:249:22 - error: Type of "value" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/_logging.py:254:18 - error: Type of "value" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/_logging.py:304:36 - error: Type of parameter "formatter" is unknown (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/_logging.py:304:36 - error: Type annotation is missing for parameter "formatter" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/_logging.py:307:32 - error: Argument type is unknown
+    Argument corresponds to parameter "fmt" in function "setFormatter" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/_logging.py:312:25 - error: Type of parameter "exc_type" is unknown (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/_logging.py:312:25 - error: Type annotation is missing for parameter "exc_type" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/_logging.py:312:35 - error: Type of parameter "exc_value" is unknown (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/_logging.py:312:35 - error: Type annotation is missing for parameter "exc_value" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/_logging.py:312:46 - error: Type of parameter "exc_traceback" is unknown (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/_logging.py:312:46 - error: Type annotation is missing for parameter "exc_traceback" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/_logging.py:318:21 - error: Argument type is unknown
+    Argument corresponds to parameter "object" in function "__new__" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/_logging.py:320:22 - error: Argument type is partially unknown
+    Argument corresponds to parameter "exc_info" in function "__init__"
+    Argument type is "tuple[Unknown, Unknown, Unknown]" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/_logging.py:330:42 - error: Type of parameter "loop" is unknown (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/_logging.py:330:42 - error: Type annotation is missing for parameter "loop" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/_logging.py:330:48 - error: Type of parameter "context" is unknown (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/_logging.py:330:48 - error: Type annotation is missing for parameter "context" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/_logging.py:331:13 - error: Type of "exception" is unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/_logging.py:331:32 - error: Type of "get" is unknown (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/_logging.py:333:17 - error: Type of "exc_type" is partially unknown
+    Type of "exc_type" is "type[Unknown]" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/_logging.py:333:40 - error: Argument type is unknown
+    Argument corresponds to parameter "o" in function "__init__" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/_logging.py:339:29 - error: Argument type is unknown
+    Argument corresponds to parameter "object" in function "__new__" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/_logging.py:341:30 - error: Argument type is partially unknown
+    Argument corresponds to parameter "exc_info" in function "__init__"
+    Argument type is "tuple[type[Unknown], Unknown, Unknown]" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/_logging.py:341:52 - error: Type of "__traceback__" is unknown (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/_logging.py:345:17 - error: Type of "default_exception_handler" is unknown (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/_logging.py:347:56 - error: Argument type is partially unknown
+    Argument corresponds to parameter "handler" in function "set_exception_handler"
+    Argument type is "(loop: Unknown, context: Unknown) -> None" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/_logging.py:446:5 - error: Type of "all_callbacks" is partially unknown
+    Type of "all_callbacks" is "set[str | ((...) -> Unknown) | CustomLogger]" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/_logging.py:446:32 - error: Type of "success_callback" is partially unknown
+    Type of "success_callback" is "List[str | ((...) -> Unknown) | CustomLogger]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/_logging.py:446:32 - error: Argument type is partially unknown
+    Argument corresponds to parameter "iterable" in function "__init__"
+    Argument type is "list[str | ((...) -> Unknown) | CustomLogger]" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/_logging.py:446:59 - error: Type of "failure_callback" is partially unknown
+    Type of "failure_callback" is "List[str | ((...) -> Unknown) | CustomLogger]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/_logging.py:468:5 - error: Function "_get_uvicorn_json_log_config" is not accessed (reportUnusedFunction)
+  /home/staticduo/git/litellm/litellm/_logging.py:528:5 - error: Function "_turn_on_json" is not accessed (reportUnusedFunction)
+  /home/staticduo/git/litellm/litellm/_logging.py:541:5 - error: Function "_turn_on_debug" is not accessed (reportUnusedFunction)
+  /home/staticduo/git/litellm/litellm/_logging.py:547:5 - error: Function "_disable_debugging" is not accessed (reportUnusedFunction)
+  /home/staticduo/git/litellm/litellm/_logging.py:554:5 - error: Function "_enable_debugging" is not accessed (reportUnusedFunction)
+  /home/staticduo/git/litellm/litellm/_logging.py:560:19 - error: Type of parameter "print_statement" is unknown (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/_logging.py:560:19 - error: Type annotation is missing for parameter "print_statement" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/_logging.py:563:38 - error: Argument type is unknown
+    Argument corresponds to parameter "object" in function "__new__" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/_logging.py:568:5 - error: Function "_is_debugging_on" is not accessed (reportUnusedFunction)
+/home/staticduo/git/litellm/tests/test_litellm/test_secret_redaction.py
+  /home/staticduo/git/litellm/tests/test_litellm/test_secret_redaction.py:13:5 - error: "_redact_string" is private and used outside of the module in which it is declared (reportPrivateUsage)
+  /home/staticduo/git/litellm/tests/test_litellm/test_secret_redaction.py:14:5 - error: "_secret_filter" is private and used outside of the module in which it is declared (reportPrivateUsage)
+  /home/staticduo/git/litellm/tests/test_litellm/test_secret_redaction.py:25:5 - error: Function "_enable_redaction" is not accessed (reportUnusedFunction)
+  /home/staticduo/git/litellm/tests/test_litellm/test_secret_redaction.py:31:28 - error: Type of parameter "fn" is unknown (reportUnknownParameterType)
+  /home/staticduo/git/litellm/tests/test_litellm/test_secret_redaction.py:31:28 - error: Type annotation is missing for parameter "fn" (reportMissingParameterType)
+  /home/staticduo/git/litellm/tests/test_litellm/test_secret_redaction.py:146:33 - error: Cannot access attribute "api_key" for class "LogRecord"
+    Attribute "api_key" is unknown (reportAttributeAccessIssue)
+  /home/staticduo/git/litellm/tests/test_litellm/test_secret_redaction.py:147:33 - error: Cannot access attribute "api_key" for class "LogRecord"
+    Attribute "api_key" is unknown (reportAttributeAccessIssue)
+  /home/staticduo/git/litellm/tests/test_litellm/test_secret_redaction.py:148:19 - error: Cannot access attribute "region" for class "LogRecord"
+    Attribute "region" is unknown (reportAttributeAccessIssue)
+  /home/staticduo/git/litellm/tests/test_litellm/test_secret_redaction.py:199:26 - error: "format" is not a known attribute of "None" (reportOptionalMemberAccess)
+  /home/staticduo/git/litellm/tests/test_litellm/test_secret_redaction.py:226:26 - error: "format" is not a known attribute of "None" (reportOptionalMemberAccess)
+  /home/staticduo/git/litellm/tests/test_litellm/test_secret_redaction.py:329:5 - error: Type of "sa" is Any (reportAny)
+  /home/staticduo/git/litellm/tests/test_litellm/test_secret_redaction.py:330:32 - error: Argument type is Any
+    Argument corresponds to parameter "object" in function "__new__" (reportAny)
+  /home/staticduo/git/litellm/tests/test_litellm/test_secret_redaction.py:534:19 - error: Cannot assign to attribute "args" for class "LogRecord"
+    Type "object" is not assignable to type "_ArgsType | None"
+      "object" is not assignable to "tuple[object, ...]"
+      "object" is not assignable to "Mapping[str, object]"
+      "object" is not assignable to "None" (reportAttributeAccessIssue)
+71 errors, 0 warnings, 0 notes
