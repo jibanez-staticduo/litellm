@@ -1,0 +1,5 @@
+StaticEng validation: FAIL on the pre-existing repository-wide missing-CodeMap baseline
+
+The validator reported missing CodeMaps across unrelated provider, test, UI, documentation, packaging, Terraform, and generated-output directories. A required repair dry-run confirmed these need module-boundary decisions and cannot be safely repaired as part of this scoped release task
+
+No CodeMap was created, modified, staged, or deleted. All unrelated untracked CodeMaps remain preserved

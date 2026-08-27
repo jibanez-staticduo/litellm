@@ -2,6 +2,7 @@
 
 | Date | Task ID | SCR ID | Commit | Summary |
 | :--- | :--- | :--- | :--- | :--- |
+| 2026-08-27 | TASK-2026-08-27-008-merge-release-uvicorn-redaction | none | 64a3b83bf0 | Committed the Uvicorn redaction fix, published one main-attributable immutable image, and deployed it healthy to Fedora and NAS. |
 | 2026-08-27 | TASK-2026-08-26-023-fix-uvicorn-access-redaction | none | pending-commit | Preserved Uvicorn access-log formatting under secret redaction, added fail-closed regressions, and deployed the independently approved immutable fix with clean production logs. |
 | 2026-08-27 | TASK-2026-08-27-007-final-techlead-closure | SCR-2026-08-26-002-client-model-contracts-020 | pending-commit | Approved and finalized the client model contract workflow after release, runtime, QA, architecture, rollback, and documentation closure. |
 | 2026-08-21 | TASK-2026-08-21-fix-coordination-redis-wiring | none | pending-commit | Restored, released, deployed, and verified coordination Redis startup and management-route wiring. |

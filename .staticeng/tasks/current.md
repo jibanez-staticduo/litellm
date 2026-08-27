@@ -4,7 +4,7 @@
 - (None)
 
 ## Active
-- TASK-2026-08-27-008-merge-release-uvicorn-redaction
+- (None)
 
 ## Todo
 - TASK-2026-07-14-003-trigger-nas-account2-reauth
