@@ -1,0 +1,485 @@
+{
+  "client": "codex",
+  "version": "codex-cli 0.149.1",
+  "active_model": "deepseek-v4-flash-fp8-mtp",
+  "active_effort": "high",
+  "wire_api": "responses",
+  "rows": {
+    "gpt-5.4": {
+      "default": "none",
+      "levels": [
+        "none",
+        "low",
+        "medium",
+        "high",
+        "xhigh"
+      ]
+    },
+    "gpt-5.4-mini": {
+      "default": "none",
+      "levels": [
+        "none",
+        "low",
+        "medium",
+        "high",
+        "xhigh"
+      ]
+    },
+    "gpt-5.5": {
+      "default": "medium",
+      "levels": [
+        "none",
+        "low",
+        "medium",
+        "high",
+        "xhigh"
+      ]
+    },
+    "gpt-5.6-luna": {
+      "default": "medium",
+      "levels": [
+        "none",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    "gpt-5.6-sol": {
+      "default": "medium",
+      "levels": [
+        "none",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    "gpt-5.6-terra": {
+      "default": "medium",
+      "levels": [
+        "none",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
+    },
+    "deepseek-v4-flash-fp8-mtp": {
+      "default": "max",
+      "levels": [
+        "none",
+        "low",
+        "high",
+        "max"
+      ]
+    },
+    "qwen3.8-27b-refusal-dial": {
+      "default": "xhigh",
+      "levels": [
+        "low",
+        "medium",
+        "xhigh"
+      ]
+    }
+  },
+  "retired_present": [],
+  "captures": [
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.4",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.4",
+      "effort": "low",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.4",
+      "effort": "medium",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.4",
+      "effort": "high",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.4",
+      "effort": "xhigh",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.4-mini",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.4-mini",
+      "effort": "low",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.4-mini",
+      "effort": "medium",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.4-mini",
+      "effort": "high",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.4-mini",
+      "effort": "xhigh",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.5",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.5",
+      "effort": "low",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.5",
+      "effort": "medium",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.5",
+      "effort": "high",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.5",
+      "effort": "xhigh",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.6-luna",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.6-luna",
+      "effort": "low",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.6-luna",
+      "effort": "medium",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.6-luna",
+      "effort": "high",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.6-luna",
+      "effort": "xhigh",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.6-luna",
+      "effort": "max",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.6-sol",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.6-sol",
+      "effort": "low",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.6-sol",
+      "effort": "medium",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.6-sol",
+      "effort": "max",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.6-terra",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.6-terra",
+      "effort": "low",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.6-terra",
+      "effort": "medium",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.6-terra",
+      "effort": "high",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.6-terra",
+      "effort": "xhigh",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.6-terra",
+      "effort": "max",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "deepseek-v4-flash-fp8-mtp",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "deepseek-v4-flash-fp8-mtp",
+      "effort": "low",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "deepseek-v4-flash-fp8-mtp",
+      "effort": "high",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "deepseek-v4-flash-fp8-mtp",
+      "effort": "max",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "qwen3.8-27b-refusal-dial",
+      "effort": "low",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "qwen3.8-27b-refusal-dial",
+      "effort": "medium",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "qwen3.8-27b-refusal-dial",
+      "effort": "xhigh",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "qwen3.8-27b-refusal-dial",
+      "effort": "low",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "deepseek-v4-flash-fp8-mtp",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.6-terra",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.6-sol",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.6-luna",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.5",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.4-mini",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/responses",
+      "model": "gpt-5.4",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    }
+  ],
+  "mode_capture_count": 40,
+  "switch_capture_count": 8,
+  "failures": [],
+  "production_files_unchanged": true,
+  "production_hashes": {
+    "/home/staticduo/.codex/config.toml": "cdd5f65fe44d2b3b6f1f9925453cf9a1c47cde8bd3858a55839ae554a9256019",
+    "/home/staticduo/.local/share/codex-nas/codex-litellm-models.json": "fe831ef5d6702dd15757ff632ce5b8af504ef9789c9e1788917acb9eda3399a4",
+    "/home/staticduo/.codex/models_cache.json": "62d53fde89be8b1c0dbf74a95a0829e7f3d8d08b037e38dea5a7947d8dd868a2"
+  }
+}

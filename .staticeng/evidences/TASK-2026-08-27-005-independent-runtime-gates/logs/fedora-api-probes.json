@@ -1,0 +1,89 @@
+{
+  "host": "fedora",
+  "api": {
+    "/health/readiness": {
+      "status": 200,
+      "normal_present": false,
+      "spark_present": false
+    },
+    "/model/info": {
+      "status": 200,
+      "normal_present": false,
+      "spark_present": false
+    },
+    "/model_group/info": {
+      "status": 200,
+      "normal_present": false,
+      "spark_present": false
+    },
+    "/router/settings": {
+      "status": 200,
+      "normal_present": false,
+      "spark_present": false
+    },
+    "/v1/models": {
+      "status": 200,
+      "normal_present": false,
+      "spark_present": false
+    }
+  },
+  "probes": [
+    {
+      "alias": "gpt-5.3-codex",
+      "status": 400,
+      "error_class": "unavailable",
+      "deployment_present": false,
+      "redirect_present": false
+    },
+    {
+      "alias": "chatgpt/gpt-5.3-codex",
+      "status": 400,
+      "error_class": "unavailable",
+      "deployment_present": false,
+      "redirect_present": false
+    },
+    {
+      "alias": "chatgpt-account2/gpt-5.3-codex",
+      "status": 400,
+      "error_class": "unavailable",
+      "deployment_present": false,
+      "redirect_present": false
+    },
+    {
+      "alias": "chatgpt-account3/gpt-5.3-codex",
+      "status": 400,
+      "error_class": "unavailable",
+      "deployment_present": false,
+      "redirect_present": false
+    },
+    {
+      "alias": "gpt-5.3-codex-spark",
+      "status": 400,
+      "error_class": "unavailable",
+      "deployment_present": false,
+      "redirect_present": false
+    },
+    {
+      "alias": "chatgpt/gpt-5.3-codex-spark",
+      "status": 400,
+      "error_class": "unavailable",
+      "deployment_present": false,
+      "redirect_present": false
+    },
+    {
+      "alias": "chatgpt-account2/gpt-5.3-codex-spark",
+      "status": 400,
+      "error_class": "unavailable",
+      "deployment_present": false,
+      "redirect_present": false
+    },
+    {
+      "alias": "chatgpt-account3/gpt-5.3-codex-spark",
+      "status": 400,
+      "error_class": "unavailable",
+      "deployment_present": false,
+      "redirect_present": false
+    }
+  ],
+  "access_hash_equal": true
+}

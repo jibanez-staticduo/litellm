@@ -1,0 +1,620 @@
+{
+  "client": "opencode",
+  "version": "1.18.23",
+  "metadata_source": "fedora-live-safe-shape",
+  "plugin_version": "0.2.2",
+  "plugin_sha256": "dc3f90061e7f68d2b5bedf69e13bb730247e1b2dde6181e2c47ea51d042ee25d",
+  "model_count": 24,
+  "selector": {
+    "gpt-5.4": {
+      "default": false,
+      "variants": {
+        "none": {
+          "reasoningEffort": "none"
+        },
+        "low": {
+          "reasoningEffort": "low"
+        },
+        "medium": {
+          "reasoningEffort": "medium"
+        },
+        "high": {
+          "reasoningEffort": "high"
+        },
+        "xhigh": {
+          "reasoningEffort": "xhigh"
+        }
+      }
+    },
+    "gpt-5.4-mini": {
+      "default": false,
+      "variants": {
+        "none": {
+          "reasoningEffort": "none"
+        },
+        "low": {
+          "reasoningEffort": "low"
+        },
+        "medium": {
+          "reasoningEffort": "medium"
+        },
+        "high": {
+          "reasoningEffort": "high"
+        },
+        "xhigh": {
+          "reasoningEffort": "xhigh"
+        }
+      }
+    },
+    "gpt-5.5": {
+      "default": false,
+      "variants": {
+        "none": {
+          "reasoningEffort": "none"
+        },
+        "low": {
+          "reasoningEffort": "low"
+        },
+        "medium": {
+          "reasoningEffort": "medium"
+        },
+        "high": {
+          "reasoningEffort": "high"
+        },
+        "xhigh": {
+          "reasoningEffort": "xhigh"
+        }
+      }
+    },
+    "gpt-5.6-luna": {
+      "default": false,
+      "variants": {
+        "none": {
+          "reasoningEffort": "none"
+        },
+        "low": {
+          "reasoningEffort": "low"
+        },
+        "medium": {
+          "reasoningEffort": "medium"
+        },
+        "high": {
+          "reasoningEffort": "high"
+        },
+        "xhigh": {
+          "reasoningEffort": "xhigh"
+        },
+        "max": {
+          "reasoningEffort": "max"
+        }
+      }
+    },
+    "gpt-5.6-sol": {
+      "default": false,
+      "variants": {
+        "none": {
+          "reasoningEffort": "none"
+        },
+        "low": {
+          "reasoningEffort": "low"
+        },
+        "medium": {
+          "reasoningEffort": "medium"
+        },
+        "high": {
+          "reasoningEffort": "high"
+        },
+        "xhigh": {
+          "reasoningEffort": "xhigh"
+        },
+        "max": {
+          "reasoningEffort": "max"
+        }
+      }
+    },
+    "gpt-5.6-terra": {
+      "default": false,
+      "variants": {
+        "none": {
+          "reasoningEffort": "none"
+        },
+        "low": {
+          "reasoningEffort": "low"
+        },
+        "medium": {
+          "reasoningEffort": "medium"
+        },
+        "high": {
+          "reasoningEffort": "high"
+        },
+        "xhigh": {
+          "reasoningEffort": "xhigh"
+        },
+        "max": {
+          "reasoningEffort": "max"
+        }
+      }
+    },
+    "deepseek-v4-flash-fp8-mtp": {
+      "default": false,
+      "variants": {
+        "off": {
+          "reasoningEffort": "none"
+        },
+        "low": {
+          "reasoningEffort": "low"
+        },
+        "high": {
+          "reasoningEffort": "high"
+        },
+        "max": {
+          "reasoningEffort": "max"
+        },
+        "medium": {
+          "disabled": true
+        },
+        "xhigh": {
+          "disabled": true
+        }
+      }
+    },
+    "qwen3.8-27b-refusal-dial": {
+      "default": false,
+      "variants": {
+        "off": {
+          "chat_template_kwargs": {
+            "enable_thinking": false
+          }
+        },
+        "low": {
+          "reasoningEffort": "low"
+        },
+        "medium": {
+          "reasoningEffort": "medium"
+        },
+        "xhigh": {
+          "reasoningEffort": "xhigh"
+        },
+        "none": {
+          "disabled": true
+        },
+        "minimal": {
+          "disabled": true
+        },
+        "high": {
+          "disabled": true
+        },
+        "max": {
+          "disabled": true
+        }
+      }
+    }
+  },
+  "alias_equivalence": {
+    "deepseek-v4-flash-fp8-mtp": "deepseek-v4-flash-fp8-mtp",
+    "chatgpt/gpt-5.4": "gpt-5.4",
+    "chatgpt/gpt-5.4-mini": "gpt-5.4-mini",
+    "chatgpt/gpt-5.5": "gpt-5.5",
+    "chatgpt/gpt-5.6-terra": "gpt-5.6-terra",
+    "chatgpt/gpt-5.6-luna": "gpt-5.6-luna",
+    "gpt-5.5": "gpt-5.5",
+    "gpt-5.6-terra": "gpt-5.6-terra",
+    "chatgpt/gpt-5.6-sol": "gpt-5.6-sol",
+    "chatgpt-account2/gpt-5.4": "gpt-5.4",
+    "chatgpt-account2/gpt-5.4-mini": "gpt-5.4-mini",
+    "chatgpt-account2/gpt-5.5": "gpt-5.5",
+    "chatgpt-account2/gpt-5.6-luna": "gpt-5.6-luna",
+    "chatgpt-account2/gpt-5.6-sol": "gpt-5.6-sol",
+    "chatgpt-account2/gpt-5.6-terra": "gpt-5.6-terra",
+    "gpt-5.4": "gpt-5.4",
+    "gpt-5.4-mini": "gpt-5.4-mini",
+    "gpt-5.6-sol": "gpt-5.6-sol",
+    "deepseek-v4-flash-fp8-mtp-norefusal": "deepseek-v4-flash-fp8-mtp",
+    "qwen3.8-27b-refusal-dial": "qwen3.8-27b-refusal-dial",
+    "gpt-5.6-luna": "gpt-5.6-luna"
+  },
+  "near_matches": [],
+  "retired_present": [],
+  "captures": [
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.4",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.4",
+      "effort": "low",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.4",
+      "effort": "medium",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.4",
+      "effort": "high",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.4",
+      "effort": "xhigh",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.4",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.4-mini",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.4-mini",
+      "effort": "low",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.4-mini",
+      "effort": "medium",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.4-mini",
+      "effort": "high",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.4-mini",
+      "effort": "xhigh",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.4-mini",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.5",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.5",
+      "effort": "low",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.5",
+      "effort": "medium",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.5",
+      "effort": "high",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.5",
+      "effort": "xhigh",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.5",
+      "effort": "medium",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.6-luna",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.6-luna",
+      "effort": "low",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.6-luna",
+      "effort": "medium",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.6-luna",
+      "effort": "high",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.6-luna",
+      "effort": "xhigh",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.6-luna",
+      "effort": "max",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.6-luna",
+      "effort": "medium",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.6-sol",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.6-sol",
+      "effort": "low",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.6-sol",
+      "effort": "medium",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.6-sol",
+      "effort": "high",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.6-sol",
+      "effort": "xhigh",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.6-sol",
+      "effort": "max",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.6-sol",
+      "effort": "medium",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.6-terra",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.6-terra",
+      "effort": "low",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.6-terra",
+      "effort": "medium",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.6-terra",
+      "effort": "high",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.6-terra",
+      "effort": "xhigh",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.6-terra",
+      "effort": "max",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "gpt-5.6-terra",
+      "effort": "medium",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "deepseek-v4-flash-fp8-mtp",
+      "effort": "none",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "deepseek-v4-flash-fp8-mtp",
+      "effort": "low",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "deepseek-v4-flash-fp8-mtp",
+      "effort": "high",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "deepseek-v4-flash-fp8-mtp",
+      "effort": "max",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "deepseek-v4-flash-fp8-mtp",
+      "effort": "max",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "qwen3.8-27b-refusal-dial",
+      "effort": null,
+      "thinking": {
+        "enable_thinking": false
+      },
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "qwen3.8-27b-refusal-dial",
+      "effort": "low",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "qwen3.8-27b-refusal-dial",
+      "effort": "medium",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "qwen3.8-27b-refusal-dial",
+      "effort": "xhigh",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    },
+    {
+      "path": "/v1/chat/completions",
+      "model": "qwen3.8-27b-refusal-dial",
+      "effort": "xhigh",
+      "thinking": null,
+      "input_present": true,
+      "authorization_present": true
+    }
+  ],
+  "scoped_log": {
+    "loaded_count": 1,
+    "failure_count": 0,
+    "stale_version_count": 0,
+    "double_load": false
+  }
+}
