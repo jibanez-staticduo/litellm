@@ -8,7 +8,7 @@ scr: SCR-2026-08-26-002-client-model-contracts-020
 parent: null
 assigned_to: tech_lead
 handoff_from: product_manager
-reopened_count: 5
+reopened_count: 6
 ---
 
 # Task: TASK-2026-08-26-017 - Migrate Shared OpenCode Contracts
@@ -84,7 +84,10 @@ Stop on unexpected path changes, secret exposure, Syncthing conflict/divergence,
 - Exact rollback again restored the prior NAS configuration and all six connected peers; no process was terminated and no selector/wire probe ran after the mandatory package failure
 - Reopen 5 normalized exact-identity plugin caches to one healthy `0.2.1` tree on NAS and seven reachable peers, with integrity and fresh official initialization passing
 - Reopen 5 rolled back the configuration candidate because its fresh protected backup initially inherited mode `0777`; mode was corrected and rollback completed before candidate propagation
-- Resume with explicit descriptor-level `fchmod(0600)` and pre-mutation mode verification, retaining the healthy `0.2.1` caches
+- Reopen 6 completed descriptor-protected backup, exact NAS-only migration, stable connected-set convergence, healthy `0.2.1` fresh-process checks, and the full published-package contract matrix
+- Active configuration now removes exactly 25 approved overrides, preserves five unrelated overrides/all unrelated settings, and retains exact unversioned plugin reference with mode `0600`
+- Pre-existing long-running OpenCode sessions require user restart; offline/SSH-unreachable peers remain automatic convergence/cache follow-up
+- Product and architecture documentation were already closed by the approved SCR/plan/plugin architecture contract; no additional steady-state document change is required
 
 ### Reopen 5 - 2026-08-27
 - Corrective plugin `0.2.1` is published and verified against live NAS metadata.
@@ -95,3 +98,12 @@ Stop on unexpected path changes, secret exposure, Syncthing conflict/divergence,
 - The exact NAS configuration candidate passed structural checks, but its freshly created backup initially inherited mode `0777` instead of required `0600`.
 - The backup mode was corrected and exact atomic rollback completed before candidate Syncthing propagation or functional matrix execution; healthy `0.2.1` caches were retained.
 - Resume with a backup procedure that explicitly `fchmod(0600)`s the open descriptor and verifies mode before any configuration mutation.
+
+### Reopen 6 - 2026-08-27
+- Retained healthy canonical `0.2.1` caches already verified on NAS and seven reachable peers; no unrelated cache was touched.
+- Fresh exact backup passed descriptor-level `fchmod(0600)`, owner, mode, size, checksum, and fsync gates before mutation.
+- NAS-only atomic candidate removed exactly 25 approved overrides, preserved five unrelated overrides and every unrelated setting, retained exact unversioned plugin reference, zero file references, and mode `0600`.
+- Seven peers in the final stable connected set converged at 100% with matching candidate checksum and zero conflicts; NAS remained idle/error-free.
+- Eight reachable hosts passed fresh official model discovery with 36 models and one canonical installed `0.2.1` tree each.
+- Published-package matrix passed nine families, 31 aliases, 164 explicit legacy/V2 bodies, defaults, user-last overrides, intrinsic default omission, retirement, and Spark preservation without production inference.
+- No rollback was required; no user/control process was terminated.
