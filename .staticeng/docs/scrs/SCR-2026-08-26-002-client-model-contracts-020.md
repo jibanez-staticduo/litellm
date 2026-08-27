@@ -1,6 +1,6 @@
 ---
 id: SCR-2026-08-26-002-client-model-contracts-020
-status: approved
+status: closed
 requested_by: user
 approved_by: user
 date: 2026-08-26
