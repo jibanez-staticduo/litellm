@@ -1,10 +1,10 @@
 # TASK-2026-08-26-017 Evidence Summary
 
-## Result
+## Historical Intermediate Result
 
-PASS after Reopen 6. The NAS-authoritative reasoning migration is active. Healthy canonical plugin `0.2.1` caches were retained, a descriptor-protected exact backup passed every pre-mutation gate, exactly 25 approved overrides were removed atomically from NAS, and the stable connected set converged at 100% with zero conflicts
+PASS for Task 017's completed migration scope. This summary is a historical intermediate snapshot, not the final client contract. At this point the NAS-authoritative reasoning migration used plugin `0.2.1`, retained nine families including Spark, and validated intrinsic-default omission. Those version, family-count, Spark, and default-semantics statements were superseded by later approved decisions
 
-Fresh official OpenCode processes on NAS and seven reachable peers initialized 36 live metadata models from one canonical `0.2.1` cache instance per host. Published-package selector/default/body verification covered all nine contract families, 31 aliases, and 164 explicit legacy/V2 mode bodies; retirement, Spark preservation, no-fabrication, intrinsic-default omission, and user-last override checks passed without production inference. No user/control session was terminated
+The final authoritative state is plugin `0.2.2` on OpenCode `1.18.23`, eight retained families, both normal and Spark GPT-5.3 retired, explicit official-default transmission, and user-last overrides. See Task 004 for corrective client retirement, Task 005 for independent current runtime gates, and Task 020 for the final SCR PASS trace. Task 019 provides final dual-registry retirement evidence
 
 ## Acceptance Criteria Coverage
 
@@ -33,13 +33,13 @@ Fresh official OpenCode processes on NAS and seven reachable peers initialized 3
 - Process termination count: zero
 - Peer direct configuration edit count: zero
 - Codex/LiteLLM route edit count: zero
-- `staticeng_validate`: remains blocked by the pre-existing repository-wide manual CodeMap backlog recorded in `logs/02-staticeng-validation.log`
+- `staticeng_validate`: remains blocked by the pre-existing repository-wide manual CodeMap backlog recorded in `.staticeng/evidences/TASK-2026-08-26-017-migrate-shared-opencode-contracts/logs/02-staticeng-validation.log`
 
-See `logs/08-reopen6-final-migration.log` for the redacted final sequence
+See `.staticeng/evidences/TASK-2026-08-26-017-migrate-shared-opencode-contracts/logs/08-reopen6-final-migration.log` for the redacted final sequence
 
 ## Documentation Impact
 
-The approved SCR, plan, and plugin architecture documentation already define the steady-state model-contract behavior. No additional product or architecture documentation change is required; this task activates that approved state and records operational closure
+This packet preserves the completed `0.2.1` migration evidence as history. It must be read with the final SCR/plan and Tasks 004/005/019/020; its nine-family, Spark-preserving, and intrinsic-default-omission statements are non-normative
 
 ## Open Risks
 
@@ -49,4 +49,4 @@ The repository retains its pre-existing broad manual CodeMap backlog; this task 
 
 ## Recommended Next Step
 
-PMA can close Task 017 and notify users to restart pre-existing OpenCode sessions when convenient. Track unreachable/offline peer cache normalization separately if it does not already resolve canonical `0.2.1` on reconnect
+Task 017 remains closed as a successful intermediate migration. Use Tasks 004/005/019/020 for current state and track unreachable/offline peer convergence separately

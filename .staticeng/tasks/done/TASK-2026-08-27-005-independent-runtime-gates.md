@@ -3,7 +3,7 @@ id: TASK-2026-08-27-005-independent-runtime-gates
 complexity: complex
 track: investigation
 slice: qa
-status: active
+status: done
 scr: SCR-2026-08-26-002-client-model-contracts-020
 parent: TASK-2026-08-26-020-verify-client-model-contracts-020
 assigned_to: tester

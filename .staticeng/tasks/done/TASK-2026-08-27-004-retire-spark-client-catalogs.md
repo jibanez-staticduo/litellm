@@ -3,7 +3,7 @@ id: TASK-2026-08-27-004-retire-spark-client-catalogs
 complexity: complex
 track: implementation
 slice: core
-status: active
+status: done
 scr: SCR-2026-08-26-002-client-model-contracts-020
 parent: TASK-2026-08-26-019-retire-obsolete-model-routes
 assigned_to: tech_lead

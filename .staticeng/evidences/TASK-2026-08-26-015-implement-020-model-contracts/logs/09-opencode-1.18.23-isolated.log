@@ -1,0 +1,33 @@
+HISTORICAL PRE-REOPEN RESULT: superseded by Reopen 1 log 14. Reviews rejected this candidate because GPT-5.4/Mini/Spark defaults were not effective; do not use this log as final release evidence.
+
+Official client: OpenCode 1.18.23
+Isolation: temporary XDG config/cache/data/state roots; local compiled plugin; loopback fixture discovery and request endpoint; no runtime configuration changed.
+
+PASS legacy config surface
+- gpt-5.6-sol: none, low, medium, high, xhigh, max
+- deepseek-v4-flash-fp8-mtp: off, low, high, max (unsupported compatibility tombstones are disabled and absent from the resolved selectable model)
+- qwen3.8-27b-refusal-dial: off, low, medium, xhigh
+- gpt-5.3-codex-spark: none, low, medium, high, xhigh
+- gpt-5.3-codex: absent despite stale fixture discovery
+
+PASS V2 config surface
+- Variant arrays preserve the catalog order above.
+- GPT max body is reasoning_effort=max.
+- DeepSeek off body is reasoning_effort=none.
+- Qwen off body is only chat_template_kwargs.enable_thinking=false.
+
+PASS resolved official model catalog
+- Exactly four fixture models resolved: GPT-5.6 Sol, DeepSeek V4, Qwen3.8, and Spark.
+- Retired normal GPT-5.3 Codex did not resolve.
+- No extra selectable reasoning mode resolved for any fixture model.
+
+PASS sanitized primary-request wire probes
+- GPT-5.6 Sol max -> model=gpt-5.6-sol; reasoning_effort=max.
+- DeepSeek off -> model=deepseek-v4-flash-fp8-mtp; reasoning_effort=none.
+- Qwen off -> model=qwen3.8-27b-refusal-dial; chat_template_kwargs.enable_thinking=false; reasoning_effort absent.
+- DeepSeek intrinsic default -> reasoning_effort absent.
+- Qwen intrinsic default -> reasoning_effort and chat_template_kwargs absent.
+- GPT-5.6 Sol CLI default -> reasoning_effort=medium, semantically equal to the contract default.
+- variantDefault never appeared in a request body.
+
+Fixture title-generation requests and prompt/response content are intentionally excluded.

@@ -1,0 +1,11 @@
+PASS packageVersion
+PASS lockVersion
+PASS publicExports
+PASS packageInventory
+PASS catalogNotPublic
+PASS noRuntimeConfig
+PASS noDefendContract
+PASS noUltraContract
+PASS directV2CatalogBody
+packageFiles=19
+packageVersion=0.2.0

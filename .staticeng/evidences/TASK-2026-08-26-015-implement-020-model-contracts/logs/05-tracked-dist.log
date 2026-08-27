@@ -1,0 +1,7 @@
+PASS: SHA-256 manifest for every dist file was identical before and after a clean TypeScript rebuild.
+The intended tracked modifications and new generated artifacts are:
+ M dist/index.js
+ M dist/mapping.js
+ M dist/types.d.ts
+?? dist/model-contracts.d.ts
+?? dist/model-contracts.js

@@ -1,0 +1,14 @@
+PASS fresh official OpenCode probes=55 defaults=9 explicit=46
+Client: official OpenCode 1.18.23; one fresh process and isolated XDG data/state root per probe; strict plugin discovery; loopback-only fixture server.
+Default primary-request matrix:
+- GPT-5.4 -> none
+- GPT-5.4 Mini -> none
+- GPT-5.5 -> medium
+- GPT-5.6 Luna -> medium
+- GPT-5.6 Sol -> medium
+- GPT-5.6 Terra -> medium
+- GPT-5.3 Codex Spark -> high
+- DeepSeek V4 Flash -> max
+- Qwen3.8 -> xhigh
+Explicit primary-request matrix: 46/46 approved modes passed. DeepSeek off sent reasoning_effort=none. Qwen off sent only chat_template_kwargs.enable_thinking=false and no reasoning_effort. Every native effort passed unchanged, including GPT-5.6 max.
+No prompt, response content, authorization material, or raw configuration is retained in this log.

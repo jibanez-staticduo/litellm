@@ -1,0 +1,27 @@
+RESULT PARTIAL
+nas_litellm_health=healthy_db_connected
+nas_api_model_projection_target_matches=0
+nas_api_group_projection_target_matches=0
+nas_api_router_projection_target_matches=0
+nas_raw_proxy_model_target_rows=0
+fedora_prior_fresh_api_and_raw_absence_evidence=pass
+fedora_independent_current_raw_query=unverified
+retired_bounded_status_probes=not_rerun
+no_redirect_current_independent=unverified
+syncthing_folder=opencode
+syncthing_nas_mode=sendonly
+syncthing_configured_device_count=13
+syncthing_reachable_instances=6
+syncthing_reachable_idle_count=6
+syncthing_reachable_completion_100_count=6
+syncthing_reachable_error_count=0
+syncthing_reachable_need_items=0
+syncthing_reachable_need_bytes=0
+syncthing_reachable_need_deletes=0
+syncthing_reachable_pull_errors=0
+syncthing_unreachable_instances=4
+syncthing_unreachable_instances_reason=http_502
+syncthing_conflicts=0
+nas_fedora_opencode_config_hash_equal=true
+offline_peers=proart,ut2,mac,cachyos
+redaction=device IDs, addresses, credentials, raw rows, raw configuration, prompts, and responses omitted

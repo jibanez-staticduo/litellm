@@ -1,0 +1,24 @@
+RESULT PASS
+repository=/home/staticduo/git/opencode-litellm
+head=b14e16c1dbe9f57d037852d509501d857ca48651
+package_version=0.2.2
+npm_latest=0.2.2
+npm_integrity=sha512-h4pSTXgE8gTWLV4S1l0KvU3jzpKaq03nzfe1kQulZV1M+uJk/Oxi8RK1FzIqeTnHVXuTSq9ppGj1YjLIUAdxGA==
+npm_shasum=700c1ea1e7b8b81190c002ddcafed609467d50ca
+build=pass
+tests_passed=63
+tests_failed=0
+tests_skipped=0
+tests_todo=0
+tracked_dist_diff=clean
+git_diff_check=pass
+pack_entry_count=19
+pack_shasum=700c1ea1e7b8b81190c002ddcafed609467d50ca
+pack_integrity=sha512-h4pSTXgE8gTWLV4S1l0KvU3jzpKaq03nzfe1kQulZV1M+uJk/Oxi8RK1FzIqeTnHVXuTSq9ppGj1YjLIUAdxGA==
+catalog_active_families=8
+retired_exact_aliases=8
+alias_near_match_tests=pass
+override_precedence_tests=pass
+normal_gpt53_retired=true
+spark_retired=true
+ultra_in_builtin_contracts=false

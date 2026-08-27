@@ -1,0 +1,7 @@
+FAIL (pre-existing governing-workspace blocker): staticeng_validate is bound to /home/staticduo/git/litellm, not the implementation repository /home/staticduo/git/opencode-litellm. It reported only existing missing CodeMaps across unrelated LiteLLM modules; it did not report a task-owned plugin CodeMap error.
+
+Dry-run repair was executed as required. It proposed normalizing six unrelated generated/runtime Markdown files and reported the same broad set of manual CodeMap boundary decisions. Safe apply was not run because it would mutate unrelated dirty StaticEng artifacts that this task is explicitly required to preserve, while the unresolved CodeMaps require architecture decisions outside Task 1.
+
+Task-local closure: a real root codemap.yml was added in opencode-litellm, src/codemap.yml and test/codemap.yml were updated, and every maintained src/test file is represented in its nearest map.
+
+Reopen 1: staticeng_validate was rerun after the V2/default corrections and returned the same unrelated governing-workspace missing-CodeMap backlog with zero warnings. No new task-owned validation class appeared, and no unrelated repair was applied.

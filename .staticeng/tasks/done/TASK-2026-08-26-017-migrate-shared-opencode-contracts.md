@@ -3,7 +3,7 @@ id: TASK-2026-08-26-017-migrate-shared-opencode-contracts
 complexity: complex
 track: implementation
 slice: core
-status: active
+status: done
 scr: SCR-2026-08-26-002-client-model-contracts-020
 parent: null
 assigned_to: tech_lead

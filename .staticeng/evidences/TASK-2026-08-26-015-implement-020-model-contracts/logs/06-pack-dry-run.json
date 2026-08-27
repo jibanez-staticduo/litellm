@@ -1,0 +1,111 @@
+[
+  {
+    "id": "@staticeng/opencode-litellm@0.2.0",
+    "name": "@staticeng/opencode-litellm",
+    "version": "0.2.0",
+    "size": 12333,
+    "unpackedSize": 46877,
+    "shasum": "8ff9879528989c0dc29c5fd81a8055fc8590cf60",
+    "integrity": "sha512-PHaIeO99vpnscCgSk7XFQWbfQCsgqjEYvf+4Y+xOC//6wR9vsGDffE3vkW5vBflVKx1/d+PI52U0BsMdXHRZnQ==",
+    "filename": "staticeng-opencode-litellm-0.2.0.tgz",
+    "files": [
+      {
+        "path": "LICENSE",
+        "size": 1066,
+        "mode": 493
+      },
+      {
+        "path": "README.md",
+        "size": 6886,
+        "mode": 493
+      },
+      {
+        "path": "dist/helpers.d.ts",
+        "size": 579,
+        "mode": 493
+      },
+      {
+        "path": "dist/helpers.js",
+        "size": 415,
+        "mode": 493
+      },
+      {
+        "path": "dist/index.d.ts",
+        "size": 739,
+        "mode": 493
+      },
+      {
+        "path": "dist/index.js",
+        "size": 3171,
+        "mode": 493
+      },
+      {
+        "path": "dist/litellm.d.ts",
+        "size": 444,
+        "mode": 493
+      },
+      {
+        "path": "dist/litellm.js",
+        "size": 3024,
+        "mode": 493
+      },
+      {
+        "path": "dist/mapping.d.ts",
+        "size": 1374,
+        "mode": 493
+      },
+      {
+        "path": "dist/mapping.js",
+        "size": 16707,
+        "mode": 493
+      },
+      {
+        "path": "dist/merge.d.ts",
+        "size": 118,
+        "mode": 493
+      },
+      {
+        "path": "dist/merge.js",
+        "size": 428,
+        "mode": 493
+      },
+      {
+        "path": "dist/model-contracts.d.ts",
+        "size": 348,
+        "mode": 493
+      },
+      {
+        "path": "dist/model-contracts.js",
+        "size": 4080,
+        "mode": 493
+      },
+      {
+        "path": "dist/options.d.ts",
+        "size": 487,
+        "mode": 493
+      },
+      {
+        "path": "dist/options.js",
+        "size": 846,
+        "mode": 493
+      },
+      {
+        "path": "dist/types.d.ts",
+        "size": 5179,
+        "mode": 493
+      },
+      {
+        "path": "dist/types.js",
+        "size": 11,
+        "mode": 493
+      },
+      {
+        "path": "package.json",
+        "size": 975,
+        "mode": 493
+      }
+    ],
+    "entryCount": 19,
+    "bundled": []
+  }
+]

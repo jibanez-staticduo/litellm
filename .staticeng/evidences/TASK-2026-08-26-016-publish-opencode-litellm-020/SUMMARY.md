@@ -47,7 +47,7 @@ PASS after Reopen 2. The independently approved standard clean-checkout artifact
 - **T2-AC-3: PASS by explicit user-approved exception.** The original trusted OIDC workflow reached provenance signing but failed registry authorization. Reopen 2 used the protected `.npmjs` fallback exactly once with tracing disabled and no credential disclosure or persistence. The published package has the npm registry signature but no trusted-publishing provenance.
 - **T2-AC-4: PASS under the approved fallback contract.** npm reports published/latest `0.2.0` with exact integrity, shasum, tarball, 19-file inventory, all-file mode `0644`, and byte-identical SHA-256 `2ac50fc9ab952c2ac244b73bcbe23eadf4b0fd530085e4a0c8d823749d7c82c6`.
 - **T2-AC-5: PASS.** Isolated official OpenCode `1.18.23` resolved unversioned `@staticeng/opencode-litellm` to installed `0.2.0` and passed seven representative behavior probes plus retirement/Spark catalog checks.
-- **T2-AC-6: PASS.** Complete release, failure, fallback, registry, integrity, behavior, and rollback evidence is recorded here and in `logs/`.
+- **T2-AC-6: PASS.** Complete release, failure, fallback, registry, integrity, behavior, and rollback evidence is recorded here and in `.staticeng/evidences/TASK-2026-08-26-016-publish-opencode-litellm-020/logs/`.
 
 ## Verification
 

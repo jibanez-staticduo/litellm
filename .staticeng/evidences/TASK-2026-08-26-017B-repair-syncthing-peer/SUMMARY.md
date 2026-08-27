@@ -26,4 +26,4 @@ No shared file contents, device IDs, network addresses, credentials, content-der
 
 `staticeng_validate` remains blocked by the pre-existing repository-wide missing-CodeMap backlog. This task added no source directory or CodeMap obligation
 
-See `logs/01-repair-and-verification.log` for the redacted operational record
+See `.staticeng/evidences/TASK-2026-08-26-017B-repair-syncthing-peer/logs/01-repair-and-verification.log` for the redacted operational record

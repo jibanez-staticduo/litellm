@@ -1,0 +1,8 @@
+PASS deterministic rebuild: dist hashes unchanged
+Tracked/added dist paths:
+ M dist/index.js
+ M dist/mapping.d.ts
+ M dist/mapping.js
+ M dist/types.d.ts
+?? dist/model-contracts.d.ts
+?? dist/model-contracts.js

@@ -3,7 +3,13 @@ id: TASK-2026-08-26-017B-repair-syncthing-peer
 complexity: standard
 track: implementation
 slice: foundation
-status: active
+status: done
+
+# Post Implementation Task Updates
+
+## Tool Specialist: Post Implementation Expectations
+- CachyOS receive-only divergence repaired; NAS reports 100% completion and zero errors/conflicts.
+- Protected backup retained outside Syncthing; restoring it requires separate authorization.
 scr: SCR-2026-08-26-002-client-model-contracts-020
 parent: TASK-2026-08-26-017-migrate-shared-opencode-contracts
 assigned_to: tool-specialist

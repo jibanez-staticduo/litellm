@@ -1,0 +1,5 @@
+RESULT FAIL_PREEXISTING
+staticeng_validate=fail
+reason=repository-wide missing CodeMaps outside this investigation task
+source_structure_changed_by_task=false
+repair_applied=false
