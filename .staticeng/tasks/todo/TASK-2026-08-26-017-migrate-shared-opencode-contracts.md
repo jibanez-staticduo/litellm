@@ -8,7 +8,7 @@ scr: SCR-2026-08-26-002-client-model-contracts-020
 parent: null
 assigned_to: tech_lead
 handoff_from: product_manager
-reopened_count: 4
+reopened_count: 5
 ---
 
 # Task: TASK-2026-08-26-017 - Migrate Shared OpenCode Contracts
@@ -82,4 +82,16 @@ Stop on unexpected path changes, secret exposure, Syncthing conflict/divergence,
 - Exact rollback restored the prior NAS configuration and converged the six remaining connected peers; no cache, process, Codex registry, LiteLLM registry, or peer configuration change occurred
 - Reopen 4 passed candidate configuration and final-connected-set convergence, then failed the fresh official OpenCode package gate because plugin `0.2.0` raised a discovery-response type error
 - Exact rollback again restored the prior NAS configuration and all six connected peers; no process was terminated and no selector/wire probe ran after the mandatory package failure
-- Resume only after plugin implementation/release work corrects and republishes the package and proves it loads under fresh official OpenCode against the production discovery response shape
+- Reopen 5 normalized exact-identity plugin caches to one healthy `0.2.1` tree on NAS and seven reachable peers, with integrity and fresh official initialization passing
+- Reopen 5 rolled back the configuration candidate because its fresh protected backup initially inherited mode `0777`; mode was corrected and rollback completed before candidate propagation
+- Resume with explicit descriptor-level `fchmod(0600)` and pre-mutation mode verification, retaining the healthy `0.2.1` caches
+
+### Reopen 5 - 2026-08-27
+- Corrective plugin `0.2.1` is published and verified against live NAS metadata.
+- User explicitly requested punctual duplicate-cache cleanup and completion of the reasoning migration.
+- Exact-identity cache inventory and protected cleanup completed on NAS plus seven reachable connected peers; unrelated caches were preserved.
+- Fresh official OpenCode processes built exactly one `@latest` tree resolving spec/version `0.2.1` with matching npm integrity and successful model initialization on each reachable host.
+- One connected expected peer was not SSH-reachable and remains package-cache follow-up; its shared configuration was not directly edited.
+- The exact NAS configuration candidate passed structural checks, but its freshly created backup initially inherited mode `0777` instead of required `0600`.
+- The backup mode was corrected and exact atomic rollback completed before candidate Syncthing propagation or functional matrix execution; healthy `0.2.1` caches were retained.
+- Resume with a backup procedure that explicitly `fchmod(0600)`s the open descriptor and verifies mode before any configuration mutation.
