@@ -25,9 +25,7 @@ Pre-merge fork work was fully attributed, reviewed, verified, and divided into l
 - `logs/09-secret-scan.log` and `logs/10-untracked-secret-scan.log`: reviewed matches are test placeholders or non-secret text
 - `logs/11-staticeng-validate.log`: final validation pass, all source directories indexed, zero warnings
 - `logs/12-staticeng-repair-dry-run.log`: dry-run findings reviewed; 109 missing local parent maps were then added deliberately from immediate local contents rather than applying unrelated Markdown normalization
-- `logs/13-commit-list.log`: final local commits for upstream integration
-- `logs/14-final-diff-check.log`: final diff/index whitespace verification
-- `logs/15-final-status.log`: exact final branch and worktree status
+- Final local commits and exact worktree status are included in the signed Tech Lead handoff because generating status logs after the final commit would itself dirty the closed tree
 
 ## Documentation Impact
 
