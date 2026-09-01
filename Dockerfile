@@ -1,15 +1,18 @@
 # syntax=docker/dockerfile:1.7
 
 # Base image for building
-ARG LITELLM_BUILD_IMAGE=cgr.dev/chainguard/wolfi-base@sha256:42df77a9974d6ec8b17a5ee8bc23b532600a44d705acef2409e0933c1251b45f
+ARG LITELLM_BUILD_IMAGE=cgr.dev/chainguard/wolfi-base@sha256:57108e597a8cf3bd376b810f1c3539c21942daefa242cb9dddaae30f8aac735d
 
 # Runtime image
-ARG LITELLM_RUNTIME_IMAGE=cgr.dev/chainguard/wolfi-base@sha256:42df77a9974d6ec8b17a5ee8bc23b532600a44d705acef2409e0933c1251b45f
+ARG LITELLM_RUNTIME_IMAGE=cgr.dev/chainguard/wolfi-base@sha256:57108e597a8cf3bd376b810f1c3539c21942daefa242cb9dddaae30f8aac735d
 ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.11.7@sha256:240fb85ab0f263ef12f492d8476aa3a2e4e1e333f7d67fbdd923d00a506a516a
+ARG RUST_TOOLCHAIN_IMAGE=docker.io/library/rust:1.97.1-slim-bookworm@sha256:2775a09d208ff0d7c1f50490c45b62db929e87ba1dcbc3f2132ac71a704bcdd3
 # Pinned by digest like the other base images; bump explicitly on Node upgrades.
 ARG UI_BUILD_IMAGE=node:24.19-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43
 
 FROM $UV_IMAGE AS uvbin
+
+FROM $RUST_TOOLCHAIN_IMAGE AS rust-toolchain
 
 # Admin UI builder. Pinned to the build platform so the architecture-independent
 # Next.js static export compiles once natively even in a multi-arch build,
@@ -31,18 +34,21 @@ RUN npm run build
 # Builder stage
 FROM $LITELLM_BUILD_IMAGE AS builder
 
+ARG TARGETARCH
+
 WORKDIR /app
 USER root
 
 COPY --from=uvbin /uv /usr/local/bin/uv
 COPY --from=uvbin /uvx /usr/local/bin/uvx
+COPY --from=rust-toolchain /usr/local/cargo /usr/local/cargo
+COPY --from=rust-toolchain /usr/local/rustup /usr/local/rustup
 
 RUN apk add --no-cache \
     bash \
     gcc \
-    python3 \
-    python3-dev \
-    rust \
+    python-3.13=3.13.15-r4 \
+    python-3.13-dev=3.13.15-r4 \
     openssl \
     openssl-dev \
     nodejs \
@@ -51,7 +57,27 @@ RUN apk add --no-cache \
 
 ENV UV_PROJECT_ENVIRONMENT=/app/.venv \
     UV_LINK_MODE=copy \
-    PATH="/app/.venv/bin:${PATH}"
+    CARGO_HOME=/usr/local/cargo \
+    RUSTUP_HOME=/usr/local/rustup \
+    PATH="/usr/local/cargo/bin:/app/.venv/bin:${PATH}"
+
+RUN case "$TARGETARCH" in \
+        amd64) expected_arch=x86_64 ;; \
+        arm64) expected_arch=aarch64 ;; \
+        *) exit 1 ;; \
+    esac && \
+    rustc_version="$(rustc -vV)" && \
+    test "$(printf '%s\n' "$rustc_version" | grep -c '^release: ')" -eq 1 && \
+    test "$(printf '%s\n' "$rustc_version" | grep -Fxc 'release: 1.97.1')" -eq 1 && \
+    test "$(printf '%s\n' "$rustc_version" | grep -c '^commit-hash: ')" -eq 1 && \
+    test "$(printf '%s\n' "$rustc_version" | grep -Fxc 'commit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452')" -eq 1 && \
+    test "$(printf '%s\n' "$rustc_version" | grep -c '^host: ')" -eq 1 && \
+    test "$(printf '%s\n' "$rustc_version" | grep -Fxc "host: ${expected_arch}-unknown-linux-gnu")" -eq 1 && \
+    test "$(printf '%s\n' "$rustc_version" | grep -c '^LLVM version: ')" -eq 1 && \
+    test "$(printf '%s\n' "$rustc_version" | grep -Fxc 'LLVM version: 22.1.6')" -eq 1 && \
+    cargo --version | grep -Eq '^cargo 1\.97\.1 ' && \
+    test ! -e /usr/lib/libLLVM.so.22.1 && \
+    test ! -L /usr/lib/libLLVM.so.22.1
 
 # Copy dependency metadata first for layer caching
 COPY pyproject.toml uv.lock ./
@@ -65,7 +91,7 @@ RUN uv sync --frozen --no-install-project --no-install-workspace --no-default-gr
     --extra extra_proxy \
     --extra semantic-router \
     --extra saml \
-    --python python3
+    --python /usr/bin/python3.13
 
 # Copy full source tree
 COPY . .
@@ -86,7 +112,7 @@ RUN uv sync --frozen --no-default-groups --no-editable \
     --extra extra_proxy \
     --extra semantic-router \
     --extra saml \
-    --python python3
+    --python /usr/bin/python3.13
 
 RUN HOME=/opt/prisma XDG_CACHE_HOME=/opt/prisma/.cache PRISMA_BINARY_CACHE_DIR=/opt/prisma/binaries \
     npm_config_cache=/root/.npm \
@@ -101,7 +127,7 @@ FROM $LITELLM_RUNTIME_IMAGE AS runtime
 USER root
 
 # node (without npm) is required by the prisma CLI at runtime
-RUN apk add --no-cache bash openssl tzdata nodejs python3 libsndfile
+RUN apk add --no-cache bash openssl tzdata nodejs python-3.13=3.13.15-r4 libsndfile
 
 WORKDIR /app
 ENV PATH="/app/.venv/bin:${PATH}" \
@@ -135,7 +161,7 @@ RUN find /app/.venv -type f -path "*/tornado/test/*" -delete && \
     chmod -R a+rX /opt/prisma && \
     test -x /opt/prisma/binaries/node_modules/.bin/prisma && \
     test -f /opt/prisma/binaries/node_modules/prisma/build/index.js && \
-    python -c "from prisma.client import BINARY_PATHS; paths = list(BINARY_PATHS.query_engine.values()); assert paths and all(p.startswith('/opt/prisma/') for p in paths), paths"
+    /app/.venv/bin/python -c "from prisma.client import BINARY_PATHS; paths = list(BINARY_PATHS.query_engine.values()); assert paths and all(p.startswith('/opt/prisma/') for p in paths), paths"
 
 EXPOSE 4000/tcp
 
