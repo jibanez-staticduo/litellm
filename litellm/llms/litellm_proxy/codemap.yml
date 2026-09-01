@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+modules:
+  - path: chat/
+  - path: image_edit/
+  - path: image_generation/
+  - path: responses/
+  - path: skills/

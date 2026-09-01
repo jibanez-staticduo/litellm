@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+modules:
+  - path: AdminSettings/
+  - path: LoggingAndAlerts/
+  - path: RouterSettings/

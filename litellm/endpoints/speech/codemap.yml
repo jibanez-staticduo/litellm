@@ -1,0 +1,4 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+modules:
+  - path: speech_to_completion_bridge/

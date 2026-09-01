@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+modules:
+  - path: enterprise_callbacks/
+  - path: integrations/
+  - path: proxy/

@@ -46,13 +46,13 @@ All pre-existing tracked and untracked work was attributed to DeepSeek policy, L
 - Committed deterministic candidate base, Python, Rust, and venv pins as `514fd6bb8e`
 - Reviewed all StaticEng tasks, SCRs, architecture records, evidence, registries, and OpenCode plans for ownership and secret safety
 - Parsed all 1,823 initially untracked CodeMaps as YAML and verified every declared parent exists; no malformed map was accepted
-- Ran `staticeng_validate` and required repair dry-run. Validation retains the established repository-wide missing-parent-directory CodeMap debt; repair reports those paths as unresolved module-boundary decisions and proposes unrelated Markdown normalization, so no blind repair was applied
+- Ran `staticeng_validate` and the required repair dry-run, added 109 local parent maps using immediate local module boundaries, and reran validation successfully with zero warnings
 
 ### Acceptance Criteria Coverage
 
 - **AC-1: PASS.** Every initial path is classified and all intended non-secret paths are included in logical commits; no unexplained source or binary artifact remains
 - **AC-2: PASS.** DeepSeek: 59 passed, Ruff passed, focused basedpyright reported zero errors. LazyMCP: 1,136 passed, Ruff passed, focused basedpyright reported zero errors. Dockerfile static contract checks all passed
-- **AC-3: PASS.** This task, its evidence packet, registries, approved SCRs, architecture records, workflow artifacts, and CodeMaps are finalized before the last pre-merge commit
+- **AC-3: PASS.** This task, its evidence packet, registries, approved SCRs, architecture records, workflow artifacts, and CodeMaps are finalized before the last pre-merge commit; `staticeng_validate` passes with zero warnings
 - **AC-4: PASS.** Commits follow the required conventional format and staged content was reviewed with diff checks and secret-pattern scans. Matches were only explicit test keys or non-secret descriptive text
 - **AC-5: PASS.** All intended work is committed locally with no push or integration operation. Final exact status is recorded after the closure commits
 
@@ -62,7 +62,7 @@ The DeepSeek and LazyMCP steady-state architecture contracts, approved SCRs, tas
 
 ### Open Risks
 
-- `staticeng_validate` remains red on established repository-wide directories that contain source only in nested children but lack their own CodeMap; the generated set itself parses and has no missing declared parent
+- The generated CodeMap set is large and may overlap substantially with upstream changes; TASK-010 must treat conflicts as generated navigation metadata and revalidate after integration
 - LazyMCP promotion and deployment remain unauthorized under their existing real-tool and supply-chain blockers
 - The upstream target has not been fetched or integrated; TASK-010 must revalidate the exact reviewed SHA and stop if it moved
 

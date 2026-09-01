@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+modules:
+  - path: slack-gif-creator/
+  - path: test-delete-skill/
+  - path: test-skill-litellm/

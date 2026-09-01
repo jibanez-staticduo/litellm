@@ -1,0 +1,6 @@
+scope: module
+parent: ../.staticeng/codemap.yml
+modules:
+  - path: litellm-dashboard/
+internals:
+  - path: Dockerfile

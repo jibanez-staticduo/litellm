@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+modules:
+  - path: HashicorpVault/
+  - path: LoggingSettings/
+  - path: MCPSemanticFilterSettings/
+  - path: PluginSettings/
+  - path: SSOSettings/
+  - path: UISettings/
+  - path: UserBannerSettings/

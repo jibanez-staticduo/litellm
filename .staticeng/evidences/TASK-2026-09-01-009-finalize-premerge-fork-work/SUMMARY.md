@@ -20,11 +20,11 @@ Pre-merge fork work was fully attributed, reviewed, verified, and divided into l
 - `logs/04-lazymcp-tests.log`: 1,136 passed with six pre-existing warnings
 - `logs/05-lazymcp-ruff.log`: all checks passed
 - `logs/06-lazymcp-typecheck.log`: zero errors and warnings
-- `logs/07-codemap-structure.log`: 1,823 maps parsed, zero parse errors, zero missing declared parents
+- `logs/07-codemap-structure.log`: initial 1,823 maps parsed, zero parse errors, zero missing declared parents
 - `logs/08-dockerfile-contract.log`: all deterministic packaging assertions passed
 - `logs/09-secret-scan.log` and `logs/10-untracked-secret-scan.log`: reviewed matches are test placeholders or non-secret text
-- `logs/11-staticeng-validate.log`: established missing-CodeMap validation debt
-- `logs/12-staticeng-repair-dry-run.log`: unresolved module-boundary decisions and unrelated Markdown normalization proposals; no apply performed
+- `logs/11-staticeng-validate.log`: final validation pass, all source directories indexed, zero warnings
+- `logs/12-staticeng-repair-dry-run.log`: dry-run findings reviewed; 109 missing local parent maps were then added deliberately from immediate local contents rather than applying unrelated Markdown normalization
 - `logs/13-commit-list.log`: final local commits for upstream integration
 - `logs/14-final-diff-check.log`: final diff/index whitespace verification
 - `logs/15-final-status.log`: exact final branch and worktree status
@@ -35,4 +35,4 @@ Steady-state DeepSeek and LazyMCP architecture contracts, approved SCRs, governe
 
 ## Residual Risk
 
-StaticEng validation remains blocked by established repository-wide directories whose module boundaries require manual decisions. The generated CodeMaps accepted in this task are structurally valid, but they do not resolve every inherited missing-map finding
+The generated CodeMap set is large and likely to overlap upstream source movement. TASK-010 must resolve those metadata conflicts deliberately and rerun `staticeng_validate`

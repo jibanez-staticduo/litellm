@@ -1,3 +1,3 @@
-Dry-run only; no apply performed.
-Planned Markdown normalization touched generated agent/runtime records, two existing task files, and this task summary.
-Unresolved CodeMap findings require module-boundary decisions for established nested-source directories, beginning with litellm/llms/gradient_ai, litellm/llms/novita, litellm/llms/llamafile, packaging, terraform, docs, ui, and helm.
+Dry-run only; no automatic apply performed.
+Planned Markdown normalization touched generated agent/runtime records, two existing task files, and this task summary; those unrelated rewrites were not applied.
+The dry-run identified 109 local parent directories requiring module-boundary decisions. Each was reviewed from immediate local contents and received a local CodeMap listing only immediate source and maintained child modules. Final staticeng_validate passed with zero warnings.

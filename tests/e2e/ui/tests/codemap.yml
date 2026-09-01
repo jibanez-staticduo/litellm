@@ -1,0 +1,19 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+modules:
+  - path: auth/
+  - path: internal-user/
+  - path: internal-viewer/
+  - path: login/
+  - path: logs/
+  - path: mcp/
+  - path: migration/
+  - path: modelHub/
+  - path: modelsPage/
+  - path: navigation/
+  - path: playground/
+  - path: proxy-admin/
+  - path: settings/
+  - path: team-admin/
+  - path: usage/
+  - path: users/

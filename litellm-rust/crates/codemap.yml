@@ -1,0 +1,7 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+modules:
+  - path: CODING_STANDARDS/
+  - path: ai-gateway/
+  - path: core/
+  - path: python-bridge/
