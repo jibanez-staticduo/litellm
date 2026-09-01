@@ -1,0 +1,33 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: bridge_token_flow.py
+  - path: tool_search.py
+  - path: loopback_oauth.py
+  - path: tool_registry.py
+  - path: sampling_handler.py
+  - path: db.py
+  - path: elicitation_handler.py
+  - path: discoverable_endpoints.py
+  - path: openapi_to_mcp_generator.py
+  - path: cost_calculator.py
+  - path: mcp_context.py
+  - path: oauth2_token_cache.py
+  - path: sse_transport.py
+  - path: mcp_debug.py
+  - path: byok_oauth_endpoints.py
+  - path: oauth_utils.py
+  - path: oauth2_flow_backfill.py
+  - path: ui_session_utils.py
+  - path: AGENTS.md
+  - path: gateway_dcr_flow.py
+  - path: exceptions.py
+  - path: utils.py
+  - path: CLAUDE.md
+  - path: rest_endpoints.py
+  - path: server.py
+  - path: mcp_server_manager.py
+  - path: oauth_issuer_stamp_backfill.py
+  - path: semantic_tool_filter.py
+  - path: toolset_db.py
+  - path: lazymcp_public_resource.py

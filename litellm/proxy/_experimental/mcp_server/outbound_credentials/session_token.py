@@ -97,6 +97,7 @@ class SessionPrincipal(BaseModel):
     user_id: str = Field(min_length=1)
     client_id: str = Field(min_length=1)
     resource_server_id: str | None = None
+    resource: str | None = None
 
 
 class SessionKeys(BaseModel):
@@ -194,6 +195,7 @@ class _SessionClaims(BaseModel):
     user_id: str = Field(min_length=1)
     client_id: str = Field(min_length=1)
     resource_server_id: str | None = None
+    resource: str | None = None
 
 
 def is_session_token(candidate: str) -> bool:
@@ -295,6 +297,7 @@ def _mint(
         user_id=principal.user_id,
         client_id=principal.client_id,
         resource_server_id=principal.resource_server_id,
+        resource=principal.resource,
     )
     token: Final = prefix + jwt.encode(
         claims.model_dump(exclude_none=True), keys.signing_key.get_secret_value(), algorithm=_SESSION_JWT_ALGORITHM
@@ -333,7 +336,10 @@ def _open(
         return SessionExpired()
     return OpenedSessionToken(
         principal=SessionPrincipal(
-            user_id=claims.user_id, client_id=claims.client_id, resource_server_id=claims.resource_server_id
+            user_id=claims.user_id,
+            client_id=claims.client_id,
+            resource_server_id=claims.resource_server_id,
+            resource=claims.resource,
         ),
         jti=claims.jti,
     )

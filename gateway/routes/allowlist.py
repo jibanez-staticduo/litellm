@@ -104,6 +104,7 @@ GATEWAY_PATH_PREFIXES: tuple[str, ...] = (
     "/lazymcp",
     "/mcp-rest/tools/",
     "/toolset/",
+    "/.well-known/oauth-protected-resource",
     # Realtime / streaming
     "/v1/realtime",
     "/realtime",

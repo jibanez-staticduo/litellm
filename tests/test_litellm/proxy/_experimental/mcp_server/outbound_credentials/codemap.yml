@@ -1,0 +1,26 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_envelope.py
+  - path: test_redis_distributed_lock.py
+  - path: test_resolver.py
+  - path: test_oauth_token_store.py
+  - path: test_redis_refresh_coordinator.py
+  - path: test_result.py
+  - path: test_adapter.py
+  - path: test_v2_token_store.py
+  - path: test_authz_code_refresher.py
+  - path: test_token_exchange_provider.py
+  - path: test_token_endpoint.py
+  - path: test_session_credentials.py
+  - path: test_per_user_oauth_store.py
+  - path: test_session_token.py
+  - path: test_presented_token_store.py
+  - path: test_token_exchanger.py
+  - path: test_types.py
+  - path: test_token_cache_codec.py
+  - path: test_sso_assertion_store.py
+  - path: test_client_credentials.py
+  - path: test_bridge_credentials.py
+  - path: test_httpx_auth.py
+  - path: test_dual_cache_token_backend.py

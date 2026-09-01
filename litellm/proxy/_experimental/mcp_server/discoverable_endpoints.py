@@ -2305,6 +2305,38 @@ def _build_aggregate_authorization_server_response(request: Request) -> dict:
     }
 
 
+def _lazymcp_protected_resource_metadata(request: Request, transport_path: str) -> dict[str, object]:
+    from litellm.proxy._experimental.mcp_server.lazymcp_public_resource import (
+        LazyMcpPublicResource,
+        build_lazymcp_metadata,
+        parse_lazymcp_resource,
+    )
+
+    base_url: Final = get_request_base_url(request)
+    resource: Final = parse_lazymcp_resource(request, f"{base_url}{transport_path}")
+    if not isinstance(resource, LazyMcpPublicResource):
+        raise HTTPException(status_code=404, detail="Not Found")
+    return build_lazymcp_metadata(resource, f"{base_url}/mcp")
+
+
+@router.get(f"/.well-known/oauth-protected-resource{well_known_root_suffix()}/lazymcp")
+@router.get("/lazymcp/.well-known/oauth-protected-resource")
+async def oauth_protected_resource_lazymcp(request: Request):
+    return _lazymcp_protected_resource_metadata(request, "/lazymcp")
+
+
+@router.get(f"/.well-known/oauth-protected-resource{well_known_root_suffix()}/toolset/{{name}}/lazymcp")
+@router.get("/toolset/{name}/lazymcp/.well-known/oauth-protected-resource")
+async def oauth_protected_resource_lazymcp_toolset(request: Request, name: str):
+    return _lazymcp_protected_resource_metadata(request, f"/toolset/{name}/lazymcp")
+
+
+@router.get(f"/.well-known/oauth-protected-resource{well_known_root_suffix()}/lazymcp/{{scope}}")
+@router.get("/lazymcp/{scope}/.well-known/oauth-protected-resource")
+async def oauth_protected_resource_lazymcp_scope(request: Request, scope: str):
+    return _lazymcp_protected_resource_metadata(request, f"/lazymcp/{scope}")
+
+
 # RFC 9728 path-appended discovery for the aggregate /mcp endpoint. A client
 # pointed at {base}/mcp inserts the well-known segment before the resource
 # path, so this exact route must exist for aggregate discovery to work at all.

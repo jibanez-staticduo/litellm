@@ -49,6 +49,10 @@ from litellm.proxy._experimental.mcp_server.mcp_context import (
     _mcp_gateway_initialize_instructions,
     _mcp_gateway_server_name,
 )
+
+_mcp_active_toolset_name: Final[contextvars.ContextVar[str | None]] = contextvars.ContextVar(
+    "_mcp_active_toolset_name", default=None
+)
 from litellm.proxy._experimental.mcp_server.mcp_debug import MCPDebug
 from litellm.proxy._experimental.mcp_server.mcp_server_manager import MCPServerManager
 from litellm.proxy._experimental.mcp_server.oauth_utils import (
@@ -4394,6 +4398,22 @@ if MCP_AVAILABLE:
         scope["headers"] = [(k, v) for k, v in scope.get("headers", []) if k.lower() != b"x-mcp-toolset-id"]
 
         active_toolset_id = _mcp_active_toolset_id.get()
+        active_toolset_name = _mcp_active_toolset_name.get()
+        if active_toolset_name and active_toolset_id:
+            raise RuntimeError("Explicit toolset request cannot bind both name and ID contexts")
+        if active_toolset_name:
+            from litellm.proxy import proxy_server
+
+            if proxy_server.prisma_client is None:
+                raise HTTPException(status_code=503, detail="Database not available")
+            toolset = await global_mcp_server_manager.get_toolset_by_name_cached(
+                proxy_server.prisma_client, active_toolset_name
+            )
+            if toolset is None:
+                raise HTTPException(status_code=404, detail=f"Toolset '{active_toolset_name}' not found")
+            active_toolset_id = toolset.toolset_id
+            if user_api_key_auth is None:
+                raise HTTPException(status_code=403, detail="Toolset access requires an authenticated principal")
         if active_toolset_id and user_api_key_auth is not None:
             user_api_key_auth = await _apply_toolset_scope(user_api_key_auth, active_toolset_id)
 

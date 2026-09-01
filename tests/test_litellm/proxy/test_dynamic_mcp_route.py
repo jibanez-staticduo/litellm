@@ -19,7 +19,6 @@ from unittest.mock import ANY, AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException
 
-
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
@@ -611,3 +610,54 @@ def test_aggregate_mcp_route_returns_404_when_mcp_unavailable():
 
     assert response.status_code == 404
     assert handler_calls == []
+
+
+@pytest.mark.parametrize(
+    "path, expected_internal",
+    (
+        ("/lazymcp", "/lazymcp"),
+        ("/lazymcp/team-a", "/lazymcp/team-a"),
+        ("/toolset/tools-a/lazymcp", "/lazymcp"),
+    ),
+)
+def test_lazymcp_route_owners_preserve_original_path(path, expected_internal):
+    captured_scope = {}
+
+    async def capturing_stream(handler, scope, receive):
+        captured_scope.update(scope)
+
+    fake_mgr = MagicMock()
+    fake_mgr.get_mcp_server_by_name.return_value = _fake_server("team-a")
+    fake_mgr.get_toolset_by_name_cached = AsyncMock(return_value=_fake_toolset("tools-a"))
+    with (
+        patch(_MCP_MANAGER, fake_mgr),
+        patch(_PRISMA, MagicMock()),
+        patch(_STREAM_ASGI, new=capturing_stream),
+    ):
+        response = _test_client().post(path)
+    assert response.status_code == 200
+    assert captured_scope["_original_path"] == path
+    assert captured_scope["path"] == expected_internal
+
+
+@pytest.mark.parametrize(
+    "path",
+    ("/lazymcp/", "/lazymcp/team-a/", "/toolset/tools-a/lazymcp/"),
+)
+def test_lazymcp_trailing_slash_route_owners_preserve_alias(path):
+    captured_scope = {}
+
+    async def capturing_stream(handler, scope, receive):
+        captured_scope.update(scope)
+
+    fake_mgr = MagicMock()
+    fake_mgr.get_mcp_server_by_name.return_value = _fake_server("team-a")
+    fake_mgr.get_toolset_by_name_cached = AsyncMock(return_value=_fake_toolset("tools-a"))
+    with (
+        patch(_MCP_MANAGER, fake_mgr),
+        patch(_PRISMA, MagicMock()),
+        patch(_STREAM_ASGI, new=capturing_stream),
+    ):
+        response = _test_client().post(path)
+    assert response.status_code == 200
+    assert captured_scope["_original_path"] == path

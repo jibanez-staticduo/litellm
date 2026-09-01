@@ -1,7 +1,6 @@
 """Tests for the aggregate gateway DCR flow (register, authorize, complete, token)."""
 
 import hashlib
-import html
 import json
 from base64 import urlsafe_b64encode
 from datetime import datetime, timedelta, timezone
@@ -13,12 +12,11 @@ from starlette.requests import Request
 
 from litellm.caching.caching import DualCache
 from litellm.proxy._experimental.mcp_server.gateway_dcr_flow import (
+    _AUTH_CODE_DEBUG_KEY,
     CONNECT_FLOW_COOKIE_PREFIX,
     GATEWAY_AUTH_CODE_PREFIX,
     GATEWAY_AUTH_CODE_TTL_SECONDS,
-    GATEWAY_DCR_CLIENT_ID_PREFIX,
     MANUAL_DELIVERY_AUTH_CODE_TTL_SECONDS,
-    _AUTH_CODE_DEBUG_KEY,
     _GatewayAuthCode,
     _open_sealed,
     _seal,
@@ -30,9 +28,9 @@ from litellm.proxy._experimental.mcp_server.gateway_dcr_flow import (
     register_aggregate_client,
 )
 from litellm.proxy._experimental.mcp_server.outbound_credentials.session_credentials import (
+    SessionBearerAdmitted,
     resolve_session_bearer,
     session_keys_from_master_key,
-    SessionBearerAdmitted,
 )
 
 MASTER_KEY = "sk-gateway-dcr-flow-tests"
@@ -44,6 +42,7 @@ CODE_CHALLENGE = urlsafe_b64encode(hashlib.sha256(CODE_VERIFIER.encode("ascii"))
 @pytest.fixture(autouse=True)
 def _salt_key(monkeypatch):
     monkeypatch.setenv("LITELLM_SALT_KEY", MASTER_KEY)
+    monkeypatch.setenv("PROXY_BASE_URL", "https://llm.example.com")
 
 
 def _request(path="/authorize", query="", cookies=None, method="GET"):
@@ -900,6 +899,115 @@ async def test_scoped_authorize_runs_connect_page_with_sealed_scope():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
+    "resource",
+    (
+        "https://llm.example.com/lazymcp",
+        "https://llm.example.com/lazymcp/group-a",
+        "https://llm.example.com/toolset/tools-a/lazymcp",
+    ),
+)
+async def test_lazymcp_resource_persists_through_code_access_and_refresh(resource):
+    client_id = (await _register([REDIRECT_URI]))["client_id"]
+    response = _scoped_authorize(client_id, f"{resource}/")
+    _, cookies = _flow_cookie_from(response)
+    assert _sealed_wire_json(next(iter(cookies.values())), "", "gateway_connect_flow")["resource"] == resource
+    code = await _finish_connect_page(response)
+    assert _sealed_wire_json(code, GATEWAY_AUTH_CODE_PREFIX, "gateway_authorization_code")["resource"] == resource
+
+    missing = await _redeem(code, client_id)
+    assert json.loads(missing.body)["error"] == "invalid_target"
+    mismatched = await _redeem(code, client_id, resource="https://llm.example.com/lazymcp/other")
+    assert json.loads(mismatched.body)["error"] == "invalid_target"
+
+    cache = DualCache()
+    token_response = await _redeem(code, client_id, cache=cache, resource=resource)
+    payload = json.loads(token_response.body)
+    assert _opened_principal(payload).resource == resource
+
+    refresh_mismatch = await _redeem(
+        None,
+        client_id,
+        cache=cache,
+        grant_type="refresh_token",
+        refresh_token=payload["refresh_token"],
+        resource="https://llm.example.com/lazymcp/other",
+    )
+    assert json.loads(refresh_mismatch.body)["error"] == "invalid_target"
+    rotated = await _redeem(
+        None,
+        client_id,
+        cache=cache,
+        grant_type="refresh_token",
+        refresh_token=payload["refresh_token"],
+        resource=resource,
+    )
+    assert _opened_principal(json.loads(rotated.body)).resource == resource
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "resource",
+    (
+        "https://llm.example.com/LazyMCP",
+        "https://llm.example.com/toolset/tools-a/LAZYMCP",
+        "https://llm.example.com/%6cazymcp",
+        "https://other.example/lazymcp",
+        "https://llm.example.com/lazymcp/%2f",
+        "https://llm.example.com/lazymcp/group-a?x=1",
+    ),
+)
+async def test_lazymcp_shaped_authorize_failures_create_no_flow(resource):
+    client_id = (await _register([REDIRECT_URI]))["client_id"]
+    response = _scoped_authorize(client_id, resource)
+    assert response.status_code == 400
+    assert json.loads(response.body)["error"] == "invalid_target"
+    assert "set-cookie" not in response.headers
+
+
+@pytest.mark.asyncio
+async def test_configured_root_case_varied_lazymcp_fails_without_flow(monkeypatch):
+    monkeypatch.setenv("PROXY_BASE_URL", "https://llm.example.com/mcp")
+    client_id = (await _register([REDIRECT_URI]))["client_id"]
+    response = _scoped_authorize(client_id, "https://llm.example.com/mcp/LazyMCP")
+    assert response.status_code == 400
+    assert json.loads(response.body)["error"] == "invalid_target"
+    assert "set-cookie" not in response.headers
+
+
+@pytest.mark.asyncio
+async def test_lazymcp_cross_kind_and_two_scope_replay_fail_closed():
+    client_id = (await _register([REDIRECT_URI]))["client_id"]
+    scope_a = "https://llm.example.com/lazymcp/scope-a"
+    response = _scoped_authorize(client_id, scope_a)
+    code = await _finish_connect_page(response)
+    for wrong_resource in (
+        "https://llm.example.com/lazymcp/scope-b",
+        "https://llm.example.com/lazymcp",
+        "https://llm.example.com/toolset/tools-a/lazymcp",
+        "https://llm.example.com/mcp",
+        f"{scope_a}/",
+    ):
+        rejected = await _redeem(code, client_id, resource=wrong_resource)
+        assert json.loads(rejected.body)["error"] == "invalid_target"
+
+    payload = json.loads((await _redeem(code, client_id, resource=scope_a)).body)
+    for wrong_resource in (
+        None,
+        "https://llm.example.com/lazymcp/scope-b",
+        "https://llm.example.com/toolset/tools-b/lazymcp",
+    ):
+        rejected = await _redeem(
+            None,
+            client_id,
+            grant_type="refresh_token",
+            refresh_token=payload["refresh_token"],
+            resource=wrong_resource,
+        )
+        assert json.loads(rejected.body)["error"] == "invalid_target"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
     "resource, resolves",
     [
         (None, False),
@@ -934,6 +1042,29 @@ async def test_unscoped_resources_leave_flow_and_token_byte_identical(resource, 
     jwt_payload_segment = payload["access_token"].removeprefix("llm_session_").split(".")[1]
     claims = json.loads(base64.urlsafe_b64decode(jwt_payload_segment + "=" * (-len(jwt_payload_segment) % 4)))
     assert "resource_server_id" not in claims
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "resource",
+    (
+        "https://lazymcp.example/mcp",
+        "https://llm.example.com/mcp/lazymcp-server",
+        "https://llm.example.com/mcp/team/lazymcp",
+    ),
+)
+async def test_legacy_mcp_resources_containing_lazymcp_remain_unscoped(resource):
+    from unittest.mock import patch
+
+    client_id = (await _register([REDIRECT_URI]))["client_id"]
+    with patch(_MANAGER_PATCH) as manager:
+        manager.get_mcp_server_by_name.return_value = None
+        response = _scoped_authorize(client_id, resource)
+    assert response.status_code == 303
+    _, cookies = _flow_cookie_from(response)
+    wire = _sealed_wire_json(next(iter(cookies.values())), "", "gateway_connect_flow")
+    assert "resource" not in wire
+    assert "resource_server_id" not in wire
 
 
 @pytest.mark.asyncio

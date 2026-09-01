@@ -1,0 +1,27 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: v2_token_store.py
+  - path: client_credentials.py
+  - path: __init__.py
+  - path: token_endpoint.py
+  - path: httpx_auth.py
+  - path: session_token.py
+  - path: oauth_token_store.py
+  - path: adapter.py
+  - path: token_exchange_provider.py
+  - path: token_exchanger.py
+  - path: envelope.py
+  - path: dual_cache_token_backend.py
+  - path: redis_refresh_coordinator.py
+  - path: per_user_oauth_store.py
+  - path: token_cache_codec.py
+  - path: sso_assertion_store.py
+  - path: result.py
+  - path: types.py
+  - path: authz_code_refresher.py
+  - path: resolver.py
+  - path: presented_token_store.py
+  - path: session_credentials.py
+  - path: bridge_credentials.py
+  - path: redis_distributed_lock.py

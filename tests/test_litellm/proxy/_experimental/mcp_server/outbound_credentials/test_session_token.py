@@ -34,6 +34,11 @@ NOW = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
 KEYS = SessionKeys(signing_key=SecretStr("k" * 32))
 OTHER_KEYS = SessionKeys(signing_key=SecretStr("x" * 32))
 PRINCIPAL = SessionPrincipal(user_id="user-123", client_id="llm_client_abc")
+RESOURCE_PRINCIPAL = SessionPrincipal(
+    user_id="user-123",
+    client_id="llm_client_abc",
+    resource="https://gateway.example/lazymcp/team-a",
+)
 
 
 def _mint_access() -> str:
@@ -86,6 +91,15 @@ def test_refresh_round_trip_recovers_principal_and_caps_ttl():
     opened = open_session_refresh_token(token, KEYS, NOW)
     assert isinstance(opened, OpenedSessionToken)
     assert opened.principal == PRINCIPAL
+
+
+@pytest.mark.parametrize("mint, open_token", [(mint_session_token, open_session_token), (mint_session_refresh_token, open_session_refresh_token)])
+def test_exact_resource_round_trip_matches_for_access_and_refresh(mint, open_token):
+    minted = mint(RESOURCE_PRINCIPAL, KEYS, NOW)
+    assert isinstance(minted, MintedSessionToken)
+    opened = open_token(minted.token.get_secret_value(), KEYS, NOW)
+    assert isinstance(opened, OpenedSessionToken)
+    assert opened.principal.resource == "https://gateway.example/lazymcp/team-a"
 
 
 def test_access_token_reprefixed_as_refresh_is_rejected_by_signed_kind():

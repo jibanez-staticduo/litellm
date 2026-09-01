@@ -11,6 +11,11 @@ from typing_extensions import assert_never
 
 import litellm
 from litellm._logging import verbose_logger
+from litellm.proxy._experimental.mcp_server.lazymcp_public_resource import (
+    LazyMcpPublicResource,
+    build_lazymcp_challenge,
+    resource_from_transport_scope,
+)
 from litellm.proxy._experimental.mcp_server.oauth_utils import (
     get_passthrough_resource_metadata_url,
     get_request_base_url,
@@ -253,6 +258,20 @@ def _gateway_dcr_challenge(
     )
 
 
+def _lazymcp_challenge(request: Request, invalid_token: bool) -> HTTPException | None:
+    resource: Final = resource_from_transport_scope(request.scope)
+    if not isinstance(resource, LazyMcpPublicResource):
+        return None
+    return HTTPException(
+        status_code=401,
+        detail={
+            "error": "authentication_required",
+            "message": "Authenticate with the gateway to use the LazyMCP endpoint.",
+        },
+        headers={"WWW-Authenticate": build_lazymcp_challenge(resource, invalid_token)},
+    )
+
+
 def _admission_failure_fallback(
     request: Request,
     request_route: str,
@@ -273,6 +292,9 @@ def _admission_failure_fallback(
     code when the caller DID present a bearer (an expired gateway session
     must re-authorize, not retry a dead token). Anything else re-raises the
     original admission error unchanged."""
+    lazymcp_challenge: Final = _lazymcp_challenge(request, invalid_token=bearer_presented)
+    if lazymcp_challenge is not None and _is_litellm_auth_admission_error(exc):
+        raise lazymcp_challenge from exc
     mcp_servers_from_path: Final = _parse_mcp_server_names_from_path(request_route, mcp_servers)
     if (
         mcp_servers_from_path is not None
@@ -415,7 +437,13 @@ class MCPRequestHandler:
             # An explicit x-litellm-api-key is always a LiteLLM credential, even
             # for a delegated server, so validate it: identity / spend / rate
             # limits resolve and any stored upstream token can be forwarded.
-            validated_user_api_key_auth = await user_api_key_auth(api_key=litellm_api_key, request=request)
+            try:
+                validated_user_api_key_auth = await user_api_key_auth(api_key=litellm_api_key, request=request)
+            except (HTTPException, ProxyException) as exc:
+                lazymcp_challenge: Final = _lazymcp_challenge(request, invalid_token=True)
+                if lazymcp_challenge is not None and _is_litellm_auth_admission_error(exc):
+                    raise lazymcp_challenge from exc
+                raise
         elif MCPRequestHandler._target_servers_delegate_auth_to_upstream(
             path=request_route,
             mcp_servers=mcp_servers,
@@ -834,6 +862,22 @@ class MCPRequestHandler:
         result: Final = resolve_session_bearer(authorization_value, keys, datetime.now(timezone.utc))
         match result:
             case SessionBearerAdmitted():
+                requested_resource: Final = resource_from_transport_scope(request.scope)
+                if result.principal.resource is not None:
+                    if (
+                        not isinstance(requested_resource, LazyMcpPublicResource)
+                        or requested_resource.canonical_uri != result.principal.resource
+                    ):
+                        audience_challenge: Final = _lazymcp_challenge(request, invalid_token=True)
+                        if audience_challenge is not None:
+                            raise audience_challenge
+                        raise _gateway_dcr_challenge(request, route, mcp_servers, invalid_token=True)
+                elif isinstance(requested_resource, LazyMcpPublicResource):
+                    raise HTTPException(
+                        status_code=401,
+                        detail="Invalid token audience",
+                        headers={"WWW-Authenticate": build_lazymcp_challenge(requested_resource, True)},
+                    )
                 try:
                     admitted: Final = await MCPRequestHandler._reload_admitted_user(result.principal.user_id)
                     admitted.mcp_session_resource_server_id = result.principal.resource_server_id
@@ -847,14 +891,23 @@ class MCPRequestHandler:
                     # arm, instead of a bare 401 with no WWW-Authenticate. A 503 (DB outage) is a
                     # transient availability failure, not an auth failure, so it passes through.
                     if exc.status_code == 401:
+                        policy_challenge: Final = _lazymcp_challenge(request, invalid_token=True)
+                        if policy_challenge is not None:
+                            raise policy_challenge from exc
                         raise _gateway_dcr_challenge(request, route, mcp_servers, invalid_token=True) from exc
                     raise
                 return admitted
             case SessionBearerInvalid():
+                invalid_challenge: Final = _lazymcp_challenge(request, invalid_token=True)
+                if invalid_challenge is not None:
+                    raise invalid_challenge
                 raise _gateway_dcr_challenge(request, route, mcp_servers, invalid_token=True)
             case NotSessionBearer():
                 # Unreachable: the arm is entered only for an is_session_bearer_shaped
                 # value. Kept for match exhaustiveness and fails closed regardless.
+                shaped_challenge: Final = _lazymcp_challenge(request, invalid_token=True)
+                if shaped_challenge is not None:
+                    raise shaped_challenge
                 raise _gateway_dcr_challenge(request, route, mcp_servers, invalid_token=True)
             case _:
                 assert_never(result)

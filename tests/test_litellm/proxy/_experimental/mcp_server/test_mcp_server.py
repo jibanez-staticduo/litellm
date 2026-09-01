@@ -17,6 +17,7 @@ from mcp.types import (
     TextContent,
     TextResourceContents,
 )
+from starlette.requests import Request
 
 from litellm.proxy._types import (
     LiteLLM_MCPServerTable,
@@ -1198,23 +1199,18 @@ async def test_lazymcp_tool_call_dispatches_and_handles_errors(monkeypatch):
 async def test_lazymcp_toolset_route_sets_scope_and_streams(monkeypatch):
     from litellm.proxy.proxy_server import app
 
-    async def fake_get_toolset(_prisma_client, toolset_name):
-        return types.SimpleNamespace(toolset_id=f"toolset-{toolset_name}")
-
     async def fake_stream_response(_handle_fn, scope, _receive):
         from starlette.responses import Response
 
-        from litellm.proxy._experimental.mcp_server.server import _mcp_active_toolset_id
+        from litellm.proxy._experimental.mcp_server.server import (
+            _mcp_active_toolset_name,
+        )
 
         assert scope["path"] == "/lazymcp"
-        assert _mcp_active_toolset_id.get() == "toolset-dev"
+        assert scope["_original_path"] == "/toolset/dev/lazymcp"
+        assert _mcp_active_toolset_name.get() == "dev"
         return Response("ok", media_type="text/event-stream")
 
-    monkeypatch.setattr("litellm.proxy.proxy_server.prisma_client", object())
-    monkeypatch.setattr(
-        "litellm.proxy._experimental.mcp_server.mcp_server_manager.global_mcp_server_manager.get_toolset_by_name_cached",
-        fake_get_toolset,
-    )
     monkeypatch.setattr("litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response)
 
     response = TestClient(app).get(
@@ -1222,6 +1218,58 @@ async def test_lazymcp_toolset_route_sets_scope_and_streams(monkeypatch):
     )
 
     assert response.status_code == 200
+    from litellm.proxy._experimental.mcp_server.server import _mcp_active_toolset_name
+
+    assert _mcp_active_toolset_name.get() is None
+
+
+def test_lazymcp_toolset_route_resets_name_after_stream_exception(monkeypatch):
+    from litellm.proxy._experimental.mcp_server.server import _mcp_active_toolset_name
+    from litellm.proxy.proxy_server import app
+
+    async def failing_stream(_handle_fn, _scope, _receive):
+        assert _mcp_active_toolset_name.get() == "dev"
+        raise RuntimeError("stream failed")
+
+    monkeypatch.setattr("litellm.proxy.proxy_server._stream_mcp_asgi_response", failing_stream)
+    response = TestClient(app).get("/toolset/dev/lazymcp", follow_redirects=False)
+    assert response.status_code == 500
+    assert _mcp_active_toolset_name.get() is None
+
+
+@pytest.mark.asyncio
+async def test_lazymcp_toolset_route_concurrent_names_are_isolated(monkeypatch):
+    from litellm.proxy._experimental.mcp_server.server import _mcp_active_toolset_name
+    from litellm.proxy.proxy_server import toolset_lazymcp_route
+
+    seen = {}
+
+    async def capturing_stream(_handle_fn, _scope, _receive):
+        name = _mcp_active_toolset_name.get()
+        await asyncio.sleep(0)
+        seen[name] = _mcp_active_toolset_name.get()
+        return name
+
+    def request(name):
+        return Request(
+            {
+                "type": "http",
+                "method": "GET",
+                "scheme": "https",
+                "path": f"/toolset/{name}/lazymcp",
+                "query_string": b"",
+                "headers": [(b"host", b"gateway.example")],
+            }
+        )
+
+    monkeypatch.setattr("litellm.proxy.proxy_server._stream_mcp_asgi_response", capturing_stream)
+    results = await asyncio.gather(
+        toolset_lazymcp_route("alpha", request("alpha")),
+        toolset_lazymcp_route("beta", request("beta")),
+    )
+    assert results == ["alpha", "beta"]
+    assert seen == {"alpha": "alpha", "beta": "beta"}
+    assert _mcp_active_toolset_name.get() is None
 
 
 def test_lazymcp_root_route_streams_without_redirect(monkeypatch):
@@ -1322,31 +1370,74 @@ def test_lazymcp_dynamic_route_falls_back_for_non_toolset(monkeypatch):
     assert response.status_code == 200
 
 
-def test_lazymcp_toolset_route_returns_404_for_missing_toolset(monkeypatch):
+def test_lazymcp_toolset_route_defers_missing_toolset_until_admission(monkeypatch):
     from litellm.proxy.proxy_server import app
 
-    async def fake_get_toolset(_prisma_client, _toolset_name):
-        return None
+    async def fake_stream_response(_handle_fn, scope, _receive):
+        from starlette.responses import Response
+
+        assert scope["_original_path"] == "/toolset/missing/lazymcp"
+        return Response("admission-first")
 
     monkeypatch.setattr("litellm.proxy.proxy_server.prisma_client", object())
-    monkeypatch.setattr(
-        "litellm.proxy._experimental.mcp_server.mcp_server_manager.global_mcp_server_manager.get_toolset_by_name_cached",
-        fake_get_toolset,
-    )
+    monkeypatch.setattr("litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response)
 
     response = TestClient(app).get("/toolset/missing/lazymcp", follow_redirects=False)
 
-    assert response.status_code == 404
+    assert response.status_code == 200
 
 
-def test_lazymcp_toolset_route_returns_503_without_database(monkeypatch):
+def test_lazymcp_toolset_route_defers_database_check_until_admission(monkeypatch):
     from litellm.proxy.proxy_server import app
 
     monkeypatch.setattr("litellm.proxy.proxy_server.prisma_client", None)
 
+    async def fake_stream_response(_handle_fn, scope, _receive):
+        from starlette.responses import Response
+
+        assert scope["_original_path"] == "/toolset/dev/lazymcp"
+        return Response("admission-first")
+
+    monkeypatch.setattr("litellm.proxy.proxy_server._stream_mcp_asgi_response", fake_stream_response)
+
     response = TestClient(app).get("/toolset/dev/lazymcp", follow_redirects=False)
 
-    assert response.status_code == 503
+    assert response.status_code == 200
+
+
+@pytest.mark.parametrize("authorization", (None, "Bearer invalid-token"))
+def test_lazymcp_toolset_route_challenges_before_database_lookup(monkeypatch, authorization):
+    from litellm.proxy.proxy_server import app
+
+    lookup = AsyncMock(side_effect=AssertionError("toolset lookup must follow admission"))
+    monkeypatch.setenv("PROXY_BASE_URL", "https://gateway.example")
+    monkeypatch.setattr("litellm.proxy.proxy_server.prisma_client", None)
+    monkeypatch.setattr(
+        "litellm.proxy._experimental.mcp_server.mcp_server_manager.global_mcp_server_manager.get_toolset_by_name_cached",
+        lookup,
+    )
+    headers = {"Accept": "application/json, text/event-stream"}
+    if authorization is not None:
+        headers["Authorization"] = authorization
+    with (
+        patch("litellm.proxy.proxy_server.master_key", "sk-master"),
+        patch(
+            "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.user_api_key_auth",
+            AsyncMock(side_effect=HTTPException(status_code=401, detail="invalid key")),
+        ),
+    ):
+        response = TestClient(app).post(
+            "/toolset/dev/lazymcp",
+            headers=headers,
+            json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+        )
+    assert response.status_code == 401
+    expected_error = 'error="invalid_token", ' if authorization else ""
+    assert response.headers["www-authenticate"] == (
+        f"Bearer {expected_error}"
+        'resource_metadata="https://gateway.example/.well-known/oauth-protected-resource/toolset/dev/lazymcp"'
+    )
+    lookup.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -1616,6 +1707,197 @@ async def test_lazymcp_toolset_scope_applies_once_for_non_admin_key():
         "toolset_id": "toolset-123",
         "mcp_toolsets_after_scope": [],
     }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "prisma, toolset, expected_status",
+    (
+        (None, None, 503),
+        (object(), None, 404),
+    ),
+)
+async def test_explicit_toolset_name_resolves_only_after_admission(monkeypatch, prisma, toolset, expected_status):
+    from litellm.proxy._experimental.mcp_server.server import (
+        _mcp_active_toolset_name,
+        _prepare_mcp_request_context,
+    )
+
+    auth = UserAPIKeyAuth(api_key="sk-test", user_id="user")
+    lookup = AsyncMock(return_value=toolset)
+    admission = AsyncMock(return_value=(auth, None, None, None, None, {}))
+    token = _mcp_active_toolset_name.set("dev")
+    try:
+        with (
+            patch("litellm.proxy.proxy_server.prisma_client", prisma),
+            patch(
+                "litellm.proxy._experimental.mcp_server.server.MCPRequestHandler.process_mcp_request",
+                admission,
+            ),
+            patch(
+                "litellm.proxy._experimental.mcp_server.server.global_mcp_server_manager.get_toolset_by_name_cached",
+                lookup,
+            ),
+            patch(
+                "litellm.proxy._experimental.mcp_server.server.IPAddressUtils.get_mcp_client_ip",
+                MagicMock(return_value="127.0.0.1"),
+            ),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await _prepare_mcp_request_context({"type": "http", "path": "/mcp", "headers": []}, "/mcp")
+    finally:
+        _mcp_active_toolset_name.reset(token)
+    assert exc_info.value.status_code == expected_status
+    admission.assert_awaited_once()
+    if prisma is None:
+        lookup.assert_not_awaited()
+    else:
+        lookup.assert_awaited_once_with(prisma, "dev")
+
+
+@pytest.mark.asyncio
+async def test_explicit_toolset_name_resolves_and_applies_scope_once():
+    from litellm.proxy._experimental.mcp_server.server import (
+        _mcp_active_toolset_name,
+        _prepare_mcp_request_context,
+    )
+
+    auth = UserAPIKeyAuth(api_key="sk-test", user_id="user")
+    scoped = auth.model_copy(update={"user_id": "scoped-user"})
+    prisma = object()
+    admission = AsyncMock(return_value=(auth, None, None, None, None, {}))
+    lookup = AsyncMock(return_value=types.SimpleNamespace(toolset_id="toolset-dev"))
+    apply_scope = AsyncMock(return_value=scoped)
+    token = _mcp_active_toolset_name.set("dev")
+    try:
+        with (
+            patch("litellm.proxy.proxy_server.prisma_client", prisma),
+            patch(
+                "litellm.proxy._experimental.mcp_server.server.MCPRequestHandler.process_mcp_request",
+                admission,
+            ),
+            patch(
+                "litellm.proxy._experimental.mcp_server.server.global_mcp_server_manager.get_toolset_by_name_cached",
+                lookup,
+            ),
+            patch("litellm.proxy._experimental.mcp_server.server._apply_toolset_scope", apply_scope),
+            patch(
+                "litellm.proxy._experimental.mcp_server.server.IPAddressUtils.get_mcp_client_ip",
+                MagicMock(return_value="127.0.0.1"),
+            ),
+        ):
+            result, *_ = await _prepare_mcp_request_context(
+                {"type": "http", "path": "/mcp", "headers": []}, "/mcp"
+            )
+    finally:
+        _mcp_active_toolset_name.reset(token)
+    assert result is scoped
+    admission.assert_awaited_once()
+    lookup.assert_awaited_once_with(prisma, "dev")
+    apply_scope.assert_awaited_once_with(auth, "toolset-dev")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "prisma, toolset, expected_status",
+    (
+        (None, None, 503),
+        (object(), None, 404),
+        (object(), types.SimpleNamespace(toolset_id="toolset-dev"), 403),
+    ),
+)
+async def test_anonymous_admission_reaches_explicit_toolset_outcome(prisma, toolset, expected_status):
+    from litellm.proxy._experimental.mcp_server.server import (
+        _mcp_active_toolset_name,
+        _prepare_mcp_request_context,
+    )
+
+    admission = AsyncMock(return_value=(None, None, None, None, None, {}))
+    lookup = AsyncMock(return_value=toolset)
+    token = _mcp_active_toolset_name.set("dev")
+    try:
+        with (
+            patch("litellm.proxy.proxy_server.prisma_client", prisma),
+            patch(
+                "litellm.proxy._experimental.mcp_server.server.MCPRequestHandler.process_mcp_request",
+                admission,
+            ),
+            patch(
+                "litellm.proxy._experimental.mcp_server.server.global_mcp_server_manager.get_toolset_by_name_cached",
+                lookup,
+            ),
+            patch(
+                "litellm.proxy._experimental.mcp_server.server.IPAddressUtils.get_mcp_client_ip",
+                MagicMock(return_value="127.0.0.1"),
+            ),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await _prepare_mcp_request_context({"type": "http", "path": "/mcp", "headers": []}, "/mcp")
+    finally:
+        _mcp_active_toolset_name.reset(token)
+    assert exc_info.value.status_code == expected_status
+    admission.assert_awaited_once()
+    if prisma is None:
+        lookup.assert_not_awaited()
+    else:
+        lookup.assert_awaited_once_with(prisma, "dev")
+
+
+@pytest.mark.asyncio
+async def test_explicit_toolset_known_but_unauthorized_returns_403():
+    from litellm.proxy._experimental.mcp_server.server import (
+        _mcp_active_toolset_name,
+        _prepare_mcp_request_context,
+    )
+
+    auth = UserAPIKeyAuth(
+        api_key="sk-test",
+        object_permission=LiteLLM_ObjectPermissionTable(object_permission_id="permission", mcp_toolsets=[]),
+    )
+    token = _mcp_active_toolset_name.set("dev")
+    try:
+        with (
+            patch("litellm.proxy.proxy_server.prisma_client", object()),
+            patch(
+                "litellm.proxy._experimental.mcp_server.server.MCPRequestHandler.process_mcp_request",
+                AsyncMock(return_value=(auth, None, None, None, None, {})),
+            ),
+            patch(
+                "litellm.proxy._experimental.mcp_server.server.global_mcp_server_manager.get_toolset_by_name_cached",
+                AsyncMock(return_value=types.SimpleNamespace(toolset_id="toolset-dev")),
+            ),
+            patch(
+                "litellm.proxy._experimental.mcp_server.server.IPAddressUtils.get_mcp_client_ip",
+                MagicMock(return_value="127.0.0.1"),
+            ),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await _prepare_mcp_request_context({"type": "http", "path": "/mcp", "headers": []}, "/mcp")
+    finally:
+        _mcp_active_toolset_name.reset(token)
+    assert exc_info.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_explicit_toolset_name_and_id_binding_fails_closed():
+    from litellm.proxy._experimental.mcp_server.server import (
+        _mcp_active_toolset_id,
+        _mcp_active_toolset_name,
+        _prepare_mcp_request_context,
+    )
+
+    name_token = _mcp_active_toolset_name.set("dev")
+    id_token = _mcp_active_toolset_id.set("toolset-dev")
+    try:
+        with patch(
+            "litellm.proxy._experimental.mcp_server.server.MCPRequestHandler.process_mcp_request",
+            AsyncMock(return_value=(UserAPIKeyAuth(api_key="sk-test"), None, None, None, None, {})),
+        ):
+            with pytest.raises(RuntimeError, match="both name and ID"):
+                await _prepare_mcp_request_context({"type": "http", "path": "/mcp", "headers": []}, "/mcp")
+    finally:
+        _mcp_active_toolset_id.reset(id_token)
+        _mcp_active_toolset_name.reset(name_token)
 
 
 @pytest.mark.asyncio

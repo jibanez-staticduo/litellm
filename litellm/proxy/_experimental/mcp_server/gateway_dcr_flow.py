@@ -54,6 +54,11 @@ from typing_extensions import assert_never
 
 from litellm._logging import verbose_logger
 from litellm.caching.caching import DualCache
+from litellm.proxy._experimental.mcp_server.lazymcp_public_resource import (
+    LazyMcpPublicResource,
+    is_lazymcp_resource_candidate,
+    parse_lazymcp_resource,
+)
 from litellm.proxy._experimental.mcp_server.oauth_utils import (
     TOKEN_NO_CACHE_HEADERS,
     canonical_resource_uri,
@@ -173,6 +178,7 @@ class _ConnectFlow(BaseModel):
     jti: str = Field(min_length=1)
     exp: int
     resource_server_id: str | None = None
+    resource: str | None = None
 
 
 class _GatewayAuthCode(BaseModel):
@@ -190,6 +196,7 @@ class _GatewayAuthCode(BaseModel):
     iat: int
     exp: int
     resource_server_id: str | None = None
+    resource: str | None = None
 
 
 def is_gateway_dcr_client_id(client_id: str | None) -> bool:
@@ -412,6 +419,11 @@ def aggregate_authorize(
         login_url: Final = f"{base_url}/sso/key/generate?{urlencode({'return_to': relative_request_url(request)})}"
         return RedirectResponse(login_url, status_code=303)
     now: Final = datetime.now(timezone.utc)
+    parsed_lazymcp_resource: Final = parse_lazymcp_resource(request, resource) if resource is not None else None
+    if resource is not None and is_lazymcp_resource_candidate(request, resource) and not isinstance(
+        parsed_lazymcp_resource, LazyMcpPublicResource
+    ):
+        return _oauth_error(400, "invalid_target", "resource is not a valid LazyMCP endpoint")
     scoped_server: Final = resolve_scoped_resource_server(request, resource)
     handle: Final = secrets.token_urlsafe(24)
     flow: Final = _ConnectFlow(
@@ -423,6 +435,11 @@ def aggregate_authorize(
         jti=secrets.token_urlsafe(24),
         exp=int(now.timestamp()) + CONNECT_FLOW_TTL_SECONDS,
         resource_server_id=scoped_server.server_id if scoped_server is not None else None,
+        resource=(
+            parsed_lazymcp_resource.canonical_uri
+            if isinstance(parsed_lazymcp_resource, LazyMcpPublicResource)
+            else None
+        ),
     )
     connect_url: Final = _append_query_params(
         f"{base_url}/ui/connect",
@@ -512,6 +529,7 @@ async def complete_connect_flow(
             iat=int(now.timestamp()),
             exp=int(now.timestamp()) + code_ttl,
             resource_server_id=flow.resource_server_id,
+            resource=flow.resource,
         ),
     )
     params: Final = {"code": code, **({"state": flow.state} if flow.state else {})}
@@ -658,6 +676,15 @@ def _resource_conflicts_with_scope(
     return resolved is None or resolved.server_id != sealed_resource_server_id
 
 
+def _lazymcp_resource_conflicts(request: Request, supplied: str | None, sealed: str | None) -> bool:
+    if sealed is None:
+        return False
+    if supplied is None:
+        return True
+    parsed: Final = parse_lazymcp_resource(request, supplied)
+    return not isinstance(parsed, LazyMcpPublicResource) or supplied != parsed.canonical_uri or parsed.canonical_uri != sealed
+
+
 async def aggregate_token(
     request: Request,
     grant_type: str,
@@ -731,6 +758,8 @@ async def _authorization_code_grant(
         return _oauth_error(400, "invalid_grant", "the authorization code was issued to a different client")
     if _resource_conflicts_with_scope(request, resource, parsed.resource_server_id):
         return _oauth_error(400, "invalid_target", "resource does not match the scope this code was issued for")
+    if _lazymcp_resource_conflicts(request, resource, parsed.resource):
+        return _oauth_error(400, "invalid_target", "resource does not match the LazyMCP resource this code was issued for")
     if not _pkce_verifier_matches(code_verifier, parsed.code_challenge):
         return _oauth_error(400, "invalid_grant", "PKCE verification failed")
     # Revalidate the user BEFORE claiming the code, so a transient DB outage (a retryable
@@ -747,7 +776,12 @@ async def _authorization_code_grant(
     ):
         return _oauth_error(400, "invalid_grant", "the authorization code was already used")
     return _session_token_pair(
-        SessionPrincipal(user_id=parsed.user_id, client_id=client_id, resource_server_id=parsed.resource_server_id),
+        SessionPrincipal(
+            user_id=parsed.user_id,
+            client_id=client_id,
+            resource_server_id=parsed.resource_server_id,
+            resource=parsed.resource,
+        ),
         keys,
         now,
     )
@@ -770,6 +804,8 @@ async def _refresh_token_grant(
         return _oauth_error(400, "invalid_grant", "the refresh token is invalid for this client")
     if _resource_conflicts_with_scope(request, resource, opened.principal.resource_server_id):
         return _oauth_error(400, "invalid_target", "resource does not match the scope this token was issued for")
+    if _lazymcp_resource_conflicts(request, resource, opened.principal.resource):
+        return _oauth_error(400, "invalid_target", "resource does not match the LazyMCP resource this token was issued for")
     failure: Final = await reload_user(opened.principal.user_id)
     if failure is not None:
         return _reload_failure_response(failure)

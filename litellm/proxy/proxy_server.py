@@ -443,10 +443,6 @@ from litellm.proxy.management_endpoints.budget_management_endpoints import (
 from litellm.proxy.management_endpoints.cache_settings_endpoints import (
     router as cache_settings_router,
 )
-from litellm.proxy.management_endpoints.coordination_redis_endpoints import (
-    get_persisted_coordination_redis_settings,
-    router as coordination_redis_settings_router,
-)
 from litellm.proxy.management_endpoints.callback_management_endpoints import (
     router as callback_management_endpoints_router,
 )
@@ -460,6 +456,12 @@ from litellm.proxy.management_endpoints.compliance_endpoints import (
 )
 from litellm.proxy.management_endpoints.config_override_endpoints import (
     router as config_override_router,
+)
+from litellm.proxy.management_endpoints.coordination_redis_endpoints import (
+    get_persisted_coordination_redis_settings,
+)
+from litellm.proxy.management_endpoints.coordination_redis_endpoints import (
+    router as coordination_redis_settings_router,
 )
 from litellm.proxy.management_endpoints.cost_tracking_settings import (
     router as cost_tracking_settings_router,
@@ -17433,32 +17435,20 @@ async def aggregate_mcp_route(request: Request):
 async def toolset_lazymcp_route(toolset_name: str, request: Request):
     """Namespace a toolset as its own LazyMCP endpoint."""
     try:
-        from litellm.proxy._experimental.mcp_server.mcp_server_manager import (
-            global_mcp_server_manager,
-        )
         from litellm.proxy._experimental.mcp_server.server import (
-            _mcp_active_toolset_id,
+            _mcp_active_toolset_name,
             handle_streamable_http_lazymcp,
         )
 
-        if prisma_client is None:
-            raise HTTPException(status_code=503, detail="Database not available")
-
-        toolset = await global_mcp_server_manager.get_toolset_by_name_cached(prisma_client, toolset_name)
-        if toolset is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Toolset '{toolset_name}' not found",
-            )
-
         scope = dict(request.scope)
+        scope["_original_path"] = scope.get("path", "")
         scope["path"] = "/lazymcp"
 
-        token = _mcp_active_toolset_id.set(toolset.toolset_id)
+        token = _mcp_active_toolset_name.set(toolset_name)
         try:
             return await _stream_mcp_asgi_response(handle_streamable_http_lazymcp, scope, request.receive)
         finally:
-            _mcp_active_toolset_id.reset(token)
+            _mcp_active_toolset_name.reset(token)
 
     except HTTPException as e:
         raise e
@@ -17621,6 +17611,7 @@ async def root_lazymcp_route(request: Request):
         )
 
         scope = dict(request.scope)
+        scope["_original_path"] = scope.get("path", "")
         scope["path"] = "/lazymcp"
         return await _stream_mcp_asgi_response(handle_streamable_http_lazymcp, scope, request.receive)
     except HTTPException as e:
@@ -17653,6 +17644,7 @@ async def dynamic_lazymcp_route(mcp_server_name: str, request: Request):
         client_ip = IPAddressUtils.get_mcp_client_ip(request)
         mcp_server = global_mcp_server_manager.get_mcp_server_by_name(mcp_server_name, client_ip=client_ip)
         scope = dict(request.scope)
+        scope["_original_path"] = scope.get("path", "")
         scope["path"] = f"/lazymcp/{mcp_server_name}"
 
         if mcp_server is None and prisma_client is not None:

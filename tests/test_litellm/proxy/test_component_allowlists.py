@@ -198,6 +198,18 @@ def test_gateway_keeps_direct_lazymcp_routes():
         assert _is_gateway_route(APIRoute(path, _lazymcp_test_endpoint))
 
 
+def test_gateway_keeps_lazymcp_protected_resource_discovery_routes():
+    for path in (
+        "/.well-known/oauth-protected-resource/lazymcp",
+        "/.well-known/oauth-protected-resource/lazymcp/{scope}",
+        "/.well-known/oauth-protected-resource/toolset/{name}/lazymcp",
+        "/lazymcp/.well-known/oauth-protected-resource",
+        "/lazymcp/{scope}/.well-known/oauth-protected-resource",
+        "/toolset/{name}/lazymcp/.well-known/oauth-protected-resource",
+    ):
+        assert _is_gateway_route(APIRoute(path, _lazymcp_test_endpoint))
+
+
 def test_gateway_keeps_new_data_plane_routes_off_backend():
     for path in (
         "/api/event_logging/batch",

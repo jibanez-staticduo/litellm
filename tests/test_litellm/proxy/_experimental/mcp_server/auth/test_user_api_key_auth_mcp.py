@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
+from starlette.requests import Request
 
 sys.path.insert(0, os.path.abspath("../../../.."))  # Adds the parent directory to the system path
 
@@ -5140,6 +5141,8 @@ class TestMCPDcrBridgeDelegateAdmission:
         minted_at=None,
         master_key=None,
     ):
+        from pydantic import SecretStr
+
         from litellm.proxy._experimental.mcp_server.outbound_credentials.bridge_credentials import (
             envelope_keys_from_master_key,
         )
@@ -5150,7 +5153,6 @@ class TestMCPDcrBridgeDelegateAdmission:
             mint_envelope,
             user_identity,
         )
-        from pydantic import SecretStr
 
         identity = (
             user_identity(server_id=server_id, user_id=user_id)
@@ -5241,6 +5243,7 @@ class TestMCPDcrBridgeDelegateAdmission:
             patch("litellm.proxy.auth.auth_checks.get_user_object", get_user_object),
             patch("litellm.proxy.proxy_server.prisma_client", MagicMock()),
             patch("litellm.proxy.proxy_server.user_api_key_cache", MagicMock()),
+            patch.object(MCPRequestHandler, "_enforce_admitted_live_policy", AsyncMock()),
         ):
             yield get_user_object
 
@@ -6443,8 +6446,8 @@ class TestGatewaySessionAdmission:
         )
         from litellm.proxy._experimental.mcp_server.outbound_credentials.session_token import (
             SessionPrincipal,
-            mint_session_token,
             mint_session_refresh_token,
+            mint_session_token,
         )
 
         keys = session_keys_from_master_key(self._MASTER_KEY)
@@ -6910,8 +6913,8 @@ class TestUserSubjectTeamUnion:
 
     def _manager_with(self, server_ids, allow_all=()):
         from litellm.proxy._experimental.mcp_server.mcp_server_manager import MCPServerManager
-        from litellm.types.mcp_server.mcp_server_manager import MCPServer
         from litellm.types.mcp import MCPTransport
+        from litellm.types.mcp_server.mcp_server_manager import MCPServer
 
         manager = MCPServerManager()
         for sid in server_ids:
@@ -8375,7 +8378,11 @@ class TestScopedSessionAdmission:
 
     _MASTER_KEY = "sk-scoped-session-admission-master-key"
 
-    def _bearer(self, resource_server_id):
+    @pytest.fixture(autouse=True)
+    def _trusted_public_base(self, monkeypatch):
+        monkeypatch.setenv("PROXY_BASE_URL", "https://testserver")
+
+    def _bearer(self, resource_server_id, resource=None):
         from datetime import datetime, timezone
 
         from litellm.proxy._experimental.mcp_server.outbound_credentials.session_credentials import (
@@ -8388,7 +8395,10 @@ class TestScopedSessionAdmission:
 
         keys = session_keys_from_master_key(self._MASTER_KEY)
         principal = SessionPrincipal(
-            user_id="scoped-user", client_id="llm_dcrc_abc", resource_server_id=resource_server_id
+            user_id="scoped-user",
+            client_id="llm_dcrc_abc",
+            resource_server_id=resource_server_id,
+            resource=resource,
         )
         return mint_session_token(principal, keys, datetime(2030, 1, 1, tzinfo=timezone.utc)).token.get_secret_value()
 
@@ -8418,10 +8428,173 @@ class TestScopedSessionAdmission:
             patch("litellm.proxy.auth.auth_checks.get_user_object", get_user_object),
             patch("litellm.proxy.proxy_server.prisma_client", MagicMock()),
             patch("litellm.proxy.proxy_server.user_api_key_cache", MagicMock()),
+            patch.object(MCPRequestHandler, "_enforce_admitted_live_policy", AsyncMock()),
         ):
             auth_result, *_rest = await MCPRequestHandler.process_mcp_request(scope_dict)
         assert auth_result.mcp_admitted_user_subject is True
         assert auth_result.mcp_session_resource_server_id == scope
+
+    async def test_lazymcp_exact_audience_rejected_before_user_reload(self):
+        token = self._bearer(None, "https://testserver/lazymcp/team-a")
+        scope_dict = {
+            "type": "http",
+            "method": "POST",
+            "scheme": "http",
+            "path": "/lazymcp/team-b",
+            "_original_path": "/lazymcp/team-b",
+            "query_string": b"",
+            "headers": [(b"host", b"testserver"), (b"authorization", f"Bearer {token}".encode())],
+        }
+        get_user_object = AsyncMock(side_effect=AssertionError("audience check must run first"))
+        with (
+            patch("litellm.proxy.proxy_server.master_key", self._MASTER_KEY),
+            patch("litellm.proxy.auth.auth_checks.get_user_object", get_user_object),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await MCPRequestHandler.process_mcp_request(scope_dict)
+        assert exc_info.value.status_code == 401
+        assert exc_info.value.headers == {
+            "WWW-Authenticate": (
+                'Bearer error="invalid_token", '
+                'resource_metadata="https://testserver/.well-known/oauth-protected-resource/lazymcp/team-b"'
+            )
+        }
+        get_user_object.assert_not_awaited()
+
+    @pytest.mark.parametrize(
+        "path",
+        ("/lazymcp", "/lazymcp/team-a", "/toolset/tools-a/lazymcp"),
+    )
+    async def test_lazymcp_matching_audience_is_admitted(self, path):
+        token = self._bearer(None, f"https://testserver{path}")
+        scope_dict = {
+            "type": "http",
+            "method": "POST",
+            "scheme": "http",
+            "path": "/lazymcp",
+            "_original_path": path,
+            "query_string": b"",
+            "headers": [(b"host", b"testserver"), (b"authorization", f"Bearer {token}".encode())],
+        }
+        get_user_object = AsyncMock(
+            return_value=MagicMock(
+                user_id="scoped-user",
+                organization_id=None,
+                metadata={"scim_active": True},
+                user_role=None,
+                object_permission=None,
+                object_permission_id=None,
+                tpm_limit=None,
+                rpm_limit=None,
+            )
+        )
+        with (
+            patch("litellm.proxy.proxy_server.master_key", self._MASTER_KEY),
+            patch("litellm.proxy.auth.auth_checks.get_user_object", get_user_object),
+            patch("litellm.proxy.proxy_server.prisma_client", MagicMock()),
+            patch("litellm.proxy.proxy_server.user_api_key_cache", MagicMock()),
+            patch(
+                "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp."
+                "MCPRequestHandler._enforce_admitted_live_policy",
+                AsyncMock(),
+            ),
+        ):
+            auth_result, *_rest = await MCPRequestHandler.process_mcp_request(scope_dict)
+        assert auth_result.mcp_admitted_user_subject is True
+
+    @pytest.mark.parametrize(
+        "path",
+        ("/lazymcp", "/lazymcp/team-a", "/toolset/tools-a/lazymcp"),
+    )
+    async def test_legacy_unscoped_session_rejected_on_every_lazymcp_resource(self, path):
+        token = self._bearer(None)
+        scope_dict = {
+            "type": "http",
+            "method": "POST",
+            "scheme": "http",
+            "path": "/lazymcp",
+            "_original_path": path,
+            "query_string": b"",
+            "headers": [(b"host", b"testserver"), (b"authorization", f"Bearer {token}".encode())],
+        }
+        with patch("litellm.proxy.proxy_server.master_key", self._MASTER_KEY):
+            with pytest.raises(HTTPException) as exc_info:
+                await MCPRequestHandler.process_mcp_request(scope_dict)
+        assert exc_info.value.headers == {
+            "WWW-Authenticate": (
+                'Bearer error="invalid_token", '
+                f'resource_metadata="https://testserver/.well-known/oauth-protected-resource{path}"'
+            )
+        }
+
+    @pytest.mark.parametrize(
+        "path",
+        ("/lazymcp", "/lazymcp/team-a", "/toolset/tools-a/lazymcp"),
+    )
+    @pytest.mark.parametrize("explicit_key", (False, True))
+    async def test_every_lazymcp_401_has_exact_challenge_independent_of_selection_headers(self, path, explicit_key):
+        headers = [
+            (b"host", b"testserver"),
+            (b"x-mcp-servers", b"unrelated-server"),
+            (b"x-mcp-access-groups", b"unrelated-group"),
+        ]
+        if explicit_key:
+            headers.append((b"x-litellm-api-key", b"invalid-key"))
+        scope_dict = {
+            "type": "http",
+            "method": "POST",
+            "scheme": "http",
+            "path": "/lazymcp",
+            "_original_path": path,
+            "query_string": b"",
+            "headers": headers,
+        }
+        auth_failure = HTTPException(status_code=401, detail="invalid key")
+        with patch(
+            "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.user_api_key_auth",
+            AsyncMock(side_effect=auth_failure),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await MCPRequestHandler.process_mcp_request(scope_dict)
+        invalid_token = 'error="invalid_token", ' if explicit_key else ""
+        assert exc_info.value.headers == {
+            "WWW-Authenticate": (
+                f"Bearer {invalid_token}"
+                f'resource_metadata="https://testserver/.well-known/oauth-protected-resource{path}"'
+            )
+        }
+
+    @pytest.mark.parametrize(
+        "path",
+        ("/lazymcp", "/lazymcp/team-a", "/toolset/tools-a/lazymcp"),
+    )
+    async def test_docker_peer_challenge_requires_explicit_public_base(self, monkeypatch, path):
+        from litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp import _lazymcp_challenge
+
+        request = Request(
+            {
+                "type": "http",
+                "method": "POST",
+                "scheme": "http",
+                "path": "/lazymcp",
+                "_original_path": path,
+                "query_string": b"",
+                "headers": [(b"host", b"gateway.internal")],
+                "client": ("172.18.0.2", 49152),
+            }
+        )
+        monkeypatch.delenv("PROXY_BASE_URL", raising=False)
+        assert _lazymcp_challenge(request, invalid_token=False) is None
+
+        monkeypatch.setenv("PROXY_BASE_URL", "https://candidate.invalid")
+        challenge = _lazymcp_challenge(request, invalid_token=True)
+        assert challenge is not None
+        assert challenge.headers == {
+            "WWW-Authenticate": (
+                'Bearer error="invalid_token", '
+                f'resource_metadata="https://candidate.invalid/.well-known/oauth-protected-resource{path}"'
+            )
+        }
 
     def test_scope_field_cannot_be_forged_through_construction(self):
         forged = UserAPIKeyAuth(user_id="u1", mcp_session_resource_server_id="any-server")
