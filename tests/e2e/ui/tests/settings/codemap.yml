@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: routerSettings.spec.ts
+  - path: adminSettings.spec.ts

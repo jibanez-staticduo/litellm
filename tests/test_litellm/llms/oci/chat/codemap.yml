@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_oci_chat_transformation.py
+  - path: test_oci_generic_chat.py
+  - path: test_oci_cohere_tool_calls.py
+  - path: test_oci_chat_transformation_for_14158.py
+  - path: test_oci_sse_splitter.py
+  - path: test_oci_streaming_tool_calls.py

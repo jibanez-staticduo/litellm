@@ -1,0 +1,34 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: client.go
+  - path: resource_vector_store.go
+  - path: resource_key_utils.go
+  - path: resource_organization_test.go
+  - path: resource_team_member_test.go
+  - path: resource_organization.go
+  - path: resource_key.go
+  - path: resource_credential.go
+  - path: resource_credential_crud.go
+  - path: resource_vector_store_crud_test.go
+  - path: resource_team_member_add.go
+  - path: resource_credential_crud_test.go
+  - path: resource_organization_member_add.go
+  - path: data_source_vector_store.go
+  - path: resource_organization_member.go
+  - path: resource_organization_member_test.go
+  - path: resource_team_member.go
+  - path: data_source_credential.go
+  - path: types.go
+  - path: client_test.go
+  - path: resource_organization_member_add_test.go
+  - path: resource_mcp_server_crud.go
+  - path: resource_vector_store_crud.go
+  - path: resource_model.go
+  - path: resource_team.go
+  - path: provider.go
+  - path: resource_mcp_server.go
+  - path: provider_test.go
+  - path: resource_mcp_server_crud_test.go
+  - path: utils.go
+  - path: resource_model_crud.go

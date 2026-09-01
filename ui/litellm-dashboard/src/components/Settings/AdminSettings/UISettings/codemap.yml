@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: PageVisibilitySettings.tsx
+  - path: UISettings.test.tsx
+  - path: PageVisibilitySettings.test.tsx
+  - path: UISettings.tsx

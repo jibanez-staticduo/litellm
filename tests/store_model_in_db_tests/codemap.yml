@@ -1,0 +1,10 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: cost_center_service.py
+  - path: test_adding_passthrough_model.py
+  - path: test_callbacks_in_db.py
+  - path: test_mcp_servers.py
+  - path: test_team_metadata_validation_e2e.py
+  - path: test_openai_error_handling.py
+  - path: test_team_models.py

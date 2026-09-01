@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: test_chatgpt_chat_transformation.py
+  - path: test_streaming_utils.py

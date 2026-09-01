@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: 2026-08-17-private-fixes-and-branch-cleanup-design.md
+  - path: 2026-08-18-nas-litellm-staging-clone-design.md

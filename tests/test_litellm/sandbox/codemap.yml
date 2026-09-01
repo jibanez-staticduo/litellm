@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_sandbox_tools.py
+  - path: test_e2b_sandbox.py
+  - path: test_opensandbox_sandbox.py

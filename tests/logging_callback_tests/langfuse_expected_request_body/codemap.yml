@@ -1,0 +1,22 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: completion_with_router.json
+  - path: completion_with_tags_stream.json
+  - path: completion.json
+  - path: metadata_with_lock.json
+  - path: complex_metadata.json
+  - path: completion_with_tags.json
+  - path: completion_with_complex_metadata.json
+  - path: simple_metadata3.json
+  - path: simple_metadata.json
+  - path: completion_with_langfuse_metadata.json
+  - path: simple_metadata2.json
+  - path: metadata_with_function.json
+  - path: completion_with_vertex_call.json
+  - path: embedding_with_vllm.json
+  - path: completion_with_no_choices.json
+  - path: empty_metadata.json
+  - path: nested_metadata.json
+  - path: completion_with_bedrock_call.json
+  - path: complex_metadata_2.json

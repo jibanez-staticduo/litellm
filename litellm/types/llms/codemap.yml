@@ -1,0 +1,34 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: triton.py
+  - path: base.py
+  - path: ollama.py
+  - path: langgraph.py
+  - path: gemini.py
+  - path: anthropic_skills.py
+  - path: xai.py
+  - path: anthropic.py
+  - path: azure_ai.py
+  - path: anthropic_tool_search.py
+  - path: azure.py
+  - path: aiml.py
+  - path: mistral.py
+  - path: bedrock_agentcore.py
+  - path: oci.py
+  - path: stability.py
+  - path: databricks.py
+  - path: bedrock_invoke_agents.py
+  - path: vertex_ai.py
+  - path: vertex_ai_speech_to_text.py
+  - path: bedrock.py
+  - path: watsonx.py
+  - path: openrouter.py
+  - path: recraft.py
+  - path: vertex_ai_text_to_speech.py
+  - path: rerank.py
+  - path: cohere.py
+  - path: custom_http.py
+  - path: openai_evals.py
+  - path: openai.py
+  - path: custom_llm.py

@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: CompareUI.tsx
+  - path: CompareUI.test.tsx
+  - path: endpoint_config.ts
+  - path: endpoint_config.test.ts

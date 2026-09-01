@@ -1,0 +1,14 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: vantage_endpoints.py
+  - path: ptu_feature_flag.py
+  - path: spend_log_error_logger.py
+  - path: budget_reservation.py
+  - path: savings.py
+  - path: ptu_flat_cost_rollup.py
+  - path: compression_savings.py
+  - path: cold_storage_handler.py
+  - path: spend_tracking_utils.py
+  - path: spend_management_endpoints.py
+  - path: cloudzero_endpoints.py

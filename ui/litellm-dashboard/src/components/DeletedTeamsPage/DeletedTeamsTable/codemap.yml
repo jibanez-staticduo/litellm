@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: DeletedTeamsTable.tsx
+  - path: DeletedTeamsTableColumns.tsx
+  - path: DeletedTeamsTable.test.tsx

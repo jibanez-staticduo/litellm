@@ -1,0 +1,21 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.ts
+internals:
+  - path: DataTableFilterDrawer.tsx
+  - path: DataTableSelectionColumn.tsx
+  - path: DataTableRowSelection.test.tsx
+  - path: DataTableSortHeader.tsx
+  - path: DataTableToolbar.test.tsx
+  - path: DataTableToolbar.tsx
+  - path: DataTableViewOptions.tsx
+  - path: DataTableSortHeader.test.tsx
+  - path: DataTable.test.tsx
+  - path: types.ts
+  - path: DataTableFilterDrawer.test.tsx
+  - path: DataTablePagination.test.tsx
+  - path: DataTablePagination.tsx
+  - path: DataTable.tsx
+  - path: columnMeta.ts
+  - path: DataTable.test-d.tsx

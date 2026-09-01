@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: convert_dict_to_response.py
+  - path: get_formatted_prompt.py
+  - path: response_metadata.py
+  - path: get_api_base.py
+  - path: get_headers.py

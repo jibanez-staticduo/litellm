@@ -1,0 +1,12 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_agent_headers.py
+  - path: __init__.py
+  - path: test_agent_registry.py
+  - path: test_databricks_oauth.py
+  - path: test_agent_header_isolation.py
+  - path: test_a2a_version_e2e.py
+  - path: test_endpoints.py
+  - path: test_model_list_helpers.py
+  - path: test_a2a_endpoints.py

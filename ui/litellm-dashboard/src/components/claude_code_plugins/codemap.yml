@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: MakeSkillPublicForm.tsx
+  - path: helpers.ts
+  - path: types.ts
+  - path: skill_detail.tsx
+  - path: helpers.test.ts

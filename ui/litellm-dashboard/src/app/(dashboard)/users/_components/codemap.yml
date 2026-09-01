@@ -1,0 +1,12 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.tsx
+internals:
+  - path: BulkEditUsers.tsx
+  - path: user_edit_view.tsx
+  - path: view_users.tsx
+  - path: user_edit_view.test.tsx
+  - path: edit_user.tsx
+  - path: BulkEditUsers.test.tsx
+  - path: view_users.test.tsx

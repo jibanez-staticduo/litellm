@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: text_to_speech_handler.py
+  - path: transformation.py

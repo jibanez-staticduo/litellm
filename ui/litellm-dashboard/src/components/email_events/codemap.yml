@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.ts
+internals:
+  - path: email_event_settings.test.tsx
+  - path: types.ts
+  - path: email_event_settings.tsx

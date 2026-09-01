@@ -1,0 +1,8 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+entrypoints:
+  - path: main.py
+internals:
+  - path: __init__.py
+  - path: vector_store_registry.py
+  - path: utils.py

@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: EditSSOSettingsModal.tsx
+  - path: BaseSSOSettingsForm.tsx
+  - path: DeleteSSOSettingsModal.tsx
+  - path: AddSSOSettingsModal.tsx
+  - path: EditSSOSettingsModal.test.tsx
+  - path: DeleteSSOSettingsModal.test.tsx
+  - path: BaseSSOSettingsForm.test.tsx
+  - path: AddSSOSettingsModal.test.tsx

@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_bitbucket_prompt_manager.py
+  - path: test_bitbucket_integration.py

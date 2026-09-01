@@ -1,0 +1,13 @@
+scope: module
+parent: ../../../../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.tsx
+internals:
+  - path: RedisTypeSelector.test.tsx
+  - path: cacheSettingsUtils.ts
+  - path: CacheFormField.tsx
+  - path: cacheSettingsUtils.test.ts
+  - path: index.test.tsx
+  - path: RedisTypeSelector.tsx
+  - path: cacheSettingsFields.ts
+  - path: CacheFieldSection.tsx

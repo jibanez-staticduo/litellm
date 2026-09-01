@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: useChatHistory.test.ts
+  - path: useCodeInterpreter.ts
+  - path: useChatHistory.ts

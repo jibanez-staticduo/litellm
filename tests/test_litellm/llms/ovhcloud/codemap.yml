@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_ovhcloud_audio_transcription_transformation.py
+  - path: test_ovhcloud_chat_transformation.py
+  - path: test_ovhcloud_embeddings_transformation.py

@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: viewInternalUsers.spec.ts
+  - path: searchUsers.spec.ts

@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: ToolPermissionRulesEditor.tsx
+  - path: ToolPermissionRulesEditor.test.tsx

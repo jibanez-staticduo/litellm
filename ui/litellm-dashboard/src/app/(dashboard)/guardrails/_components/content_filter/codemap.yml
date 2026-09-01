@@ -1,0 +1,23 @@
+scope: module
+parent: ../../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: ContentFilterManager.test.tsx
+  - path: ContentFilterConfiguration.test.tsx
+  - path: KeywordModal.test.tsx
+  - path: PatternModal.tsx
+  - path: ContentFilterTables.test.tsx
+  - path: ContentCategoryConfiguration.tsx
+  - path: KeywordModal.tsx
+  - path: CustomPatternModal.test.tsx
+  - path: action_options.ts
+  - path: CompetitorIntentConfiguration.tsx
+  - path: KeywordTable.tsx
+  - path: ContentFilterManager.tsx
+  - path: PatternModal.test.tsx
+  - path: CustomPatternModal.tsx
+  - path: ContentFilterDisplay.test.tsx
+  - path: CategoryTable.tsx
+  - path: ContentFilterDisplay.tsx
+  - path: PatternTable.tsx
+  - path: ContentFilterConfiguration.tsx
+  - path: dialog_layering.ts

@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: bounded_prometheus_series_tracker.py
+  - path: prometheus_api.py

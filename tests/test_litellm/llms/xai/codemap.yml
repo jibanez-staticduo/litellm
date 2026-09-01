@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_xai_cost_calculator.py
+  - path: test_xai_chat_transformation.py
+  - path: test_xai_key_fallback.py
+  - path: test_xai_oauth.py

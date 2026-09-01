@@ -1,0 +1,12 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_send_message_response.py
+  - path: __init__.py
+  - path: test_a2a_streaming_iterator.py
+  - path: test_completion_bridge_streaming.py
+  - path: test_main.py
+  - path: test_cost_calculator.py
+  - path: test_a2a_exception_mapping_utils.py
+  - path: test_card_resolver.py
+  - path: test_utils.py

@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: gpt_transformation.py
+  - path: cost_calculator.py
+  - path: dall_e_3_transformation.py
+  - path: dall_e_2_transformation.py

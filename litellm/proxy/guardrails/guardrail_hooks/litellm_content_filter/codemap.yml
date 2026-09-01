@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: patterns.py
+  - path: content_filter.py
+  - path: patterns.json

@@ -1,0 +1,14 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: savings_baseline.py
+  - path: lowest_cost.py
+  - path: base_routing_strategy.py
+  - path: lowest_tpm_rpm.py
+  - path: least_busy.py
+  - path: tag_based_routing.py
+  - path: lowest_latency.py
+  - path: lar1_routing.py
+  - path: budget_limiter.py
+  - path: lowest_tpm_rpm_v2.py
+  - path: simple_shuffle.py

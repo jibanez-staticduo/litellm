@@ -1,0 +1,9 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+entrypoints:
+  - path: main.py
+internals:
+  - path: common.py
+  - path: README.md
+  - path: agent_with_mcp.py
+  - path: config.example.yaml

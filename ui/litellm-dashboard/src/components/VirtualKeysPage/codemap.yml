@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: VirtualKeysTable.tsx
+  - path: VirtualKeysTable.test.tsx
+  - path: keyTableColumns.tsx

@@ -1,0 +1,30 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: mcp.py
+  - path: router.py
+  - path: memory_management.py
+  - path: vector_store_files.py
+  - path: tool_management.py
+  - path: files.py
+  - path: tag_management.py
+  - path: search.py
+  - path: vector_stores.py
+  - path: adapter.py
+  - path: rag.py
+  - path: compression.py
+  - path: access_group.py
+  - path: scheduler.py
+  - path: rerank.py
+  - path: embedding.py
+  - path: guardrails.py
+  - path: caching.py
+  - path: object_permission.py
+  - path: realtime.py
+  - path: utils.py
+  - path: services.py
+  - path: policy_engine.py
+  - path: fine_tuning.py
+  - path: completion.py
+  - path: lar1.py
+  - path: agents.py

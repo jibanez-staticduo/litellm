@@ -1,0 +1,6 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+entrypoints:
+  - path: main.py
+internals:
+  - path: README.md

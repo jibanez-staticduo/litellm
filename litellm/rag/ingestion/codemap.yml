@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: s3_vectors_ingestion.py
+  - path: openai_ingestion.py
+  - path: __init__.py
+  - path: gemini_ingestion.py
+  - path: bedrock_ingestion.py
+  - path: base_ingestion.py
+  - path: vertex_ai_ingestion.py

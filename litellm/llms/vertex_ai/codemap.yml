@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: vertex_llm_base.py
+  - path: common_utils.py
+  - path: cost_calculator.py
+  - path: vertex_ai_non_gemini.py
+  - path: aws_credentials_supplier.py
+  - path: vertex_ai_aws_wif.py

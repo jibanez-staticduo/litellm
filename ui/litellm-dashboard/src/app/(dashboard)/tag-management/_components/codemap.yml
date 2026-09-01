@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.tsx
+internals:
+  - path: TagTable.test.tsx
+  - path: TagTable.tsx
+  - path: tagTableColumns.tsx
+  - path: index.test.tsx
+  - path: tag_info.tsx

@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_proxy_setting_endpoints.py
+  - path: test_user_banner_endpoints.py

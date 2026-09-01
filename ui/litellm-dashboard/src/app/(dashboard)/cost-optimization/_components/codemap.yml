@@ -1,0 +1,30 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: CacheLeakageCard.test.tsx
+  - path: CostOptimizationView.tsx
+  - path: useShadowEval.test.ts
+  - path: costOptimizationUtils.test.ts
+  - path: AutoRouterBenchmarksTab.test.tsx
+  - path: ShadowEvalSection.tsx
+  - path: TierTurnsChart.tsx
+  - path: PromptCachingTab.test.tsx
+  - path: autoRouterBenchmarks.test.ts
+  - path: CacheLeakageCard.tsx
+  - path: helpers.ts
+  - path: useShadowEval.ts
+  - path: useDailyActivityRange.test.tsx
+  - path: CostOptimizationView.activity.test.tsx
+  - path: AutoRouterBenchmarksTab.tsx
+  - path: costOptimizationUtils.ts
+  - path: CostOptimizationView.test.tsx
+  - path: useAutoRouterBenchmarks.ts
+  - path: UsageTab.test.tsx
+  - path: UsageTab.tsx
+  - path: PromptCompressionTab.tsx
+  - path: TierTurnsChart.test.tsx
+  - path: PromptCachingTab.tsx
+  - path: ShadowEvalSection.test.tsx
+  - path: useDailyActivityRange.ts
+  - path: helpers.test.ts
+  - path: autoRouterBenchmarks.ts

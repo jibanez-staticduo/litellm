@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_spend_logs_partition_manager.py
+  - path: test_redis_update_buffer.py
+  - path: test_pod_lock_manager.py
+  - path: test_spend_update_queue.py
+  - path: test_daily_spend_update_queue.py
+  - path: test_tool_discovery_queue.py
+  - path: test_base_update_queue.py

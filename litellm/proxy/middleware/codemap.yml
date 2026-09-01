@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: request_size_limit_middleware.py
+  - path: billable_request_metrics_middleware.py
+  - path: in_flight_requests_middleware.py
+  - path: security_headers_middleware.py
+  - path: prometheus_auth_middleware.py

@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: cache_health.tsx
+  - path: cache_dashboard.tsx
+  - path: cache_dashboard.test.tsx
+  - path: cache_health.test.tsx
+  - path: response_time_indicator.tsx

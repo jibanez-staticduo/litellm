@@ -1,0 +1,23 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: valkey_semantic_cache.py
+  - path: redis_semantic_cache.py
+  - path: disk_cache.py
+  - path: __init__.py
+  - path: azure_blob_cache.py
+  - path: caching_handler.py
+  - path: redis_cache.py
+  - path: llm_caching_handler.py
+  - path: redis_cluster_cache.py
+  - path: in_memory_cache.py
+  - path: evicted_client_closer.py
+  - path: _embedding_router.py
+  - path: _internal_lru_cache.py
+  - path: qdrant_semantic_cache.py
+  - path: base_cache.py
+  - path: s3_cache.py
+  - path: gcs_cache.py
+  - path: caching.py
+  - path: dual_cache.py
+  - path: Readme.md

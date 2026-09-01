@@ -1,0 +1,12 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: ModelsTableColumns.tsx
+  - path: AllModelsTable.test.tsx
+  - path: ModelRetrySettingsTab.test.tsx
+  - path: AllModelsTab.tsx
+  - path: AllModelsTable.tsx
+  - path: ModelRetrySettingsTab.tsx
+  - path: PriceDataManagementTab.test.tsx
+  - path: AllModelsTab.test.tsx
+  - path: PriceDataManagementTab.tsx

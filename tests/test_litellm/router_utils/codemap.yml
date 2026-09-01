@@ -1,0 +1,13 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_cooldown_handlers.py
+  - path: test_cooldown_cache.py
+  - path: test_health_check_allowed_fails_integration.py
+  - path: test_auto_router_model_naming.py
+  - path: test_router_health_check_routing.py
+  - path: test_router_interactions_endpoints.py
+  - path: test_fallback_event_handlers.py
+  - path: test_add_retry_fallback_headers.py
+  - path: test_router_utils_common_utils.py
+  - path: test_health_state_cache.py

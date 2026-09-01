@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: readme.md
+  - path: __init__.py
+  - path: proxy_server.py
+  - path: enterprise_routes.py
+  - path: audit_logging_endpoints.py
+  - path: utils.py

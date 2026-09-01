@@ -1,0 +1,15 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: ProjectKeysTable.tsx
+  - path: ProjectKeysTable.test.tsx
+  - path: ProjectsTable.test.tsx
+  - path: ProjectKeysTableColumns.tsx
+  - path: ProjectDetailsPage.test.tsx
+  - path: ProjectDetailsPage.tsx
+  - path: ProjectKeysSection.tsx
+  - path: ProjectsTableColumns.tsx
+  - path: ProjectsPage.tsx
+  - path: ProjectsTable.tsx
+  - path: ProjectsPage.test.tsx
+  - path: ProjectKeysSection.test.tsx

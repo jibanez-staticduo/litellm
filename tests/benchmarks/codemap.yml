@@ -1,0 +1,9 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_benchmarks.py
+  - path: __init__.py
+  - path: test_a2a_benchmarks.py
+  - path: test_inference_benchmarks.py
+  - path: conftest.py
+  - path: test_mcp_benchmarks.py

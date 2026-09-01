@@ -1,0 +1,27 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_send_invite_email.py
+  - path: test_max_iterations_limiter.py
+  - path: test_prompt_injection_detection.py
+  - path: test_tpm_concurrent.py
+  - path: test_parallel_request_limiter.py
+  - path: test_user_management_event_hooks.py
+  - path: test_sensitive_data_routing.py
+  - path: test_async_post_call_streaming_iterator_hook.py
+  - path: test_post_call_success_hook_integration.py
+  - path: test_proxy_track_cost_callback.py
+  - path: test_dynamic_rate_limiter_v3.py
+  - path: test_batch_file_validation.py
+  - path: test_key_management_event_hooks.py
+  - path: test_post_call_streaming_hook_integration.py
+  - path: test_rate_limiter_toctou.py
+  - path: test_dynamic_rate_limiter.py
+  - path: test_max_budget_per_session_limiter.py
+  - path: test_image_generation_guardrails.py
+  - path: test_max_budget_limiter.py
+  - path: test_post_call_response_headers_hook.py
+  - path: test_proxy_hooks_init.py
+  - path: test_parallel_request_limiter_v3.py
+  - path: test_proxy_rate_limit_provider_field.py
+  - path: test_post_call_failure_hook_integration.py

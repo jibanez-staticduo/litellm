@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_azure_anthropic_count_tokens_transformation.py
+  - path: test_azure_anthropic_provider_routing.py
+  - path: test_azure_anthropic_messages_transformation.py
+  - path: test_azure_anthropic_handler.py
+  - path: test_azure_anthropic_transformation.py
+  - path: test_main_azure_anthropic_timeout.py

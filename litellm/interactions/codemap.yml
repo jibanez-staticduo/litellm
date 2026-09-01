@@ -1,0 +1,9 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+entrypoints:
+  - path: main.py
+internals:
+  - path: __init__.py
+  - path: streaming_iterator.py
+  - path: utils.py
+  - path: http_handler.py

@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: base.py
+  - path: __init__.py
+  - path: prompt_shield.py
+  - path: text_moderation.py

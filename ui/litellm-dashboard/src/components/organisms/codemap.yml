@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: RegenerateKeyModal.tsx
+  - path: RegenerateKeyModal.test.tsx
+  - path: utils.test.ts
+  - path: create_key_button.tsx
+  - path: utils.ts
+  - path: create_key_button.test.tsx

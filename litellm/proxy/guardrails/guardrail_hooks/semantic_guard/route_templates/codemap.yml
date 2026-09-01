@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: sql_injection.yaml
+  - path: prompt_injection.yaml

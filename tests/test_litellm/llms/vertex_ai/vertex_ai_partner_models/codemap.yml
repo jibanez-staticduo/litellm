@@ -1,0 +1,4 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_partner_models_credential_reuse.py

@@ -1,0 +1,10 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_ocr_azure_document_intelligence.py
+  - path: vertex_key.json
+  - path: base_ocr_unit_tests.py
+  - path: test_ocr_azure_ai.py
+  - path: test_ocr_vertex_ai.py
+  - path: conftest.py
+  - path: test_ocr_mistral.py

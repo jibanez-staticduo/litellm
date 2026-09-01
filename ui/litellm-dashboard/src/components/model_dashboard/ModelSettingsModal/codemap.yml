@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: ModelSettingsModal.tsx
+  - path: ModelSettingsModal.test.tsx

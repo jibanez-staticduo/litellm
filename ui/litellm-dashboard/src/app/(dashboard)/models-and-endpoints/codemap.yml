@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: vertexCredentialsUpload.ts
+  - path: vertexCredentialsUpload.test.ts
+  - path: detailNavigation.ts
+  - path: detailNavigation.test.ts
+  - path: page.tsx
+  - path: useModelDashboardData.ts
+  - path: page.test.tsx

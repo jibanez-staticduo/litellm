@@ -1,0 +1,5 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_anthropic_dedup_factory.py
+  - path: test_bedrock_converse_dedup_factory.py

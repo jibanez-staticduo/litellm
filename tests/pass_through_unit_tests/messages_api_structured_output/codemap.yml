@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_azure_anthropic_structured_output.py
+  - path: __init__.py
+  - path: base_anthropic_messages_structured_output_test.py
+  - path: test_bedrock_invoke_structured_output.py
+  - path: test_bedrock_converse_structured_output.py
+  - path: test_anthropic_api_structured_output.py

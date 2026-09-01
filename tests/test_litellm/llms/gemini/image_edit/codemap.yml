@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: test_gemini_image_edit_transformation.py

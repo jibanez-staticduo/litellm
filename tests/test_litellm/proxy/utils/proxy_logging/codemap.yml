@@ -1,0 +1,19 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_streaming_hooks.py
+  - path: test_guardrail_pipeline.py
+  - path: __init__.py
+  - path: test_callback_capabilities_class.py
+  - path: test_lifecycle.py
+  - path: test_alerting.py
+  - path: test_post_call_success_hook.py
+  - path: test_post_call_failure_hook.py
+  - path: test_module_helpers.py
+  - path: test_mcp_bridging.py
+  - path: test_pre_call_hook.py
+  - path: test_during_call_hook.py
+  - path: conftest.py
+  - path: _harness_smoke_test.py
+  - path: test_internal_usage_cache.py
+  - path: test_callback_capabilities_dataclass.py

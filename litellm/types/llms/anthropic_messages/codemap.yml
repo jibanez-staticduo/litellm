@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: anthropic_request.py
+  - path: anthropic_response.py

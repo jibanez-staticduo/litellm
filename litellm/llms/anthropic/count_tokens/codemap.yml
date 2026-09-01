@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: handler.py
+  - path: token_counter.py
+  - path: transformation.py

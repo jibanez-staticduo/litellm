@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: budgetFilters.ts
+  - path: budgetFilters.test.ts
+  - path: useBudgets.ts

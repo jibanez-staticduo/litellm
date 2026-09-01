@@ -1,0 +1,6 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_relay.py
+  - path: relay.py
+  - path: compose.yaml

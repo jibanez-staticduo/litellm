@@ -1,0 +1,10 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_role_based_access.py
+  - path: test_access_group_team_sync.py
+  - path: test_key_management.py
+  - path: conftest.py
+  - path: test_route_check_unit_tests.py
+  - path: test_usage_endpoints.py
+  - path: test_sso_sign_in.py

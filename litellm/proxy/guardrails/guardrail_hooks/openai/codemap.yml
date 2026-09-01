@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: base.py
+  - path: __init__.py
+  - path: moderations.py

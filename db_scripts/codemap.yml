@@ -1,0 +1,9 @@
+scope: module
+parent: ../.staticeng/codemap.yml
+internals:
+  - path: unpartition_spend_logs.sql
+  - path: partition_spend_logs.sql
+  - path: backfill_daily_tool_spend.sql
+  - path: update_unassigned_teams.py
+  - path: migrate_keys.py
+  - path: create_views.py

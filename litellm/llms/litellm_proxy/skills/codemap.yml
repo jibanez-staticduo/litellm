@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: code_execution.py
+  - path: __init__.py
+  - path: handler.py
+  - path: sandbox_executor.py
+  - path: README.md
+  - path: transformation.py
+  - path: prompt_injection.py
+  - path: constants.py

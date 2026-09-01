@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: constants.ts
+  - path: budget_panel.test.tsx
+  - path: BudgetTable.test.tsx
+  - path: BudgetTable.tsx
+  - path: edit_budget_modal.tsx
+  - path: budget_panel.tsx
+  - path: budget_modal.tsx
+  - path: BudgetTableColumns.tsx

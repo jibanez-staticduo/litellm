@@ -1,0 +1,23 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_prisma_client.py
+  - path: test_check_migration.py
+  - path: test_routing_prisma_wrapper.py
+  - path: test_daily_spend_bulk_upsert.py
+  - path: test_prisma_self_heal.py
+  - path: test_rds_iam_token_expiry.py
+  - path: test_spend_log_tool_index.py
+  - path: test_autorouter_session_rollup.py
+  - path: test_exception_handler.py
+  - path: test_create_views.py
+  - path: test_spend_log_batching.py
+  - path: test_db_url_settings.py
+  - path: conftest.py
+  - path: test_replica_identity.py
+  - path: test_prisma_planned_engine_restart.py
+  - path: test_gateway_request_tracking.py
+  - path: test_query_engine_reaper.py
+  - path: test_tool_registry_writer.py
+  - path: test_db_spend_update_writer.py
+  - path: test_exception_handler_reconnect_retry.py

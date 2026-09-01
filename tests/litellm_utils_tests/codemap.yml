@@ -1,0 +1,21 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_aiohttp_handler.py
+  - path: base_token_counter_test.py
+  - path: test_validate_tool_choice.py
+  - path: test_get_secret.py
+  - path: test_aws_secret_manager.py
+  - path: vertex_key.json
+  - path: test_azure_ai_anthropic_token_counter.py
+  - path: test_logging_callback_manager.py
+  - path: test_litellm_overhead.py
+  - path: test_secret_manager.py
+  - path: test_anthropic_token_counter.py
+  - path: test_bedrock_token_counter.py
+  - path: conftest.py
+  - path: test_proxy_budget_reset.py
+  - path: test_cyberark.py
+  - path: test_hashicorp.py
+  - path: test_health_check.py
+  - path: test_utils.py

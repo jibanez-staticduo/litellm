@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: EndpointUsageBarChart.tsx
+  - path: EndpointUsageTable.test.tsx
+  - path: EndpointUsageLineChart.tsx
+  - path: EndpointUsageBarChart.test.tsx
+  - path: EndpointUsageLineChart.test.tsx
+  - path: EndpointUsageTable.tsx

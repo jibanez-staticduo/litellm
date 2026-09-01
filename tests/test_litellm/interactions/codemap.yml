@@ -1,0 +1,12 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_openapi_compliance.py
+  - path: test_interactions_streaming_iterator.py
+  - path: test_litellm_responses_bridge.py
+  - path: test_gemini_interactions.py
+  - path: base_interactions_test.py
+  - path: test_google_interactions_integration.py
+  - path: test_agents_main_and_utils.py
+  - path: test_agents_http_handler.py
+  - path: test_gemini_interactions_transformation.py

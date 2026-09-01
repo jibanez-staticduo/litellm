@@ -1,0 +1,35 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: model_access_group_management_endpoints.py
+  - path: coordination_redis_endpoints.py
+  - path: credential_migration.py
+  - path: cost_tracking_settings.py
+  - path: tag_management_endpoints.py
+  - path: mcp_management_endpoints.py
+  - path: tool_management_endpoints.py
+  - path: common_utils.py
+  - path: user_agent_analytics_endpoints.py
+  - path: access_group_endpoints.py
+  - path: ui_sso.py
+  - path: key_management_endpoints.py
+  - path: budget_management_endpoints.py
+  - path: team_endpoints.py
+  - path: organization_endpoints.py
+  - path: workflow_management_endpoints.py
+  - path: fallback_management_endpoints.py
+  - path: config_override_endpoints.py
+  - path: model_management_endpoints.py
+  - path: internal_user_endpoints.py
+  - path: team_callback_endpoints.py
+  - path: router_settings_endpoints.py
+  - path: common_daily_activity.py
+  - path: types.py
+  - path: jwt_key_mapping_endpoints.py
+  - path: auto_router_endpoints.py
+  - path: customer_endpoints.py
+  - path: sso_helper_utils.py
+  - path: compliance_endpoints.py
+  - path: gateway_request_endpoints.py
+  - path: cache_settings_endpoints.py
+  - path: callback_management_endpoints.py

@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: useMCPServers.test.ts
+  - path: useMCPAccessGroups.ts
+  - path: useMCPAccessGroups.test.ts
+  - path: useMCPServerHealth.ts
+  - path: useMCPServers.ts
+  - path: useMCPToolsets.ts
+  - path: useMCPServerHealth.test.ts

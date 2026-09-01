@@ -1,0 +1,20 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: useDisableShowPrompts.test.ts
+  - path: useTeams.tsx
+  - path: useIsOrgAdmin.test.ts
+  - path: useAuthorized.serverRootPath.test.ts
+  - path: useDisableShowNewBadge.ts
+  - path: useDisableBouncingIcon.ts
+  - path: useCan.ts
+  - path: useLogout.ts
+  - path: useAuthorized.ts
+  - path: useHideAutoRouterAnnouncement.ts
+  - path: useDisableShowPrompts.ts
+  - path: useIsOrgAdmin.ts
+  - path: useDisableShowNewBadge.test.ts
+  - path: useAuthorized.test.ts
+  - path: useTabRouting.test.tsx
+  - path: useTabRouting.ts
+  - path: useDisableBlogPosts.ts

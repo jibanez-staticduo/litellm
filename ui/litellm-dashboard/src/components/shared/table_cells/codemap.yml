@@ -1,0 +1,22 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.ts
+internals:
+  - path: date_cell.test.tsx
+  - path: status_badge.test.tsx
+  - path: money_cell.test.tsx
+  - path: spend_budget_cell.test.tsx
+  - path: models_cell.tsx
+  - path: identity_cell.tsx
+  - path: spend_budget_cell.tsx
+  - path: id_cell.tsx
+  - path: status_badge.tsx
+  - path: identity_cell.test.tsx
+  - path: cell_tooltip.tsx
+  - path: models_cell.test.tsx
+  - path: AutoRouterTag.tsx
+  - path: AutoRouterTag.test.tsx
+  - path: id_cell.test.tsx
+  - path: money_cell.tsx
+  - path: date_cell.tsx

@@ -1,0 +1,4 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_docker_model_runner_chat_transformation.py

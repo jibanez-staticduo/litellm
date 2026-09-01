@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: semantic_guard.py
+  - path: route_loader.py

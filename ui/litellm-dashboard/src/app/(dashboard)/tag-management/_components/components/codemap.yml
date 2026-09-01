@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: CreateTagModal.test.tsx
+  - path: CreateTagModal.tsx

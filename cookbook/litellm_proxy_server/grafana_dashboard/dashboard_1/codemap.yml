@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: readme.md
+  - path: grafana_dashboard.json

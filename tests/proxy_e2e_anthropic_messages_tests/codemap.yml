@@ -1,0 +1,6 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_all_beta_headers.py
+  - path: test_claude_agent_sdk.py
+  - path: test_config.yaml

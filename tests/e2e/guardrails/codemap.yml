@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_openai_moderation_category_matrix_e2e.py
+  - path: guardrails_client.py
+  - path: test_bedrock_guardrail_e2e.py
+  - path: test_block_code_execution_guardrail_e2e.py
+  - path: test_apply_guardrail_e2e.py
+  - path: conftest.py
+  - path: test_openai_moderation_guardrail_e2e.py
+  - path: test_team_disable_global_guardrail_e2e.py

@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: tool_registry.py
+  - path: mcp_toolset.py
+  - path: mcp_server_manager.py

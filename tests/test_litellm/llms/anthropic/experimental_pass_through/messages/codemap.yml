@@ -1,0 +1,18 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_anthropic_messages_effort.py
+  - path: test_sse_wrapper.py
+  - path: test_reasoning_auto_summary_messages.py
+  - path: test_agentic_streaming_iterator.py
+  - path: test_mcp_handler.py
+  - path: test_reasoning_effort_translation.py
+  - path: test_streaming_iterator.py
+  - path: test_content_after_stop_reason.py
+  - path: test_anthropic_experimental_pass_through_messages_handler.py
+  - path: test_anthropic_messages_speed.py
+  - path: test_advisor_integration.py
+  - path: test_response_cache.py
+  - path: test_request_optional_param_utils.py
+  - path: test_anthropic_messages_structured_outputs.py
+  - path: test_parallel_tool_calls.py

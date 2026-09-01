@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: focus_logger.py
+  - path: schema.py
+  - path: __init__.py
+  - path: export_engine.py
+  - path: database.py
+  - path: transformer.py

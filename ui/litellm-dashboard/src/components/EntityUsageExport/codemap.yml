@@ -1,0 +1,18 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.ts
+internals:
+  - path: ExportSummary.tsx
+  - path: UsageExportHeader.test.tsx
+  - path: utils.test.ts
+  - path: EntityUsageExportModal.test.tsx
+  - path: types.ts
+  - path: ExportFormatSelector.tsx
+  - path: ExportSummary.test.tsx
+  - path: utils.ts
+  - path: EntityUsageExportModal.tsx
+  - path: ExportTypeSelector.test.tsx
+  - path: ExportTypeSelector.tsx
+  - path: UsageExportHeader.tsx
+  - path: ExportFormatSelector.test.tsx

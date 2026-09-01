@@ -1,0 +1,13 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_mcp_chat_completion_oauth_e2e.py
+  - path: mcp_client.py
+  - path: oauth_chat_client.py
+  - path: datadog_mcp.py
+  - path: linear_session_capture.py
+  - path: test_mcp_access_group_e2e.py
+  - path: test_mcp_guardrail_e2e.py
+  - path: conftest.py
+  - path: test_mcp_key_access_e2e.py
+  - path: test_mcp_datadog_e2e.py

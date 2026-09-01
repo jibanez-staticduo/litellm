@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: azure_sentinel.py
+  - path: example_standard_logging_payload.json

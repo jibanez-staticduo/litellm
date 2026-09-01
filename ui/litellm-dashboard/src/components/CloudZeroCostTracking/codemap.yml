@@ -1,0 +1,14 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: CloudZeroCostTracking.tsx
+  - path: CloudZeroEmptyPlaceholder.tsx
+  - path: CloudZeroEmptyPlaceholder.test.tsx
+  - path: types.ts
+  - path: CloudZeroCostTracking.test.tsx
+  - path: CloudZeroIntegrationSettings.tsx
+  - path: CloudZeroUpdateModal.test.tsx
+  - path: CloudZeroCreateModal.tsx
+  - path: CloudZeroIntegrationSettings.test.tsx
+  - path: CloudZeroUpdateModal.tsx
+  - path: CloudZeroCreateModal.test.tsx

@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: spend_logs_payload.json
+  - path: standard_logging_payload.json

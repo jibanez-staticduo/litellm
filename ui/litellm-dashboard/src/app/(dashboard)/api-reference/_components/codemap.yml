@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: APIReferenceView.tsx
+  - path: DocLink.tsx
+  - path: APIReferenceView.test.tsx

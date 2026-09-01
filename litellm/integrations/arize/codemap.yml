@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: arize_phoenix_prompt_manager.py
+  - path: __init__.py
+  - path: arize.py
+  - path: README.md
+  - path: arize_phoenix.py
+  - path: arize_phoenix_client.py
+  - path: _utils.py

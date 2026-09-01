@@ -1,0 +1,10 @@
+scope: module
+parent: ../.staticeng/codemap.yml
+internals:
+  - path: baseline_db.py
+  - path: check_files_match.py
+  - path: security_scans_readme.md
+  - path: run_migration.py
+  - path: TEST_KEY_PATTERNS.md
+  - path: check_file_length.py
+  - path: generate_model_prices_schema.py

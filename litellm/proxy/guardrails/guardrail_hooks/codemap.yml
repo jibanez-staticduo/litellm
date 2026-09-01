@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: content_text.py
+  - path: lakera_ai_v2.py
+  - path: custom_guardrail.py
+  - path: presidio.py
+  - path: lakera_ai.py
+  - path: bedrock_guardrails.py
+  - path: tool_permission.py

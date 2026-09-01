@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: PolicySelector.test.tsx
+  - path: types.ts
+  - path: PolicySelector.tsx

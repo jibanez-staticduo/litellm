@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: twelvelabs_marengo_transformation.py
+  - path: amazon_nova_transformation.py
+  - path: amazon_titan_multimodal_transformation.py
+  - path: amazon_titan_v2_transformation.py
+  - path: embedding.py
+  - path: cohere_transformation.py
+  - path: amazon_titan_g1_transformation.py

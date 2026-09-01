@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: DeletedTeamsPage.tsx
+  - path: DeletedTeamsPage.test.tsx

@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: lint-budget-lib.test.ts
+  - path: test-utils.tsx
+  - path: setupTests.ts
+  - path: fetch-location-rule.test.ts
+  - path: jsdomFetchEnv.ts
+  - path: CreateKeyPage.expiredToken.test.tsx
+  - path: top_key_view.test.tsx

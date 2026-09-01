@@ -1,0 +1,12 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.tsx
+internals:
+  - path: RoutingGroupModal.tsx
+  - path: types.ts
+  - path: RoutingGroupUsagePanel.tsx
+  - path: RoutingGroupsTableColumns.tsx
+  - path: RoutingGroupsTable.tsx
+  - path: strategy.ts
+  - path: RoutingGroupsTable.test.tsx

@@ -1,0 +1,18 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: build_release_ui.sh
+  - path: vitest.config.ts
+  - path: eslint-suppressions.json
+  - path: knip.json
+  - path: README.md
+  - path: build_ui.sh
+  - path: build_ui_custom_path.sh
+  - path: tsconfig.json
+  - path: eslint-budgets.json
+  - path: components.json
+  - path: package.json
+  - path: postcss.config.js
+  - path: next-env.d.ts
+  - path: CLAUDE.md
+  - path: package-lock.json

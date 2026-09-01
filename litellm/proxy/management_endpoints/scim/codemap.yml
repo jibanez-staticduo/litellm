@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: README_SCIM.md
+  - path: scim_transformations.py
+  - path: scim_v2.py

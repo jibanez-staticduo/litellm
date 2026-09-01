@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: MCPSemanticFilterSettings.tsx
+  - path: MCPSemanticFilterTestPanel.tsx
+  - path: semanticFilterTestUtils.ts
+  - path: MCPSemanticFilterSettings.test.tsx
+  - path: semanticFilterTestUtils.test.ts
+  - path: MCPSemanticFilterTestPanel.test.tsx

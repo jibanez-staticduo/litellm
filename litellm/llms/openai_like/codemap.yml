@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: providers.json
+  - path: common_utils.py
+  - path: README.md
+  - path: dynamic_config.py
+  - path: json_loader.py

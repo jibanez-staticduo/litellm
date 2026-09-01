@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_file_search_responses.py
+  - path: test_polling_url_origin_match.py
+  - path: test_predibase_transformation.py
+  - path: test_lifecycle_fix.py
+  - path: test_file_content_block.py
+  - path: test_cache_control_and_reasoning.py

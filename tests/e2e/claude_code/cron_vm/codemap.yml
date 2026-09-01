@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: run_daily.sh
+  - path: check_regressions.py
+  - path: README.md
+  - path: build_matrix.py

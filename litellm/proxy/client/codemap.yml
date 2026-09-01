@@ -1,0 +1,16 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: chat.py
+  - path: health.py
+  - path: __init__.py
+  - path: users.py
+  - path: model_groups.py
+  - path: README.md
+  - path: teams.py
+  - path: exceptions.py
+  - path: client.py
+  - path: models.py
+  - path: keys.py
+  - path: http_client.py
+  - path: credentials.py

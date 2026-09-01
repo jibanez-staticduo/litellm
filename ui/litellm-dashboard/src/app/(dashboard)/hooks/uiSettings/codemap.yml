@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: useUpdateUISettings.test.ts
+  - path: usePtuCostAttributionEnabled.test.ts
+  - path: useUISettings.ts
+  - path: useUpdateUISettings.ts
+  - path: useUISettings.test.ts
+  - path: usePtuCostAttributionEnabled.ts

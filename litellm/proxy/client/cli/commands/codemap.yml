@@ -1,0 +1,18 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: chat.py
+  - path: private_json.py
+  - path: __init__.py
+  - path: users.py
+  - path: model_groups.py
+  - path: up.py
+  - path: encryption.py
+  - path: http.py
+  - path: auth.py
+  - path: teams.py
+  - path: models.py
+  - path: config.py
+  - path: keys.py
+  - path: credentials.py
+  - path: agents.py

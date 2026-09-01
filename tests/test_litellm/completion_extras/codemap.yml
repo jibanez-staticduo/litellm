@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: test_litellm_responses_transformation_transformation.py
+  - path: test_responses_bridge_provider_propagation.py

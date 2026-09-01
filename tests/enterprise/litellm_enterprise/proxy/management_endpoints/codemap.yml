@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_internal_user_endpoints.py
+  - path: test_project_endpoints_prisma.py

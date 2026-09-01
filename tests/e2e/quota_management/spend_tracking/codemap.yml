@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_team_daily_activity_e2e.py
+  - path: SPEND_TRACKING_COVERAGE_MATRIX.md
+  - path: test_spend_routes.py
+  - path: spend_e2e_client.py
+  - path: conftest.py
+  - path: test_spend_tracking_e2e.py

@@ -1,0 +1,18 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: config_with_multiple_includes.yaml
+  - path: load_balancer.yaml
+  - path: langfuse_config.yaml
+  - path: included_models.yaml
+  - path: config_with_include.yaml
+  - path: azure_config.yaml
+  - path: opentelemetry_config.yaml
+  - path: models_file_2.yaml
+  - path: cache_with_params.yaml
+  - path: config_with_missing_include.yaml
+  - path: cache_no_params.yaml
+  - path: aliases_config.yaml
+  - path: models_file_1.yaml
+  - path: simple_config.yaml
+  - path: config_with_env_vars.yaml

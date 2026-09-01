@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: invoke_handler.py
+  - path: converse_handler.py
+  - path: converse_transformation.py

@@ -1,0 +1,32 @@
+scope: module
+parent: ../.staticeng/codemap.yml
+internals:
+  - path: check_type_discipline.py
+  - path: mutation_report.py
+  - path: type_check_gate.py
+  - path: benchmark_anthropic_messages_perf.py
+  - path: verify_adaptive_router.py
+  - path: benchmark_chat_completions_perf.py
+  - path: type_discipline_gate.py
+  - path: benchmark_streaming_chunk_overhead.py
+  - path: tpm_headline_test.sh
+  - path: ruff_strict_gate.py
+  - path: mock_grayswan_timeout_server.py
+  - path: benchmark_mock.py
+  - path: test_tool_allowlist_script.py
+  - path: install_git_hooks.sh
+  - path: pre_commit_lint.sh
+  - path: with_dashboard_node.sh
+  - path: create_litellm_branch.sh
+  - path: create_team_key_and_submit_guardrail.sh
+  - path: mock_bedrock_passthrough_target.py
+  - path: install-cli.sh
+  - path: budget_ratchet_check.py
+  - path: gate_slot_lock.py
+  - path: test_agent_mcp_endpoints.sh
+  - path: test_guardrails_register_endpoints.sh
+  - path: eval_compression.py
+  - path: prisma_generate_if_needed.py
+  - path: install.sh
+  - path: benchmark_model_response_creator.py
+  - path: benchmark_proxy_vs_provider.py

@@ -1,0 +1,8 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: base.py
+  - path: __init__.py
+  - path: README.md
+  - path: custom_llm.py
+  - path: maritalk.py

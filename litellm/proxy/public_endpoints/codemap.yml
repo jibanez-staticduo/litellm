@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: provider_create_fields.json
+  - path: public_endpoints.py
+  - path: agent_create_fields.json

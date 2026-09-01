@@ -1,0 +1,34 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.tsx
+internals:
+  - path: columns.tsx
+  - path: logs_utils.test.tsx
+  - path: TypeBadges.test.tsx
+  - path: VectorStoreViewer.tsx
+  - path: ConfigInfoMessage.test.tsx
+  - path: AuditLogsTable.tsx
+  - path: RequestLogsFilters.tsx
+  - path: constants.ts
+  - path: CostBreakdownViewer.tsx
+  - path: logs_utils.tsx
+  - path: logDetailRouting.ts
+  - path: ConfigInfoMessage.tsx
+  - path: RequestLogsPanel.test.tsx
+  - path: AuditLogsTableColumns.tsx
+  - path: RequestLogsTableColumns.tsx
+  - path: TypeBadges.tsx
+  - path: utils.ts
+  - path: AuditLogsTable.test.tsx
+  - path: CostBreakdownViewer.test.tsx
+  - path: RequestLogsTableColumns.test.tsx
+  - path: LogsTableToolbar.tsx
+  - path: index.test.tsx
+  - path: RequestLogsTable.tsx
+  - path: RequestLogsPanel.tsx
+  - path: RequestLogsFilters.test.tsx
+  - path: log_filter_logic.test.tsx
+  - path: index.integration.test.tsx
+  - path: log_filter_logic.tsx
+  - path: AuditLogsPanel.tsx

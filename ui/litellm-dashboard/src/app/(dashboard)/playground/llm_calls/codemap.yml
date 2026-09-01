@@ -1,0 +1,16 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: embeddings_api.tsx
+  - path: anthropic_messages.tsx
+  - path: anthropic_messages.test.tsx
+  - path: audio_transcriptions.tsx
+  - path: audio_speech.tsx
+  - path: fetch_agents.tsx
+  - path: audio_speech.test.tsx
+  - path: image_edits.tsx
+  - path: embeddings_api.test.tsx
+  - path: a2a_send_message.tsx
+  - path: interactions_api.tsx
+  - path: audio_transcriptions.test.tsx
+  - path: image_generation.tsx

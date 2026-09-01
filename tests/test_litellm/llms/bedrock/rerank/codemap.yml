@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: transformation.py
+  - path: test_bedrock_rerank_header_forwarding.py

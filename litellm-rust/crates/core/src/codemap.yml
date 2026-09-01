@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: lib.rs
+  - path: error.rs
+  - path: constants.rs

@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: hanging_request_check.py
+  - path: batching_handler.py
+  - path: slack_alerting.py
+  - path: utils.py
+  - path: Readme.md
+  - path: budget_alert_types.py

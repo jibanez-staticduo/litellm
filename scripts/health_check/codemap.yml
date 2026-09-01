@@ -1,0 +1,7 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: health_check_client.py
+  - path: health_check_client_README.md
+  - path: benchmark_get_all_latest_health_checks.py
+  - path: run_parallel_health_checks.sh

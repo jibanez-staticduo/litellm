@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_io_token_rate_limits.py
+  - path: test_enforce_model_rate_limits.py

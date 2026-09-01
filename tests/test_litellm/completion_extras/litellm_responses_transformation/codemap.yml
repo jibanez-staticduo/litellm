@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_completion_extras_litellm_responses_transformation_transformation.py
+  - path: test_completion_extras_litellm_responses_transformation_handler.py

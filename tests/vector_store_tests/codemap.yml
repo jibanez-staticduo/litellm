@@ -1,0 +1,15 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_s3_vectors_vector_store.py
+  - path: test_ragflow_vector_store.py
+  - path: test_milvus_vector_store.py
+  - path: test_bedrock_vector_store.py
+  - path: base_vector_store_test.py
+  - path: conftest.py
+  - path: test_azure_vector_store.py
+  - path: test_vertex_ai_search_api_vector_store.py
+  - path: test_openai_vector_store.py
+  - path: test_vertex_ai_vector_store.py
+  - path: test_azure_ai_vector_store.py
+  - path: test_gemini_vector_store.py

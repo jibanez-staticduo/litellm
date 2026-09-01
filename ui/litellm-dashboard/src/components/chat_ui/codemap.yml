@@ -1,0 +1,12 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: ReasoningContent.tsx
+  - path: ReasoningContent.test.tsx
+  - path: ResponseMetrics.tsx
+  - path: types.ts
+  - path: CodeSnippets.tsx
+  - path: CodeSnippets.test.tsx
+  - path: mode_endpoint_mapping.tsx
+  - path: MCPEventsDisplay.tsx
+  - path: ResponseMetrics.test.tsx

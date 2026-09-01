@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: GuardrailViewer.test.tsx
+  - path: ContentFilterDetails.tsx
+  - path: CompliancePanel.tsx
+  - path: PresidioDetectedEntities.test.tsx
+  - path: BedrockGuardrailDetails.test.tsx
+  - path: GuardrailViewer.tsx
+  - path: BedrockGuardrailDetails.tsx
+  - path: PresidioDetectedEntities.tsx

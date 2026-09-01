@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: isolation.py
+  - path: base_managed_resource.py
+  - path: utils.py

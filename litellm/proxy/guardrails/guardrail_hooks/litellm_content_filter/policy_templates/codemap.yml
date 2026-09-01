@@ -1,0 +1,31 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: sg_mas_transparency_explainability.yaml
+  - path: eu_ai_act_art5_vulnerability.yaml
+  - path: uae_cultural_sensitivity.yaml
+  - path: eu_ai_act_art5_emotion_recognition.yaml
+  - path: sg_pdpa_sensitive_data.yaml
+  - path: sg_mas_human_oversight.yaml
+  - path: eu_ai_act_art5_manipulation.yaml
+  - path: eu_ai_act_art5_vulnerability_fr.yaml
+  - path: sg_mas_model_security.yaml
+  - path: airline_brand_protection.yaml
+  - path: eu_ai_act_art5_social_scoring.yaml
+  - path: eu_ai_act_art5_emotion_recognition_fr.yaml
+  - path: eu_ai_act_article5_fr.yaml
+  - path: sg_pdpa_do_not_call.yaml
+  - path: sql_injection.yaml
+  - path: eu_ai_act_art5_manipulation_fr.yaml
+  - path: sg_mas_fairness_bias.yaml
+  - path: sg_pdpa_profiling_automated_decisions.yaml
+  - path: eu_ai_act_article5.yaml
+  - path: aviation_safety_topics.yaml
+  - path: uae_anti_discrimination.yaml
+  - path: sg_mas_data_governance.yaml
+  - path: prompt_injection.yaml
+  - path: eu_ai_act_art5_social_scoring_fr.yaml
+  - path: eu_ai_act_art5_biometric_profiling_fr.yaml
+  - path: eu_ai_act_art5_biometric_profiling.yaml
+  - path: sg_pdpa_data_transfer.yaml
+  - path: sg_pdpa_personal_identifiers.yaml

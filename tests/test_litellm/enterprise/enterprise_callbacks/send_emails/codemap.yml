@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_resend_email.py
+  - path: test_endpoints.py
+  - path: test_sendgrid_email.py
+  - path: test_base_email.py

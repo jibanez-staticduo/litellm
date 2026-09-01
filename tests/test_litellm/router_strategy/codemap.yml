@@ -1,0 +1,16 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_router_routing_plugins.py
+  - path: test_litellm_encoder.py
+  - path: test_savings_baseline.py
+  - path: test_complexity_router.py
+  - path: test_lowest_latency.py
+  - path: test_router_routing_groups.py
+  - path: test_lar1_routing.py
+  - path: test_auto_router.py
+  - path: test_base_routing_strategy.py
+  - path: test_router_tag_routing.py
+  - path: test_budget_limiter_hotpath.py
+  - path: test_router_tag_regex_routing.py
+  - path: test_quality_router.py

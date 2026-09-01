@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_aws_secret_manager_replication.py
+  - path: test_base_secret_manager.py
+  - path: test_get_azure_ad_token_provider.py
+  - path: test_aws_secret_manager_v2.py
+  - path: test_aws_secret_manager_rotation.py
+  - path: test_custom_secret_manager.py
+  - path: test_secret_managers_main.py

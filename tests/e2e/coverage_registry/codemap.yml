@@ -1,0 +1,19 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: guardrail.yaml
+  - path: mgmt.yaml
+  - path: schema.py
+  - path: registry.py
+  - path: __init__.py
+  - path: mcp.yaml
+  - path: quota_management.yaml
+  - path: reliability.yaml
+  - path: README.md
+  - path: llm_conversational.yaml
+  - path: other.yaml
+  - path: llm_nonconversational.yaml
+  - path: llm_claude_code_compat.yaml
+  - path: collector.py
+  - path: logging.yaml
+  - path: test_collector.py

@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_fireworks_ai_text_completion_transformation.py
+  - path: test_fireworks_ai_completion_transformation.py

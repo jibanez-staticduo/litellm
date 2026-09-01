@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: queryKeysFactory.test.ts
+  - path: useResourceList.test.tsx
+  - path: queryKeysFactory.ts
+  - path: useResourceList.ts

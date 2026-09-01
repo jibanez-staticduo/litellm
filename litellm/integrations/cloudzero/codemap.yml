@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: database.py
+  - path: cloudzero.py
+  - path: cz_stream_api.py
+  - path: transform.py
+  - path: cz_resource_names.py

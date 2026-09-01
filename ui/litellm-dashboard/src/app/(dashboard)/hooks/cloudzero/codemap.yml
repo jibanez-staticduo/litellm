@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: useCloudZeroCreate.test.ts
+  - path: useCloudZeroExport.ts
+  - path: useCloudZeroSettings.test.ts
+  - path: useCloudZeroDryRun.test.ts
+  - path: useCloudZeroCreate.ts
+  - path: useCloudZeroDryRun.ts
+  - path: useCloudZeroSettings.ts
+  - path: useCloudZeroExport.test.ts

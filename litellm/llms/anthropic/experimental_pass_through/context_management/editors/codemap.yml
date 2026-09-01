@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: clear_tool_uses.py
+  - path: compact.py

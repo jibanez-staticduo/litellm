@@ -1,0 +1,15 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: recraft_v3_transformation.py
+  - path: __init__.py
+  - path: flux_pro_v11_transformation.py
+  - path: imagen4_transformation.py
+  - path: flux_pro_v11_ultra_transformation.py
+  - path: ideogram_v3_transformation.py
+  - path: nano_banana_transformation.py
+  - path: bria_transformation.py
+  - path: stable_diffusion_transformation.py
+  - path: transformation.py
+  - path: flux_schnell_transformation.py
+  - path: bytedance_transformation.py

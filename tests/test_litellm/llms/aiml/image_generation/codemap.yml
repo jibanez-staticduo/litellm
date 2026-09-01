@@ -1,0 +1,4 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_aiml_image_generation_transformation.py

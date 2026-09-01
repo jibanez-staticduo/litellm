@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: vertex_ai.py
+  - path: managed_id_rewriter.py
+  - path: assembly_ai.py
+  - path: pass_through_endpoints.py

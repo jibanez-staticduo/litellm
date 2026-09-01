@@ -1,0 +1,14 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_batch_retrieve_registers_missing_output_file_id.py
+  - path: test_deleted_file_returns_403_not_404.py
+  - path: __init__.py
+  - path: test_managed_files_hook.py
+  - path: test_batch_retrieve_input_file_id.py
+  - path: test_file_deletion_blocking.py
+  - path: test_managed_files_access_check.py
+  - path: test_afile_retrieve_returns_unified_id.py
+  - path: test_enterprise_routes.py
+  - path: test_batch_retrieve_returns_unified_input_file_id.py
+  - path: test_batch_update_db_managed_output_file_id.py

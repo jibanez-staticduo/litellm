@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_image_generation_guardrail_handler.py
+  - path: test_openai_image_generation_extra_headers.py

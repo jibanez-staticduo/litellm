@@ -1,0 +1,12 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: hooks.py
+  - path: __init__.py
+  - path: adaptive_router.py
+  - path: README.md
+  - path: bandit.py
+  - path: update_queue.py
+  - path: signals.py
+  - path: config.py
+  - path: classifier.py

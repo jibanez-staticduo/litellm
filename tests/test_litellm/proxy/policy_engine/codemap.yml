@@ -1,0 +1,13 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_policy_versioning_e2e.py
+  - path: __init__.py
+  - path: test_attachment_registry.py
+  - path: test_policy_resolver.py
+  - path: test_pipeline_executor.py
+  - path: test_condition_evaluator.py
+  - path: test_policy_matcher.py
+  - path: test_policy_engine_endpoints.py
+  - path: test_policy_versioning.py
+  - path: test_policy_validator.py

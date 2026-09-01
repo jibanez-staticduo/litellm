@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_bedrock_converse_strict_tools_opus_47_48.py
+  - path: test_litellm_core_utils_prompt_templates_factory.py
+  - path: test_litellm_core_utils_prompt_templates_common_utils.py

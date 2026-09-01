@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: UserDropdown.test.tsx
+  - path: UserDropdown.tsx

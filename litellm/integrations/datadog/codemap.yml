@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: datadog_handler.py
+  - path: datadog_llm_obs.py
+  - path: datadog_team_handler.py
+  - path: datadog_mock_client.py
+  - path: datadog.py
+  - path: datadog_cost_management.py
+  - path: datadog_metrics.py

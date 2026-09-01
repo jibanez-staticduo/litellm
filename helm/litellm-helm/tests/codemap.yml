@@ -1,0 +1,14 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: pdb_tests.yaml
+  - path: ingress_tests.yaml
+  - path: deployment_tests.yaml
+  - path: migrations-job_tests.yaml
+  - path: coordination_redis_tests.yaml
+  - path: bundled_db_images_tests.yaml
+  - path: deployment_command_args_labels_tests.yaml
+  - path: service_tests.yaml
+  - path: billing_metrics_tests.yaml
+  - path: masterkey-secret_tests.yaml
+  - path: hpa_tests.yaml

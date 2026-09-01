@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: test_interactions_agent_param.py
+  - path: test_managed_agents_model_param.py
+  - path: test_endpoints.py
+  - path: test_google_api_endpoints.py

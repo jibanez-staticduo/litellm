@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: BaseActionButton.tsx
+  - path: BaseActionButton.test.tsx

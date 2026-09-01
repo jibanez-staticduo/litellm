@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: validation_types.py
+  - path: __init__.py
+  - path: policy_types.py
+  - path: resolver_types.py
+  - path: pipeline_types.py

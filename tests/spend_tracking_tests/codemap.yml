@@ -1,0 +1,5 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_spend_accuracy_tests.py
+  - path: test_ocr_spend_tracking.py

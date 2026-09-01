@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_handler.py
+  - path: test_image_generation_output.py
+  - path: test_tool_output_order_preserved_for_gemini.py
+  - path: test_tool_call_streaming_transformation.py
+  - path: test_session_handler_with_cold_storage.py
+  - path: test_litellm_completion_responses.py
+  - path: test_function_call_output_normalization.py
+  - path: test_session_handler.py

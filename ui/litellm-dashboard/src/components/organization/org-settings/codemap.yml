@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: mapper.ts
+  - path: OrgSettingsForm.test.tsx
+  - path: mapper.test.ts
+  - path: OrgSettingsForm.tsx
+  - path: schema.ts

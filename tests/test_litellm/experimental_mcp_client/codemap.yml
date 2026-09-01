@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_tools.py
+  - path: test_mcp_client.py

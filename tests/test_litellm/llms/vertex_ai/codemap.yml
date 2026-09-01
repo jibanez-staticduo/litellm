@@ -1,0 +1,20 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_vertex_model_garden_openapi.py
+  - path: __init__.py
+  - path: test_vertex_ai_psc_endpoint_support.py
+  - path: test_vertex_global_url_support.py
+  - path: test_vertex_llm_base.py
+  - path: test_bge_response_transformation.py
+  - path: test_vertex.py
+  - path: test_gemini_empty_properties.py
+  - path: test_vertex_ai_batch_transformation.py
+  - path: test_vertex_ai_search_vector_store_transformation.py
+  - path: test_gemini_header_forwarding.py
+  - path: test_vertex_ai_common_utils.py
+  - path: test_vertex_gemini_gcs_uri_mime.py
+  - path: test_http_status_201.py
+  - path: test_bge_embedding.py
+  - path: test_vertex_image_generation.py
+  - path: test_gemini_batch_embeddings.py

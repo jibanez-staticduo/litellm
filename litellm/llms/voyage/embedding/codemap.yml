@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: transformation.py
+  - path: transformation_multimodal.py
+  - path: transformation_contextual.py

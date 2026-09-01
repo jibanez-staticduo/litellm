@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: send_request.py
+  - path: router_endpoint.py
+  - path: router_memory_usage copy.py
+  - path: router_memory_usage.py

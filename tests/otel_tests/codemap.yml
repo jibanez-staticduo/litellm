@@ -1,0 +1,14 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_team_member_permissions.py
+  - path: test_e2e_budgeting.py
+  - path: test_e2e_model_access.py
+  - path: test_model_info.py
+  - path: test_otel.py
+  - path: test_moderations.py
+  - path: test_rerank.py
+  - path: test_guardrails.py
+  - path: test_prometheus.py
+  - path: test_key_logging_callbacks.py
+  - path: test_team_tag_routing.py

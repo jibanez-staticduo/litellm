@@ -1,0 +1,13 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_readme_providers.py
+  - path: test_router_settings.py
+  - path: test_api_docs.py
+  - path: test_exception_types.py
+  - path: test_requests_lib_usage.py
+  - path: test_optional_params.py
+  - path: test_standard_logging_payload.py
+  - path: test_general_setting_keys.py
+  - path: test_circular_imports.py
+  - path: test_env_keys.py

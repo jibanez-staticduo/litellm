@@ -1,0 +1,10 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_bedrock_nemotron_super.py
+  - path: test_proxy_auth.py
+  - path: test_router_retry_backoff_headers.py
+  - path: test_bedrock_extended_beta_models.py
+  - path: test_sambanova_model_metadata.py
+  - path: test_no_hardcoded_secrets.py
+  - path: test_stream_chunk_builder_images.py

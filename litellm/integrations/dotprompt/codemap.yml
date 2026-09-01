@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: dotprompt_manager.py
+  - path: __init__.py
+  - path: prompt_manager.py
+  - path: README.md

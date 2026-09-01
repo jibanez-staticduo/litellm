@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: layout.tsx
+  - path: README.md
+  - path: agentControlPlaneView.test.tsx
+  - path: layout.test.tsx
+  - path: networking.ts
+  - path: page.tsx
+  - path: page.test.tsx

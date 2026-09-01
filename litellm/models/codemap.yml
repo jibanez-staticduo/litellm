@@ -1,0 +1,24 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: base.py
+  - path: __init__.py
+  - path: project.py
+  - path: model.py
+  - path: end_user.py
+  - path: team_membership.py
+  - path: budget.py
+  - path: organization.py
+  - path: tag.py
+  - path: spend_logs.py
+  - path: organization_membership.py
+  - path: access_group.py
+  - path: skills.py
+  - path: managed_files.py
+  - path: user.py
+  - path: object_permission.py
+  - path: mcp_server.py
+  - path: verification_token.py
+  - path: team.py
+  - path: config.py
+  - path: credentials.py

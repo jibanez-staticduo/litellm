@@ -1,0 +1,19 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: sample_compatibility-matrix.json
+  - path: __init__.py
+  - path: _passthrough.py
+  - path: _gpt_cells.py
+  - path: http_probe.py
+  - path: cli_driver.py
+  - path: rate_limiter.py
+  - path: _compat_models.py
+  - path: test_config.yaml
+  - path: _env.py
+  - path: run_compat.sh
+  - path: conftest.py
+  - path: manifest.yaml
+  - path: _basic_messaging.py
+  - path: matrix_builder.py
+  - path: pr_gate_version_resolver.py

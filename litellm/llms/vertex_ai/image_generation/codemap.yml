@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: cost_calculator.py
+  - path: vertex_gemini_transformation.py
+  - path: image_generation_handler.py
+  - path: vertex_imagen_transformation.py

@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: useDeleteHashicorpVaultConfig.ts
+  - path: useUpdateHashicorpVaultConfig.ts
+  - path: hashicorpVaultApi.ts
+  - path: useHashicorpVaultConfig.ts

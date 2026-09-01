@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: EditHashicorpVaultModal.tsx
+  - path: constants.ts
+  - path: HashicorpVault.test.tsx
+  - path: HashicorpVault.tsx
+  - path: HashicorpVaultEmptyPlaceholder.test.tsx
+  - path: HashicorpVaultEmptyPlaceholder.tsx

@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: access_control_client.py
+  - path: conftest.py
+  - path: test_access_control_e2e.py
+  - path: test_chat_auth_headers_e2e.py

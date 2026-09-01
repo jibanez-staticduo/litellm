@@ -1,0 +1,10 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+entrypoints:
+  - path: main.py
+internals:
+  - path: endpoint_factory.py
+  - path: __init__.py
+  - path: README.md
+  - path: utils.py
+  - path: endpoints.json

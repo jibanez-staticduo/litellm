@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_vertex_ai_rerank_integration.py
+  - path: test_vertex_ai_rerank_transformation.py
+  - path: test_vertex_ai_rerank_userlabels_e2e.py

@@ -1,0 +1,29 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: base_health_check.py
+  - path: argilla.py
+  - path: anthropic_cache_control_hook.py
+  - path: langsmith.py
+  - path: prometheus.py
+  - path: arize.py
+  - path: langfuse_otel.py
+  - path: langfuse.py
+  - path: websearch_interception.py
+  - path: cloudzero.py
+  - path: s3_v2.py
+  - path: newrelic.py
+  - path: weave_otel.py
+  - path: gcs_bucket.py
+  - path: azure_sentinel.py
+  - path: posthog.py
+  - path: datadog_llm_obs.py
+  - path: slack_alerting.py
+  - path: custom_logger.py
+  - path: code_interpreter_interception.py
+  - path: arize_phoenix.py
+  - path: datadog.py
+  - path: datadog_cost_management.py
+  - path: pagerduty.py
+  - path: compression_interception.py
+  - path: datadog_metrics.py

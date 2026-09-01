@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_cz_stream_api.py
+  - path: test_transform.py
+  - path: test_cloudzero.py
+  - path: test_dry_run_endpoint.py
+  - path: test_cloudzero_database.py

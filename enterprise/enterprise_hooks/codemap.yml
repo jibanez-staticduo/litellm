@@ -1,0 +1,9 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: aporia_ai.py
+  - path: banned_keywords.py
+  - path: __init__.py
+  - path: blocked_user_list.py
+  - path: openai_moderation.py
+  - path: google_text_moderation.py

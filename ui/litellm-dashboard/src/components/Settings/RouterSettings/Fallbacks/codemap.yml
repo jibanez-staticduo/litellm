@@ -1,0 +1,14 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: AddFallbacksModal.test.tsx
+  - path: AddFallbacks.tsx
+  - path: FallbackSelectionForm.test.tsx
+  - path: AddFallbacksModal.tsx
+  - path: FallbackGroupConfig.tsx
+  - path: EditFallbacks.test.tsx
+  - path: Fallbacks.tsx
+  - path: EditFallbacks.tsx
+  - path: Fallbacks.test.tsx
+  - path: AddFallbacks.test.tsx
+  - path: FallbackSelectionForm.tsx

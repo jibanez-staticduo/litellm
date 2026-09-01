@@ -1,0 +1,18 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.ts
+internals:
+  - path: donut_chart.tsx
+  - path: line_chart.tsx
+  - path: donut_chart.test.tsx
+  - path: area_chart.test.tsx
+  - path: colors.ts
+  - path: chart_legend.tsx
+  - path: bar_chart.tsx
+  - path: chart_tooltip.tsx
+  - path: area_chart.tsx
+  - path: chart_tooltip.test.tsx
+  - path: bar_chart.test.tsx
+  - path: chart_legend.test.tsx
+  - path: line_chart.test.tsx

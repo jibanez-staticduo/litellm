@@ -1,0 +1,13 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_mantle.py
+  - path: __init__.py
+  - path: test_base_aws_llm.py
+  - path: test_cross_region_inference_profile_mapping.py
+  - path: test_bedrock_ssl_verify.py
+  - path: test_converse_context_management.py
+  - path: test_bedrock_common_utils.py
+  - path: test_anthropic_beta_support.py
+  - path: test_web_identity_session_policy.py
+  - path: test_claude_platform_provider.py

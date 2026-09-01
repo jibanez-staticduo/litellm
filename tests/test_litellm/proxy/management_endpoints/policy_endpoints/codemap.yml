@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: test_ai_policy_suggester.py
+  - path: test_endpoints.py

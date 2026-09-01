@@ -1,0 +1,8 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_prisma_toolchain.py
+  - path: test_offline_image_migration.py
+  - path: test_component_image_serves_offline.py
+  - path: test_db_schema_migration.py
+  - path: test_replica_identity_full.py

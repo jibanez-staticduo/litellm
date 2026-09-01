@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: AgentPermissions.tsx
+  - path: MCPServerPermissions.test.tsx
+  - path: MCPServerPermissions.tsx
+  - path: VectorStorePermissions.tsx

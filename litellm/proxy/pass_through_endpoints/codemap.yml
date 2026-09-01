@@ -1,0 +1,15 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: upstream_usage_headers.py
+  - path: llm_passthrough_endpoints.py
+  - path: common_utils.py
+  - path: jsonpath_extractor.py
+  - path: managed_id_codec.py
+  - path: streaming_handler.py
+  - path: managed_id_rewriter.py
+  - path: passthrough_guardrails.py
+  - path: passthrough_endpoint_router.py
+  - path: success_handler.py
+  - path: architecture.md
+  - path: pass_through_endpoints.py

@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: mod.rs
+  - path: health.rs
+  - path: AGENTS.md
+  - path: gil.rs

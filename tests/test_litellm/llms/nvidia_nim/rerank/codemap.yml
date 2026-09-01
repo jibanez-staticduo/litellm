@@ -1,0 +1,4 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_nvidia_nim_rerank_transformation.py

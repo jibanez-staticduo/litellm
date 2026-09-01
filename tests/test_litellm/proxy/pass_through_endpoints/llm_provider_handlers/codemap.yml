@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_anthropic_passthrough_logging_handler.py
+  - path: test_gemini_passthrough_logging_handler.py
+  - path: test_cursor_passthrough_logging_handler.py
+  - path: test_cohere_passthrough_logging_handler.py
+  - path: test_batch_attribution.py
+  - path: test_openai_passthrough_logging_handler.py

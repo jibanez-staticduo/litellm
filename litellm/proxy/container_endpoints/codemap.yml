@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: ownership.py
+  - path: endpoints.py
+  - path: __init__.py
+  - path: handler_factory.py

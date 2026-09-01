@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_deployment_affinity_check.py
+  - path: test_encrypted_content_affinity_check.py
+  - path: test_session_id_affinity.py
+  - path: test_prompt_caching_deployment_check.py
+  - path: test_responses_api_deployment_check.py

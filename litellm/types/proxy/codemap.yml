@@ -1,0 +1,15 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: control_plane_endpoints.py
+  - path: litellm_pre_call_utils.py
+  - path: vantage_endpoints.py
+  - path: ui_sso.py
+  - path: README.md
+  - path: callback_logs_endpoints.py
+  - path: prompt_endpoints.py
+  - path: cloudzero_endpoints.py
+  - path: gateway_requests.py
+  - path: compliance_endpoints.py
+  - path: model_listing.py
+  - path: claude_code_endpoints.py

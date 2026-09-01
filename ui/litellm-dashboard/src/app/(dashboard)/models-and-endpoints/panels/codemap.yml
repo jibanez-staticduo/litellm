@@ -1,0 +1,13 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: PassThroughPanel.tsx
+  - path: ModelGroupAliasPanel.tsx
+  - path: ModelRetrySettingsPanel.tsx
+  - path: HealthStatusPanel.tsx
+  - path: AddModelPanel.tsx
+  - path: AllModelsPanel.tsx
+  - path: PriceDataPanel.tsx
+  - path: AutoRoutersTabPanel.tsx
+  - path: HealthStatusPanel.test.tsx
+  - path: LlmCredentialsPanel.tsx

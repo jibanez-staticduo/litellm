@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: deepeval.py
+  - path: __init__.py
+  - path: api.py
+  - path: utils.py
+  - path: types.py

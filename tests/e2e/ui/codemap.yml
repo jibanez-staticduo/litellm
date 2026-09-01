@@ -1,0 +1,13 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: constants.ts
+  - path: loopback.playwright.config.ts
+  - path: globalSetup.ts
+  - path: tsconfig.json
+  - path: run_e2e.sh
+  - path: package.json
+  - path: playwright.config.ts
+  - path: migration.serverRootPath.config.ts
+  - path: migration.serverRootPath.globalSetup.ts
+  - path: package-lock.json

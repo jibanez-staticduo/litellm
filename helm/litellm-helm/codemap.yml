@@ -1,0 +1,6 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: Chart.yaml
+  - path: README.md
+  - path: values.yaml

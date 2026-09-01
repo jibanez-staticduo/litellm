@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: usage_object_transformation.py
+  - path: tool_call_cost_tracking.py
+  - path: tiered_pricing.py
+  - path: utils.py

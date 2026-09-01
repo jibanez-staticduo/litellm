@@ -1,0 +1,4 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_elevenlabs_text_to_speech_transformation.py

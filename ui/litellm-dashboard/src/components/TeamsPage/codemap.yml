@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: teamTableColumns.tsx
+  - path: TeamsTable.test.tsx
+  - path: TeamsTable.tsx

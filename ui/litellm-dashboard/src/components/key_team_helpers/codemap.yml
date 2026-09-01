@@ -1,0 +1,15 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: BudgetFallbacksEditor.tsx
+  - path: key_list.tsx
+  - path: filter_helpers.ts
+  - path: fetch_available_models_team_key.tsx
+  - path: fetch_available_models_team_key.test.tsx
+  - path: BudgetFallbacksEditor.test.tsx
+  - path: TagRateLimitEditor.tsx
+  - path: BudgetWindowsEditor.tsx
+  - path: transform_key_info.tsx
+  - path: TagRateLimitEditor.test.tsx
+  - path: transform_key_info.test.ts
+  - path: filter_helpers.test.ts

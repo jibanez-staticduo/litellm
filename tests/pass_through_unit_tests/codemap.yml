@@ -1,0 +1,25 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_context_management_polyfill.py
+  - path: test_anthropic_messages_passthrough.py
+  - path: test_custom_logger_passthrough.py
+  - path: test_anthropic_messages_prompt_caching.py
+  - path: test_assemblyai_unit_tests_passthrough.py
+  - path: test_claude_code_marketplace.py
+  - path: test_vertex_ai_live_passthrough.py
+  - path: test_bedrock_anthropic_messages_test.py
+  - path: base_anthropic_messages_tool_search_test.py
+  - path: test_passthrough_managed_ids.py
+  - path: test_vertex_ai_anthropic_streaming_cost_injection.py
+  - path: test_websearch_interception_e2e.py
+  - path: base_anthropic_messages_prompt_caching_test.py
+  - path: test_pass_through_unit_tests.py
+  - path: conftest.py
+  - path: test_unit_test_streaming.py
+  - path: test_anthropic_messages_tool_search.py
+  - path: test_unit_test_anthropic_pass_through.py
+  - path: test_bedrock_tool_use_beta_header.py
+  - path: test_unit_test_passthrough_router.py
+  - path: test_passthrough_registry_updates.py
+  - path: base_anthropic_unified_messages_test.py

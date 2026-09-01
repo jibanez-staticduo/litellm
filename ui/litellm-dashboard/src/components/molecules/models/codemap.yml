@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: ProviderLogo.test.tsx
+  - path: ProviderLogo.tsx

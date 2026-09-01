@@ -1,0 +1,12 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_fal_ai_image_generation.py
+  - path: vertex_key.json
+  - path: test_bedrock_image_gen_unit_tests.py
+  - path: test_image_variation.py
+  - path: test_xinference.py
+  - path: conftest.py
+  - path: test_image_generation.py
+  - path: test_image_edits.py
+  - path: base_image_generation_test.py

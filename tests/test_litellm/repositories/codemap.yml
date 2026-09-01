@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_unit_of_work.py
+  - path: test_repositories.py

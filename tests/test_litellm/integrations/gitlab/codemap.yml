@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: test_gitlab_client.py
+  - path: test_gitlab_prompt_manager.py
+  - path: test_gitlab_integration.py

@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: MemoryView.test.tsx
+  - path: MemoryDetailDrawer.test.tsx
+  - path: MemoryTableColumns.tsx
+  - path: MemoryTable.test.tsx
+  - path: MemoryTable.tsx
+  - path: MemoryDetailDrawer.tsx
+  - path: MemoryView.tsx
+  - path: MemoryEditModal.tsx

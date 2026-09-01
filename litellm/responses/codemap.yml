@@ -1,0 +1,8 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+entrypoints:
+  - path: main.py
+internals:
+  - path: sse_output_recovery.py
+  - path: streaming_iterator.py
+  - path: utils.py

@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: request_context.py
+  - path: chat_completions_handler.py
+  - path: mcp_streaming_iterator.py
+  - path: litellm_proxy_mcp_handler.py

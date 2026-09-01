@@ -1,0 +1,36 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.tsx
+internals:
+  - path: add_attachment_form.tsx
+  - path: add_attachment_form.test.tsx
+  - path: AttachmentTable.test.tsx
+  - path: pipeline_flow_builder.tsx
+  - path: scope_validation.ts
+  - path: impact_preview_alert.tsx
+  - path: AttachmentTableColumns.tsx
+  - path: template_parameter_modal.tsx
+  - path: impact_popover.test.tsx
+  - path: PolicyTable.tsx
+  - path: policy_templates.tsx
+  - path: guardrail_selection_modal.test.tsx
+  - path: impact_preview_alert.test.tsx
+  - path: policy_info.tsx
+  - path: ai_suggestion_modal.tsx
+  - path: policy_test_panel.tsx
+  - path: PolicyTable.test.tsx
+  - path: ai_suggestion_modal.test.tsx
+  - path: add_policy_form.tsx
+  - path: policy_info.test.tsx
+  - path: policy_templates.test.tsx
+  - path: guardrail_selection_modal.tsx
+  - path: build_attachment_data.test.ts
+  - path: PolicyTableColumns.tsx
+  - path: AttachmentTable.tsx
+  - path: build_attachment_data.ts
+  - path: index.test.tsx
+  - path: pipeline_flow_builder.test.tsx
+  - path: template_parameter_modal.test.tsx
+  - path: scope_validation.test.ts
+  - path: impact_popover.tsx

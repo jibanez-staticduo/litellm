@@ -1,0 +1,16 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: AgentHubTableColumns.test.tsx
+  - path: SkillHubTableColumns.test.tsx
+  - path: ModelHubTableColumns.test.tsx
+  - path: UsefulLinksManagement.test.tsx
+  - path: MCPHubTableColumns.test.tsx
+  - path: ModelHubTable.tsx
+  - path: ModelHubTableColumns.tsx
+  - path: SkillHubDashboard.tsx
+  - path: AgentHubTableColumns.tsx
+  - path: SkillHubTableColumns.tsx
+  - path: MCPHubTableColumns.tsx
+  - path: ModelHubTable.test.tsx
+  - path: UsefulLinksManagement.tsx

@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: MakeMCPPublicForm.test.tsx
+  - path: MakeModelPublicForm.test.tsx
+  - path: MakeMCPPublicForm.tsx
+  - path: MakeAgentPublicForm.test.tsx
+  - path: MakeAgentPublicForm.tsx
+  - path: MakeModelPublicForm.tsx

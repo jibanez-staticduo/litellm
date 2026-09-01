@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: payload_builders.py
+  - path: api.py
+  - path: types.py
+  - path: extractors.py

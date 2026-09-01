@@ -1,0 +1,6 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: load_test_proxy.py
+  - path: load_test_queuing.py
+  - path: load_test_router.py

@@ -1,0 +1,13 @@
+scope: module
+parent: ../../../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: MessageDisplay.test.tsx
+  - path: MessageInput.tsx
+  - path: MessageInput.test.tsx
+  - path: ComparisonPanel.test.tsx
+  - path: ModelSelector.test.tsx
+  - path: ComparisonPanel.tsx
+  - path: ModelSelector.tsx
+  - path: MessageDisplay.tsx
+  - path: UnifiedSelector.tsx
+  - path: UnifiedSelector.test.tsx

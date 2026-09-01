@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_google_genai_streaming_iterator.py
+  - path: test_google_genai_handler.py
+  - path: test_google_genai_main.py
+  - path: test_google_genai_adapter.py
+  - path: test_google_genai_transformation.py
+  - path: test_google_genai_adapter_fixes.py

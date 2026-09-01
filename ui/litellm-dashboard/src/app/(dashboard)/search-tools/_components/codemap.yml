@@ -1,0 +1,19 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.tsx
+internals:
+  - path: SearchToolView.test.tsx
+  - path: SearchToolTable.tsx
+  - path: SearchTools.tsx
+  - path: SearchToolTester.tsx
+  - path: SearchToolTable.test.tsx
+  - path: SearchTools.test.tsx
+  - path: SearchConnectionTest.tsx
+  - path: CreateSearchTools.test.tsx
+  - path: SearchToolTester.test.tsx
+  - path: types.tsx
+  - path: SearchToolView.tsx
+  - path: SearchToolTableColumns.tsx
+  - path: CreateSearchTools.tsx
+  - path: SearchConnectionTest.test.tsx

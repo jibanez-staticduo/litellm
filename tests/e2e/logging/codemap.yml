@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_otel_trace_e2e.py
+  - path: test_datadog_log_e2e.py
+  - path: test_prometheus_queue_time_e2e.py
+  - path: datadog_reader.py
+  - path: test_prometheus_cardinality_e2e.py
+  - path: conftest.py
+  - path: test_span_selection.py
+  - path: logging_client.py

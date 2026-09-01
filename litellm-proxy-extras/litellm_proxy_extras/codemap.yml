@@ -1,0 +1,8 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: _logging.py
+  - path: __init__.py
+  - path: replica_identity.py
+  - path: prisma_toolchain.py
+  - path: utils.py

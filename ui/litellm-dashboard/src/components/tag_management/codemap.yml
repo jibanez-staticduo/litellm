@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: TagSelector.tsx
+  - path: TagSelector.test.tsx
+  - path: types.tsx

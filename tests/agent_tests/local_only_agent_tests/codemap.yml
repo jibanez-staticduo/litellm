@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_a2a_completion_bridge.py
+  - path: test_a2a.py
+  - path: local_vertex_agent.py

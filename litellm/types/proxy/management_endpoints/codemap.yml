@@ -1,0 +1,13 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: ui_sso.py
+  - path: key_management_endpoints.py
+  - path: team_endpoints.py
+  - path: model_management_endpoints.py
+  - path: internal_user_endpoints.py
+  - path: common_daily_activity.py
+  - path: management_v1.py
+  - path: config_overrides.py
+  - path: scim_v2.py
+  - path: customer_endpoints.py

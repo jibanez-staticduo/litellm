@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: file_content_streaming_handler.py
+  - path: common_utils.py
+  - path: storage_backend_service.py
+  - path: files_endpoints.py

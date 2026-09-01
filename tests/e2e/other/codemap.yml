@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: other_client.py
+  - path: test_master_key_auth_e2e.py
+  - path: test_health_lifecycle_e2e.py
+  - path: conftest.py

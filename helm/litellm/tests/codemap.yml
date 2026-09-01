@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: deployment_volumes_tests.yaml
+  - path: pdb_topology_spread_tests.yaml
+  - path: pod_hardening_tests.yaml
+  - path: redis_env_tests.yaml
+  - path: probe_tests.yaml
+  - path: migration_job_tests.yaml
+  - path: hpa_behavior_tests.yaml
+  - path: billing_metrics_tests.yaml

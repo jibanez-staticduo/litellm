@@ -1,0 +1,12 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_container_integration.py
+  - path: test_container_transformation.py
+  - path: __init__.py
+  - path: test_container_handler_url.py
+  - path: test_container_api.py
+  - path: test_container_regional_api_base.py
+  - path: test_container_utils.py
+  - path: test_container_proxy_ownership.py
+  - path: test_azure_container_transformation.py

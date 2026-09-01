@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: useCacheActivity.test.ts
+  - path: useCacheActivity.ts

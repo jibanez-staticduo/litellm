@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: mapper.ts
+  - path: mapper.test.ts
+  - path: DefaultUserSettingsForm.tsx
+  - path: schema.test.ts
+  - path: DefaultUserSettingsForm.test.tsx
+  - path: schema.ts

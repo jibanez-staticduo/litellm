@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_vertex_ai_files_handler.py
+  - path: test_file_retrieve_provider_routing.py
+  - path: test_vertex_ai_files_streaming.py
+  - path: test_vertex_ai_files_transformation.py
+  - path: test_vertex_ai_files_integration.py
+  - path: test_vertex_ai_binary_file_upload.py

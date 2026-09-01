@@ -1,0 +1,15 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_router_dispatch.py
+  - path: __init__.py
+  - path: test_async_pre_routing.py
+  - path: test_adaptive_router.py
+  - path: test_signals.py
+  - path: test_config.py
+  - path: test_e2e_adaptive_router.py
+  - path: test_update_queue.py
+  - path: test_classifier.py
+  - path: test_bandit.py
+  - path: test_state_endpoint.py
+  - path: test_hooks.py

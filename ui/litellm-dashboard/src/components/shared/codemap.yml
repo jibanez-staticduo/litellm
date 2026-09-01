@@ -1,0 +1,30 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: SearchSelect.test.tsx
+  - path: numerical_input.tsx
+  - path: CopyButton.test.tsx
+  - path: ToolbarSeparator.test.tsx
+  - path: PageHeader.tsx
+  - path: errorUtils.tsx
+  - path: BadgeLink.tsx
+  - path: BadgeLink.test.tsx
+  - path: CreatedKeyDisplay.tsx
+  - path: SearchSelect.tsx
+  - path: advanced_date_picker.test.tsx
+  - path: AdminOnlyNotice.tsx
+  - path: usage_date_picker.test.tsx
+  - path: PageHeader.test.tsx
+  - path: Alert.tsx
+  - path: chart_loader.tsx
+  - path: ToolbarSeparator.tsx
+  - path: usage_date_picker.tsx
+  - path: advanced_date_picker.tsx
+  - path: MultiSelect.tsx
+  - path: CopyButton.tsx
+  - path: CreatedKeyDisplay.test.tsx
+  - path: PaginatedSearchSelect.tsx
+  - path: date_picker_types.ts
+  - path: MultiSelect.test.tsx
+  - path: chart_loader.test.tsx
+  - path: PaginatedSearchSelect.test.tsx

@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_count_tokens_no_vertexai_sdk.py
+  - path: __init__.py
+  - path: test_count_tokens_location.py

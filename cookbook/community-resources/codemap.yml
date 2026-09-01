@@ -1,0 +1,5 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: max_tokens.json
+  - path: get_hf_models.py

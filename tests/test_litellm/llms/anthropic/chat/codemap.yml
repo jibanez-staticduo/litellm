@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: conftest.py
+  - path: test_anthropic_chat_transformation.py
+  - path: test_code_interpreter_results_extraction.py
+  - path: test_anthropic_chat_handler.py

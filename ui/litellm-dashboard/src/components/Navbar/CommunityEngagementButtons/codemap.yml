@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: CommunityEngagementButtons.tsx
+  - path: CommunityEngagementButtons.test.tsx

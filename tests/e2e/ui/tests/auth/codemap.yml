@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: proxyLogoutUrl.spec.ts
+  - path: unauthenticatedRedirect.spec.ts
+  - path: logout.spec.ts

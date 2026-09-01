@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_traversal.py
+  - path: test_render_oauth.py
+  - path: test_list_outcomes.py
+  - path: test_classify.py

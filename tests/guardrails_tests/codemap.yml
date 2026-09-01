@@ -1,0 +1,22 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_bedrock_guardrails.py
+  - path: test_lasso_guardrails.py
+  - path: test_javelin_guardrails.py
+  - path: test_zscaler_ai_guard.py
+  - path: test_deepkeep_guardrails.py
+  - path: test_semantic_guard.py
+  - path: test_dynamoai_guardrails.py
+  - path: test_lakera_v2.py
+  - path: test_sg_mas_ai_guardrails.py
+  - path: test_akto_guardrails.py
+  - path: conftest.py
+  - path: test_presidio_pii.py
+  - path: test_eu_ai_act_article5.py
+  - path: test_guardrail_load_balancing.py
+  - path: test_sg_pdpa_guardrails.py
+  - path: test_eu_ai_act_french_3_scenarios.py
+  - path: test_guardrails_config.py
+  - path: test_custom_guardrail.py
+  - path: test_tracing_guardrails.py

@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_azure_chat_o_series_transformation.py
+  - path: test_azure_chat_gpt_transformation.py
+  - path: test_azure_base_model_routing.py
+  - path: test_azure_gpt5_transformation.py

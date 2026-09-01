@@ -1,0 +1,12 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_model_groups.py
+  - path: test_models.py
+  - path: test_http_client.py
+  - path: test_credentials.py
+  - path: test_client.py
+  - path: test_http_commands.py
+  - path: test_users.py
+  - path: test_chat.py
+  - path: test_keys.py

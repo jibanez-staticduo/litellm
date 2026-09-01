@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: UIThemeSettings.test.tsx
+  - path: page.tsx
+  - path: UIThemeSettings.tsx

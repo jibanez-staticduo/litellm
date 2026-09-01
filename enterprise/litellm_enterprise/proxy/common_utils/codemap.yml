@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: check_batch_cost.py
+  - path: __init__.py
+  - path: check_responses_cost.py

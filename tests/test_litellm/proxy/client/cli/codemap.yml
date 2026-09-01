@@ -1,0 +1,15 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_global_options.py
+  - path: test_encryption_commands.py
+  - path: test_model_groups_commands.py
+  - path: __init__.py
+  - path: test_credentials_commands.py
+  - path: test_up_commands.py
+  - path: test_config_commands.py
+  - path: test_users_commands.py
+  - path: test_models_commands.py
+  - path: test_auth_commands.py
+  - path: test_keys_commands.py
+  - path: test_agents.py

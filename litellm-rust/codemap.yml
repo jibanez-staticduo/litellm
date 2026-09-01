@@ -1,0 +1,7 @@
+scope: module
+parent: ../.staticeng/codemap.yml
+internals:
+  - path: ADDING_A_PROVIDER.md
+  - path: README.md
+  - path: AGENTS.md
+  - path: CLAUDE.md

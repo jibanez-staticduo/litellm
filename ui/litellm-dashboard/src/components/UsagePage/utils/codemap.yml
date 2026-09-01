@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: value_formatters.tsx
+  - path: value_formatters.test.ts

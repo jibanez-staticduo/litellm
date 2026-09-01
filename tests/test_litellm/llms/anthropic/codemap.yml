@@ -1,0 +1,13 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_anthropic_output_format_filter.py
+  - path: test_anthropic_count_tokens_transformation.py
+  - path: test_azure_ai_cache_pricing.py
+  - path: __init__.py
+  - path: test_message_sanitization.py
+  - path: test_anthropic_common_utils.py
+  - path: test_anthropic_structured_output.py
+  - path: test_cost_calculation_dict_safety.py
+  - path: test_count_tokens_oauth.py
+  - path: test_anthropic_files_and_batches.py

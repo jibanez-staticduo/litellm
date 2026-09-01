@@ -1,0 +1,24 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.ts
+internals:
+  - path: cost_tracking_settings.test.tsx
+  - path: how_it_works.test.tsx
+  - path: provider_display_helpers.ts
+  - path: use_margin_config.ts
+  - path: use_discount_config.ts
+  - path: provider_display_helpers.test.ts
+  - path: cost_tracking_settings.tsx
+  - path: add_margin_form.tsx
+  - path: how_it_works.tsx
+  - path: types.ts
+  - path: provider_margin_table.test.tsx
+  - path: provider_discount_table.test.tsx
+  - path: add_margin_form.test.tsx
+  - path: add_provider_form.tsx
+  - path: use_margin_config.test.ts
+  - path: provider_margin_table.tsx
+  - path: provider_discount_table.tsx
+  - path: add_provider_form.test.tsx
+  - path: use_discount_config.test.ts

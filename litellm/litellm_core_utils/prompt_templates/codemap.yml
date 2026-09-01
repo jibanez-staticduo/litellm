@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: common_utils.py
+  - path: factory.py
+  - path: huggingface_template_handler.py
+  - path: image_handling.py

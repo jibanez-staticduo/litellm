@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_sap_transformation.py
+  - path: test_sap_chat_calls.py
+  - path: test_sap_response_format.py
+  - path: test_sap_tool_parameters.py
+  - path: test_sap_langchain_strict_param.py

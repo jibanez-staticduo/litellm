@@ -1,0 +1,4 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: custom_ui_sso_hook.py

@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_prometheus_unit_tests.py
+  - path: test_prometheus.py
+  - path: test_custom_guardrail.py

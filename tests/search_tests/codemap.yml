@@ -1,0 +1,22 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_nimble_search.py
+  - path: test_exa_ai_search.py
+  - path: test_firecrawl_search.py
+  - path: test_linkup_search.py
+  - path: __init__.py
+  - path: test_perplexity_search.py
+  - path: test_tavily_search.py
+  - path: test_searchapi_search.py
+  - path: test_google_pse_search.py
+  - path: test_searxng_search.py
+  - path: test_search_tool_name_filtering.py
+  - path: test_brave_search.py
+  - path: conftest.py
+  - path: base_search_unit_tests.py
+  - path: test_parallel_ai_search.py
+  - path: test_tinyfish_search.py
+  - path: test_dataforseo_search.py
+  - path: test_duckduckgo_search.py
+  - path: test_serper_search.py

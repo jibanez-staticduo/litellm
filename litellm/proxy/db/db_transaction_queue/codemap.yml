@@ -1,0 +1,12 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: pod_lock_manager.py
+  - path: daily_spend_update_queue.py
+  - path: redis_update_buffer.py
+  - path: spend_logs_partition_manager.py
+  - path: spend_log_cleanup.py
+  - path: base_update_queue.py
+  - path: spend_update_queue.py
+  - path: spend_log_cleanup_metrics.py
+  - path: tool_discovery_queue.py

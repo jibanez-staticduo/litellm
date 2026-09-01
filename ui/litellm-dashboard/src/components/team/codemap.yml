@@ -1,0 +1,29 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: TeamMemberTab.test.tsx
+  - path: tabVisibilityUtils.test.ts
+  - path: TeamVirtualKeysTable.test.tsx
+  - path: AvailableTeamsPanel.tsx
+  - path: TeamVirtualKeysTable.tsx
+  - path: TeamMemberTab.tsx
+  - path: member_permissions.tsx
+  - path: LoggingSettings.test.tsx
+  - path: AvailableTeamsPanel.test.tsx
+  - path: permission_definitions.test.tsx
+  - path: AvailableTeamsTable.tsx
+  - path: member_permissions.test.tsx
+  - path: TeamInfo.tsx
+  - path: EditLoggingSettings.tsx
+  - path: permission_definitions.tsx
+  - path: TeamInfo.test.tsx
+  - path: EditMembership.tsx
+  - path: teamModelAccess.test.ts
+  - path: LoggingSettings.tsx
+  - path: tabVisibilityUtils.ts
+  - path: teamModelAccess.ts
+  - path: EditMembership.test.tsx
+  - path: MyUserTab.test.tsx
+  - path: useMyTeamMember.ts
+  - path: MyUserTab.tsx
+  - path: AvailableTeamsTableColumns.tsx

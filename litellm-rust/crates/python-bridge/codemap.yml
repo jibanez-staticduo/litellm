@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: AGENTS.md
+  - path: build.rs
+  - path: CLAUDE.md

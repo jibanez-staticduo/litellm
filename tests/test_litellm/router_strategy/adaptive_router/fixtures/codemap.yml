@@ -1,0 +1,13 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: mixed_failure_then_satisfaction.json
+  - path: clean_no_signals.json
+  - path: stagnation_repeat.json
+  - path: exhaustion_429.json
+  - path: exhaustion_context_overflow.json
+  - path: disengagement_giveup.json
+  - path: misalignment_rephrase.json
+  - path: clean_satisfaction.json
+  - path: failure_tool_error.json
+  - path: loop_same_tool.json

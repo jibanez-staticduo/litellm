@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_datadog_team_handler.py
+  - path: test_datadog_tags_regression.py
+  - path: test_datadog_metrics.py
+  - path: test_datadog_cost_management.py
+  - path: test_datadog_llm_obs_agent.py
+  - path: test_datadog_logger_batching.py

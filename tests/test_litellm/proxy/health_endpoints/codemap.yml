@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_health_endpoints.py
+  - path: test_graceful_shutdown_endpoints.py

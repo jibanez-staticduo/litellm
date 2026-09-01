@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: useCurrentUser.test.ts
+  - path: useUsers.test.ts
+  - path: useUsers.ts
+  - path: useCurrentUser.ts

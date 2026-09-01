@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.ts
+internals:
+  - path: CustomCodeModal.test.tsx
+  - path: CustomCodeModal.tsx

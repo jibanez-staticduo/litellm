@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_databricks_e2e.py
+  - path: test_databricks_partner_integration.py
+  - path: test_databricks_common_utils.py
+  - path: test_databricks_pricing.py
+  - path: test_databricks_streaming_utils.py

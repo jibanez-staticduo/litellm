@@ -1,0 +1,24 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: AgentsPanel.tsx
+  - path: agent_cost_view.test.tsx
+  - path: agent_card_discovery.test.tsx
+  - path: agent_discovery_utils.test.ts
+  - path: agent_form_fields.tsx
+  - path: dynamic_agent_form_fields.tsx
+  - path: AgentsPanel.test.tsx
+  - path: agent_discovery_utils.ts
+  - path: AgentsTableColumns.tsx
+  - path: agent_virtual_keys.test.tsx
+  - path: agent_config.ts
+  - path: agent_type_utils.ts
+  - path: add_agent_form.test.tsx
+  - path: AgentsTable.tsx
+  - path: agent_cost_view.tsx
+  - path: AgentsTable.test.tsx
+  - path: agent_info.tsx
+  - path: agent_virtual_keys.tsx
+  - path: add_agent_form.tsx
+  - path: agent_card_discovery.tsx
+  - path: cost_config_fields.tsx

@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: common_utils.py
+  - path: cost_calculation.py
+  - path: base_aws_llm.py

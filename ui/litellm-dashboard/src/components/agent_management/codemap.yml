@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: AgentSelector.test.tsx
+  - path: AgentSelector.tsx

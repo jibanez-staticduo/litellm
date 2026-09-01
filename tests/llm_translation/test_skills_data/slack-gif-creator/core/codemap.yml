@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: gif_builder.py
+  - path: __init__.py
+  - path: validators.py
+  - path: frame_composer.py
+  - path: easing.py

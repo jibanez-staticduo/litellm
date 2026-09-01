@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: agentic_streaming_iterator.py
+  - path: response_cache.py
+  - path: handler.py
+  - path: mcp_handler.py
+  - path: streaming_iterator.py
+  - path: transformation.py
+  - path: utils.py
+  - path: fake_stream_iterator.py

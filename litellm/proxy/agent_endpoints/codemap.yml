@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: model_list_helpers.py
+  - path: endpoints.py
+  - path: databricks_oauth.py
+  - path: agent_registry.py
+  - path: a2a_routing.py
+  - path: a2a_endpoints.py
+  - path: utils.py

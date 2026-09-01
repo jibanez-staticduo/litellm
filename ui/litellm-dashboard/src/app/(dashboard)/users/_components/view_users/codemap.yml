@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: UsersTable.tsx
+  - path: user_info_view.test.tsx
+  - path: UsersTableColumns.tsx
+  - path: user_info_view.tsx
+  - path: UsersTable.test.tsx

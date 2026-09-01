@@ -1,0 +1,13 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_base_responses_api_streaming_iterator.py
+  - path: test_openai_responses_api.py
+  - path: base_responses_api.py
+  - path: test_anthropic_responses_api.py
+  - path: test_azure_responses_api.py
+  - path: test_responses_hooks.py
+  - path: test_anthropic_tool_result_fix.py
+  - path: conftest.py
+  - path: test_anthropic_tool_result_empty_call_id.py
+  - path: test_google_ai_studio_responses_api.py

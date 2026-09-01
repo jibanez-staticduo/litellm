@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: handle_add_model_submit_test.tsx
+  - path: fileMock.js
+  - path: jest.config.js
+  - path: tsconfig.json
+  - path: jest.setup.js
+  - path: package.json
+  - path: package-lock.json

@@ -1,0 +1,13 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: CredentialsTableColumns.tsx
+  - path: CredentialsTable.test.tsx
+  - path: CredentialsPanel.test.tsx
+  - path: credential_form_helpers.test.ts
+  - path: reuse_credentials.tsx
+  - path: CredentialModal.tsx
+  - path: credential_form_helpers.ts
+  - path: CredentialModal.test.tsx
+  - path: CredentialsPanel.tsx
+  - path: CredentialsTable.tsx

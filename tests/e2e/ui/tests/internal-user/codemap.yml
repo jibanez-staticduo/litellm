@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: internalUserNoTeam.spec.ts
+  - path: internalUser.spec.ts
+  - path: internalUserWithTeams.spec.ts

@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: useModelCostMap.ts
+  - path: useModels.test.ts
+  - path: useModelCostMap.test.ts
+  - path: useModels.ts

@@ -1,0 +1,12 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: user_invitation.py
+  - path: object_permission_utils.py
+  - path: team_member_permission_checks.py
+  - path: access_group_key_sync.py
+  - path: access_group_team_sync.py
+  - path: key_settings_audit.py
+  - path: utils.py
+  - path: team_metadata_validation.py
+  - path: audit_logs.py

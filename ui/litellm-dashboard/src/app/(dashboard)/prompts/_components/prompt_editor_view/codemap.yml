@@ -1,0 +1,25 @@
+scope: module
+parent: ../../../../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.tsx
+internals:
+  - path: PromptMessagesCard.test.tsx
+  - path: PromptMessagesCard.tsx
+  - path: ModelConfigCard.tsx
+  - path: PublishModal.test.tsx
+  - path: DeveloperMessageCard.test.tsx
+  - path: ModelConfigCard.test.tsx
+  - path: PromptEditorHeader.test.tsx
+  - path: utils.test.ts
+  - path: PromptCodeSnippets.tsx
+  - path: PromptCodeSnippets.test.tsx
+  - path: DotpromptViewTab.tsx
+  - path: types.ts
+  - path: VersionHistorySidePanel.test.tsx
+  - path: utils.ts
+  - path: DeveloperMessageCard.tsx
+  - path: ToolsCard.test.tsx
+  - path: PromptEditorHeader.tsx
+  - path: VersionHistorySidePanel.tsx
+  - path: ToolsCard.tsx
+  - path: PublishModal.tsx

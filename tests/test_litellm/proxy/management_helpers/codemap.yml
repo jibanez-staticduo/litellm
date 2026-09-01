@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_object_permission_utils.py
+  - path: test_access_group_team_sync.py
+  - path: test_audit_log_callbacks.py
+  - path: test_management_helpers_utils.py
+  - path: team_metadata_validator_impls.py
+  - path: test_team_member_permission_checks.py
+  - path: test_team_metadata_validation.py

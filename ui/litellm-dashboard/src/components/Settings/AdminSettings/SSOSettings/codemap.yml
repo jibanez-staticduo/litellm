@@ -1,0 +1,16 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: SSOSettingsLoadingSkeleton.test.tsx
+  - path: constants.ts
+  - path: SSOSettings.tsx
+  - path: RedactableField.tsx
+  - path: utils.test.ts
+  - path: SSOSettings.test.tsx
+  - path: SSOSettingsEmptyPlaceholder.tsx
+  - path: utils.ts
+  - path: RedactableField.test.tsx
+  - path: SSOSettingsLoadingSkeleton.tsx
+  - path: SSOSettingsEmptyPlaceholder.test.tsx
+  - path: RoleMappings.test.tsx
+  - path: RoleMappings.tsx

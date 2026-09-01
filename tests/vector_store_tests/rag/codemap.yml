@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_rag_s3_vectors.py
+  - path: test_rag_bedrock.py
+  - path: base_rag_tests.py
+  - path: test_rag_vertex_ai.py
+  - path: test_rag_openai.py

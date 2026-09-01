@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_watsonx_common_utils.py
+  - path: __init__.py
+  - path: test_watsonx.py

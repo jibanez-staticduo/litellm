@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: semconv.py
+  - path: __init__.py
+  - path: metadata.py
+  - path: spans.py
+  - path: baggage.py
+  - path: utils.py
+  - path: payloads.py
+  - path: config.py

@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: general_settings.tsx
+  - path: general_settings.test.tsx

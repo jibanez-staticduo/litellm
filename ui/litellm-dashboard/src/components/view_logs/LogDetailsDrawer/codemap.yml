@@ -1,0 +1,44 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.ts
+internals:
+  - path: LogDetailContent.test.tsx
+  - path: LogDetailContent.tsx
+  - path: ClassifyTag.test.tsx
+  - path: RealtimePrettyView.tsx
+  - path: constants.ts
+  - path: PrettyMessagesView.tsx
+  - path: CollapsibleMessage.test.tsx
+  - path: prettyMessagesTypes.ts
+  - path: prettyMessagesUtils.ts
+  - path: InputCard.test.tsx
+  - path: RoutingDecisionCard.tsx
+  - path: TokenFlow.tsx
+  - path: utils.test.ts
+  - path: OutputCard.tsx
+  - path: JsonViewer.tsx
+  - path: LogDetailsDrawer.tsx
+  - path: SimpleMessageBlock.tsx
+  - path: InputCard.tsx
+  - path: PrettyMessagesView.test.tsx
+  - path: DrawerHeader.tsx
+  - path: utils.ts
+  - path: LogDetailsDrawer.test.tsx
+  - path: SimpleMessageBlock.test.tsx
+  - path: TruncatedValue.test.tsx
+  - path: TruncatedValue.tsx
+  - path: SimpleToolCallBlock.test.tsx
+  - path: JsonViewer.test.tsx
+  - path: RealtimePrettyView.test.tsx
+  - path: useKeyboardNavigation.ts
+  - path: HistoryTree.tsx
+  - path: SectionHeader.tsx
+  - path: SimpleToolCallBlock.tsx
+  - path: CollapsibleMessage.tsx
+  - path: SectionHeader.test.tsx
+  - path: RoutingDecisionCard.test.tsx
+  - path: OutputCard.test.tsx
+  - path: ClassifyTag.tsx
+  - path: HistoryTree.test.tsx
+  - path: TokenFlow.test.tsx

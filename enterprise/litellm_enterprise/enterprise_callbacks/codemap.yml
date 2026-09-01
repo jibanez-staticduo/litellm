@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: llama_guard.py
+  - path: __init__.py
+  - path: example_logging_api.py
+  - path: llm_guard.py
+  - path: callback_controls.py
+  - path: secret_detection.py

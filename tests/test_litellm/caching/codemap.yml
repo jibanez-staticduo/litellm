@@ -1,0 +1,22 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_redis_connection_pool.py
+  - path: test_llm_caching_handler.py
+  - path: test_check_and_fix_namespace_none_guard.py
+  - path: test_redis_cluster_cache.py
+  - path: test_s3_cache.py
+  - path: test_caching.py
+  - path: test_llm_client_cache_e2e.py
+  - path: test_dual_cache.py
+  - path: test_caching_handler.py
+  - path: test_redis_cache.py
+  - path: test_azure_blob_cache.py
+  - path: test_redis_semantic_cache.py
+  - path: test_evicted_client_closer.py
+  - path: test_gcs_cache.py
+  - path: test_qdrant_semantic_cache.py
+  - path: test_disk_cache.py
+  - path: test_valkey_semantic_cache.py
+  - path: test_in_memory_cache.py
+  - path: test_embedding_router.py

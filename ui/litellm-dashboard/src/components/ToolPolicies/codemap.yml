@@ -1,0 +1,12 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: ToolPoliciesTableColumns.test.tsx
+  - path: ToolPoliciesTable.tsx
+  - path: ToolPoliciesPanel.test.tsx
+  - path: ToolPoliciesTableColumns.tsx
+  - path: PolicySelect.tsx
+  - path: PolicySelect.test.tsx
+  - path: toolPoliciesQueries.ts
+  - path: ToolPoliciesPanel.tsx
+  - path: ToolPoliciesTable.test.tsx

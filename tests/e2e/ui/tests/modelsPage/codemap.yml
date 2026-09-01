@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: addModel.spec.ts
+  - path: credentials.spec.ts
+  - path: responsiveHeader.spec.ts
+  - path: clearCustomPricing.spec.ts

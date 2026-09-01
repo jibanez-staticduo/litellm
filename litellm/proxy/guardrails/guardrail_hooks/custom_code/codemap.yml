@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: sandbox.py
+  - path: response_rejection_code.py
+  - path: primitives.py
+  - path: custom_code_guardrail.py

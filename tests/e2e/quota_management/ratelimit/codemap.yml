@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: quota_client.py
+  - path: test_redis_backed_ratelimit_e2e.py
+  - path: test_tpm_excludes_cached_tokens_e2e.py
+  - path: test_redis_circuit_breaker_e2e.py
+  - path: conftest.py
+  - path: test_dynamic_rate_limit_priority_e2e.py
+  - path: test_rate_limit_e2e.py

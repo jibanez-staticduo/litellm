@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: ibm_detector.py
+  - path: README.md
+  - path: example_config.yaml

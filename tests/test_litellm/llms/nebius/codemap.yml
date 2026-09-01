@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_nebius_chat_transformation.py
+  - path: test_nebius_embedding_transformation.py

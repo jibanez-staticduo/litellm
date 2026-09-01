@@ -1,0 +1,9 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_e2e_openai_responses_api.py
+  - path: test_openai_fine_tuning.py
+  - path: test_bedrock_batches_api.py
+  - path: test_openai_files_endpoints.py
+  - path: test_responses_websocket_proxy_e2e.py
+  - path: test_openai_batches_endpoint.py

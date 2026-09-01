@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_deepinfra_chat_transformation.py
+  - path: test_deepinfra_rerank_integration.py
+  - path: test_deepinfra_rerank.py
+  - path: test_deepinfra_rerank_transformation.py

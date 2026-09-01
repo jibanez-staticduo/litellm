@@ -1,0 +1,13 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: test_azure.py
+  - path: test_bedrock_invoke.py
+  - path: test_vertex_ai.py
+  - path: test_azure_openai.py
+  - path: test_bedrock_mantle.py
+  - path: test_bedrock_converse.py
+  - path: test_anthropic.py
+  - path: test_openai.py
+  - path: test_vertex_ai_gpt.py

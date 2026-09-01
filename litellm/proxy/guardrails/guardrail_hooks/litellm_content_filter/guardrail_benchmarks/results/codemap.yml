@@ -1,0 +1,16 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: insults_cf.json
+  - path: religion_discrimination_cf.json
+  - path: age_discrimination_cf.json
+  - path: BENCHMARKS.md
+  - path: claims_medical_advice_cf.json
+  - path: investment_cf.json
+  - path: claims_prior_auth_gaming_cf.json
+  - path: claims_phi_disclosure_cf.json
+  - path: gender_discrimination_cf.json
+  - path: disability_discrimination_cf.json
+  - path: claims_system_override_cf.json
+  - path: military_discrimination_cf.json
+  - path: claims_fraud_coaching_cf.json

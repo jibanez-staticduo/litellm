@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: settings.py
+  - path: process.py
+  - path: wizard.py
+  - path: commands.py
+  - path: config.py

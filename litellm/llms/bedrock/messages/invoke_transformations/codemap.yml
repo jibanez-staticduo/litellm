@@ -1,0 +1,4 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: anthropic_claude3_transformation.py

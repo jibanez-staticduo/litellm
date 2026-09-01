@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: FiltersButton.test.tsx
+  - path: FiltersButton.tsx
+  - path: ResetFiltersButton.tsx
+  - path: ResetFiltersButton.test.tsx
+  - path: FilterInput.tsx
+  - path: FilterInput.test.tsx

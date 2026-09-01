@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: bitbucket_client.py
+  - path: README.md
+  - path: bitbucket_prompt_manager.py

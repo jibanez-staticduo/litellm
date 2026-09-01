@@ -1,0 +1,12 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_bedrock_files_and_batches.py
+  - path: test_batches_logging_unit_tests.py
+  - path: test_batch_custom_pricing.py
+  - path: test_manus_files_all_methods.py
+  - path: test_openai_batches_and_files.py
+  - path: conftest.py
+  - path: pathrise-convert-1606954137718.json
+  - path: test_fine_tuning_api.py
+  - path: test_batch_rate_limits.py

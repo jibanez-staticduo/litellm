@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: common_utils.py
+  - path: azure.py
+  - path: cost_calculation.py
+  - path: audio_transcriptions.py
+  - path: assistants.py
+  - path: exception_mapping.py

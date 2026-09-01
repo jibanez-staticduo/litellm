@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: types.ts
+  - path: AccessGroupsTable.tsx
+  - path: AccessGroupsTableColumns.tsx
+  - path: AccessGroupsPage.test.tsx
+  - path: AccessGroupsDetailsPage.test.tsx
+  - path: AccessGroupsDetailsPage.tsx
+  - path: AccessGroupsPage.tsx

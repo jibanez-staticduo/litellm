@@ -1,0 +1,6 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: oci_proxy_test_config.yaml
+  - path: test_oci_integration.py
+  - path: test_oci_proxy_integration.py

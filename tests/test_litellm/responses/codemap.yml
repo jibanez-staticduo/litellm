@@ -1,0 +1,19 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_responses_prompt_management.py
+  - path: test_responses_websocket_all_providers.py
+  - path: test_sse_output_recovery.py
+  - path: test_responses_utils.py
+  - path: test_responses_api_bridge_flag.py
+  - path: test_responses_streaming_iterator.py
+  - path: test_null_test_fix.py
+  - path: test_streaming_iterator_error_events.py
+  - path: test_streaming_iterator.py
+  - path: test_custom_tool_call.py
+  - path: test_metadata_codex_callback.py
+  - path: test_rust_bridge_websocket.py
+  - path: test_no_duplicate_spend_logs.py
+  - path: test_responses_api_request_body.py
+  - path: test_responses_router_cooldown.py
+  - path: test_text_format_conversion.py

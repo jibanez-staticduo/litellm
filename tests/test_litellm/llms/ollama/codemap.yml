@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_ollama_chat_transformation.py
+  - path: test_ollama_model_info.py
+  - path: test_ollama_embedding.py
+  - path: test_ollama_completion_transformation.py

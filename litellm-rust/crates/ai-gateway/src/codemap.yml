@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: main.rs
+internals:
+  - path: lib.rs
+  - path: constants.rs
+  - path: client.rs
+  - path: state.rs
+  - path: gil.rs

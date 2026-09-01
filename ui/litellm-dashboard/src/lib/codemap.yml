@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: autorouter_presets.test.ts
+  - path: cva.config.ts
+  - path: autorouter_presets.ts
+  - path: assetPaths.ts
+  - path: serverRootPath.ts
+  - path: assetPaths.test.ts

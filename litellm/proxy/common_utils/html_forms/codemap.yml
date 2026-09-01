@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: cli_sso_success.py
+  - path: ui_login.py
+  - path: jwt_display_template.py

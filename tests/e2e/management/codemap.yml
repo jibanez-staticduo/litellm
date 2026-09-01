@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_management_e2e.py
+  - path: test_model_tag_accessgroup_e2e.py
+  - path: test_key_management_e2e.py
+  - path: management_client.py
+  - path: conftest.py
+  - path: test_budget_customer_user_org_e2e.py
+  - path: test_config_misc_endpoints_e2e.py
+  - path: test_team_management_e2e.py

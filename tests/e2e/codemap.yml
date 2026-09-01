@@ -1,0 +1,16 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: otel_client.py
+  - path: test_e2e_http.py
+  - path: e2e_config.py
+  - path: e2e_db.py
+  - path: proxy_client.py
+  - path: transport.py
+  - path: lifecycle.py
+  - path: junit_properties.py
+  - path: conftest.py
+  - path: models.py
+  - path: CLAUDE.md
+  - path: CONTRIBUTING.md
+  - path: e2e_http.py

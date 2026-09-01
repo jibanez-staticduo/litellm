@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: storage_backend_factory.py
+  - path: storage_backend.py
+  - path: transformation.py
+  - path: azure_blob_storage_backend.py

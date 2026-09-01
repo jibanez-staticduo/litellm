@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_amazon_qwen3_transformation.py
+  - path: test_amazon_qwen2_transformation.py
+  - path: test_base_invoke_transformation.py
+  - path: test_bedrock_chat_invoke_transformations_anthropic_claude3_transformation.py
+  - path: test_twelvelabs_pegasus_transformation.py

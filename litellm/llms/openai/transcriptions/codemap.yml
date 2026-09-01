@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: gpt_transformation.py
+  - path: handler.py
+  - path: whisper_transformation.py

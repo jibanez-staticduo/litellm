@@ -1,0 +1,13 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+entrypoints:
+  - path: main.py
+internals:
+  - path: __init__.py
+  - path: cost_calculator.py
+  - path: streaming_iterator.py
+  - path: card_resolver.py
+  - path: exceptions.py
+  - path: utils.py
+  - path: client.py
+  - path: exception_mapping_utils.py

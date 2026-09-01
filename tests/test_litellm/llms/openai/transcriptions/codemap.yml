@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_audio_transcription_guardrail_handler.py
+  - path: test_whisper_transformation.py
+  - path: test_transcription_duration_hidden.py

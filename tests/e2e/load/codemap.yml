@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_weekly_session_anomaly_e2e.py
+  - path: session_anomaly.py
+  - path: conftest.py
+  - path: test_session_anomaly.py
+  - path: weekly_anomaly_config.yml
+  - path: load_client.py
+  - path: test_locust_load.py
+  - path: locust_load.py

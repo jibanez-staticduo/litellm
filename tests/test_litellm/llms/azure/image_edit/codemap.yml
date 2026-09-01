@@ -1,0 +1,4 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_azure_image_edit_transformation.py

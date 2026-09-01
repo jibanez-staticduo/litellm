@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_scim_v2_discovery.py
+  - path: test_scim_transformations.py
+  - path: test_scim_v2_endpoints.py
+  - path: test_scim_key_deactivation.py
+  - path: test_scim_patch_user.py

@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: useKeys.test.ts
+  - path: useKeyInfo.ts
+  - path: useKeys.ts
+  - path: useSetKeyBlockedState.ts
+  - path: useResetKeySpend.ts
+  - path: useSetKeyBlockedState.test.ts
+  - path: useKeyAliases.test.ts
+  - path: useKeyAliases.ts

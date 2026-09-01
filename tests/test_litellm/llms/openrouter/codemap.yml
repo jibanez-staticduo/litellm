@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_openrouter_provider_routing.py
+  - path: test_openrouter_embedding_transformation.py

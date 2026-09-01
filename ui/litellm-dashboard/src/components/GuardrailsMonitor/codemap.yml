@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: MetricCard.test.tsx
+  - path: mockData.ts
+  - path: LogViewer.tsx
+  - path: MetricCard.tsx

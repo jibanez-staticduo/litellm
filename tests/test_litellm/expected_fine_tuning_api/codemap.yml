@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: azure_create_request.json
+  - path: azure_list_raw_response.json
+  - path: azure_cancel_expected_output.json
+  - path: azure_create_expected_output.json
+  - path: azure_cancel_request.json
+  - path: azure_create_raw_response.json
+  - path: azure_cancel_raw_response.json
+  - path: azure_list_request.json

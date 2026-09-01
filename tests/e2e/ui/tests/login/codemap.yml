@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: login.spec.ts
+  - path: internalUserIdentity.spec.ts

@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: ModelViewToggle.tsx
+  - path: UsageAIChatPanel.tsx
+  - path: UsageAIChatPanel.test.tsx
+  - path: gatewayActivity.test.ts
+  - path: UsagePageView.test.tsx
+  - path: gatewayActivity.ts
+  - path: UsagePageView.tsx

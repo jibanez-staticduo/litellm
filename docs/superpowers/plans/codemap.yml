@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: 2026-08-17-litellm-nas-fedora-release.md
+  - path: 2026-08-18-nas-litellm-staging-clone.md
+  - path: 2026-08-17-private-fixes-and-branch-cleanup.md

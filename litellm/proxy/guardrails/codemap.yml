@@ -1,0 +1,13 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: tool_name_extraction.py
+  - path: usage_tracking.py
+  - path: init_guardrails.py
+  - path: usage_endpoints.py
+  - path: guardrail_helpers.py
+  - path: guardrail_endpoints.py
+  - path: anthropic_sse.py
+  - path: guardrail_initializers.py
+  - path: _content_utils.py
+  - path: guardrail_registry.py

@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_reasoning_effort_grid.py
+  - path: __init__.py
+  - path: grid_spec.py
+  - path: conftest.py

@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: handler.py
+  - path: streaming_iterator.py
+  - path: custom_tools.py
+  - path: transformation.py
+  - path: session_handler.py

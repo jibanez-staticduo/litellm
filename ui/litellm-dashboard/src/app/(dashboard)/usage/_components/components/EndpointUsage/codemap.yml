@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: EndpointUsage.test.tsx
+  - path: EndpointUsage.tsx

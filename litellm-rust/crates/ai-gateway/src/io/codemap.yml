@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: realtime_pool.rs
+  - path: mod.rs
+  - path: realtime.rs
+  - path: ocr.rs
+  - path: responses_ws.rs
+  - path: audio_transcription.rs

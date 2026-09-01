@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: PassThroughEndpointsTableColumns.tsx
+  - path: PassThroughEndpointsTable.test.tsx
+  - path: PassThroughSettings.tsx
+  - path: PassThroughSettings.test.tsx
+  - path: PassThroughEndpointsTable.tsx

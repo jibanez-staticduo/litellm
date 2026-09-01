@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: vertex_and_google_ai_studio_gemini.py
+  - path: cost_calculator.py
+  - path: transformation.py

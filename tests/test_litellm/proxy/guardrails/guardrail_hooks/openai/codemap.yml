@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_openai_moderation_streaming.py
+  - path: test_moderations.py

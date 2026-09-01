@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: deployment.yaml
+  - path: poddisruptionbudget.yaml
+  - path: hpa.yaml
+  - path: service.yaml
+  - path: configmap.yaml

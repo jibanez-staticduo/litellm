@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_prompt_endpoints_crud.py
+  - path: test_prompt_environment.py
+  - path: test_prompt_endpoints.py

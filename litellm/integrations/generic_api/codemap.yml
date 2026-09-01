@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: generic_api_compatible_callbacks.json
+  - path: generic_api_callback.py

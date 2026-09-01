@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_user_api_key_auth.py
+  - path: test_route_checks.py

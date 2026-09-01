@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: OrganizationsPanel.test.tsx
+  - path: OrganizationsTableColumns.tsx
+  - path: OrganizationsTable.tsx
+  - path: OrganizationsPanel.tsx
+  - path: OrganizationsTable.test.tsx

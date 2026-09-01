@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_azure_text_moderation.py
+  - path: test_azure_prompt_shield.py

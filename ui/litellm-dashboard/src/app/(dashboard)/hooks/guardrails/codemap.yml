@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: useGuardrails.test.ts
+  - path: useGuardrails.ts
+  - path: useRegisterGuardrail.ts

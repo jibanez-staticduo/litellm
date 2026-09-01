@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: HealthChecksTableColumns.tsx
+  - path: types.ts
+  - path: HealthChecksTable.test.tsx
+  - path: HealthCheckComponent.tsx
+  - path: HealthCheckComponent.test.tsx
+  - path: HealthChecksTable.tsx

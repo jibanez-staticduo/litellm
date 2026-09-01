@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: codeExecutionCompliancePrompts.ts
+  - path: claimsCompliancePrompts.ts
+  - path: compliancePrompts.ts
+  - path: financialCompliancePrompts.ts
+  - path: canadianPiiCompliancePrompts.ts
+  - path: insultsCompliancePrompts.ts

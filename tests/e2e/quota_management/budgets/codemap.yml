@@ -1,0 +1,22 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_budget_fallback_e2e.py
+  - path: test_user_budget_across_keys_e2e.py
+  - path: BUDGET_CODE_MATRIX.md
+  - path: test_budget_crud_e2e.py
+  - path: budget_client.py
+  - path: test_budget_reset_advances_e2e.py
+  - path: test_model_max_budget_e2e.py
+  - path: test_multi_window_budget_e2e.py
+  - path: test_team_member_budget_e2e.py
+  - path: conftest.py
+  - path: test_soft_budget_e2e.py
+  - path: test_team_member_budget_isolation_e2e.py
+  - path: test_budget_reset_e2e.py
+  - path: test_spend_counter_reseed_e2e.py
+  - path: test_team_multi_window_budget_e2e.py
+  - path: BUDGET_TEST_COVERAGE_MATRIX.md
+  - path: test_budget_enforcement_e2e.py
+  - path: test_team_member_budget_reset_e2e.py
+  - path: test_tag_budget_e2e.py

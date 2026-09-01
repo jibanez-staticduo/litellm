@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: httpx_handler.py
+  - path: mock_transport.py
+  - path: async_client_cleanup.py
+  - path: aiohttp_transport.py
+  - path: container_handler.py
+  - path: http_handler.py
+  - path: aiohttp_handler.py
+  - path: llm_http_handler.py

@@ -1,0 +1,19 @@
+scope: module
+parent: ../../../../../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.tsx
+internals:
+  - path: MessageBubble.tsx
+  - path: MessageInput.tsx
+  - path: VariableInput.test.tsx
+  - path: EmptyState.test.tsx
+  - path: MessageList.test.tsx
+  - path: MessageInput.test.tsx
+  - path: MessageList.tsx
+  - path: VariableInput.tsx
+  - path: VariableWarning.tsx
+  - path: EmptyState.tsx
+  - path: types.ts
+  - path: useConversation.ts
+  - path: MessageBubble.test.tsx
+  - path: index.test.tsx

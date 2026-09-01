@@ -1,0 +1,13 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_savings.py
+  - path: test_ptu_feature_flag.py
+  - path: test_budget_reservation_redis_failure.py
+  - path: test_ptu_flat_cost_rollup.py
+  - path: test_cloudzero_endpoints.py
+  - path: test_compression_savings.py
+  - path: test_spend_tracking_utils.py
+  - path: test_spend_query_optimization.py
+  - path: test_spend_log_error_logger.py
+  - path: test_spend_management_endpoints.py

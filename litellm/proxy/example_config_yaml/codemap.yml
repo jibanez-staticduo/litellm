@@ -1,0 +1,33 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: custom_auth_basic.py
+  - path: custom_callbacks.py
+  - path: load_balancer.yaml
+  - path: websearch_interception_config.yaml
+  - path: langfuse_config.yaml
+  - path: otel_test_config.yaml
+  - path: custom_callbacks1.py
+  - path: pipeline_test_guardrails.py
+  - path: oai_misc_config.yaml
+  - path: custom_guardrail.py
+  - path: _health_check_test_config.yaml
+  - path: azure_config.yaml
+  - path: tool_permission_example.yaml
+  - path: enterprise_config.yaml
+  - path: opentelemetry_config.yaml
+  - path: multi_instance_simple_config.yaml
+  - path: custom_handler.py
+  - path: team_metadata_validator_e2e.py
+  - path: spend_tracking_config.yaml
+  - path: custom_auth.py
+  - path: custom_team_metadata_validate.py
+  - path: adaptive_router_example.yaml
+  - path: aliases_config.yaml
+  - path: disable_schema_update.yaml
+  - path: simple_config.yaml
+  - path: code_interpreter_interception_config.yaml
+  - path: store_model_db_config.yaml
+  - path: test_pipeline_config.yaml
+  - path: reject_clientside_metadata_tags_config.yaml
+  - path: pass_through_config.yaml

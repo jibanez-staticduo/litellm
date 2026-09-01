@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: endpoints.py
+  - path: __init__.py
+  - path: search_tool_management.py
+  - path: search_tool_registry.py

@@ -1,0 +1,28 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.tsx
+internals:
+  - path: vector_store_info.test.tsx
+  - path: IndexesTab.tsx
+  - path: S3VectorsConfig.tsx
+  - path: VectorStoreTable.test.tsx
+  - path: S3VectorsConfig.test.tsx
+  - path: TestVectorStoreTab.tsx
+  - path: VectorStoreTester.tsx
+  - path: IndexesTable.test.tsx
+  - path: DocumentsTable.tsx
+  - path: TestVectorStoreTab.test.tsx
+  - path: VectorStoreTableColumns.tsx
+  - path: CreateVectorStore.test.tsx
+  - path: VectorStoreForm.tsx
+  - path: VectorStoreForm.test.tsx
+  - path: CreateVectorStore.tsx
+  - path: DocumentsTableColumns.tsx
+  - path: VectorStoreTester.test.tsx
+  - path: IndexesTableColumns.tsx
+  - path: index.test.tsx
+  - path: VectorStoreTable.tsx
+  - path: vector_store_info.tsx
+  - path: DocumentsTable.test.tsx
+  - path: IndexesTable.tsx

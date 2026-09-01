@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: vector_store.md
+  - path: mcp_server.md
+  - path: model.md
+  - path: key.md
+  - path: credential.md
+  - path: team_member_add.md
+  - path: team_member.md
+  - path: team.md

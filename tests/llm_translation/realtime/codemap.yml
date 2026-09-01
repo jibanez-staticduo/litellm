@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_openai_realtime_simple.py
+  - path: __init__.py
+  - path: base_realtime_tests.py
+  - path: test_openai_realtime.py
+  - path: test_xai_realtime.py
+  - path: conftest.py
+  - path: test_realtime_guardrails_openai.py

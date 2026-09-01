@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: mcp.ts
+  - path: traffic.ts
+  - path: navigation.ts
+  - path: roundTrip.ts
+  - path: playground.ts

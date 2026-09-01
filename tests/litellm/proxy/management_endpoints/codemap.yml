@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_cost_estimate_endpoint.py
+  - path: test_common_utils.py

@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: amazon_nova_canvas_image_edit_transformation.py
+  - path: __init__.py
+  - path: handler.py
+  - path: stability_transformation.py

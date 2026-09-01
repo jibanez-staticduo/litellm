@@ -1,0 +1,4 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: mcp_with_litellm_proxy.py

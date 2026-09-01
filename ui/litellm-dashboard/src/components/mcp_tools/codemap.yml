@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: constants.ts
+  - path: ByokCredentialModal.test.tsx
+  - path: types.test.ts
+  - path: MCPToolArgumentsForm.tsx
+  - path: types.test.tsx
+  - path: types.tsx
+  - path: ByokCredentialModal.tsx
+  - path: McpCrudPermissionPanel.tsx

@@ -1,0 +1,18 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.tsx
+internals:
+  - path: PromptTableColumns.tsx
+  - path: prompt_utils.tsx
+  - path: tool_modal.tsx
+  - path: PromptTable.test.tsx
+  - path: prompt_editor_view.tsx
+  - path: prompt_info.tsx
+  - path: README.md
+  - path: add_prompt_form.tsx
+  - path: index.test.tsx
+  - path: variable_textarea.tsx
+  - path: PromptTable.tsx
+  - path: variable_textarea.test.tsx
+  - path: tool_modal.test.tsx

@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: MCPToolPermissions.test.tsx
+  - path: mcpEntitlement.ts
+  - path: MCPToolPermissions.tsx
+  - path: MCPServerSelector.tsx
+  - path: MCPServerSelector.test.tsx

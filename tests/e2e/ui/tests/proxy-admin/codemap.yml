@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: license.spec.ts
+  - path: teams.spec.ts
+  - path: keys.spec.ts

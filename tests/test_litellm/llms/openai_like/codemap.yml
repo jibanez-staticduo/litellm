@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: test_pinstripes_provider.py
+  - path: test_tensormesh_provider.py
+  - path: test_json_providers.py
+  - path: test_meta_provider.py
+  - path: test_charity_engine.py
+  - path: test_xiaomi_mimo.py
+  - path: test_libertai_provider.py

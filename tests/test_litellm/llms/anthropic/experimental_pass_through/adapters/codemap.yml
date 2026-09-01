@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_streaming_iterator_compaction.py
+  - path: test_streaming_iterator_combined_chunk.py
+  - path: test_streaming_iterator_first_delta.py
+  - path: test_handler_output_config_passthrough.py
+  - path: test_streaming_iterator_tool_args.py
+  - path: test_anthropic_experimental_pass_through_adapters_transformation.py
+  - path: test_streaming_iterator_empty_choices.py

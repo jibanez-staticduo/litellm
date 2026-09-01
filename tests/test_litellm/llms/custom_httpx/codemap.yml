@@ -1,0 +1,13 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_aiohttp_handler.py
+  - path: test_credential_leak_prevention.py
+  - path: test_gemini_session_leak.py
+  - path: test_mock_transport.py
+  - path: test_aiohttp_transport.py
+  - path: test_llm_http_handler.py
+  - path: test_http_handler.py
+  - path: test_aiohttp_cleanup_closed.py
+  - path: test_aiohttp_so_keepalive.py
+  - path: test_async_client_cleanup.py

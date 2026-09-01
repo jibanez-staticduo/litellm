@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: mod.rs
+  - path: transformation.rs
+  - path: types.rs

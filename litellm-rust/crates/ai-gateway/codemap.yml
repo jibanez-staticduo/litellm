@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: config.yaml
+  - path: render.yaml
+  - path: README.md
+  - path: AGENTS.md
+  - path: ARCHITECTURE.md

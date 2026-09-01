@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: custom_secret_manager_config.yaml
+  - path: my_secret_manager.py

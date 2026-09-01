@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: useSSOSettings.test.ts
+  - path: useEditSSOSettings.test.ts
+  - path: useEditSSOSettings.ts
+  - path: useSSOSettings.ts

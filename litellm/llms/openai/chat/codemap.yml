@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: gpt_audio_transformation.py
+  - path: gpt_transformation.py
+  - path: o_series_transformation.py
+  - path: gpt_5_transformation.py
+  - path: o_series_handler.py

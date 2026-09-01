@@ -1,0 +1,5 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: _enterprise_colors.json
+  - path: README.md

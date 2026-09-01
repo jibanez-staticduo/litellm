@@ -1,0 +1,6 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_loadtest_router_withs3_cache.py
+  - path: test_loadtest_openai_client.py
+  - path: test_loadtest_router.py

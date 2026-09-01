@@ -1,0 +1,12 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_vertex_and_google_ai_studio_gemini.py
+  - path: test_function_call_args_serialization.py
+  - path: test_vertex_gemini_unbound_local_error.py
+  - path: test_thought_signature_in_tool_call_id.py
+  - path: test_vertex_ai_gemini_transformation.py
+  - path: test_tool_call_followed_by_text_assistant.py
+  - path: test_context_circulation.py
+  - path: test_gemini_streaming_tool_call_finish_reason.py
+  - path: test_gemini_image_url_missing_field.py

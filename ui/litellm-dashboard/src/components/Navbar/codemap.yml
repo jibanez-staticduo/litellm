@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: navDisplayName.test.ts
+  - path: ViewSwitcher.test.tsx
+  - path: navProductLinkClass.ts
+  - path: ViewSwitcher.tsx
+  - path: navDisplayName.ts

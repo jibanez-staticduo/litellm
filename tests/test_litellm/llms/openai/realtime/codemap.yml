@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_transcription_sessions.py
+  - path: README.md
+  - path: test_openai_realtime_handler.py

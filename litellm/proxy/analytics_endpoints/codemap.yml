@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: cache_activity.py
+  - path: analytics_endpoints.py

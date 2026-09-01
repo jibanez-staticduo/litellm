@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: mapper.ts
+  - path: OrgCreateDialog.tsx
+  - path: OrgCreateDialog.test.tsx
+  - path: mapper.test.ts

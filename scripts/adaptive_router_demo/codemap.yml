@@ -1,0 +1,6 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: README.md
+  - path: eval.py
+  - path: traffic.py

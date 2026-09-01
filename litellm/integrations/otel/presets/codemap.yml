@@ -1,0 +1,13 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: base.py
+  - path: weave.py
+  - path: __init__.py
+  - path: arize.py
+  - path: langfuse.py
+  - path: agentops.py
+  - path: langtrace.py
+  - path: phoenix.py
+  - path: levo.py
+  - path: utils.py

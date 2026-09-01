@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: users.ts
+  - path: config.yml
+  - path: pages.ts
+  - path: menuMappings.ts
+  - path: seed.sql
+  - path: migratedPages.ts
+  - path: roles.ts

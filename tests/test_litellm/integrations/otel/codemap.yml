@@ -1,0 +1,16 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_otel_v2_metrics.py
+  - path: test_otel_v2_vendor_mappers.py
+  - path: test_otel_v2_logger.py
+  - path: test_otel_v2_emitter.py
+  - path: test_otel_v2_multibackend.py
+  - path: test_otel_v2_baggage.py
+  - path: test_otel_v2_presets.py
+  - path: test_otel_v2_dynamic.py
+  - path: test_otel_v2_components.py
+  - path: test_otel_v2_mount.py
+  - path: test_runtime.py
+  - path: test_otel_v2_sources_of_truth.py
+  - path: test_otel_v2_config_baggage_parenting_guardrails.py

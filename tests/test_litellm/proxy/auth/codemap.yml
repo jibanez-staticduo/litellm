@@ -1,0 +1,34 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_router_override_fallback_auth.py
+  - path: test_team_member_budget.py
+  - path: test_user_api_key_auth.py
+  - path: test_info_routes.py
+  - path: test_auth_exception_handler.py
+  - path: test_organization_budget_enforcement.py
+  - path: test_auth_checks.py
+  - path: test_resolvers_seam.py
+  - path: test_litellm_license.py
+  - path: test_mcp_ip_filtering.py
+  - path: test_handle_jwt.py
+  - path: test_multi_budget_windows.py
+  - path: test_cli_auth.py
+  - path: test_model_checks.py
+  - path: test_resolvers_models.py
+  - path: test_onboarding.py
+  - path: test_auth_utils.py
+  - path: test_resolvers_store.py
+  - path: test_password_hashing.py
+  - path: test_login_utils.py
+  - path: test_unmapped_model_budget_enforcement.py
+  - path: test_admin_viewer_handler_access.py
+  - path: test_network.py
+  - path: test_custom_auth_end_user_budget.py
+  - path: test_banned_params_extra_body.py
+  - path: test_resolvers_exceptions.py
+  - path: test_model_checks_fallbacks.py
+  - path: test_route_checks.py
+  - path: test_oauth2_proxy_hook.py
+  - path: test_object_permission_loading.py
+  - path: test_auth_hot_path_network_requests.py

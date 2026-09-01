@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_apply_guardrail_endpoint.py
+  - path: test_bedrock_apply_guardrail.py
+  - path: conftest.py

@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: README.md
+  - path: complexity_router.py
+  - path: config.py
+  - path: classification_rubrics.py

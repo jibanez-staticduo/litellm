@@ -1,0 +1,16 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: secret-masterkey.yaml
+  - path: configmap-litellm.yaml
+  - path: deployment.yaml
+  - path: serviceaccount.yaml
+  - path: extra-resources.yaml
+  - path: migrations-job.yaml
+  - path: poddisruptionbudget.yaml
+  - path: servicemonitor.yaml
+  - path: hpa.yaml
+  - path: ingress.yaml
+  - path: keda.yaml
+  - path: service.yaml
+  - path: secret-dbcredentials.yaml

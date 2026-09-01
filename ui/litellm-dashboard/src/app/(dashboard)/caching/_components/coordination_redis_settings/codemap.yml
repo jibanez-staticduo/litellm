@@ -1,0 +1,14 @@
+scope: module
+parent: ../../../../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.tsx
+internals:
+  - path: coordinationRedisUtils.ts
+  - path: coordinationRedisFields.ts
+  - path: CoordinationRedisFieldSection.tsx
+  - path: CoordinationRedisFormField.tsx
+  - path: types.ts
+  - path: CoordinationRedisTypeSelector.test.tsx
+  - path: coordinationRedisUtils.test.ts
+  - path: index.test.tsx
+  - path: CoordinationRedisTypeSelector.tsx

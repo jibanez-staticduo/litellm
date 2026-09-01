@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: test_passthrough_main.py
+  - path: test_async_streaming_error_propagation.py
+  - path: test_streaming_interrupt_spend_tracking.py

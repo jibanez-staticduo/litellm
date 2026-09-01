@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: base.py
+  - path: airline.py
+  - path: __init__.py
+  - path: major_airlines.json

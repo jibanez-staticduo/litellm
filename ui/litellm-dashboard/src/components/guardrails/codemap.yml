@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: GuardrailSelector.test.tsx
+  - path: GuardrailSelector.tsx
+  - path: types.ts

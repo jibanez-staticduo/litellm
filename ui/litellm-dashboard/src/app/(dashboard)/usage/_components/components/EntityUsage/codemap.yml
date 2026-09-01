@@ -1,0 +1,12 @@
+scope: module
+parent: ../../../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: entityUsageSummary.test.ts
+  - path: TopModelView.test.tsx
+  - path: EntityUsage.tsx
+  - path: entityUsageAggregations.ts
+  - path: SpendByProvider.test.tsx
+  - path: entityUsageSummary.ts
+  - path: EntityUsage.test.tsx
+  - path: TopModelView.tsx
+  - path: SpendByProvider.tsx

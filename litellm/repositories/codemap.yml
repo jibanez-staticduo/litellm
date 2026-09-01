@@ -1,0 +1,19 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: object_permission_repository.py
+  - path: organization_repository.py
+  - path: table_repositories.py
+  - path: __init__.py
+  - path: prisma_protocols.py
+  - path: config_repository.py
+  - path: base_repository.py
+  - path: unit_of_work.py
+  - path: team_repository.py
+  - path: user_repository.py
+  - path: model_repository.py
+  - path: user_banner_repository.py
+  - path: project_repository.py
+  - path: credentials_repository.py
+  - path: budget_repository.py
+  - path: verification_token_repository.py

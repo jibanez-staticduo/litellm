@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: mcpTools.spec.ts
+  - path: mcpServers.spec.ts
+  - path: mcpServerEdit.spec.ts
+  - path: loopbackBrowserNetwork.spec.ts

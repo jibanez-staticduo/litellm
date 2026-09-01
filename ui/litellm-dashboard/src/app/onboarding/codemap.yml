@@ -1,0 +1,12 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: OnboardingLoadingView.tsx
+  - path: OnboardingForm.tsx
+  - path: OnboardingForm.test.tsx
+  - path: OnboardingLoadingView.test.tsx
+  - path: OnboardingErrorView.tsx
+  - path: OnboardingFormBody.test.tsx
+  - path: OnboardingErrorView.test.tsx
+  - path: OnboardingFormBody.tsx
+  - path: page.tsx

@@ -1,0 +1,20 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: pattern_match_deployments.py
+  - path: prompt_caching_cache.py
+  - path: common_utils.py
+  - path: cooldown_cache.py
+  - path: add_retry_fallback_headers.py
+  - path: health_state_cache.py
+  - path: search_api_router.py
+  - path: cooldown_handlers.py
+  - path: get_retry_from_policy.py
+  - path: fallback_event_handlers.py
+  - path: auto_router_model_naming.py
+  - path: clientside_credential_handler.py
+  - path: response_headers.py
+  - path: batch_utils.py
+  - path: handle_error.py
+  - path: cooldown_callbacks.py
+  - path: client_initalization_utils.py

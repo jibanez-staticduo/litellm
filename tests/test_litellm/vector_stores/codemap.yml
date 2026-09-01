@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_vector_store_create_provider_logic.py
+  - path: test_vector_store_registry.py

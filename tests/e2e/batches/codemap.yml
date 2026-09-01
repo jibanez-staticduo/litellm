@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: COVERAGE.md
+  - path: test_batches_e2e.py
+  - path: conftest.py
+  - path: batch_client.py
+  - path: capabilities.py

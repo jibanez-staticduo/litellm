@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: model_rate_limit_check.py
+  - path: deployment_affinity_check.py
+  - path: io_token_rate_limit_check.py
+  - path: responses_api_deployment_check.py
+  - path: encrypted_content_affinity_check.py
+  - path: prompt_caching_deployment_check.py

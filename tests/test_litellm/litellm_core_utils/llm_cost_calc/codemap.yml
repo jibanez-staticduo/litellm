@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_tool_call_cost_tracking_dict_safety.py
+  - path: test_tool_call_cost_tracking.py
+  - path: test_llm_cost_calc_utils.py
+  - path: test_azure_assistant_cost_tracking.py

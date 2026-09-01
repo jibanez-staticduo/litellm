@@ -1,0 +1,14 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: key_info_view.tsx
+  - path: KeyInfoHeader.tsx
+  - path: KeyInfoHeader.test.tsx
+  - path: key_info_view.budget_display.test.tsx
+  - path: key_edit_view.test.tsx
+  - path: key_edit_view.tsx
+  - path: estimatedOutputTokens.test.ts
+  - path: keyEditFieldNormalizers.ts
+  - path: key_info_view.test.tsx
+  - path: estimatedOutputTokens.ts
+  - path: KeyInfoView.handleKeyUpdate.test.tsx

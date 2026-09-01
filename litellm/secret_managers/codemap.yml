@@ -1,0 +1,16 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+entrypoints:
+  - path: main.py
+internals:
+  - path: base_secret_manager.py
+  - path: custom_secret_manager_loader.py
+  - path: google_secret_manager.py
+  - path: google_kms.py
+  - path: cyberark_secret_manager.py
+  - path: aws_secret_manager_v2.py
+  - path: aws_secret_manager.py
+  - path: get_azure_ad_token_provider.py
+  - path: secret_manager_handler.py
+  - path: hashicorp_secret_manager.py
+  - path: Readme.md

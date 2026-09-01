@@ -1,0 +1,6 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_litellm_on_windows.py
+  - path: check_windows_wheel_install.py
+  - path: test_check_windows_wheel_install.py

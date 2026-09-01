@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_storage_backend_service.py
+  - path: test_files_common_utils.py
+  - path: test_files_endpoint.py

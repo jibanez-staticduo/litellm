@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_websearch_native_blocks.py
+  - path: test_websearch_chat_completion.py
+  - path: test_websearch_thinking_constraint.py
+  - path: test_websearch_streaming_wrap.py
+  - path: test_websearch_short_circuit.py
+  - path: test_websearch_interception_handler.py
+  - path: test_websearch_responses.py
+  - path: test_websearch_interception_thinking.py

@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: VectorStoreSelector.tsx
+  - path: types.tsx
+  - path: VectorStoreSelector.test.tsx

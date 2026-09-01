@@ -1,0 +1,35 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: harm_toxic_abuse_es.json
+  - path: gender_sexual_orientation.yaml
+  - path: denied_legal_advice.yaml
+  - path: harmful_illegal_weapons.yaml
+  - path: military_status.yaml
+  - path: harm_toxic_abuse_au.json
+  - path: prompt_injection_system_prompt.yaml
+  - path: harmful_violence.yaml
+  - path: denied_insults.yaml
+  - path: religion.yaml
+  - path: bias_gender.yaml
+  - path: harm_toxic_abuse_fr.json
+  - path: prompt_injection_sql.yaml
+  - path: harmful_self_harm.yaml
+  - path: claims_medical_advice.yaml
+  - path: prompt_injection_jailbreak.yaml
+  - path: harm_toxic_abuse_de.json
+  - path: prompt_injection_malicious_code.yaml
+  - path: claims_fraud_coaching.yaml
+  - path: denied_medical_advice.yaml
+  - path: prompt_injection_data_exfiltration.yaml
+  - path: claims_prior_auth_gaming.yaml
+  - path: harm_toxic_abuse.json
+  - path: claims_system_override.yaml
+  - path: claims_phi_disclosure.yaml
+  - path: age_discrimination.yaml
+  - path: denied_financial_advice.yaml
+  - path: disability.yaml
+  - path: harmful_child_safety.yaml
+  - path: bias_religious.yaml
+  - path: bias_sexual_orientation.yaml
+  - path: bias_racial.yaml

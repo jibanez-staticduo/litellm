@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: s3_destination.py
+  - path: base.py
+  - path: __init__.py
+  - path: factory.py
+  - path: vantage_destination.py
+  - path: mavvrik_destination.py
+  - path: gcs_destination.py

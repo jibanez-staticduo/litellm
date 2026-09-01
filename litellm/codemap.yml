@@ -1,0 +1,31 @@
+scope: module
+parent: ../.staticeng/codemap.yml
+entrypoints:
+  - path: main.py
+internals:
+  - path: _logging.py
+  - path: router.py
+  - path: timeout.py
+  - path: _lazy_imports_registry.py
+  - path: __init__.py
+  - path: _lazy_imports.py
+  - path: _redis.py
+  - path: cost.json
+  - path: _internal_context.py
+  - path: cost_calculator.py
+  - path: budget_manager.py
+  - path: _service_logger.py
+  - path: model_prices_and_context_window_backup.json
+  - path: _redis_credential_provider.py
+  - path: scheduler.py
+  - path: _uuid.py
+  - path: blog_posts.json
+  - path: exceptions.py
+  - path: utils.py
+  - path: anthropic_beta_headers_config.json
+  - path: provider_endpoints_support_backup.json
+  - path: constants.py
+  - path: setup_wizard.py
+  - path: anthropic_beta_headers_manager.py
+  - path: _version.py
+  - path: policy_templates_backup.json

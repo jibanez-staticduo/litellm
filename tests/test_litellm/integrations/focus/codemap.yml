@@ -1,0 +1,12 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_vantage_destination.py
+  - path: test_focus_database.py
+  - path: test_focus_transformer.py
+  - path: test_transformer.py
+  - path: test_destination_factory.py
+  - path: test_focus_gcs_destination.py
+  - path: test_csv_serializer.py
+  - path: test_s3_destination.py
+  - path: test_mavvrik_destination.py

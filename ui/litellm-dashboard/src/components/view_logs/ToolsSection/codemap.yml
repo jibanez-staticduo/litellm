@@ -1,0 +1,14 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.ts
+internals:
+  - path: ToolsSection.test.tsx
+  - path: utils.test.ts
+  - path: types.ts
+  - path: ToolItem.tsx
+  - path: utils.ts
+  - path: ToolExpandedContent.tsx
+  - path: FormattedToolView.tsx
+  - path: JsonToolView.tsx
+  - path: ToolsSection.tsx

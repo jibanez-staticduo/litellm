@@ -1,0 +1,21 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: base_client.py
+  - path: tool_registry_writer.py
+  - path: routing_prisma_wrapper.py
+  - path: spend_log_batching.py
+  - path: autorouter_session_rollup.py
+  - path: log_db_metrics.py
+  - path: spend_counter_reseed.py
+  - path: dynamo_db.py
+  - path: db_url_settings.py
+  - path: gateway_request_tracking.py
+  - path: exception_handler.py
+  - path: spend_log_tool_index.py
+  - path: db_spend_update_writer.py
+  - path: create_views.py
+  - path: daily_spend_bulk_upsert.py
+  - path: prisma_client.py
+  - path: check_migration.py
+  - path: query_engine_reaper.py

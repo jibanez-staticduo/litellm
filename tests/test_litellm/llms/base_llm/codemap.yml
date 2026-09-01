@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_managed_resource_isolation.py
+  - path: __init__.py
+  - path: test_base_managed_resource.py
+  - path: test_base_model_iterator.py
+  - path: test_managed_resources_utils.py

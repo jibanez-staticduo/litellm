@@ -1,0 +1,12 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: custom_callbacks.py
+  - path: test_custom_logger.yaml
+  - path: custom_auth.py
+  - path: test_bad_config.yaml
+  - path: test_config.yaml
+  - path: test_guardrails_config.yaml
+  - path: test_config_custom_auth.yaml
+  - path: test_cloudflare_azure_with_cache_config.yaml
+  - path: test_config_no_auth.yaml

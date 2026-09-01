@@ -1,0 +1,15 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: EvaluationSettingsModal.test.tsx
+  - path: GuardrailsOverview.tsx
+  - path: GuardrailDetail.tsx
+  - path: GuardrailConfig.test.tsx
+  - path: GuardrailsOverview.test.tsx
+  - path: ScoreChart.test.tsx
+  - path: GuardrailsMonitorView.tsx
+  - path: ScoreChart.tsx
+  - path: GuardrailDetail.test.tsx
+  - path: GuardrailConfig.tsx
+  - path: EvaluationSettingsModal.tsx
+  - path: GuardrailsMonitorView.test.tsx

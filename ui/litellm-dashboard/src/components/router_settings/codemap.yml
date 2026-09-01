@@ -1,0 +1,16 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.tsx
+internals:
+  - path: RoutingStrategySelector.test.tsx
+  - path: LatencyBasedConfiguration.test.tsx
+  - path: TagFilteringToggle.tsx
+  - path: ReliabilityRetriesSection.tsx
+  - path: index.test.tsx
+  - path: RouterSettingsForm.test.tsx
+  - path: LatencyBasedConfiguration.tsx
+  - path: ReliabilityRetriesSection.test.tsx
+  - path: RouterSettingsForm.tsx
+  - path: RoutingStrategySelector.tsx
+  - path: TagFilteringToggle.test.tsx

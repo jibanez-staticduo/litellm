@@ -1,0 +1,19 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_passthrough_guardrails.py
+  - path: test_upstream_usage_headers.py
+  - path: test_vertex_ai_batch_passthrough.py
+  - path: test_passthrough_endpoint_router.py
+  - path: test_passthrough_auth_default.py
+  - path: test_passthrough_post_call_guardrails.py
+  - path: test_pass_through_endpoints.py
+  - path: test_vertex_passthrough_load_balancing.py
+  - path: test_streaming_handler_interrupt.py
+  - path: test_watsonx_proxy_route.py
+  - path: test_passthrough_guardrail_block_otel_span.py
+  - path: test_carry_guardrail_logging_info.py
+  - path: test_llm_pass_through_endpoints.py
+  - path: test_passthrough_guardrails_field_targeting.py
+  - path: test_passthrough_endpoints_common_utils.py
+  - path: test_method_specific_routing.py

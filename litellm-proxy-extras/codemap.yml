@@ -1,0 +1,6 @@
+scope: module
+parent: ../.staticeng/codemap.yml
+internals:
+  - path: build_and_publish.md
+  - path: migration_runbook.md
+  - path: README.md

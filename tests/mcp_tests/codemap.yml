@@ -1,0 +1,21 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_mcp_auth_header_extraction.py
+  - path: test_mcp_chat_completions.py
+  - path: mcp_e2e_upstream_server.py
+  - path: test_mcp_client_unit.py
+  - path: test_per_user_oauth_cache.py
+  - path: test_proxy_mcp_e2e.py
+  - path: test_oauth2_mcp_config.yaml
+  - path: test_openapi_spec_path_url.py
+  - path: test_mcp_server.py
+  - path: test_mcp_auth_priority.py
+  - path: test_aresponses_api_with_mcp.py
+  - path: test_mcp_guardrails.py
+  - path: conftest.py
+  - path: test_mcp_logging.py
+  - path: test_mcp_hooks.py
+  - path: mcp_server.py
+  - path: test_semantic_tool_filter_e2e.py
+  - path: test_mcp_litellm_client.py

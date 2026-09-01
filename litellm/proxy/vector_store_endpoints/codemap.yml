@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: management_endpoints.py
+  - path: endpoints.py
+  - path: utils.py

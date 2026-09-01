@@ -1,0 +1,22 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: oauth2_check.py
+  - path: handle_jwt.py
+  - path: login_utils.py
+  - path: litellm_license.py
+  - path: auth_method.py
+  - path: auth_checks_organization.py
+  - path: auth_exception_handler.py
+  - path: network.py
+  - path: auth_checks.py
+  - path: rds_iam_token.py
+  - path: ip_address_utils.py
+  - path: oauth2_proxy_hook.py
+  - path: trusted_proxy_utils.py
+  - path: route_checks.py
+  - path: roles.py
+  - path: model_checks.py
+  - path: user_api_key_auth.py
+  - path: budget_throttle.py
+  - path: auth_utils.py

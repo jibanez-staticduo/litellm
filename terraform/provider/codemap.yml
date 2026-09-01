@@ -1,0 +1,10 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+entrypoints:
+  - path: main.go
+internals:
+  - path: CHANGELOG.md
+  - path: README.md
+  - path: terraform-registry-manifest.json
+  - path: .goreleaser.yml
+  - path: RELEASING.md

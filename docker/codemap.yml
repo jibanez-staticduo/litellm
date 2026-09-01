@@ -1,0 +1,9 @@
+scope: module
+parent: ../.staticeng/codemap.yml
+internals:
+  - path: entrypoint.sh
+  - path: install_auto_router.sh
+  - path: build_admin_ui.sh
+  - path: README.md
+  - path: prod_entrypoint.sh
+  - path: component_entrypoint.sh

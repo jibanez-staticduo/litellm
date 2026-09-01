@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: test_router.py
+  - path: __init__.py
+  - path: test_prometheus_latency_buckets.py
+  - path: test_types_utils.py
+  - path: test_completion.py
+  - path: test_guardrails_case_normalization.py
+  - path: test_uk_pii_entities.py
+  - path: test_prometheus_label_value_sanitize.py

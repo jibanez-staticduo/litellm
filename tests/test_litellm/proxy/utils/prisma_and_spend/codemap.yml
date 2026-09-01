@@ -1,0 +1,18 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_prisma_client_engine_watcher.py
+  - path: test_cache_user_row.py
+  - path: __init__.py
+  - path: test_proxy_update_spend.py
+  - path: test_prisma_client_writes.py
+  - path: test_password_helpers.py
+  - path: test_spend_functions.py
+  - path: test_prisma_client_reconnect.py
+  - path: test_prisma_client_health.py
+  - path: test_prisma_client_lifecycle.py
+  - path: test_send_email.py
+  - path: conftest.py
+  - path: _harness_smoke_test.py
+  - path: test_prisma_client_get_data.py
+  - path: test_config_param_cache.py

@@ -1,0 +1,12 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: chat_completion.tsx
+  - path: fetch_models.tsx
+  - path: fetch_models.test.tsx
+  - path: responses_api.tsx
+  - path: mcp_tool_blocks.ts
+  - path: responses_api.test.tsx
+  - path: code_interpreter_handler.ts
+  - path: chat_completion.test.tsx
+  - path: mcp_tool_blocks.test.ts

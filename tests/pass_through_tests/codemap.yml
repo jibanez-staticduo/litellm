@@ -1,0 +1,21 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: vertex_test_helpers.js
+  - path: test_mcp_routes.py
+  - path: test_vertex_with_spend.test.js
+  - path: test_vertex.test.js
+  - path: vertex_key.json
+  - path: test_local_vertex.js
+  - path: test_gemini_with_spend.test.js
+  - path: test_hosted_vllm_passthrough.py
+  - path: test_vertex_ai.py
+  - path: test_gemini.js
+  - path: test_assembly_ai.py
+  - path: test_anthropic_passthrough_basic.py
+  - path: package.json
+  - path: test_anthropic_passthrough.py
+  - path: test_openai_assistants_passthrough.py
+  - path: test_local_gemini.js
+  - path: base_anthropic_messages_test.py
+  - path: package-lock.json

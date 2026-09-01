@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_azure_exception_mapping.py
+  - path: test_azure_common_utils.py
+  - path: test_azure_fine_tuning_api.py
+  - path: test_azure_speech_audio_transcription.py
+  - path: test_azure_cost_calculation.py

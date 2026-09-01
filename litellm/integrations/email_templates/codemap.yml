@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: key_created_email.py
+  - path: user_invitation_email.py
+  - path: email_footer.py
+  - path: templates.py
+  - path: key_rotated_email.py

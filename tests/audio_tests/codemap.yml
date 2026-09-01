@@ -1,0 +1,6 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_audio_speech.py
+  - path: test_whisper.py
+  - path: conftest.py

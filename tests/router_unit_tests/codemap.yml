@@ -1,0 +1,24 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_router_adding_deployments.py
+  - path: test_router_acancel_batch.py
+  - path: test_router_handle_error.py
+  - path: test_router_embedding_integration.py
+  - path: test_completion_no_copy.py
+  - path: test_router_batch_utils.py
+  - path: test_router_aresponses_streaming_fallback.py
+  - path: test_router_embedding_headers.py
+  - path: test_router_helper_utils.py
+  - path: test_router_cooldown_per_deployment.py
+  - path: test_default_deployment_copy.py
+  - path: README.md
+  - path: test_prompt_management_check.py
+  - path: test_get_model_list_alias_optimization.py
+  - path: conftest.py
+  - path: test_router_index_management.py
+  - path: test_router_prompt_caching.py
+  - path: create_mock_standard_logging_payload.py
+  - path: test_pre_call_checks_optimization.py
+  - path: test_router_endpoints.py
+  - path: test_router_cooldown_utils.py

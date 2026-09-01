@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_bedrock_files_transformation.py
+  - path: test_bedrock_files_handler.py
+  - path: test_bedrock_files_integration.py

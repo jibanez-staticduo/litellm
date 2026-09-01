@@ -1,0 +1,13 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_to_ns.py
+  - path: __init__.py
+  - path: test_month_end_projection.py
+  - path: test_guardrail_merge.py
+  - path: test_error_helpers.py
+  - path: test_premium_user_check.py
+  - path: test_model_access.py
+  - path: test_misc_helpers.py
+  - path: test_url_helpers.py
+  - path: test_team_configs.py

@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_arize_phoenix.py
+  - path: test_arize_utils.py
+  - path: test_arize_otel_coexistence.py
+  - path: test_arize_health_check.py
+  - path: test_arize.py

@@ -1,0 +1,7 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: tools.py
+  - path: client.py
+  - path: Readme.md

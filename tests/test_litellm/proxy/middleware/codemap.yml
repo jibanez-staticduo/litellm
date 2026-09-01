@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_prometheus_auth_middleware.py
+  - path: test_billable_request_metrics_middleware.py
+  - path: test_prometheus_auth_middleware_asgi.py
+  - path: test_security_headers_middleware.py
+  - path: test_in_flight_requests_middleware.py

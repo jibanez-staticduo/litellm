@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: layout.tsx
+  - path: layout.test.tsx
+  - path: page.tsx
+  - path: page.test.tsx

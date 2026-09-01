@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: TableIconActionButton.test.tsx
+  - path: TableIconActionButton.tsx

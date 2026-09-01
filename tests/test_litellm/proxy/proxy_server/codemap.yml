@@ -1,0 +1,35 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_routes_models.py
+  - path: test_routes_config.py
+  - path: test_spend_counters.py
+  - path: __init__.py
+  - path: _pin_check.py
+  - path: test_lifecycle.py
+  - path: test_routes_model_info.py
+  - path: _coverage_check.py
+  - path: test_routes_model_metrics.py
+  - path: test_streaming_helpers.py
+  - path: test_routes_moderations.py
+  - path: test_openapi_customization.py
+  - path: test_routes_queue.py
+  - path: test_routes_invitation.py
+  - path: test_routes_misc.py
+  - path: test_routes_audio.py
+  - path: test_routes_model_cost_map.py
+  - path: test_routes_threads.py
+  - path: test_routes_login_sso.py
+  - path: test_routes_chat_completions.py
+  - path: test_routes_onboarding.py
+  - path: test_routes_anthropic_beta.py
+  - path: test_routes_assistants.py
+  - path: test_routes_utils.py
+  - path: test_exception_handlers.py
+  - path: conftest.py
+  - path: test_background_health.py
+  - path: test_routes_embeddings.py
+  - path: test_team_model_name_translation.py
+  - path: test_proxy_config.py
+  - path: test_routes_completions.py
+  - path: test_harness_smoke.py

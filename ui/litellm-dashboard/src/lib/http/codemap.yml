@@ -1,0 +1,13 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: api.ts
+  - path: api.test.ts
+  - path: client.ts
+  - path: api.sameOrigin.test.ts
+  - path: schema.d.ts
+  - path: runtime.test.ts
+  - path: resolveApiBase.test.ts
+  - path: resolveApiBase.ts
+  - path: runtime.ts
+  - path: client.test.ts

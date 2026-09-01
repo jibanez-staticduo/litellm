@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: test_otel_passthrough_endpoints.py
+  - path: test_otel_exception_handler.py
+  - path: _helpers.py
+  - path: test_passthrough_parent_span.py
+  - path: test_otel_unified_endpoints.py
+  - path: test_otel_admin_endpoints.py
+  - path: conftest.py

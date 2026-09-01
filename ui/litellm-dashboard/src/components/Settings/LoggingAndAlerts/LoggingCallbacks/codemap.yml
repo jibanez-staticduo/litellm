@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: LoggingCallbacksTable.tsx
+  - path: LoggingCallbacksTableColumns.tsx
+  - path: types.ts
+  - path: LoggingCallbacksTable.test.tsx

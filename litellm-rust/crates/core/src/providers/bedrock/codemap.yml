@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: mod.rs
+  - path: aws_base.rs
+  - path: constants.rs
+  - path: audio_transcription.rs

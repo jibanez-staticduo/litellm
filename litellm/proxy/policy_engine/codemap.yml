@@ -1,0 +1,15 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: policy_registry.py
+  - path: __init__.py
+  - path: pipeline_executor.py
+  - path: policy_endpoints.py
+  - path: policy_matcher.py
+  - path: policy_validator.py
+  - path: condition_evaluator.py
+  - path: attachment_registry.py
+  - path: policy_resolve_endpoints.py
+  - path: init_policies.py
+  - path: architecture.md
+  - path: policy_resolver.py

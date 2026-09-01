@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_handler.py
+  - path: __init__.py
+  - path: test_transformation.py
+  - path: test_batch_metadata_sanitization.py

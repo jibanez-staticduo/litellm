@@ -1,0 +1,17 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_content_utils.py
+  - path: test_prompt_security_guardrails.py
+  - path: test_deferred_guardrail_logging.py
+  - path: test_guardrail_endpoints.py
+  - path: test_content_filter_path_traversal.py
+  - path: test_qostodian_nexus_guardrail.py
+  - path: test_guardrail_coverage.py
+  - path: test_init_guardrails.py
+  - path: test_llm_as_a_judge.py
+  - path: test_pillar_guardrails.py
+  - path: test_custom_code_security.py
+  - path: test_usage_endpoints.py
+  - path: test_mcp_jwt_signer.py
+  - path: test_guardrail_registry.py

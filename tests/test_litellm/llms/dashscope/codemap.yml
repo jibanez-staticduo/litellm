@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_dashscope_embedding_transformation.py
+  - path: test_dashscope_rerank_transformation.py
+  - path: test_dashscope_cost_calculator.py
+  - path: test_dashscope_chat_transformation.py

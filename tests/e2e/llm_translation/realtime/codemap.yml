@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: pipecat_service.py
+  - path: test_realtime_e2e.py
+  - path: REALTIME_COVERAGE_MATRIX.md
+  - path: test_realtime_bedrock_e2e.py
+  - path: conftest.py
+  - path: test_realtime_pipecat_audio_e2e.py
+  - path: test_realtime_pipecat_e2e.py
+  - path: realtime_client.py

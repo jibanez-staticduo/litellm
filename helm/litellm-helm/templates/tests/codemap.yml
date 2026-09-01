@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test-connection.yaml
+  - path: test-env-vars.yaml
+  - path: test-servicemonitor.yaml

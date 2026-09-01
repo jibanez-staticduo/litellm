@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_get_instance_fn_runtime_gate.py
+  - path: __init__.py
+  - path: test_db_overlay_remote_module_scrub.py

@@ -1,0 +1,13 @@
+scope: module
+parent: ../../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_ca_policy_e2e.py
+  - path: test_competitor_intent.py
+  - path: test_eu_patterns.py
+  - path: test_patterns.py
+  - path: test_uoft_policy_e2e.py
+  - path: test_uoft_patterns.py
+  - path: test_sg_patterns.py
+  - path: test_content_filter.py
+  - path: test_gdpr_policy_e2e.py
+  - path: test_ca_patterns.py

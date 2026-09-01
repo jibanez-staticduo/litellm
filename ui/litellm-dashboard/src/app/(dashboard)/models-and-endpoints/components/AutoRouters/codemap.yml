@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: AutoRoutersPanel.tsx
+  - path: fitPills.ts
+  - path: AutoRoutersTable.tsx
+  - path: fitPills.test.ts
+  - path: autoRouterRows.test.ts
+  - path: autoRouterRows.ts
+  - path: AutoRoutersPanel.test.tsx
+  - path: AutoRoutersTableColumns.tsx

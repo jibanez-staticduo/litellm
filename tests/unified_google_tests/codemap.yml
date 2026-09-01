@@ -1,0 +1,14 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_google_ai_studio.py
+  - path: base_google_genai_proxy_sdk_test.py
+  - path: base_google_test.py
+  - path: vertex_key.json
+  - path: test_litellm_responses_bridge.py
+  - path: test_gemini_interactions.py
+  - path: base_interactions_test.py
+  - path: conftest.py
+  - path: google_genai_proxy_test_config.yaml
+  - path: test_vertex_ai_native.py
+  - path: test_vertex_anthropic.py

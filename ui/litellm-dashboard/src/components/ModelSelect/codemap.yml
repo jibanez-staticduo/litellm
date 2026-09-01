@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: ModelSelect.tsx
+  - path: ModelSelect.test.tsx
+  - path: modelUtils.ts
+  - path: modelUtils.test.ts

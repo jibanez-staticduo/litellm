@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: common_utils.py
+  - path: deepseek_transformation.py
+  - path: transformation.py

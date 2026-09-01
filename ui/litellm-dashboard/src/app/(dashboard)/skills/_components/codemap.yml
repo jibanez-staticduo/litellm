@@ -1,0 +1,10 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: ClaudeCodePluginsPanel.tsx
+  - path: PluginTable.test.tsx
+  - path: ClaudeCodePluginsPanel.test.tsx
+  - path: add_plugin_form.tsx
+  - path: add_plugin_form.test.tsx
+  - path: PluginTable.tsx
+  - path: PluginTableColumns.tsx

@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: ProjectBaseForm.test.tsx
+  - path: EditProjectModal.tsx
+  - path: projectFormUtils.ts
+  - path: CreateProjectModal.tsx
+  - path: projectFormUtils.test.ts
+  - path: CreateProjectModal.test.tsx
+  - path: EditProjectModal.test.tsx
+  - path: ProjectBaseForm.tsx

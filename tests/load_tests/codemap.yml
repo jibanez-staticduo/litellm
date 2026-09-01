@@ -1,0 +1,12 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: test_vertex_load_tests.py
+  - path: test_langsmith_load_test.py
+  - path: test_otel_load_test.py
+  - path: memory_leak_utils.py
+  - path: vertex_key.json
+  - path: test_linear_memory_growth.py
+  - path: test_vertex_embeddings_load_test.py
+  - path: test_datadog_load_test.py
+  - path: test_memory_usage.py

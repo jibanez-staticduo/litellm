@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: build_updated_complexity_router_config.test.ts
+  - path: edit_auto_router_modal.test.tsx
+  - path: edit_auto_router_modal.test.ts
+  - path: edit_auto_router_modal.tsx

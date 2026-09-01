@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: base_otel_llm_obs_attributes.py
+  - path: gen_ai_semconv.py

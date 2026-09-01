@@ -1,0 +1,11 @@
+scope: module
+parent: ../../.staticeng/codemap.yml
+internals:
+  - path: config.yaml
+  - path: update_json_caching.py
+  - path: test_responses_api.py
+  - path: add_new_models.py
+  - path: openai_timeouts.py
+  - path: RELEASE_NOTES_GENERATION_INSTRUCTIONS.md
+  - path: migrate_proxy_config.py
+  - path: sagmaker_streaming.py

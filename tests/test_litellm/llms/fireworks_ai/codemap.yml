@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_fireworks_ai_kimi_model_metadata.py
+  - path: test_fireworks_ai_common_utils.py
+  - path: test_fireworks_ai_cost_calculator.py

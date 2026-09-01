@@ -1,0 +1,25 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: max_budget_per_session_limiter.py
+  - path: sensitive_data_routing.py
+  - path: __init__.py
+  - path: user_management_event_hooks.py
+  - path: model_max_budget_limiter.py
+  - path: proxy_track_cost_callback.py
+  - path: prompt_injection_detection.py
+  - path: batch_redis_get.py
+  - path: azure_content_safety.py
+  - path: max_iterations_limiter.py
+  - path: parallel_request_limiter.py
+  - path: responses_id_security.py
+  - path: example_presidio_ad_hoc_recognizer.json
+  - path: parallel_request_limiter_v3.py
+  - path: cache_control_check.py
+  - path: key_management_event_hooks.py
+  - path: dynamic_rate_limiter.py
+  - path: batch_rate_limiter.py
+  - path: max_budget_limiter.py
+  - path: dynamic_rate_limiter_v3.py
+  - path: README.dynamic_rate_limiter_v3.md
+  - path: rate_limiter_utils.py

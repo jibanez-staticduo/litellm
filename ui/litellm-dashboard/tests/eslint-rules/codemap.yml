@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: no-long-condition-chain.test.ts
+  - path: no-complex-jsx-arrow.test.ts
+  - path: no-large-inline-object-arg.test.ts
+  - path: filename-pascal-case.test.ts

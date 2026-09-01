@@ -1,0 +1,15 @@
+scope: module
+parent: ../../../../../../../../.staticeng/codemap.yml
+entrypoints:
+  - path: index.tsx
+internals:
+  - path: use_multi_cost_estimate.test.ts
+  - path: use_multi_cost_estimate.ts
+  - path: multi_export_utils.test.ts
+  - path: multi_export_utils.ts
+  - path: multi_export_dropdown.tsx
+  - path: types.ts
+  - path: multi_export_dropdown.test.tsx
+  - path: multi_cost_results.test.tsx
+  - path: index.test.tsx
+  - path: multi_cost_results.tsx

@@ -1,0 +1,14 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: use-safe-layout-effect.ts
+  - path: useVisitedTabs.ts
+  - path: useToolsOAuthFlow.test.tsx
+  - path: useUserMcpOAuthFlow.test.tsx
+  - path: useMcpOAuthFlow.test.tsx
+  - path: useMcpOAuthFlow.tsx
+  - path: mcpOAuthUtils.ts
+  - path: useTestMCPConnection.tsx
+  - path: useWorker.ts
+  - path: useToolsOAuthFlow.tsx
+  - path: useUserMcpOAuthFlow.tsx

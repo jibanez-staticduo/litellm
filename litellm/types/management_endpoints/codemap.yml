@@ -1,0 +1,8 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: coordination_redis_endpoints.py
+  - path: __init__.py
+  - path: router_settings_endpoints.py
+  - path: auto_router_endpoints.py
+  - path: cache_settings_endpoints.py

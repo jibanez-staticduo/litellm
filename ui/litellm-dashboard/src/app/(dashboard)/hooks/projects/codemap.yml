@@ -1,0 +1,13 @@
+scope: module
+parent: ../../../../../../../.staticeng/codemap.yml
+internals:
+  - path: useProjectDetails.ts
+  - path: useUpdateProject.ts
+  - path: useDeleteProject.test.ts
+  - path: useProjectDetails.test.ts
+  - path: useDeleteProject.ts
+  - path: useCreateProject.ts
+  - path: useCreateProject.test.ts
+  - path: useProjects.ts
+  - path: useProjects.test.ts
+  - path: useUpdateProject.test.ts

@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: gcs_bucket_mock_client.py
+  - path: gcs_bucket.py
+  - path: gcs_bucket_base.py
+  - path: Readme.md

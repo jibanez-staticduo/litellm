@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_bedrock_mantle_responses_transformation.py
+  - path: test_bedrock_mantle_transformation.py
