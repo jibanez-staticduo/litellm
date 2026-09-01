@@ -1,0 +1,20 @@
+Authorized pre-edit Dockerfile SHA-256: ab60e645a484ac96b3d43fa23575b9f6aed30f39799bb17e28d1b54dfbe17fbc
+Post-edit Dockerfile SHA-256: 9e1200cd6d602548ec3932751b37d88f17a899295840f5c50812cde95a6d391d
+
+Exact TASK-014 zero-context semantic diff:
+@@ -4 +4 @@
+-ARG LITELLM_BUILD_IMAGE=cgr.dev/chainguard/wolfi-base@sha256:42df77a9974d6ec8b17a5ee8bc23b532600a44d705acef2409e0933c1251b45f
++ARG LITELLM_BUILD_IMAGE=cgr.dev/chainguard/wolfi-base@sha256:57108e597a8cf3bd376b810f1c3539c21942daefa242cb9dddaae30f8aac735d
+@@ -7 +7 @@
+-ARG LITELLM_RUNTIME_IMAGE=cgr.dev/chainguard/wolfi-base@sha256:42df77a9974d6ec8b17a5ee8bc23b532600a44d705acef2409e0933c1251b45f
++ARG LITELLM_RUNTIME_IMAGE=cgr.dev/chainguard/wolfi-base@sha256:57108e597a8cf3bd376b810f1c3539c21942daefa242cb9dddaae30f8aac735d
+
+Checks:
+- Reversing only the two substitutions reproduces pre-edit SHA-256: PASS
+- Exactly two approved index occurrences exist in Dockerfile: PASS
+- Old Wolfi index does not occur in Dockerfile: PASS
+- git diff --check: PASS
+- pyproject.toml, uv.lock, Cargo.toml, and Cargo.lock working-tree diffs: empty
+- No TASK-006 full build/smoke, arm64 execution, deployment, production action, commit, or push was performed
+
+Note: the repository diff from HEAD contains previously governed TASK-010/TASK-012 Dockerfile changes. This task changed only the two lines shown above.

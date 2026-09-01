@@ -1,0 +1,17 @@
+Real registered MCP tool gate: PASS through the currently registered LazyMCP gateway
+Server: kindly_web_search
+Tool: kindly_web_search-web_search
+Invocation returned a non-empty text result
+No credential, query payload, response payload, URL, or content was retained in evidence
+
+Limitation: this proves the registered gateway/tool path available to the QA environment. It does not prove execution through the newly published candidate digest because deployment/replacement was prohibited and no isolated DB/config clone was available
+
+Exact blocker for candidate-bound real-tool execution: a candidate-bound isolated clone of the registered MCP catalog, database state, encryption context, and authorization was not available. The prior database-free candidate smoke could initialize but could not invoke a registered upstream tool. Production deployment or DB/config mutation was prohibited
+
+Production post-check:
+Container ID prefix: a4fee331519e
+Image: docker.staticduo.com/litellm
+State: Up 3 days, healthy
+No deployment, restart, replacement, production DB/config mutation, or host change occurred
+
+StaticEng validation: FAIL on the established repository-wide missing-CodeMap inventory, beginning with litellm/llms/gradient_ai, litellm/llms/novita, and litellm/llms/llamafile. This task changed no source structure and did not repair unrelated metadata

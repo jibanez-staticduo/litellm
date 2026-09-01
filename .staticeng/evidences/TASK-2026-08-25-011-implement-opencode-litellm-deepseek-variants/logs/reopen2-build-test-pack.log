@@ -1,0 +1,13 @@
+Commands:
+  npm run build && npm test
+  npm pack --dry-run --json
+  git diff --check
+Repository: /home/staticduo/git/opencode-litellm
+Package: @staticeng/opencode-litellm@0.1.9
+
+Build: PASS
+Tests: 44 passed, 0 failed, 0 cancelled, 0 skipped, 0 todo
+Pack dry-run: PASS, 17 published files, no publish
+Diff check: PASS
+
+Focused coverage includes canonical off mapping, config-boundary tombstones, UI-marker request stripping, override sanitization, and unrelated-model invariants

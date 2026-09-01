@@ -1,0 +1,19 @@
+Official OpenCode 1.18.23 strict loopback capture
+endpoint=http://127.0.0.1:48123/v1/chat/completions
+production_contacted=false
+
+deepseek-v4-flash-fp8-mtp off -> reasoning_effort=none; chat_template_kwargs=absent
+deepseek-v4-flash-fp8-mtp low -> reasoning_effort=low; chat_template_kwargs=absent
+deepseek-v4-flash-fp8-mtp high -> reasoning_effort=high; chat_template_kwargs=absent
+deepseek-v4-flash-fp8-mtp max -> reasoning_effort=max; chat_template_kwargs=absent
+deepseek-v4-flash-fp8-mtp-norefusal off -> reasoning_effort=none; chat_template_kwargs=absent
+deepseek-v4-flash-fp8-mtp-norefusal low -> reasoning_effort=low; chat_template_kwargs=absent
+deepseek-v4-flash-fp8-mtp-norefusal high -> reasoning_effort=high; chat_template_kwargs=absent
+deepseek-v4-flash-fp8-mtp-norefusal max -> reasoning_effort=max; chat_template_kwargs=absent
+qwen3.8-27b-refusal-dial off -> reasoning_effort=absent; chat_template_kwargs.enable_thinking=false
+qwen3.8-27b-refusal-dial low -> reasoning_effort=low; chat_template_kwargs=absent
+qwen3.8-27b-refusal-dial medium -> reasoning_effort=medium; chat_template_kwargs=absent
+qwen3.8-27b-refusal-dial xhigh -> reasoning_effort=xhigh; chat_template_kwargs=absent
+
+request_count=12
+unexpected_requests=0

@@ -1,0 +1,25 @@
+toolchain:
+- opencode 1.18.23
+- node v26.6.0
+- npm 11.18.0
+
+commands_and_results:
+- npm ci: PASS; 29 packages audited; 0 vulnerabilities
+- npm run build: PASS; TypeScript and declarations regenerated
+- npm test: PASS; 52 pass, 0 fail, 0 skipped, 0 todo
+- git diff --exit-code -- dist: PASS after build
+- test/workflows.test.mjs via npm test: PASS; pinned read-only CI and release-only OIDC workflow assertions
+- npm pack --dry-run: PASS; 17 files
+- git diff --check: PASS
+- official OpenCode strict-loopback: PASS; 12 requests; production contacted=false
+
+staticeng_validate:
+- RESULT: orchestrator-level FAIL only for pre-existing missing CodeMaps across unrelated LiteLLM monorepo directories.
+- Relevant opencode-litellm CodeMaps were reviewed and updated; the validator runs from /home/staticduo/git/litellm rather than the implementation repository.
+
+constraints:
+- push=false
+- publish=false
+- active_config_edit=false
+- production_inference=false
+- npm_credentials_accessed=false

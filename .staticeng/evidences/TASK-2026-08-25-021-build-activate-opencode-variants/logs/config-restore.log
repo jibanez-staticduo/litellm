@@ -1,0 +1,4 @@
+active_config_restored_and_matches_baseline=PASS
+mode=600 uid=1000 gid=10 size=35173
+model=LiteLLM/chatgpt/gpt-5.6-sol
+small_model=LiteLLM/chatgpt/gpt-5.6-luna

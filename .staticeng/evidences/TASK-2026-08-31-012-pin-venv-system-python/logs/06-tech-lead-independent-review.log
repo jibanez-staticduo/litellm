@@ -1,0 +1,45 @@
+TASK-012 independent Tech Lead post-implementation review
+Verdict: PASS
+
+Exact substitution review:
+- reconstructed pre-TASK-012 Dockerfile SHA-256: 30e2932754e61078f28401daac7029c4cdf4b591a67cceca551139ab1b6ed03c
+- current Dockerfile SHA-256: ab60e645a484ac96b3d43fa23575b9f6aed30f39799bb17e28d1b54dfbe17fbc
+- exactly two --python /usr/bin/python3.13 selectors: PASS
+- no --python python3.13 selector remains: PASS
+- exactly one explicit /app/.venv/bin/python Prisma assertion: PASS
+- reconstructed diff contains exactly three authorized substitutions: PASS
+- git diff --check: PASS
+
+Independently recomputed ordered eight-path manifest:
+ab60e645a484ac96b3d43fa23575b9f6aed30f39799bb17e28d1b54dfbe17fbc  Dockerfile
+1aa2a86213d076d2e1addc751e0b3ea9660e8c8cd4a9e86cb00144b0ff34f723  gateway/routes/allowlist.py
+440044fcf74a5afc8d35f94f8bad5b71e1702f8b7227933757c0f848f2bc858b  litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py
+5e1ff87728492396a609c886c124fb639624b58f4d21f105ba53853ce1e10fd4  litellm/proxy/_experimental/mcp_server/discoverable_endpoints.py
+1a0cf095cf037b32461b17301adea1f95b5dd62d111a45ae924a818da98b2967  litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py
+2eec9a86b1fe514faebc64356842cca1901ba648185b9e49d4e91e13f122ec9f  litellm/proxy/_experimental/mcp_server/outbound_credentials/session_token.py
+886d5b443d75e6477bd8f609543bdf0160f9105ce71c137f7f6426791f0d308f  litellm/proxy/proxy_server.py
+b02dd1675f11cbdd16450560dcc3e2ccb57170adea0b4471fa6198a44cc11462  litellm/proxy/_experimental/mcp_server/lazymcp_public_resource.py
+Ordered line-oriented manifest SHA-256: 7b385506ab41f401bb1b6f925611fa3ba793884ea84db8bf3d6c9ff7bb534337
+
+Independently recomputed patch fingerprints from base 9af49e5b34e25cdc9ad40f9bb50a178f40320417:
+- six-application-path tracked binary patch: 6d063a7429514d8600a8fbec9c6847f249e20961481fdbad949d41196767f557
+- Dockerfile plus six-application-path tracked binary patch: 712f8bb20e3a3681694cd523c819d2c9fcfb6a2a99be015f12aee41a75fcf7da
+
+Independently recomputed preserved supplementary fingerprints:
+3b8240e1f70307caf0c1641639577060eda2d7070b8962a008f91dc949b12117  pyproject.toml
+a7cc57875c67de85bbae0f82b834f31fc9d0c029073ef29e0883787a31a985e8  uv.lock
+65cb1ec9ed32ebc0f450c0649a03159943a1f21625f61f1c993448b2ff60b83a  litellm-rust/Cargo.toml
+ef6ae9d1e34b0bf82d93f06a3ef62694a1489a2a890b3cadecdbd74120e2273d  litellm-rust/Cargo.lock
+
+Preservation inspection:
+- runtime PATH and Prisma ENV: unchanged
+- VIRTUAL_ENV: absent
+- ENTRYPOINT and CMD: unchanged
+- builder/runtime Python 3.13.15-r4 pins: unchanged
+- Rust OCI stage, environment, and assertions: unchanged
+- locks and Cargo files: no diff
+- seven candidate application/parser fingerprints: unchanged
+- alternate Dockerfiles and entrypoint scripts: no TASK-012 diff
+- production/deployment/arm64 scope: unchanged and unauthorized
+
+staticeng_validate remains blocked only by the known pre-existing repository-wide missing-CodeMap inventory recorded in log 05. No unrelated repair was applied

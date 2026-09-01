@@ -1,0 +1,12 @@
+Available SBOM evidence:
+- Both old and new base images contain per-package SPDX JSON documents under /var/lib/db/sbom
+- New-base package manifest and SPDX document fingerprints were enumerated for all 15 embedded packages
+- Exact installed Python closure contains four embedded SPDX documents; fingerprints are in 03-amd64-abi-apk.log
+
+Unavailable gates:
+- Cosign is not installed, so checksum-pinned Cosign signature/attestation verification was not performed
+- Syft and docker sbom are not installed, so no aggregate exact-digest SBOM was generated
+- Grype, Trivy, and Docker Scout are not installed, so same-database Critical/High comparisons for old base, new base, builder, and final runtime were not performed
+- TASK-006 full build is explicitly unauthorized, so builder/final package manifests, aggregate SBOMs, scans, parity, copied-ELF, venv, native-import, Prisma, Rust bridge, entrypoint, and application gates do not exist in TASK-014
+
+Policy disposition: NOT CLEARED FOR PROMOTION. Digest identity and embedded package SPDX material do not substitute for signature verification or vulnerability policy results.

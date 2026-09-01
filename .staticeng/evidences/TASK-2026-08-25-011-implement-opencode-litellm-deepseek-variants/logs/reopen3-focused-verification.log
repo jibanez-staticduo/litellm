@@ -1,0 +1,20 @@
+Plugin repository:
+  npm run build: PASS
+  npm test: 44 passed, 0 failed/skipped
+  npm pack --dry-run --json: PASS, no publish
+  git diff --check: PASS
+
+OpenCode repository packages/app:
+  bun test src/context/model-variant.test.ts
+  12 passed, 0 failed
+  git diff --check: PASS
+
+Focused assertions:
+  default-disabled null/initial selection resolves to first real variant
+  default-disabled last variant cycles to first real variant
+  generic model null selection still resolves to default
+  generic model last variant still cycles to default
+  generic models expose default in visible options
+  opted-out models expose only real visible options
+  marker stripping requires configured LiteLLM provider plus exact target model
+  unrelated provider and unrelated model markers remain untouched

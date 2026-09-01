@@ -1,0 +1,12 @@
+rollback_at=2026-08-26
+restored=/home/staticduo/.opencode/bin/opencode type=regular file mode=755 uid=1000 gid=10 size=184584320 mtime=2026-08-25 08:11:59.000000000 +0200
+baseline=/home/staticduo/.opencode/backups/TASK-2026-08-25-021/opencode-1.18.23 type=regular file mode=700 uid=1000 gid=10 size=184584320 mtime=2026-08-25 08:11:59.000000000 +0200
+de0724a36eaf3166e7f1ff38d0f4478b95ccc47725e9597b3fe66d3d3e18baa2  /home/staticduo/.opencode/bin/opencode
+de0724a36eaf3166e7f1ff38d0f4478b95ccc47725e9597b3fe66d3d3e18baa2  /home/staticduo/.opencode/backups/TASK-2026-08-25-021/opencode-1.18.23
+version=1.18.23
+help_health=PASS
+symlink=/home/staticduo/.opencode/bin/opencode
+config_unchanged=PASS
+active_processes_not_terminated:
+  18127 Tue Aug 25 22:09:49 2026 /home/staticduo/.opencode/bin/opencode serve --hostname 0.0.0.0 --port 4096
+1429715 Tue Aug  4 12:41:26 2026 opencode serve --hostname 0.0.0.0 --port 4912

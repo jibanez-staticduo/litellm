@@ -1,0 +1,51 @@
+2026-08-26 independent release review
+
+official_opencode_version=1.18.23
+official_opencode_sha256=de0724a36eaf3166e7f1ff38d0f4478b95ccc47725e9597b3fe66d3d3e18baa2
+plugin_branch=main
+plugin_remote=git@github.com:jibanez-staticduo/opencode-litellm.git
+release_version=0.1.9
+registry_versions_before=0.1.0..0.1.8
+registry_0.1.9_before=absent
+
+git_diff_check=PASS
+npm_run_build=PASS
+npm_test=PASS tests=47 failed=0 skipped=0
+npm_pack_dry_run=PASS files=17
+package_contents=LICENSE,README.md,package.json,dist/*
+package_local_path_scan=PASS
+
+approved_candidate_sha256=0af33f08ce4e8c42da24954dcbdad3345406aad748f3bd184ff6d94478077eea
+rebuilt_candidate_sha256=2c6ae123b8e00fd318410703fcaa7abe0889a65ec51043c848dacc8dddb4f49c
+artifact_identity_gate=FAIL
+decision=STOP_FOR_REREVIEW
+
+commit_performed=false
+push_performed=false
+publish_performed=false
+config_mutated=false
+production_inference=false
+transient_tarball_removed=true
+
+active_config_mode=0600
+active_config_prechange_sha256=66772b3d57d1b6c8983c7ec4884d348ca48e1c91f63ed6f1315b6441c172f75f
+active_config_reference_unchanged=file-local
+rollback_if_future_activation_requires_it=@staticeng/opencode-litellm@0.1.8
+
+2026-08-26 final resumed execution
+reconciled_head=1e32745a9d30d3a83d37a37dc197b47c86fb5339
+origin_main=1e32745a9d30d3a83d37a37dc197b47c86fb5339
+push=PASS non-force
+tests=PASS 52/52
+final_candidate_sha256=b4c8e8d800b794cef692e02ca4ab6296f3a12b5501cd1d07eb7f5a55d3de28d2
+publish=PASS @staticeng/opencode-litellm@0.1.9
+registry_integrity=sha512-IBMwNMkPmCTyOlElGJ3rraWJ/TNRKTPFEUNdY6+CCgk6pNDzCTOv07YzR8Yfs8QQ4Z7+RNtZL02rbmer3fZYbw==
+registry_shasum=7423338211d46d9800ba1d0313a89739def52134
+registry_tarball_sha256=b4c8e8d800b794cef692e02ca4ab6296f3a12b5501cd1d07eb7f5a55d3de28d2
+registry_files=17
+active_reference=@staticeng/opencode-litellm
+active_config_post_sha256=77167c4b2aba293dd8215529b09ccc250c9204b7cc68008ce5f3c2f12edb6bc2
+active_config_mode=0600
+local_reference_count=0
+official_opencode_active_resolution=PASS models=29
+production_inference=false

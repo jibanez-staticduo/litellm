@@ -1,0 +1,6 @@
+Command: npm pack --dry-run
+Repository: /home/staticduo/git/opencode-litellm
+Result: PASS
+Package: @staticeng/opencode-litellm@0.1.8
+Files: 17
+Publish action: none

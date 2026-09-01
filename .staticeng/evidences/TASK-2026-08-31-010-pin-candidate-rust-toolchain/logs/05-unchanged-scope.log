@@ -1,0 +1,14 @@
+git diff --check: PASS
+git diff --numstat for pyproject.toml, uv.lock, litellm-rust/Cargo.toml, litellm-rust/Cargo.lock: empty
+
+Python pins preserved:
+- builder python-3.13=3.13.15-r4
+- builder python-3.13-dev=3.13.15-r4
+- both uv sync selectors use python3.13
+- runtime python-3.13=3.13.15-r4
+
+Builder package delta: removed only the existing Wolfi rust entry
+Runtime-stage package command: unchanged by TASK-010
+Application source/tests: no TASK-010 edits
+Production/deployment: not accessed or changed
+Complete candidate build and TASK-006 smoke: not run

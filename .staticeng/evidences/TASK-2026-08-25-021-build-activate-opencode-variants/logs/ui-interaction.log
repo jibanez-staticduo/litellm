@@ -1,0 +1,44 @@
+body=DEV
+T
+TASK-021 UI cycle verification
+TASK-021 UI cycle verification
+Ask anything, / for commands, @ for context...
+Build
+deepseek-v4-flash-fp8-mtp
+Low
+buttons=["","","","","","","","","Build","deepseek-v4-flash-fp8-mtp","Low",""]
+initial=Low
+target_menu=DEV
+T
+TASK-021 UI cycle verification
+TASK-021 UI cycle verification
+Ask anything, / for commands, @ for context...
+Build
+deepseek-v4-flash-fp8-mtp
+Low
+Low
+High
+Max
+Off
+cycle_1=Low
+cycle_2=High
+cycle_3=Max
+cycle_4=Off
+cycle_5=Low
+unrelated_initial=Low
+unrelated_menu_before_select=DEV
+T
+TASK-021 UI cycle verification
+TASK-021 UI cycle verification
+Ask anything, / for commands, @ for context...
+Build
+unrelated-reasoning-model
+Low
+Choose model variant
+CTRL
+SHIFT
+D
+Default
+Low
+Medium
+High

@@ -1,0 +1,29 @@
+/home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:272:62 - error: Argument type is partially unknown
+    Argument corresponds to parameter "obj" in function "len"
+    Argument type is "list[Unknown]" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:278:81 - error: Type of "uri" is unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:284:9 - error: Type of "uri" is unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:285:9 - error: Type of "parsed" is unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:285:27 - error: Argument type is unknown
+    Argument corresponds to parameter "url" in function "urlparse" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:287:44 - error: Argument type is unknown
+    Argument corresponds to parameter "parsed" in function "validate_redirect_uri_shape" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:293:12 - error: Type of "scheme" is unknown (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:293:41 - error: Type of "scheme" is unknown (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:293:95 - error: Argument type is unknown
+    Argument corresponds to parameter "parsed" in function "is_loopback_redirect_host" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:302:70 - error: Argument type is partially unknown
+    Argument corresponds to parameter "redirect_uris" in function "__init__"
+    Argument type is "tuple[Unknown, ...]" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:302:76 - error: Argument type is partially unknown
+    Argument corresponds to parameter "iterable" in function "__new__"
+    Argument type is "list[Unknown]" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:311:35 - error: Argument type is partially unknown
+    Argument corresponds to parameter "iterable" in function "__init__"
+    Argument type is "list[Unknown]" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:622:31 - error: Type of "async_increment" is partially unknown
+    Type of "async_increment" is "((key: Unknown, value: float, ttl: int | None = None, parent_otel_span: Span | Any | None = None, refresh_ttl: bool = False) -> CoroutineType[Any, Any, float]) | Any" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:630:23 - error: Type of "async_increment_cache" is partially unknown
+    Type of "async_increment_cache" is "(key: Unknown, value: float, parent_otel_span: Span | Any | None = None, local_only: bool = False, refresh_ttl: bool = False, **kwargs: Unknown) -> CoroutineType[Any, Any, float | None]" (reportUnknownMemberType)
+14 errors, 0 warnings, 0 notes

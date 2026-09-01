@@ -1,0 +1,53 @@
+TASK-2026-08-25-014 release preflight
+Date: 2026-08-25
+Release repository: /home/staticduo/git/opencode-litellm
+
+Git branch/tracking:
+  main at ba47feb, tracking origin/main
+
+Authorized remote:
+  origin git@github.com:jibanez-staticduo/opencode-litellm.git
+
+Recent release-repository HEAD:
+  ba47feb fix: TASK-2026-08-18 correct model capabilities
+
+Approved release files reconfirmed:
+  .staticeng/codemap.yml
+  README.md
+  dist/mapping.js
+  package-lock.json
+  package.json
+  src/codemap.yml
+  src/mapping.ts
+  test/codemap.yml
+  test/mapping.test.mjs
+  test/model-groups.test.mjs
+
+Scoped diff result:
+  10 files changed, 303 insertions, 15 deletions
+  git diff --check: PASS
+
+Package metadata:
+  name: @staticeng/opencode-litellm
+  version: 0.1.9
+  package-lock root records: 0.1.9
+
+Registry availability before publish:
+  Published versions: 0.1.0 through 0.1.8
+  @staticeng/opencode-litellm@0.1.9: E404, absent
+
+Authentication gate:
+  Command: npm whoami
+  Result: E401 Unauthorized from https://registry.npmjs.org/-/whoami
+
+Release actions after blocker:
+  Staged files: none
+  Commit: none
+  Push: not attempted
+  Pack/publish: not attempted
+  Authentication bypass: not attempted
+  Live OpenCode config edits: none
+
+StaticEng validation:
+  Result: FAIL on pre-existing broad missing-CodeMap backlog in the LiteLLM governing workspace
+  Action: no out-of-scope broad repair applied

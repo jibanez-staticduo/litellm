@@ -1,0 +1,11 @@
+Command: opencode models LiteLLM --verbose --log-level ERROR
+Runtime path: active global config loading file:///home/staticduo/git/opencode-litellm/dist/index.js
+
+Before correction, both target aliases resolved named variants:
+  low, medium, high, max, off
+  off body: reasoningEffort off
+
+User-observed UI: Predeterminado, Low, Medium, High, Max, Off
+User-observed production result: Off sent reasoning_effort=off and vLLM returned HTTP 400
+Developer production request: none
+Secrets and unrelated model output: omitted

@@ -1,0 +1,16 @@
+TASK-2026-08-26-018 mutation (redacted)
+Date: 2026-08-26
+
+Secret source: nas/OpenRouter concealed custom field titled exactly key:
+Secret retrieval: read directly through the approved 1Password MCP into confined process memory
+Secret output/persistence: none
+Named credential created: openrouter
+Credential info: api_type=openrouter, allowed_models=[stealth/ox-alpha]
+Credential API result: success
+Deployment created: ox-alpha
+Provider model: openrouter/stealth/ox-alpha
+Named credential reference: openrouter
+Deployment API result: success
+Deployment rollback identifier: 62d04c02-6e2b-4fa1-9780-721142daedcb
+Credential rollback identifier: openrouter
+Inference requests: 0

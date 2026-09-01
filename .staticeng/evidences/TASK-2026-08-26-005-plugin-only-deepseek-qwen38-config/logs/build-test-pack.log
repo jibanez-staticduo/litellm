@@ -1,0 +1,8 @@
+2026-08-26 isolated implementation verification
+
+npm run build: PASS
+npm test: PASS (47 passed, 0 failed, 0 skipped)
+npm pack --dry-run: PASS (@staticeng/opencode-litellm@0.1.9, 17 files)
+git diff --check: PASS
+
+Package publication was not performed.

@@ -1,0 +1,22 @@
+TASK-2026-08-26-018 final postflight (redacted)
+Date: 2026-08-26
+
+Health: HTTP 200, status=healthy, db=connected
+Credential count: 2 (preflight 1, expected delta +1)
+Named openrouter credential count: 1
+Returned API key: redacted by LiteLLM
+Model count: 33 (preflight 32, expected delta +1)
+list_models ox-alpha count: 1
+/model/info ox-alpha count: 1
+Provider model: openrouter/stealth/ox-alpha
+Credential reference: openrouter
+Deployment ID: 62d04c02-6e2b-4fa1-9780-721142daedcb
+DB-backed: true
+Mode: chat
+Router settings: preserved, including aliases and fallbacks
+MCP registration count: 27 before and after
+Fresh OpenCode catalog command: opencode models LiteLLM
+Fresh discovery result: LiteLLM/ox-alpha present exactly once
+Inference requests: 0
+Fedora access: none
+Repository/application config edits: none

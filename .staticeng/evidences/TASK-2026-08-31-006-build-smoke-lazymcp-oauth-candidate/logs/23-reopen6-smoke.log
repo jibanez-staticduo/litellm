@@ -1,0 +1,21 @@
+PROXY_BASE_URL configured: https://candidate.invalid
+All six discovery aliases: PASS HTTP 200 with exact aggregate/scoped/toolset resources
+Authorization server: https://candidate.invalid/mcp
+Reconnect: PASS 60/60 HTTP 200; discovery 404 count 0
+
+Aggregate, scoped, and toolset challenges: PASS
+For each transport:
+- no token: exact bare Bearer resource_metadata challenge
+- selection headers: exact invariant bare challenge
+- malformed llm_session token: exact error="invalid_token" challenge
+- invalid explicit LiteLLM key plus selection headers: exact invariant invalid_token challenge
+
+Readiness: PASS HTTP 200 healthy, DB not connected
+/mcp unauthenticated surface: PASS HTTP 401 authentication_required
+/mcp-rest/tools/list unauthenticated surface: PASS HTTP 401
+/v1/mcp/tools unauthenticated surface: PASS HTTP 401
+Aggregate authorized initialize with isolated key: PASS HTTP 200, protocol 2025-06-18
+Toolset admitted DB-down semantics with isolated key: PASS HTTP 503 Database not available, no challenge
+MCP REST isolated-key surface: PASS HTTP 200, empty denied catalog
+Management tool-list isolated-key surface: PASS HTTP 200, empty tools
+Authorized real tool execution: BLOCKED by absent production DB/server credentials

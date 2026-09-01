@@ -1,0 +1,17 @@
+TASK-2026-08-26-018 reopen preflight (redacted)
+Date: 2026-08-26
+
+Workflow state before runtime work: task reopened_count=1, task/SCR activated, registries updated
+1Password vault: nas
+Case-insensitive exact-title candidates: 1
+Candidate title: OpenRouter
+Candidate category: LOGIN
+Field metadata:
+- username: STRING, populated
+- password: CONCEALED, PASSWORD purpose, populated
+- notesPlain: STRING, NOTES purpose, empty
+- key:: CONCEALED, no purpose, populated
+Secret values read: 0
+LiteLLM mutations: 0
+
+Decision: STOP and reblock before secret retrieval or runtime mutation. Two populated concealed fields make the API-key source ambiguous. PMA must identify either `password` or `key:` as the expected OpenRouter API-key field.

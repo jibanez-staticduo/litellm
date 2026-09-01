@@ -1,0 +1,15 @@
+TASK-2026-08-26-018 preflight (redacted)
+Date: 2026-08-26
+
+LiteLLM admin health: HTTP 200, status=healthy, db=connected
+Named credentials: 1 total; names=[tts-telegram]; credential values omitted
+ox-alpha entries from list_models: 0
+ox-alpha deployments from /model/info: 0
+Router settings captured for preservation comparison; secret-valued fields omitted
+LiteLLM MCP server count: 27
+1Password vaults searched: nas, Defend.tech
+Requested item title/query: openroute
+Exact/substring item matches: 0
+Broader item inventory confirmed no title matching openroute or openrouter; item metadata only, no secret values read
+
+Decision: STOP before mutation because the required 1Password item is unavailable through the approved MCP contract. No credential or deployment was created.

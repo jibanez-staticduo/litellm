@@ -1,0 +1,15 @@
+Authorized base: 9af49e5b34e25cdc9ad40f9bb50a178f40320417
+Tracked patch SHA-256: 6d063a7429514d8600a8fbec9c6847f249e20961481fdbad949d41196767f557
+Parser SHA-256: b02dd1675f11cbdd16450560dcc3e2ccb57170adea0b4471fa6198a44cc11462
+Detached worktree: /tmp/opencode/lazymcp-oauth-candidate/worktree
+Manifest check: manifest-ok
+git diff --check: pass
+Parser cmp against authorized shared source: pass
+Tracked paths:
+ M gateway/routes/allowlist.py
+ M litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py
+ M litellm/proxy/_experimental/mcp_server/discoverable_endpoints.py
+ M litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py
+ M litellm/proxy/_experimental/mcp_server/outbound_credentials/session_token.py
+ M litellm/proxy/proxy_server.py
+?? litellm/proxy/_experimental/mcp_server/lazymcp_public_resource.py

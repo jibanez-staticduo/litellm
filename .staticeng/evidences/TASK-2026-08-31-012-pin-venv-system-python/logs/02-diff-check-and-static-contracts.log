@@ -1,0 +1,20 @@
+Command: git diff --check
+Exit: 0
+Output: empty
+
+Command: bounded Python assertions over root Dockerfile
+Exit: 0
+absolute_uv_selectors: PASS
+legacy_uv_selectors_absent: PASS
+explicit_prisma_assertion: PASS
+bare_prisma_assertion_absent: PASS
+python_pin_occurrences: PASS
+python_dev_pin_occurrences: PASS
+runtime_path: PASS
+entrypoint: PASS
+cmd: PASS
+no_virtual_env: PASS
+rust_oci: PASS
+wolfi_oci: PASS
+
+The assertions require exactly two absolute uv selectors, no former name-based selectors, exactly one explicit venv Prisma assertion, no former bare assertion, preserved Python package pins, preserved runtime PATH, preserved ENTRYPOINT/CMD, absent VIRTUAL_ENV, and preserved Rust/Wolfi OCI digests

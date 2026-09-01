@@ -1,0 +1,15 @@
+TASK-006 Reopen 2 authorized base: 9af49e5b34e25cdc9ad40f9bb50a178f40320417
+Wolfi OCI index: sha256:42df77a9974d6ec8b17a5ee8bc23b532600a44d705acef2409e0933c1251b45f
+Rust OCI index: sha256:2775a09d208ff0d7c1f50490c45b62db929e87ba1dcbc3f2132ac71a704bcdd3
+Rust amd64 platform manifest: sha256:39f68a3e8e3ff425f8945ffa91128e60ff930d53e17fbb5214e95824bdd46f1b
+Rust arm64/v8 provenance-only manifest: sha256:b28e5606d830400fabf789f910f9ed2ea22cdd6d51d463c5d0baa30bb2bedb2d
+Combined tracked patch SHA-256: c3c336f90eb26366aa35c4eee1ec7058bba78064c91d7c0161469fa3fc251097
+Application-only tracked patch SHA-256: 6d063a7429514d8600a8fbec9c6847f249e20961481fdbad949d41196767f557
+Ordered manifest SHA-256: c49a16e0d8e297b3478d08bea399dc011eda3e378c1ace5a1044455300b735a5
+Parser SHA-256: b02dd1675f11cbdd16450560dcc3e2ccb57170adea0b4471fa6198a44cc11462
+pyproject.toml SHA-256: 3b8240e1f70307caf0c1641639577060eda2d7070b8962a008f91dc949b12117
+uv.lock SHA-256: a7cc57875c67de85bbae0f82b834f31fc9d0c029073ef29e0883787a31a985e8
+litellm-rust/Cargo.toml SHA-256: 65cb1ec9ed32ebc0f450c0649a03159943a1f21625f61f1c993448b2ff60b83a
+litellm-rust/Cargo.lock SHA-256: ef6ae9d1e34b0bf82d93f06a3ef62694a1489a2a890b3cadecdbd74120e2273d
+Manifest/path/fingerprint/lock/Cargo checks: pass
+git diff --check: pass

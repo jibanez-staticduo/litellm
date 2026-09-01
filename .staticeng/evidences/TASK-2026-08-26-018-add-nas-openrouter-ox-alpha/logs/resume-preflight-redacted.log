@@ -1,0 +1,13 @@
+TASK-2026-08-26-018 resumed preflight (redacted)
+Date: 2026-08-26
+
+Local 1Password CLI version: 2.32.0
+Authentication source: configured service-account environment file; token omitted
+Shell tracing: disabled
+Accessible vault count: 2
+Accessible vault names: nas, Defend.tech
+Case-insensitive exact title candidates for openroute/openrouter: 0
+Secret field reads: 0
+LiteLLM mutations: 0
+
+Decision: STOP before mutation. The required item is not present in the vaults accessible to the configured service account. No candidate or field ambiguity was encountered because there were no candidates.

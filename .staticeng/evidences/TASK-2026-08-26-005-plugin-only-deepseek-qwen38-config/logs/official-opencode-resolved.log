@@ -1,0 +1,14 @@
+Official OpenCode executable verification
+version=1.18.23
+sha256=de0724a36eaf3166e7f1ff38d0f4478b95ccc47725e9597b3fe66d3d3e18baa2
+configuration=isolated test-only OPENCODE_CONFIG loading the source checkout
+discovery=http://127.0.0.1:48123 only
+shared_config_requirement=published pinned npm package @staticeng/opencode-litellm@0.1.9; no local path
+
+Resolved generated named variants before official tombstone filtering:
+deepseek-v4-flash-fp8-mtp: off=none, low=low, high=high, max=max; disabled=medium,xhigh
+deepseek-v4-flash-fp8-mtp-norefusal: off=none, low=low, high=high, max=max; disabled=medium,xhigh
+qwen3.8-27b-refusal-dial: off=chat_template_kwargs.enable_thinking:false, low=low, medium=medium, xhigh=xhigh; disabled=none,minimal,high,max
+
+Official 1.18.23 behavior note:
+Predeterminado is intrinsic UI state outside model.variants. Plugin-owned tombstones remove unsupported named variants but cannot remove this sentinel without a core change, which this task forbids.

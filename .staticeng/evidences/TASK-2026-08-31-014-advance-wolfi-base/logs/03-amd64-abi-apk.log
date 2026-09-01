@@ -1,0 +1,32 @@
+arch=x86_64
+ld.so (glibc-2.44-r1) stable release version 2.44.
+glibc-2.44-2.44-r1 x86_64 {glibc-2.44} (LGPL-2.1-or-later) [installed]
+glibc-2.44-locale-posix-2.44-r1 x86_64 {glibc-2.44} (LGPL-2.1-or-later) [installed]
+ld-linux-2.44-2.44-r1 x86_64 {glibc-2.44} (LGPL-2.1-or-later) [installed]
+python-3.13-3.13.15-r4 x86_64 {python-3.13} (PSF-2.0) [installed]
+python-3.13-base-3.13.15-r4 x86_64 {python-3.13} (PSF-2.0) [installed]
+python-3.13-base-dev-3.13.15-r4 x86_64 {python-3.13} (PSF-2.0) [installed]
+python-3.13-dev-3.13.15-r4 x86_64 {python-3.13} (PSF-2.0) [installed]
+python=3.13.15
+machine=x86_64
+cache_tag=cpython-313
+soabi=cpython-313-x86_64-linux-gnu
+math=/usr/lib/python3.13/lib-dynload/math.cpython-313-x86_64-linux-gnu.so
+  004:   2 (GLIBC_2.2.5)   3 (GLIBC_2.29)    4 (GLIBC_2.44)    2 (GLIBC_2.2.5)
+  04c:   4 (GLIBC_2.44)    2 (GLIBC_2.2.5)   0 (*local*)       0 (*local*)
+  0x0060:   Name: GLIBC_2.44  Flags: none  Version: 4
+repository=https://apk.cgr.dev/chainguard
+5c80d668315f46b5fcf50cac31d0095ef9fa1a3a0279fa7898fe625fec139870  /tmp/python-3.13-3.13.15-r4.apk
+06fe40d3b327e415205753031789958cf914350c0c6315de37d5889a75585c6c  /tmp/python-3.13-base-3.13.15-r4.apk
+ba6abab4817fc7a280713d88aac40cde0d65f0b7df07e2adc96a0718c689e611  /tmp/python-3.13-base-dev-3.13.15-r4.apk
+f0aaf86e5e462fefe2b723eeca7ad6807e92220006362083111a8437f29c84f4  /tmp/python-3.13-dev-3.13.15-r4.apk
+keys
+d91e3de0257c8762512695edbe35c7fb910ea5e11ff1cd54051e1ee50c10a0ec  /etc/apk/keys/chainguard-7fb528a64a862d44bbea6069093f1fec29fa864ba7e9754828eeceed3f487239.rsa.pub
+d53f265d056f818ca6fc2284798f46c4f046c7ffbaef152acb36362fbc9d12d9  /etc/apk/keys/chainguard-a758e63f677c21398431017ba63a5f1676378db460c8ee05bacf92d9227b1ba4.rsa.pub
+56624f7bb2e7c25f35e2651299c769b8a0042348e328854ddc590cc4776465ae  /etc/apk/keys/chainguard-e3fb44d055702ed0dddf0f2acb1a0a07fc6075967092b203c7aac7db801d65f4.rsa.pub
+f0031424cf46f7db780ce63a45f0fd6aa6f85f601e6bb3b7a91fe3d4d5b7d2cc  /etc/apk/keys/wolfi-signing.rsa.pub
+embedded_python_sboms
+3df2d8ad4a6cdbf7b0b5985a0ae4f2d217aa15f6301d0cbc118b73706c0c3b9b  /var/lib/db/sbom/python-3.13-3.13.15-r4.spdx.json
+572fe699d1a6c1ab559f0e0073b5590fff8a9d12aa0b2a3aa2110ebb853f2be2  /var/lib/db/sbom/python-3.13-base-3.13.15-r4.spdx.json
+af66372fb95a480c4163519618d9b5cdfc154beb8a8a74b9ba35ec06afeaddaa  /var/lib/db/sbom/python-3.13-base-dev-3.13.15-r4.spdx.json
+ce346f78ad396a77ba5f118461e1f9fbf11a02a748ca937229fcc2d1b9643561  /var/lib/db/sbom/python-3.13-dev-3.13.15-r4.spdx.json

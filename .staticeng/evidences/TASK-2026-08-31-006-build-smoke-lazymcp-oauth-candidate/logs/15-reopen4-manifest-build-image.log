@@ -1,0 +1,18 @@
+TASK-006 Reopen 4 exact frozen input checks: PASS
+Base: 9af49e5b34e25cdc9ad40f9bb50a178f40320417
+Wolfi index: sha256:57108e597a8cf3bd376b810f1c3539c21942daefa242cb9dddaae30f8aac735d
+Wolfi amd64 child: sha256:9e7b7ba0080f84a03d95b42b80dd2e03f2d9169163a390230a3a6e53c03361dd
+Dockerfile: 9e1200cd6d602548ec3932751b37d88f17a899295840f5c50812cde95a6d391d
+Ordered manifest: f7def12e07e90dbfe2a27651eab73617660191efeab7b97e7d200fc01ebd5e13
+Combined patch: 501797e94d980f1ed7f1293d4fe57adea61237f9107f0f0025a5a00d6bbd2751
+Application patch: 6d063a7429514d8600a8fbec9c6847f249e20961481fdbad949d41196767f557
+Parser/pyproject/uv.lock/Cargo fingerprints: PASS
+git diff --check: PASS
+
+Final linux/amd64 build: PASS
+Final image ID: sha256:0ade7608d10588994a73d45ffb1bb66e994966fe71edd640a9599ffca754fcdf
+Builder image ID: sha256:d183ac76440db78f118361aecf29f80a50ea173085ffe3db51e780e80cf0e6df
+Rust assertions: PASS
+Both frozen system-Python syncs: PASS
+Maturin/Rust bridge: PASS
+Prisma generation/final assertion: PASS

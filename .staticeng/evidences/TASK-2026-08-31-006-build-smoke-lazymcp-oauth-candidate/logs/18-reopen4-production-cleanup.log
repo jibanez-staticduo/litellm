@@ -1,0 +1,11 @@
+Production container ID: a4fee331519ed8fa2e0ae851f3e0e4a3533ebcae4f0c4752811a1f7a47f2fc8a
+Production image ID: sha256:0a221cc57c07ae89e5a0223488351ff85ac30053771b22b43a94b3aa5361ae42
+Production pre/post identity: unchanged
+Production post state: running
+Production post health: healthy
+No production credential/config/database mounts or access
+Candidate container removed: yes
+Candidate network removed: yes
+Detached worktree removed: yes
+Candidate final and builder images retained for technical inspection
+No deployment, restart/replacement, commit, push, or arm64 execution

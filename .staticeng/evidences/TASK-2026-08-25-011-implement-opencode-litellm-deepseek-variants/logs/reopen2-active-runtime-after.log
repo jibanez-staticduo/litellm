@@ -1,0 +1,13 @@
+Command: opencode models LiteLLM --verbose --log-level ERROR
+Runtime: active global config and repository dist plugin
+Production inference request: none
+
+Both target aliases final named variants:
+  low  -> reasoningEffort low
+  high -> reasoningEffort high
+  max  -> reasoningEffort max
+  off  -> reasoningEffort none
+
+medium present: no
+xhigh present: no
+Result: PASS

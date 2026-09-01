@@ -1,0 +1,11 @@
+Production container ID after Reopen 1: a4fee331519ed8fa2e0ae851f3e0e4a3533ebcae4f0c4752811a1f7a47f2fc8a
+Production image ID after Reopen 1: sha256:0a221cc57c07ae89e5a0223488351ff85ac30053771b22b43a94b3aa5361ae42
+Production state after Reopen 1: running
+Production health after Reopen 1: healthy
+Pre/Reopen-1-post container ID: identical
+Pre/Reopen-1-post image ID: identical
+Candidate image inspect: absent (exit 1)
+Candidate containers: none
+Candidate networks: none
+Detached worktree removed: yes
+No production secrets, configuration, or database were mounted, read, or mutated

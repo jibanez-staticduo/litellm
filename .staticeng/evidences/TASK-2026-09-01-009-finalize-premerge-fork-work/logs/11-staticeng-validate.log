@@ -1,0 +1,9 @@
+FAIL: established repository-wide missing-CodeMap inventory remains. Representative first findings:
+- litellm/llms/gradient_ai
+- litellm/llms/novita
+- litellm/llms/llamafile
+- packaging
+- terraform
+- docs
+- ui
+Warnings: 0

@@ -1,0 +1,33 @@
+import { chromium } from "@playwright/test"
+
+const output = "/home/staticduo/git/litellm/.staticeng/evidences/TASK-2026-08-25-021-build-activate-opencode-variants"
+const browser = await chromium.launch({ headless: true })
+const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } })
+await page.goto("http://127.0.0.1:18766/tmp/session/ses_fc36d3e1dffehryo2f1ULnKIHr", { waitUntil: "domcontentloaded" })
+await page.waitForTimeout(5000)
+console.log(`body=${await page.locator("body").innerText()}`)
+console.log(`buttons=${JSON.stringify(await page.locator("button").allInnerTexts())}`)
+const variant = page.locator("button").filter({ hasText: /^(Off|Low|High|Max|Default|Medium|Xhigh)$/i }).last()
+console.log(`initial=${(await variant.innerText()).trim()}`)
+await variant.click()
+await page.waitForTimeout(500)
+const targetMenu = await page.locator("body").innerText()
+console.log(`target_menu=${targetMenu}`)
+await page.screenshot({ path: `${output}/screenshots/deepseek-target-menu.png`, fullPage: true })
+await page.keyboard.press("Escape")
+for (let index = 0; index < 5; index++) {
+  await page.keyboard.press("ControlOrMeta+Shift+D")
+  await page.waitForTimeout(500)
+  console.log(`cycle_${index + 1}=${(await variant.innerText()).trim()}`)
+}
+const model = page.getByText("deepseek-v4-flash-fp8-mtp", { exact: true }).last()
+await model.click()
+await page.waitForTimeout(500)
+const unrelated = page.getByText("unrelated-reasoning-model", { exact: true }).last()
+await unrelated.click()
+await page.waitForTimeout(1000)
+console.log(`unrelated_initial=${(await variant.innerText()).trim()}`)
+await variant.click()
+console.log(`unrelated_menu_before_select=${await page.locator("body").innerText()}`)
+await page.screenshot({ path: `${output}/screenshots/unrelated-model-default.png`, fullPage: true })
+await browser.close()

@@ -1,0 +1,13 @@
+built=dist/opencode-linux-x64/bin/opencode mode=755 size=186247296 mtime=2026-08-25 21:09:51.524314306 +0200
+f7089af27702c25b17d0358d3a48bf7072c481ed364ca86cf2b1d4cfdb7be2c5  dist/opencode-linux-x64/bin/opencode
+0.0.0-dev-202608251909
+task_owned_diff:
+unrelated_status_preserved:
+ M ../app/src/components/prompt-input-v2.tsx
+ M ../app/src/components/prompt-input.tsx
+ M ../app/src/context/local.tsx
+ M ../app/src/context/model-variant.test.ts
+ M ../app/src/context/model-variant.ts
+ M ../app/src/pages/session/composer/prompt-model-selection.ts
+?? ../../.codenomad/
+?? ../../.staticeng/

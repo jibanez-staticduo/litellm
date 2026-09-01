@@ -1,0 +1,12 @@
+OpenCode version: 1.18.21
+Config: /home/staticduo/.config/opencode/opencode.json
+Baseline SHA-256: a6e878115450e68cf8d7678e6f3000f12a7ae88fe4649ff7e76086df82d5d911
+Active SHA-256: 66772b3d57d1b6c8983c7ec4884d348ca48e1c91f63ed6f1315b6441c172f75f
+Backup: /home/staticduo/.config/opencode/opencode.json.backup-20260825T133622Z-deepseek-local-plugin
+Backup permissions: 600
+Active permissions: 600
+Prior plugin reference: @staticeng/opencode-litellm@0.1.8
+Active plugin reference: file:///home/staticduo/git/opencode-litellm/dist/index.js
+Artifact: /home/staticduo/git/opencode-litellm/dist/index.js
+Artifact SHA-256: a88735df6005c8bbd4142152f013be2d77d02316a070a055bdef7741cb1bc7c1
+Exact rollback: install -m 600 "/home/staticduo/.config/opencode/opencode.json.backup-20260825T133622Z-deepseek-local-plugin" "/home/staticduo/.config/opencode/opencode.json"

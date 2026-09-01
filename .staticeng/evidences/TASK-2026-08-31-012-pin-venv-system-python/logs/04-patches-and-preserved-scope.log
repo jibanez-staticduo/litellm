@@ -1,0 +1,14 @@
+Application-only tracked binary patch SHA-256 from 9af49e5b34e25cdc9ad40f9bb50a178f40320417: 6d063a7429514d8600a8fbec9c6847f249e20961481fdbad949d41196767f557
+Combined ordered eight-path tracked binary patch SHA-256 from 9af49e5b34e25cdc9ad40f9bb50a178f40320417: 712f8bb20e3a3681694cd523c819d2c9fcfb6a2a99be015f12aee41a75fcf7da
+
+Preserved supplementary fingerprints:
+3b8240e1f70307caf0c1641639577060eda2d7070b8962a008f91dc949b12117  pyproject.toml
+a7cc57875c67de85bbae0f82b834f31fc9d0c029073ef29e0883787a31a985e8  uv.lock
+65cb1ec9ed32ebc0f450c0649a03159943a1f21625f61f1c993448b2ff60b83a  litellm-rust/Cargo.toml
+ef6ae9d1e34b0bf82d93f06a3ef62694a1489a2a890b3cadecdbd74120e2273d  litellm-rust/Cargo.lock
+
+Parser fingerprint:
+b02dd1675f11cbdd16450560dcc3e2ccb57170adea0b4471fa6198a44cc11462  litellm/proxy/_experimental/mcp_server/lazymcp_public_resource.py
+
+git diff --quiet over pyproject.toml, uv.lock, litellm-rust/Cargo.toml, and litellm-rust/Cargo.lock exited 0
+No TASK-012 edit was made to locks, Cargo files, application source/tests, alternate Dockerfiles, scripts, runtime ENV, ENTRYPOINT, CMD, deployment, production, or arm64 scope

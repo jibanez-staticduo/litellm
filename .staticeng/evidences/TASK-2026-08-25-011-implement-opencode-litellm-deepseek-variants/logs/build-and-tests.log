@@ -1,0 +1,6 @@
+Command: npm run build && npm test
+Repository: /home/staticduo/git/opencode-litellm
+Result: PASS
+TypeScript build: PASS
+Node tests: 42 passed, 0 failed, 0 skipped, 0 todo
+Focused coverage: exact aliases, exact legacy/V2 payloads, override sanitization, near-matches, unrelated overrides, and config-hook replacement

@@ -1,0 +1,27 @@
+Final Python: 3.13.15
+Executable: /app/.venv/bin/python
+Venv prefix: /app/.venv
+Base prefix: /usr
+Venv executable realpath: /usr/bin/python3.13
+Cache tag: cpython-313
+SOABI: cpython-313-x86_64-linux-gnu
+Architecture: x86_64
+glibc loader: 2.44-r1
+uvloop: 0.21.0
+Prisma query engines: nonempty and all under /opt/prisma
+Native imports PASS: pydantic-core, cryptography Rust, NumPy, grpc, aiohttp, litellm.rust_bridge._native
+Image PATH: /app/.venv/bin first
+VIRTUAL_ENV: absent
+Entrypoint: ["docker/prod_entrypoint.sh"]
+Cmd: ["--port","4000"]
+Normal entrypoint startup/readiness: PASS
+
+Builder installed-package manifest captured: 70 packages/SPDX documents
+Final installed-package manifest captured: 48 packages/SPDX documents
+Exact package listings were emitted by apk during QA execution; salient parity: glibc/loader 2.44-r1 and Python runtime/base 3.13.15-r4 match
+
+Promotion-only security gates: BLOCKED
+Cosign signature/attestation verification unavailable
+Aggregate SBOM unavailable (embedded APK SPDX inventory captured)
+Syft, Grype, Trivy, Docker Scout, Docker SBOM/comparative scans unavailable
+Candidate is not eligible for promotion/deployment regardless of smoke result

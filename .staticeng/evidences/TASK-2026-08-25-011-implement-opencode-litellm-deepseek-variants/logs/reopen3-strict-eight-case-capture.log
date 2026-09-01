@@ -1,0 +1,28 @@
+Harness: /tmp/capture-opencode-all-deepseek-wire.mjs
+Transport: local loopback fixture only
+Client: opencode run with explicit --title fixture
+Isolation: fresh process and unique session for every case
+Production contact: none
+
+Captured exactly eight completion requests:
+  deepseek-v4-flash-fp8-mtp / off  -> reasoning_effort none
+  deepseek-v4-flash-fp8-mtp / low  -> reasoning_effort low
+  deepseek-v4-flash-fp8-mtp / high -> reasoning_effort high
+  deepseek-v4-flash-fp8-mtp / max  -> reasoning_effort max
+  deepseek-v4-flash-fp8-mtp-norefusal / off  -> reasoning_effort none
+  deepseek-v4-flash-fp8-mtp-norefusal / low  -> reasoning_effort low
+  deepseek-v4-flash-fp8-mtp-norefusal / high -> reasoning_effort high
+  deepseek-v4-flash-fp8-mtp-norefusal / max  -> reasoning_effort max
+
+Correlation:
+  each request carried a unique x-session-affinity/x-session-id
+  each captured model matched the selected alias
+  each captured effort matched the selected semantic mode
+  captured request count equaled expected case count: 8
+  no title-generation, compaction, retry, or preliminary completion request occurred
+
+Finding on prior preliminary low request:
+  it was a non-isolated harness artifact, not a reproducible OpenCode user-inference path
+  explicit title plus fresh process/session per case removes implicit title work and shared state
+
+Result: PASS

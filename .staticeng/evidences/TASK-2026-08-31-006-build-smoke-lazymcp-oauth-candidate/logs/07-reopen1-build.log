@@ -1,0 +1,18 @@
+Command: docker build --platform linux/amd64 --pull=false --progress=plain -t litellm:lazymcp-oauth-candidate-r1 /tmp/opencode/lazymcp-oauth-candidate-r1/worktree
+Result: FAIL
+Build platform: linux/amd64
+Authorized OCI index resolved: yes
+Builder Python package installed: python-3.13 3.13.15-r4
+Builder Python development package installed: python-3.13-dev 3.13.15-r4
+Runtime Python package installed: python-3.13 3.13.15-r4
+First frozen dependency sync with --python python3.13: pass
+uvloop installed by dependency sync: 0.21.0
+Second frozen project/workspace sync with --python python3.13: fail
+
+Failure:
+  maturin.build_wheel failed while building litellm
+  rustc -vV exited 1
+  rustc: libm.so.6: version GLIBC_2.44 not found, required by libLLVM.so.22.1
+  Dockerfile line 83 uv sync exited 1
+
+No final image was produced. Full raw secret-free build output is retained at /tmp/opencode/lazymcp-oauth-candidate-r1/build.log

@@ -1,0 +1,23 @@
+official_opencode_version=1.18.23
+transport=ephemeral 127.0.0.1 HTTP fixture
+configuration=ephemeral OPENCODE_CONFIG_CONTENT loading reconciled dist
+strict=true
+fresh_process_and_explicit_title_per_case=true
+
+deepseek-v4-flash-fp8-mtp off {"reasoning_effort":"none"}
+deepseek-v4-flash-fp8-mtp low {"reasoning_effort":"low"}
+deepseek-v4-flash-fp8-mtp high {"reasoning_effort":"high"}
+deepseek-v4-flash-fp8-mtp max {"reasoning_effort":"max"}
+deepseek-v4-flash-fp8-mtp-norefusal off {"reasoning_effort":"none"}
+deepseek-v4-flash-fp8-mtp-norefusal low {"reasoning_effort":"low"}
+deepseek-v4-flash-fp8-mtp-norefusal high {"reasoning_effort":"high"}
+deepseek-v4-flash-fp8-mtp-norefusal max {"reasoning_effort":"max"}
+qwen3.8-27b-refusal-dial off {"chat_template_kwargs":{"enable_thinking":false}}
+qwen3.8-27b-refusal-dial low {"reasoning_effort":"low"}
+qwen3.8-27b-refusal-dial medium {"reasoning_effort":"medium"}
+qwen3.8-27b-refusal-dial xhigh {"reasoning_effort":"xhigh"}
+
+loopback_request_count=12
+unexpected_requests=0
+production_contacted=false
+result=PASS

@@ -1,0 +1,8 @@
+{"messages": "[REDACTED]", "model": "deepseek-v4-flash-fp8-mtp", "path": "/v1/chat/completions", "reasoning_effort": "none", "stream": true}
+{"messages": "[REDACTED]", "model": "deepseek-v4-flash-fp8-mtp", "path": "/v1/chat/completions", "reasoning_effort": "low", "stream": true}
+{"messages": "[REDACTED]", "model": "deepseek-v4-flash-fp8-mtp", "path": "/v1/chat/completions", "reasoning_effort": "high", "stream": true}
+{"messages": "[REDACTED]", "model": "deepseek-v4-flash-fp8-mtp", "path": "/v1/chat/completions", "reasoning_effort": "max", "stream": true}
+{"messages": "[REDACTED]", "model": "deepseek-v4-flash-fp8-mtp-norefusal", "path": "/v1/chat/completions", "reasoning_effort": "none", "stream": true}
+{"messages": "[REDACTED]", "model": "deepseek-v4-flash-fp8-mtp-norefusal", "path": "/v1/chat/completions", "reasoning_effort": "low", "stream": true}
+{"messages": "[REDACTED]", "model": "deepseek-v4-flash-fp8-mtp-norefusal", "path": "/v1/chat/completions", "reasoning_effort": "high", "stream": true}
+{"messages": "[REDACTED]", "model": "deepseek-v4-flash-fp8-mtp-norefusal", "path": "/v1/chat/completions", "reasoning_effort": "max", "stream": true}

@@ -1,0 +1,6 @@
+Probe target platform: linux/amd64
+Injected TARGETARCH: ppc64le
+Assertion stage exit code: 1
+Result: PASS, unsupported TARGETARCH failed closed before rustc execution
+
+The same case contract also rejects an empty TARGETARCH through its default branch

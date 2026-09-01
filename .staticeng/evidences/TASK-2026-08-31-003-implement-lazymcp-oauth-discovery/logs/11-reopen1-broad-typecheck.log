@@ -1,0 +1,186 @@
+/home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:50:5 - error: "_run_centralized_common_checks" is private and used outside of the module in which it is declared (reportPrivateUsage)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:50:5 - error: Type of "_run_centralized_common_checks" is partially unknown
+    Type of "_run_centralized_common_checks" is "(user_api_key_auth_obj: UserAPIKeyAuth, request: Request[State], request_data: dict[Unknown, Unknown], route: str) -> CoroutineType[Any, Any, None]" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:53:59 - error: "_read_request_body" is private and used outside of the module in which it is declared (reportPrivateUsage)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:53:59 - error: Type of "_read_request_body" is partially unknown
+    Type of "_read_request_body" is "(request: Request[State] | None) -> CoroutineType[Any, Any, dict[Unknown, Unknown]]" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:926:51 - error: Type of "pre_db_read_auth_checks" is partially unknown
+    Type of "pre_db_read_auth_checks" is "(request: Request[State], request_data: dict[Unknown, Unknown], route: str) -> CoroutineType[Any, Any, None]" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:996:23 - error: Type of "metadata" is partially unknown
+    Type of "metadata" is "dict[Unknown, Unknown] | None" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:996:55 - error: Type of "metadata" is partially unknown
+    Type of "metadata" is "dict[Unknown, Unknown]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:996:55 - error: Type of "get" is partially unknown
+    Type of "get" is "Overload[(key: Unknown, default: None = None, /) -> (Unknown | None), (key: Unknown, default: Unknown, /) -> Unknown, (key: Unknown, default: _T@get, /) -> (Unknown | _T@get)]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1000:23 - error: Argument of type "str | None" cannot be assigned to parameter "user_role" of type "LitellmUserRoles | None" in function "__init__"
+    Type "str | None" is not assignable to type "LitellmUserRoles | None"
+      Type "str" is not assignable to type "LitellmUserRoles | None"
+        "str" is not assignable to "LitellmUserRoles"
+        "str" is not assignable to "None" (reportArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1044:17 - error: Type of "team_limit" is partially unknown
+    Type of "team_limit" is "Unknown | None" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1044:30 - error: Type of "get" is partially unknown
+    Type of "get" is "Overload[(key: Unknown, default: None = None, /) -> (Unknown | None), (key: Unknown, default: Unknown, /) -> Unknown, (key: Unknown, default: _T@get, /) -> (Unknown | _T@get)]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1044:31 - error: Type of "metadata" is partially unknown
+    Type of "metadata" is "dict[Unknown, Unknown] | None" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1048:21 - error: Type of "server_name" is unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1048:34 - error: Type of "rpm" is unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1150:50 - error: Type of "metadata" is partially unknown
+    Type of "metadata" is "dict[Unknown, Unknown] | None" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1152:12 - error: Type of "metadata" is partially unknown
+    Type of "metadata" is "dict[Unknown, Unknown]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1152:12 - error: Type of "get" is partially unknown
+    Type of "get" is "Overload[(key: Unknown, default: None = None, /) -> (Unknown | None), (key: Unknown, default: Unknown, /) -> Unknown, (key: Unknown, default: _T@get, /) -> (Unknown | _T@get)]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1319:16 - error: Return type, "dict[Unknown, Unknown]", is partially unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1330:48 - error: Type of "general_settings" is partially unknown
+    Type of "general_settings" is "dict[Unknown, Unknown]" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1335:13 - error: "MCP_CLIENT_SIDE_AUTH_HEADER_NAME" is constant (because it is uppercase) and cannot be redefined (reportConstantRedefinition)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1338:14 - error: Type of "get" is partially unknown
+    Type of "get" is "Overload[(key: Unknown, default: None = None, /) -> (Unknown | None), (key: Unknown, default: Unknown, /) -> Unknown, (key: Unknown, default: _T@get, /) -> (Unknown | _T@get)]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1339:13 - error: "MCP_CLIENT_SIDE_AUTH_HEADER_NAME" is constant (because it is uppercase) and cannot be redefined (reportConstantRedefinition)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1339:13 - error: Type of "MCP_CLIENT_SIDE_AUTH_HEADER_NAME" is partially unknown
+    Type of "MCP_CLIENT_SIDE_AUTH_HEADER_NAME" is "Unknown | Literal['x-mcp-auth']" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1340:17 - error: Type of "get" is partially unknown
+    Type of "get" is "Overload[(key: Unknown, default: None = None, /) -> (Unknown | None), (key: Unknown, default: Unknown, /) -> Unknown, (key: Unknown, default: _T@get, /) -> (Unknown | _T@get)]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1342:16 - error: Return type, "str | Unknown", is partially unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1383:9 - error: Type of "raw_headers" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1384:59 - error: Argument type is Any
+    Argument corresponds to parameter "raw_headers" in function "_reject_duplicate_authorization" (reportAny)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1388:36 - error: Type of "decode" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1388:60 - error: Type of "decode" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1388:88 - error: Type of "name" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1388:94 - error: Type of "value" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1401:13 - error: Type of "entry" is unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1402:60 - error: Argument type is partially unknown
+    Argument corresponds to parameter "obj" in function "len"
+    Argument type is "list[Unknown] | tuple[Unknown, ...]" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1404:13 - error: Type of "name" is unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1444:48 - error: Type of "general_settings" is partially unknown
+    Type of "general_settings" is "dict[Unknown, Unknown]" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1491:17 - error: Type of "require_key_access" is partially unknown
+    Type of "require_key_access" is "Unknown | bool" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1492:21 - error: Type of "get" is partially unknown
+    Type of "get" is "Overload[(key: Unknown, default: None = None, /) -> (Unknown | None), (key: Unknown, default: Unknown, /) -> Unknown, (key: Unknown, default: _T@get, /) -> (Unknown | _T@get)]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1494:17 - error: Type of "base" is partially unknown
+    Type of "base" is "set[str] | set[Unknown]" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1501:51 - error: Argument type is partially unknown
+    Argument corresponds to parameter "iterable" in function "__init__"
+    Argument type is "set[str] | set[Unknown | str]" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1525:29 - error: Type of "append" is partially unknown
+    Type of "append" is "(object: Unknown, /) -> None" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1531:22 - error: Type of "get" is partially unknown
+    Type of "get" is "Overload[(key: Unknown, default: None = None, /) -> (Unknown | None), (key: Unknown, default: Unknown, /) -> Unknown, (key: Unknown, default: _T@get, /) -> (Unknown | _T@get)]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1542:62 - error: Type of "_get_allowed_mcp_servers_for_agent" is partially unknown
+    Type of "_get_allowed_mcp_servers_for_agent" is "(user_api_key_auth: UserAPIKeyAuth | None = None, agent_object_permission: Unknown | None = None) -> CoroutineType[Any, Any, list[str]]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1715:12 - error: Condition will always evaluate to False since the types "LiteLLM_TeamTableCachedObj" and "None" have no overlap (reportUnnecessaryComparison)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1727:13 - error: "_organization_max_budget_check" is private and used outside of the module in which it is declared (reportPrivateUsage)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1728:13 - error: "_team_max_budget_check" is private and used outside of the module in which it is declared (reportPrivateUsage)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1791:55 - error: "_get_mcp_server_from_tool_name" is protected and used outside of the class in which it is declared (reportPrivateUsage)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:1845:64 - error: Type of "operator_open_server_ids" is partially unknown
+    Type of "operator_open_server_ids" is "(user_api_key_auth: UserAPIKeyAuth | None = None, *, allow_all_server_ids: list[str] | None = None, submitted_server_ids: list[str] | None = None) -> CoroutineType[Any, Any, set[Unknown]]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2041:40 - error: Type of "_get_agent_tool_permissions_for_server" is partially unknown
+    Type of "_get_agent_tool_permissions_for_server" is "(server_id: str, user_api_key_auth: UserAPIKeyAuth | None = None, agent_object_permission: Unknown | None = None) -> CoroutineType[Any, Any, list[str] | None]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2148:17 - error: "_get_mcp_server_ids_from_access_groups" is private and used outside of the module in which it is declared (reportPrivateUsage)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2351:17 - error: "_get_mcp_server_ids_from_access_groups" is private and used outside of the module in which it is declared (reportPrivateUsage)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2371:16 - error: Condition will always evaluate to False since the types "LiteLLM_TeamTableCachedObj" and "None" have no overlap (reportUnnecessaryComparison)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2687:13 - error: Type of "cached" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2692:13 - error: Type of "user_row" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2692:37 - error: Type of "table" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2692:37 - error: Type of "find_unique" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2693:45 - error: Argument type is Any
+    Argument corresponds to parameter "o" in function "getattr" (reportAny)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2695:19 - error: Type of "async_set_cache" is partially unknown
+    Type of "async_set_cache" is "(key: Unknown, value: Unknown, local_only: bool = False, **kwargs: Unknown) -> CoroutineType[Any, Any, None]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2835:13 - error: Type of "cached" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2840:13 - error: Type of "agent_row" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2840:38 - error: Type of "table" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2840:38 - error: Type of "find_unique" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2841:45 - error: Argument type is Any
+    Argument corresponds to parameter "o" in function "getattr" (reportAny)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2843:19 - error: Type of "async_set_cache" is partially unknown
+    Type of "async_set_cache" is "(key: Unknown, value: Unknown, local_only: bool = False, **kwargs: Unknown) -> CoroutineType[Any, Any, None]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2891:9 - error: Type of parameter "agent_object_permission" is partially unknown
+    Parameter type is "Unknown | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2891:9 - error: Type annotation is missing for parameter "agent_object_permission" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2909:9 - error: Type of "obj_perm" is partially unknown
+    Type of "obj_perm" is "Unknown | None" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2916:13 - error: Type of "direct_mcp_servers" is partially unknown
+    Type of "direct_mcp_servers" is "Any | list[Unknown]" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2916:42 - error: Argument type is partially unknown
+    Argument corresponds to parameter "o" in function "getattr"
+    Argument type is "LiteLLM_ObjectPermissionTable | Unknown" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2919:13 - error: Type of "mcp_access_groups" is partially unknown
+    Type of "mcp_access_groups" is "Any | list[Unknown]" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2919:41 - error: Argument type is partially unknown
+    Argument corresponds to parameter "o" in function "getattr"
+    Argument type is "LiteLLM_ObjectPermissionTable | Unknown" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2928:100 - error: Argument type is partially unknown
+    Argument corresponds to parameter "iterable" in function "__init__"
+    Argument type is "Any | list[Unknown]" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2930:103 - error: Argument type is partially unknown
+    Argument corresponds to parameter "access_groups" in function "_get_mcp_servers_from_access_groups"
+    Argument type is "Any | list[Unknown]" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2941:9 - error: Type of parameter "agent_object_permission" is partially unknown
+    Parameter type is "Unknown | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2941:9 - error: Type annotation is missing for parameter "agent_object_permission" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2958:9 - error: Type of "obj_perm" is partially unknown
+    Type of "obj_perm" is "Unknown | None" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2965:51 - error: Argument type is partially unknown
+    Argument corresponds to parameter "o" in function "getattr"
+    Argument type is "LiteLLM_ObjectPermissionTable | Unknown" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2973:78 - error: Argument type is partially unknown
+    Argument corresponds to parameter "tool_permissions" in function "expand_tool_permissions"
+    Argument type is "dict[Unknown, Unknown]" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2980:50 - error: Type of parameter "config_mcp_servers" is unknown (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2980:50 - error: Type annotation is missing for parameter "config_mcp_servers" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2985:13 - error: Type of "server_id" is unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2985:24 - error: Type of "server" is unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2985:34 - error: Type of "items" is unknown (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2986:16 - error: Type of "access_groups" is unknown (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2987:33 - error: Type of "access_groups" is unknown (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2988:36 - error: Argument type is unknown
+    Argument corresponds to parameter "element" in function "add" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2992:52 - error: Type of parameter "prisma_client" is unknown (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2992:52 - error: Type annotation is missing for parameter "prisma_client" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2999:17 - error: Type of "mcp_servers" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2999:44 - error: Type of "table" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:2999:44 - error: Type of "find_many" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:3002:21 - error: Type of "server" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:3003:36 - error: Type of "server_id" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:3003:36 - error: Argument type is Any
+    Argument corresponds to parameter "element" in function "add" (reportAny)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:3024:33 - error: Type of "_get_config_server_ids_for_access_groups" is partially unknown
+    Type of "_get_config_server_ids_for_access_groups" is "(config_mcp_servers: Unknown, access_groups: list[str]) -> set[str]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:3029:35 - error: Type of "_get_db_server_ids_for_access_groups" is partially unknown
+    Type of "_get_db_server_ids_for_access_groups" is "(prisma_client: Unknown, access_groups: list[str]) -> CoroutineType[Any, Any, set[str]]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py:3132:16 - error: Condition will always evaluate to False since the types "LiteLLM_TeamTableCachedObj" and "None" have no overlap (reportUnnecessaryComparison)
+/home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:272:62 - error: Argument type is partially unknown
+    Argument corresponds to parameter "obj" in function "len"
+    Argument type is "list[Unknown]" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:278:81 - error: Type of "uri" is unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:284:9 - error: Type of "uri" is unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:285:9 - error: Type of "parsed" is unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:285:27 - error: Argument type is unknown
+    Argument corresponds to parameter "url" in function "urlparse" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:287:44 - error: Argument type is unknown
+    Argument corresponds to parameter "parsed" in function "validate_redirect_uri_shape" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:293:12 - error: Type of "scheme" is unknown (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:293:41 - error: Type of "scheme" is unknown (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:293:95 - error: Argument type is unknown
+    Argument corresponds to parameter "parsed" in function "is_loopback_redirect_host" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:302:70 - error: Argument type is partially unknown
+    Argument corresponds to parameter "redirect_uris" in function "__init__"
+    Argument type is "tuple[Unknown, ...]" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:302:76 - error: Argument type is partially unknown
+    Argument corresponds to parameter "iterable" in function "__new__"
+    Argument type is "list[Unknown]" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:311:35 - error: Argument type is partially unknown
+    Argument corresponds to parameter "iterable" in function "__init__"
+    Argument type is "list[Unknown]" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:622:31 - error: Type of "async_increment" is partially unknown
+    Type of "async_increment" is "((key: Unknown, value: float, ttl: int | None = None, parent_otel_span: Span | Any | None = None, refresh_ttl: bool = False) -> CoroutineType[Any, Any, float]) | Any" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py:630:23 - error: Type of "async_increment_cache" is partially unknown
+    Type of "async_increment_cache" is "(key: Unknown, value: float, parent_otel_span: Span | Any | None = None, local_only: bool = False, refresh_ttl: bool = False, **kwargs: Unknown) -> CoroutineType[Any, Any, float | None]" (reportUnknownMemberType)
+110 errors, 0 warnings, 0 notes

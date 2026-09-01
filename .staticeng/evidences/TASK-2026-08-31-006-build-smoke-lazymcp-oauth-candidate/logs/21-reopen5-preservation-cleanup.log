@@ -1,0 +1,15 @@
+Readiness: PASS HTTP 200, healthy, DB not connected
+/mcp unauthenticated preservation: PASS surface present, HTTP 401 authentication_required
+/mcp authorized initialize preservation: PASS HTTP 200
+/mcp-rest/tools/list unauthenticated: PASS surface present, HTTP 401
+/mcp-rest/tools/list isolated-key: PASS HTTP 200; empty denied catalog
+/v1/mcp/tools unauthenticated: PASS surface present, HTTP 401
+/v1/mcp/tools isolated-key: PASS HTTP 200, empty tools
+
+Production pre/post container ID: a4fee331519ed8fa2e0ae851f3e0e4a3533ebcae4f0c4752811a1f7a47f2fc8a
+Production pre/post image ID: sha256:0a221cc57c07ae89e5a0223488351ff85ac30053771b22b43a94b3aa5361ae42
+Production post state/health: running/healthy
+Candidate container removed: yes
+Candidate network removed: yes
+Retained image unchanged and retained: yes
+No production mount, credential, database, configuration, restart, replacement, deployment, rebuild, arm64, commit, or push

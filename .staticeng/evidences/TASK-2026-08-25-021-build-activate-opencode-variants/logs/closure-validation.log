@@ -1,0 +1,11 @@
+diff_check=PASS
+screenshots:
+092c3eba961bcdb755ff3ef2ab5cc3ad40ac634b5bf1690a38a99e3d93d335f1  .staticeng/evidences/TASK-2026-08-25-021-build-activate-opencode-variants/screenshots/deepseek-target-menu.png
+75e2de48496885e31e4bac46a97bdae48b1542c5120b64f535d64da94874b641  .staticeng/evidences/TASK-2026-08-25-021-build-activate-opencode-variants/screenshots/ui-home.png
+77836f251ebd739bc3f621c53e600c661984328eb9c645afe3dbacc419c0e40d  .staticeng/evidences/TASK-2026-08-25-021-build-activate-opencode-variants/screenshots/unrelated-model-default.png
+installed_binary:
+f7089af27702c25b17d0358d3a48bf7072c481ed364ca86cf2b1d4cfdb7be2c5  /home/staticduo/.opencode/bin/opencode
+f7089af27702c25b17d0358d3a48bf7072c481ed364ca86cf2b1d4cfdb7be2c5  /home/staticduo/git/opencode/packages/opencode/dist/opencode-linux-x64/bin/opencode
+config_baseline_compare=PASS
+active_config_mode=600
+fresh_test_processes=3175648 /usr/bin/zsh -c { git diff --check -- .staticeng/tasks/todo/TASK-2026-08-25-021-build-activate-opencode-variants.md .staticeng/evidences/TASK-2026-08-25-021-build-activate-opencode-variants; printf 'diff_check=PASS\n'; printf 'screenshots:\n'; sha256sum .staticeng/evidences/TASK-2026-08-25-021-build-activate-opencode-variants/screenshots/*.png; printf 'installed_binary:\n'; sha256sum /home/staticduo/.opencode/bin/opencode /home/staticduo/git/opencode/packages/opencode/dist/opencode-linux-x64/bin/opencode; printf 'config_baseline_compare='; cmp -s /home/staticduo/.config/opencode/opencode.json /home/staticduo/.opencode/backups/TASK-2026-08-25-021/opencode.json && printf 'PASS\n' || printf 'FAIL\n'; printf 'active_config_mode='; stat -c '%a' /home/staticduo/.config/opencode/opencode.json; printf 'fresh_test_processes='; pgrep -af '18766|ui_mock_server.py' || true; } > .staticeng/evidences/TASK-2026-08-25-021-build-activate-opencode-variants/logs/closure-validation.log

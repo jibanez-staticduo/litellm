@@ -1,0 +1,22 @@
+Re-resolved replacement immediately after edit with Docker Buildx:
+Name: cgr.dev/chainguard/wolfi-base@sha256:57108e597a8cf3bd376b810f1c3539c21942daefa242cb9dddaae30f8aac735d
+MediaType: application/vnd.oci.image.index.v1+json
+Digest: sha256:57108e597a8cf3bd376b810f1c3539c21942daefa242cb9dddaae30f8aac735d
+linux/amd64 child: sha256:9e7b7ba0080f84a03d95b42b80dd2e03f2d9169163a390230a3a6e53c03361dd
+linux/arm64 child, metadata only: sha256:fce2a4534bdae72009371dab1c87d322f255b40daff82b857e98c4a0890b361e
+
+Native linux/amd64 pull by approved index selected:
+Config/image ID: sha256:a7b2e90a205a20887d43148b4509171ac7f321cf9812e3bc3154a88e6775d140
+Architecture: amd64
+Created: 2026-08-30T18:47:32Z
+Author: github.com/chainguard-dev/apko
+Source: https://github.com/chainguard-images/images/tree/main/images/wolfi-base
+Vendor: Chainguard
+
+Re-resolved rollback index:
+Digest: sha256:42df77a9974d6ec8b17a5ee8bc23b532600a44d705acef2409e0933c1251b45f
+MediaType: application/vnd.oci.image.index.v1+json
+linux/amd64 child: sha256:85ecaa3f494ee2339eaf6f74a23f19f934df3019a9a9dfc8c06f53c3aacc4e6b
+linux/arm64 child, metadata only: sha256:1391b1e3093efd59124d88b3e7389d9e0d6df7a004ec65bf7d9fee22c28d1542
+
+Effective Dockerfile FROM defaults contain the approved index twice and contain neither the old index nor either platform child digest.

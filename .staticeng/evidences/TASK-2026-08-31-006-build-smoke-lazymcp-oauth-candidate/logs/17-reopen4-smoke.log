@@ -1,0 +1,24 @@
+Isolated normal-entrypoint container readiness: PASS (HTTP 200, DB not connected)
+/mcp preservation: PASS surface present (HTTP 406 for missing required SSE Accept header)
+MCP REST preservation: PASS surface present; /mcp-rest/tools/list HTTP 200 with empty denied catalog
+/v1/mcp/tools preservation: PASS HTTP 200 with empty tools
+
+Required LazyMCP discovery: FAIL
+All six OpenAPI-listed aliases returned HTTP 404 under both secret-free/no-key and isolated ephemeral-key configurations:
+- /.well-known/oauth-protected-resource/lazymcp
+- /lazymcp/.well-known/oauth-protected-resource
+- /.well-known/oauth-protected-resource/lazymcp/github
+- /lazymcp/github/.well-known/oauth-protected-resource
+- /.well-known/oauth-protected-resource/toolset/core/lazymcp
+- /toolset/core/lazymcp/.well-known/oauth-protected-resource
+
+Reconnect probe: FAIL, 60/60 discovery requests returned 404 (required zero)
+
+Challenge contract: FAIL
+- /lazymcp no token returned 401 but advertised legacy /oauth-protected-resource/mcp, not LazyMCP metadata
+- /lazymcp invalid token returned 400 No connected db, without required challenge
+- /lazymcp/github no token returned generic admission 401 without WWW-Authenticate
+- /lazymcp/github invalid token returned 400 No connected db
+- /toolset/core/lazymcp returned 503 Database not available for both cases
+
+Authorized initialize/tool behavior: BLOCKED by absent database/authorized credential; no production credentials or database were used

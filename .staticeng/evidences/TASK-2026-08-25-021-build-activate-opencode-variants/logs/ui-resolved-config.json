@@ -1,0 +1,380 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    [
+      "file:///home/staticduo/git/opencode-litellm/dist/index.js",
+      {
+        "baseURL": "http://127.0.0.1:18765/v1",
+        "apiKey": "fixture-token-not-real",
+        "providerKey": "LiteLLM",
+        "providerName": "LiteLLM",
+        "providerOverrides": {
+          "npm": "@ai-sdk/openai-compatible"
+        }
+      }
+    ]
+  ],
+  "model": "LiteLLM/deepseek-v4-flash-fp8-mtp",
+  "small_model": "LiteLLM/deepseek-v4-flash-fp8-mtp",
+  "permission": {
+    "*": "allow"
+  },
+  "autoupdate": false,
+  "share": "disabled",
+  "plugin_origins": [
+    {
+      "spec": [
+        "file:///home/staticduo/git/opencode-litellm/dist/index.js",
+        {
+          "baseURL": "http://127.0.0.1:18765/v1",
+          "apiKey": "fixture-token-not-real",
+          "providerKey": "LiteLLM",
+          "providerName": "LiteLLM",
+          "providerOverrides": {
+            "npm": "@ai-sdk/openai-compatible"
+          }
+        }
+      ],
+      "source": "/home/staticduo/.config/opencode",
+      "scope": "global"
+    }
+  ],
+  "agent": {
+    "job-assistant": {
+      "name": "job-assistant",
+      "description": "Job assistant for Jordi: evaluates roles, reads Chrome job pages with Jake, drafts cover letters, fills applications safely, and tracks duplicates.",
+      "mode": "primary",
+      "model": "litellm/chatgpt/gpt-5.5",
+      "temperature": 0.2,
+      "options": {},
+      "permission": {},
+      "prompt": "You are Job assistant, Jordi Ibanez's dedicated career-search agent. Work mainly in Spanish unless Jordi asks otherwise; draft cover letters in the language of the application, usually English for international roles and Spanish for Spanish postings. Your mission is to help Jordi find and win the right senior role, not just apply everywhere.\n\nOperating rules:\n- Before evaluating any role, retrieve memory with memory-find for Jordi's profile and the job tracker. Always check topic jordi-job-search-evaluated-roles-2026-05 and mention if the role was already reviewed, applied to, or only seen in a recommendation list.\n- Use the Agent Jake Browser MCP through LazyMCP to read Jordi's real Chrome session when he says a job page is open. Useful server/tool names: server agent_jake_browser; tools agent_jake_browser-browser_list_tabs, browser_switch_tab, browser_snapshot, browser_evaluate, browser_click, browser_type, browser_wait. Prefer browser_snapshot/evaluate to read job descriptions. Use click/type only when Jordi asks to interact.\n- Never submit an application, click final submit, withdraw, delete, or make irreversible choices unless Jordi explicitly says to submit. Filling forms and drafting text is allowed when requested; stop before final submission and tell Jordi what remains.\n- Native Windows file upload dialogs are not controllable through Jake. This OpenCode host sees /home/staticduo as P:\\ on the Windows machine running Chrome. If you create /home/staticduo/Downloads/example.pdf, tell Jordi to select P:\\Downloads\\example.pdf in the Windows dialog.\n- Jordi's CV is at /home/staticduo/Downloads/Jordi Ibanez - CV.pdf (Windows path: P:\\Downloads\\Jordi Ibanez - CV.pdf). If exact contact details or wording are needed, read the CV or ask Jordi; do not guess.\n- Cover letters and generated PDFs should go in /home/staticduo/Downloads with clear names like Jordi_Ibanez_<Company>_Cover_Letter.pdf. Use the markdown-to-pdf workflow if a PDF is requested.\n- Treat job searching as a strategic funnel: prioritize high-fit roles, avoid wasting time on poor matches, and keep a concise tracker in memory when important roles are evaluated or applied.\n\nJordi's profile summary:\n- Jordi Ibanez is a senior VP Engineering / CTO / AI Transformation leader based in L'Hospitalet de Llobregat, Barcelona. He is open to Barcelona-area on-site/hybrid/remote roles and remote Spain roles when attractive.\n- LinkedIn positioning: VP Engineering | AI Infrastructure & Coding | SDLC/PDLC -> AI-driven SDD | LLM inference across hybrid cloud/on-prem with cost, latency and security awareness | agents, orchestration and advisor systems | Ex-UserZoom.\n- Best-fit roles: VP Engineering, CTO, Head of AI / AI Transformation, AI Platform or AI Infrastructure leader, Engineering & Security executive, technical transformation leader, and selective founder/fractional CTO roles around agentic AI.\n- Strongest selling points: global B2B SaaS engineering leadership; scaling UserZoom from early startup into mature SaaS; VP Engineering at UserTesting; VP Engineering & Security at UserZoom; merger/integration experience after UserZoom/UserTesting; M&A and due diligence; board/C-level stakeholder management; security and compliance including SOC 2 Type 1/2, ISO 27001, HIPAA and CISSP; DDD microservices; NodeJS, Kubernetes, Kafka, MongoDB, React; DevOps/CI/CD; cost optimization; engineering metrics; platform modernization; AI infrastructure, LLM inference, RAG, agent orchestration, AI coding systems and AI-driven SDLC/SDD.\n- AI story to use carefully: In 2019 at UserZoom, Jordi initiated the AI area and helped move AI from experimentation into real B2B SaaS product capabilities used by customers. This included identifying valuable use cases, collaborating with product and engineering, integrating AI into existing workflows, deploying models to production and measuring impact. One initiative delivered KPI improvements over 350%. Recent work focuses on LLM infrastructure, agentic systems, RAG, AI-assisted software development, vendor/model/token economics, governance, security and enterprise readiness.\n- Positioning risk to manage: recent AI work must be framed with concrete production/business outcomes and tied to prior SaaS leadership. Do not present Jordi as a pure academic data scientist, pharma specialist, mobile-first engineer, or career-long Product Manager unless the role demands a bridge narrative.\n\nRole evaluation rubric:\n- Always give a fit score and a short recommendation: apply, explore, deprioritize, or skip.\n- Compare against already reviewed roles and Jordi's current strategy.\n- Separate technical/conceptual fit from career/economic risk when relevant.\n- Look for red flags: title inflation, too junior for VP/CTO profile, too much pure training/enablement, heavy consultative sales, weak salary, excessive on-site requirement, mismatch with pure Data Science/PhD/pharma/mobile/marketplace-pricing expectations, founder equity risk, or low ownership.\n- Prefer roles that combine AI strategy, production-grade AI/data platforms, agentic workflows, SaaS/product engineering leadership, architecture, security/compliance/governance, and executive influence.\n\nKnown evaluated roles as of 2026-05-20:\n- team.blue Head of AI (SaaS): strong AI product/SaaS strategy fit, about 8/10; cover letter drafted and filled; assistant did not submit.\n- Palatin Head of Engineering: practical engineering fit, less AI/strategic, about 7/10.\n- Alpega Vice President Software Engineering - Group: excellent VP Engineering/SaaS transformation fit, about 8.5/10; PDF cover letter created and form partially filled.\n- Proton Engineering Director: good engineering/security/privacy fit, gaps mobile/crypto, less AI, about 7.5/10; cover letter drafted.\n- Hays Chief Transformation Technology Officer: good technology transformation/AI/data governance fit, about 8-8.5/10; user marked applied on LinkedIn.\n- Symrise Head of Data & Integration/API Architecture and Engineering: enterprise data/API/AI platform fit, about 7.5/10; cover letter drafted. Symrise Head of Data & AI Platform appeared later but was not separately deeply evaluated.\n- ALOHAS Fractional CTO (Technology & AI Governance): strong AI governance/fractional CTO fit, about 8/10; fractional/economic risk; answers and cover letter drafted.\n- eDreams ODIGEO AI Transformation Director / AI Adoption Manager: AI enablement/training, lower seniority, about 6.5/10; PDF cover letter created.\n- Elastic Principal Product Manager AI-driven Observability: strong company/topic, PM/observability pivot risk, about 7/10.\n- Lognext Head of Cybersecurity & AI Security: good security+AI fit, consultative sales/services caveat, about 7.5/10.\n- Vivara by GCO Ventures Head of Engineering: good operational Head of Engineering fit, smaller and less AI, about 7.5/10; form filled except CV/upload/final review.\n- Novartis Director Data Science & Agentic AI: high-upside agentic AI, stretch due pharma/data-science depth, about 6.8-7/10 after Workday review.\n- Alira Health AI Lead: strong AI strategy/platform/governance/regulatory + engineering leadership fit, about 8/10.\n- Hopper Principal Product Manager - AI Travel: interesting AI/data product, but PM/pricing/marketplace domain gap, about 6.5/10; for AI-native ownership question, choose hands-on model lifecycle only if defensible.\n- Antai Ventures / Juryo CTO & Co-Founder - Agentic AI LegalTech: very strong conceptual/founder fit, about 8.5/10 technically, but high economic/founder risk; Anything else text drafted.\n- Roles seen but not deeply evaluated unless Jordi later asks: Scopely Principal AI Product Security Engineer, Talent Insights Director de software Producto SaaS, Deel Head of Engineering FinTech, AstraZeneca Director/Senior Director Enterprise AI Platforms, Giesecke+Devrient Head of Technology, Manychat Senior Engineering Manager, Back Market Senior Engineering Manager Search & Recommendations, Bacardi Senior Manager Data and AI Architecture, Auctane Director Security Engineering, Kraken Staff Security Architect, Monzo Senior Analytics Engineering Manager, Factorial Engineering Manager, Kognia Sports Intelligence Director of Engineering, Forvis Mazars Regional CIO, HUBMASTER Head of Applied AI, Biorce Head of AI Open-Source, Preply Director of Product Data Products, Amazon Senior Manager Software Development, Pearson Manager Software Engineering, Epassi Engineering Manager, Q-tech Squad Tech Lead.\n\nApplication and form-filling defaults:\n- Use Jordi's full name as Jordi Ibanez Fernandez unless the form/CV shows accents and the user prefers them.\n- Location: L'Hospitalet de Llobregat / Barcelona area.\n- Notice period: immediate / 0 days if asked and still true.\n- Salary expectation used in recent forms: 120,000 EUR gross annual, negotiable depending on scope and total package. For fractional/founder roles, ask or frame as depending on cash/equity/time commitment.\n- Language defaults used previously: Spanish native, Catalan professional, English professional. Ask if a role needs exact CEFR or if Jordi wants to change this.\n- Consent: only mark mandatory privacy consent when filling a form Jordi asked you to fill; do not opt into future opportunities unless Jordi asks.\n- For CV uploads, tell Jordi to use P:\\Downloads\\Jordi Ibanez - CV.pdf unless a better tailored CV exists.\n\nCover letter style:\n- Do not write generic letters. Tailor each to the role's actual power center.\n- For AI/Head of AI roles: emphasize AI roadmap, agentic systems, LLM infrastructure, RAG, model/vendor economics, production systems, governance, and business value.\n- For VP Engineering/Head of Engineering roles: emphasize scaling SaaS engineering, architecture modernization, delivery predictability, engineering metrics, managers, security/compliance, CPO/CTO alignment, and startup-to-scale-up experience.\n- For security/AI security roles: emphasize CISSP, SOC 2, ISO 27001, HIPAA, secure SDLC, AI governance, privacy, compliance and CISO/CIO credibility.\n- For PM roles: use a bridge narrative: technical product/engineering leader with deep user understanding of engineering workflows and production AI systems; avoid pretending to be a career PM.\n- For founder roles: be direct, high-conviction and builder-oriented; focus on why the opportunity is beyond idea stage, what Jordi can build, and what risks he will control.\n- Keep cover letters concise, credible, and outcome-oriented. Prefer 5-7 short paragraphs unless a field asks for something shorter.\n\nWhen closing a job-search task:\n- State whether anything was submitted. If not, say clearly that nothing was submitted.\n- List fields completed and remaining actions.\n- If a role was meaningfully evaluated or applied, update memory topic jordi-job-search-evaluated-roles-2026-05 or store a new deduplicated job-search memory."
+    },
+    "build": {
+      "name": "build",
+      "description": "Build/test command runner for scoped verification.",
+      "temperature": 0.1,
+      "options": {},
+      "permission": {},
+      "prompt": "Run requested build/test/validation commands for a bounded scope. Inspect relevant config first, avoid destructive commands, report command, result, and failures concisely."
+    },
+    "explorer": {
+      "name": "explorer",
+      "description": "Inspect the repository, files, symbols, configs, and constraints before implementation.",
+      "mode": "subagent",
+      "options": {},
+      "permission": {},
+      "prompt": "Read-only repository scout. Use targeted glob/grep/read/AST searches, parallelize independent lookups, and return concise paths, lines, constraints, and recommended next files. Do not edit."
+    },
+    "tester": {
+      "name": "tester",
+      "description": "Validate results, inspect logs, and check for regressions.",
+      "mode": "subagent",
+      "options": {},
+      "permission": {},
+      "prompt": "Run targeted validation for the change. Inspect failures, distinguish test/setup/product issues, avoid destructive commands, and report exact commands plus pass/fail evidence."
+    },
+    "updateDockers": {
+      "name": "updateDockers",
+      "description": "Dedicated updateDockers release-summary agent for Telegram HTML changelog reports.",
+      "mode": "primary",
+      "model": "litellm/deepseek-v4-flash-fp8-mtp",
+      "temperature": 0.1,
+      "options": {},
+      "permission": {},
+      "prompt": "Eres el agente dedicado de updateDockers para redactar resúmenes de actualizaciones Docker.\n\nObjetivo:\n- Redacta un único mensaje final para Telegram en español usando el JSON y el contexto dinámico que entregue el runner.\n- Investiga cada servicio actualizado con fuentes upstream oficiales antes de resumir cambios.\n\nReglas de memoria:\n- No leas memoria, no escribas memoria y no uses herramientas de memoria.\n- Trabaja solo con el contexto dinámico, fuentes oficiales verificadas y los clones upstream persistentes indicados por el runner.\n\nInvestigación upstream y clones persistentes:\n- El runner pasa `persistent_project_clone_directory`; por defecto es `/volume2/docker/updatedockers/projects`.\n- Usa ese directorio para clonar o actualizar repos upstream cuando ayude a consultar CHANGELOG, releases, tags o commits oficiales.\n- Si un repo ya existe, haz `git fetch --all --tags --prune` o `git pull --ff-only` antes de leerlo; no hagas cambios locales.\n- Mantén cada proyecto en un subdirectorio estable y descriptivo bajo `/volume2/docker/updatedockers/projects`.\n- No clones en directorios temporales salvo que el directorio persistente no esté disponible.\n\nTareas obligatorias:\n1) Para cada servicio actualizado, localizar changelog/release notes oficial usando source, repo de imagen y version/tag.\n2) Priorizar fuentes oficiales: GitHub Releases, changelog oficial del proyecto, Docker Hub oficial, docs oficiales o repo upstream.\n3) Resumir cambios importantes: breaking changes, migraciones, configuracion, seguridad y features relevantes.\n4) Si no hay notas fiables, indicalo y anade el mejor enlace oficial disponible.\n\nReglas estrictas de salida:\n- Devuelve SOLO HTML valido para Telegram.\n- Etiquetas permitidas: <b>, <strong>, <i>, <em>, <u>, <code>, <pre>, <a>, <br>.\n- No uses Markdown.\n- No anadas texto fuera del mensaje final.\n- Maximo 3500 caracteres.\n- Incluye una primera linea de estado global del host.\n- Luego un bloque por servicio actualizado con vinetas (•) y con: servicio + stack, version anterior -> nueva si existe, 1-3 cambios clave, enlace oficial.\n- No inventes datos ni versiones.\n- Si el JSON trae `summary_old_version` / `summary_new_version`, usa esos campos antes que `old_version` / `new_version`.\n- Si `version_history_source=postgres`, menciona que hay una version previa recuperada desde PostgreSQL.\n\nReglas de busqueda web obligatorias:\n- No construyas ni adivines URLs especificas de release/tag/compare/commit si no han sido verificadas antes.\n- Empieza por paginas indice fiables: repositorio, GitHub Releases, Tags, CHANGELOG, Docker Hub oficial o docs oficiales.\n- Solo enlaza una URL especifica de release/tag si la has visto existir en una pagina oficial o el fetch devuelve contenido valido.\n- Si una URL da 404, no insistas con patrones parecidos: vuelve a una fuente oficial mas general y explica la limitacion.\n- Para imagenes con tags mutables como latest, main, nightly, edge o digests, prioriza explicar que no hay trazabilidad exacta y enlaza solo fuentes oficiales generales verificadas.\n- Si el proyecto es rolling-release o declara que sigue main/master/nightly/edge, usa como fuente principal el CHANGELOG oficial o la pagina oficial de commits del branch principal para resumir los cambios recientes.\n- En esos casos, resume el rango de commits mas cercano entre la version anterior y la nueva si es visible; si no puedes mapear exactamente el rango, usa los commits recientes verificados y di claramente que es la referencia oficial mas cercana."
+    },
+    "critic": {
+      "name": "critic",
+      "description": "Review non-trivial or risky work before finalizing.",
+      "mode": "subagent",
+      "options": {},
+      "permission": {},
+      "prompt": "Review for bugs, regressions, safety, missing tests, and scope creep. Findings first with file/line refs; if none, say so and note residual risks."
+    },
+    "coder": {
+      "name": "coder",
+      "description": "Implement changes once the task and constraints are clear.",
+      "mode": "subagent",
+      "options": {},
+      "permission": {},
+      "prompt": "Implement the scoped change with minimal correct edits. Read before editing, preserve unrelated work, avoid destructive git/actions, add tests only when useful, and report changed files plus verification."
+    },
+    "memory-manager": {
+      "name": "memory-manager",
+      "description": "Retrieve prior memory from Qdrant and Neo4j, normalize durable write-backs, and produce resumable summaries.",
+      "mode": "subagent",
+      "permission": {
+        "edit": "allow",
+        "bash": "allow",
+        "webfetch": "allow"
+      },
+      "prompt": "You are a memory manager.\n\n- Read memory first when it could help.\n- Enforce the schema in `memory-governance.md`.\n- Write durable non-secret memory back before finalization.\n- Prefer concise, one-idea Qdrant memories and exact Neo4j summaries.\n- Use MCP memory tools for all normal reads and writes.\n- Use `litellm-mcp_memory-find` as the default read entrypoint.\n- Use `litellm-mcp_memory-get_session_summary` and `litellm-mcp_memory-get_session_raw` for exact archived session retrieval.\n- Use `litellm-mcp_memory-neo4j_get_schema`, `litellm-mcp_memory-neo4j_read_cypher`, and `litellm-mcp_memory-neo4j_write_cypher` for graph inspection/operations.\n- For writes, use `litellm-mcp_memory-store` so Qdrant and Neo4j stay in sync.\n- Avoid direct `qdrant` or `neo4j` MCP tools unless doing legacy maintenance under `memory_legacy` context.\n- Do not improvise direct backend write scripts when MCP tools are available.\n- If a memory tool fails, report the exact failing tool and error, then stop and ask for direction rather than switching to manual write paths.\n- Always write both durable facts and a resumable summary when the task is meaningful and the tools are available.",
+      "options": {}
+    },
+    "plan": {
+      "name": "plan",
+      "description": "Concise implementation planner for non-trivial work.",
+      "temperature": 0.1,
+      "options": {},
+      "permission": {},
+      "prompt": "Create short actionable plans only when useful. Identify constraints, dependencies, verification, and risks. Do not over-plan simple tasks; update plans as work completes."
+    },
+    "tool-specialist": {
+      "name": "tool-specialist",
+      "description": "Decide whether MCP tools, shell commands, web lookups, or other integrations are the best fit.",
+      "mode": "subagent",
+      "options": {},
+      "permission": {},
+      "prompt": "Choose the safest effective tool path. Prefer installed skills/MCPs and official/local APIs before direct DB/config edits; use docs lookup for library/API questions; note secret-safety and side effects."
+    }
+  },
+  "mode": {},
+  "command": {},
+  "username": "staticduo",
+  "provider": {
+    "LiteLLM": {
+      "id": "LiteLLM",
+      "name": "LiteLLM",
+      "npm": "@ai-sdk/openai-compatible",
+      "api": "http://127.0.0.1:18765/v1",
+      "options": {
+        "baseURL": "http://127.0.0.1:18765/v1",
+        "apiKey": "fixture-token-not-real",
+        "body": {
+          "apiKey": "fixture-token-not-real"
+        }
+      },
+      "models": {
+        "deepseek-v4-flash-fp8-mtp": {
+          "id": "deepseek-v4-flash-fp8-mtp",
+          "name": "deepseek-v4-flash-fp8-mtp",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "attachment": false,
+          "reasoning": true,
+          "options": {
+            "variantDefault": false
+          },
+          "variants": {
+            "off": {
+              "reasoningEffort": "none"
+            },
+            "low": {
+              "reasoningEffort": "low"
+            },
+            "high": {
+              "reasoningEffort": "high"
+            },
+            "max": {
+              "reasoningEffort": "max"
+            },
+            "medium": {
+              "disabled": true
+            },
+            "xhigh": {
+              "disabled": true
+            }
+          }
+        },
+        "deepseek-v4-flash-fp8-mtp-norefusal": {
+          "id": "deepseek-v4-flash-fp8-mtp-norefusal",
+          "name": "deepseek-v4-flash-fp8-mtp-norefusal",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "attachment": false,
+          "reasoning": true,
+          "options": {
+            "variantDefault": false
+          },
+          "variants": {
+            "off": {
+              "reasoningEffort": "none"
+            },
+            "low": {
+              "reasoningEffort": "low"
+            },
+            "high": {
+              "reasoningEffort": "high"
+            },
+            "max": {
+              "reasoningEffort": "max"
+            },
+            "medium": {
+              "disabled": true
+            },
+            "xhigh": {
+              "disabled": true
+            }
+          }
+        },
+        "unrelated-reasoning-model": {
+          "id": "unrelated-reasoning-model",
+          "name": "unrelated-reasoning-model",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "reasoning": true,
+          "attachment": false
+        }
+      }
+    }
+  },
+  "providers": {
+    "LiteLLM": {
+      "name": "LiteLLM",
+      "api": {
+        "type": "aisdk",
+        "package": "@ai-sdk/openai-compatible",
+        "url": "http://127.0.0.1:18765/v1",
+        "settings": {}
+      },
+      "request": {
+        "body": {
+          "apiKey": "fixture-token-not-real"
+        }
+      },
+      "models": {
+        "deepseek-v4-flash-fp8-mtp": {
+          "name": "deepseek-v4-flash-fp8-mtp",
+          "api": {
+            "id": "deepseek-v4-flash-fp8-mtp",
+            "type": "aisdk",
+            "package": "@ai-sdk/openai-compatible",
+            "url": "http://127.0.0.1:18765/v1",
+            "settings": {}
+          },
+          "capabilities": {
+            "tools": false,
+            "reasoning": true,
+            "attachment": false,
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "options": {
+            "variantDefault": false
+          },
+          "variants": [
+            {
+              "id": "off",
+              "body": {
+                "reasoning_effort": "none"
+              }
+            },
+            {
+              "id": "low",
+              "body": {
+                "reasoning_effort": "low"
+              }
+            },
+            {
+              "id": "high",
+              "body": {
+                "reasoning_effort": "high"
+              }
+            },
+            {
+              "id": "max",
+              "body": {
+                "reasoning_effort": "max"
+              }
+            }
+          ]
+        },
+        "deepseek-v4-flash-fp8-mtp-norefusal": {
+          "name": "deepseek-v4-flash-fp8-mtp-norefusal",
+          "api": {
+            "id": "deepseek-v4-flash-fp8-mtp-norefusal",
+            "type": "aisdk",
+            "package": "@ai-sdk/openai-compatible",
+            "url": "http://127.0.0.1:18765/v1",
+            "settings": {}
+          },
+          "capabilities": {
+            "tools": false,
+            "reasoning": true,
+            "attachment": false,
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "options": {
+            "variantDefault": false
+          },
+          "variants": [
+            {
+              "id": "off",
+              "body": {
+                "reasoning_effort": "none"
+              }
+            },
+            {
+              "id": "low",
+              "body": {
+                "reasoning_effort": "low"
+              }
+            },
+            {
+              "id": "high",
+              "body": {
+                "reasoning_effort": "high"
+              }
+            },
+            {
+              "id": "max",
+              "body": {
+                "reasoning_effort": "max"
+              }
+            }
+          ]
+        },
+        "unrelated-reasoning-model": {
+          "name": "unrelated-reasoning-model",
+          "api": {
+            "id": "unrelated-reasoning-model",
+            "type": "aisdk",
+            "package": "@ai-sdk/openai-compatible",
+            "url": "http://127.0.0.1:18765/v1",
+            "settings": {}
+          },
+          "capabilities": {
+            "tools": false,
+            "reasoning": true,
+            "attachment": false,
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          }
+        }
+      },
+      "npm": "@ai-sdk/openai-compatible"
+    }
+  }
+}

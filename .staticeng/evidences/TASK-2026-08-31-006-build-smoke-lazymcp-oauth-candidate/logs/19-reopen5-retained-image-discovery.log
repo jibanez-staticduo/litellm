@@ -1,0 +1,16 @@
+Rebuild performed: no
+Retained image ID: sha256:0ade7608d10588994a73d45ffb1bb66e994966fe71edd640a9599ffca754fcdf
+Image platform: linux/amd64
+Normal entrypoint/cmd: ["docker/prod_entrypoint.sh"] ["--port","4000"]
+Configured public base present: yes
+Expected public authority: https://candidate.invalid
+
+All six aliases: PASS HTTP 200
+Aggregate aliases resource: https://candidate.invalid/lazymcp
+Scoped aliases resource: https://candidate.invalid/lazymcp/team-a
+Toolset aliases resource: https://candidate.invalid/toolset/tools-a/lazymcp
+All authorization_servers: ["https://candidate.invalid/mcp"]
+
+Reconnect probe: PASS
+60/60 discovery requests returned HTTP 200 with exact resource
+Discovery 404 count: 0

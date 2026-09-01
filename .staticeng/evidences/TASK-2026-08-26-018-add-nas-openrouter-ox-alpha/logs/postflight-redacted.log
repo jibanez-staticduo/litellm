@@ -1,0 +1,15 @@
+TASK-2026-08-26-018 postflight (redacted)
+Date: 2026-08-26
+
+Mutation status: not attempted
+Reason: required 1Password item openroute was not found in either available vault
+LiteLLM admin health after stop: HTTP 200, status=healthy, db=connected
+Named credentials after stop: names=[tts-telegram]; no OpenRouter credential present
+ox-alpha entries after stop: 0
+Router settings: unchanged by this task because no mutation occurred
+MCP registrations: unchanged by this task because no mutation occurred
+Repository/application configuration: unchanged
+Fedora: not accessed
+Inference: not executed
+OpenCode discovery: not run because ox-alpha was not created; opencode exposes a non-inference `opencode models [provider]` command for use after the blocker is resolved
+Rollback identifiers: none, no resources were created

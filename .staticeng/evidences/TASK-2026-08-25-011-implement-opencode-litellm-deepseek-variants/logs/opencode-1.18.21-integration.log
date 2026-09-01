@@ -1,0 +1,10 @@
+Command: node /tmp/opencode-deepseek-integration.mjs
+Repository: /home/staticduo/git/opencode-litellm
+OpenCode version: 1.18.21
+Configuration: OPENCODE_CONFIG_CONTENT contained only a direct file URL plugin declaration and non-secret fixture connection options; it contained no provider or model override
+Discovery: local fixture HTTP server returned both exact target model groups and one unrelated reasoning model
+Legacy target variants: off, low, high, max
+V2 target variants: off, low, high, max
+Unrelated model variants: absent
+Result: PASS, installed OpenCode resolves plugin-only exact variants on both runtime config surfaces
+Privacy: fixture credentials only; no live configuration or secret was read or written

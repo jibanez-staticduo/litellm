@@ -1,0 +1,10 @@
+FAIL: Validation errors found
+
+The StaticEng validator reported repository-wide missing CodeMaps outside the hosted-vLLM task scope, beginning with:
+- litellm/llms/gradient_ai
+- litellm/llms/novita
+- litellm/llms/llamafile
+- litellm/llms/milvus
+- litellm/llms/nscale
+
+The required dry-run repair was then executed. It classified these and the remaining failures as unresolved directories containing source only in nested directories, requiring module-boundary decisions. No repair was applied because the task explicitly limits changes to the LiteLLM hosted-vLLM source/tests/docs scope and identifies pre-existing untracked CodeMaps

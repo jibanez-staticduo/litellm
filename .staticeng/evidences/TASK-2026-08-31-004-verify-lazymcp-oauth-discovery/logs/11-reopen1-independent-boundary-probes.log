@@ -1,0 +1,5 @@
+https://gateway.example/LazyMCP candidate= True rejected= True
+https://gateway.example/%6cazymcp candidate= True rejected= True
+https://other.example/lazymcp candidate= True rejected= True
+https://gateway.example/lazymcp/%2f candidate= True rejected= True
+https://gateway.example/mcp candidate= False rejected= True

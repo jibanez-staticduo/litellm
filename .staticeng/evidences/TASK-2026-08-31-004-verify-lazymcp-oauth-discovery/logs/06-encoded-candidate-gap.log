@@ -1,0 +1,8 @@
+https://gateway.example/lazy%6dcp
+candidate_detected= False
+parse_result= LazyMcpResourceError
+legacy_unsealed_conflict= False
+https://gateway.example/LazyMCP
+candidate_detected= False
+parse_result= LazyMcpResourceError
+legacy_unsealed_conflict= False

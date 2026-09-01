@@ -1,0 +1,12 @@
+Command: node /tmp/opencode-deepseek-integration.mjs
+Repository: /home/staticduo/git/opencode-litellm
+OpenCode version: 1.18.21
+
+Resolved output:
+  legacyTargetVariants: off, low, high, max
+  v2TargetVariants: off, low, high, max
+  unrelatedVariants: absent
+
+Conclusion: PASS. Installed OpenCode resolves plugin-only exact variants on both config surfaces
+Configuration: ephemeral fixture content only, no manual model override and no live configuration edit
+Secrets: none; fixture credential only

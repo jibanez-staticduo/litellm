@@ -1,0 +1,34 @@
+pack_1_sha256=b4c8e8d800b794cef692e02ca4ab6296f3a12b5501cd1d07eb7f5a55d3de28d2
+pack_2_sha256=b4c8e8d800b794cef692e02ca4ab6296f3a12b5501cd1d07eb7f5a55d3de28d2
+cmp=PASS
+package_name=@staticeng/opencode-litellm
+package_version=0.1.9
+file_count=17
+
+exact_publish_scope:
+package/LICENSE
+package/dist/helpers.js
+package/dist/index.js
+package/dist/litellm.js
+package/dist/mapping.js
+package/dist/merge.js
+package/dist/options.js
+package/dist/types.js
+package/package.json
+package/README.md
+package/dist/helpers.d.ts
+package/dist/index.d.ts
+package/dist/litellm.d.ts
+package/dist/mapping.d.ts
+package/dist/merge.d.ts
+package/dist/options.d.ts
+package/dist/types.d.ts
+
+scans:
+- absolute implementation path: absent
+- .npmjs: absent
+- npm token environment names: absent
+- fixture credential: absent
+- .staticeng, nomadworks, src, test, and .github package paths: absent
+- file://: one README occurrence, explicitly prohibiting local references in shared configuration
+result=PASS

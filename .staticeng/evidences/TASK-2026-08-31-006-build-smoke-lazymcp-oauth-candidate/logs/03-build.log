@@ -1,0 +1,17 @@
+Command: docker build --pull=false -t litellm:lazymcp-oauth-candidate /tmp/opencode/lazymcp-oauth-candidate/worktree
+Result: FAIL
+Failed step: Dockerfile:62, uv sync --frozen with proxy/runtime extras
+Resolved build Python: CPython 3.14.4
+Dependency failure: uvloop==0.21.0 wheel build
+Immediate error: vendor libuv configure could not execute /usr/bin/file because it is absent
+Exit status: 1
+No candidate image was produced
+
+Relevant terminal excerpt:
+  Failed to build uvloop==0.21.0
+  ./configure: line 7980: /usr/bin/file: not found
+  config.status: error: Something went wrong bootstrapping makefile fragments
+  subprocess.CalledProcessError: Command ['./configure'] returned non-zero exit status 1
+  ERROR: failed to build: failed to solve: process uv sync ... did not complete successfully: exit code: 1
+
+The build failure occurred in the authorized unchanged Dockerfile/dependency environment. The task requires stopping on failure rather than changing candidate source or build inputs

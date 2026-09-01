@@ -1,0 +1,28 @@
+Authorized fallback repository: /home/staticduo/git/opencode
+
+Generic model-scoped behavior:
+  modelVariantOptions includes default for every model by default
+  modelVariantOptions omits default only when model.options.variantDefault === false
+  legacy and V2 prompt controls use this shared option resolver
+
+Plugin ownership:
+  only exact DeepSeek aliases receive variantDefault=false
+  chat.params strips variantDefault before provider request serialization
+  unrelated models preserve generic OpenCode behavior
+
+Focused verification:
+  command: bun test src/context/model-variant.test.ts
+  result: 9 passed, 0 failed
+
+OpenCode app typecheck:
+  command: bun typecheck
+  result: BLOCKED by broad pre-existing workspace dependency/generated-type failures, including missing @opencode-ai/core, @opencode-ai/client, @opencode-ai/session-ui, @sentry/solid, dnd-kit, solid-presence, and unrelated existing type errors
+  task-focused test result remains passing
+
+Task-owned OpenCode files:
+  packages/app/src/context/model-variant.ts
+  packages/app/src/context/model-variant.test.ts
+  packages/app/src/components/prompt-input.tsx
+  packages/app/src/components/prompt-input-v2.tsx
+
+Screenshot: not produced; local source checkout was not built/deployed into the active UI, and deployment was prohibited

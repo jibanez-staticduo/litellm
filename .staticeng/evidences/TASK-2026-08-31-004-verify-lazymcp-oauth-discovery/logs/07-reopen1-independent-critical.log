@@ -1,0 +1,38 @@
+........................................................................ [ 14%]
+........................................................................ [ 29%]
+........................................................................ [ 43%]
+........................................................................ [ 58%]
+........................................................................ [ 73%]
+........................................................................ [ 87%]
+.............................................................            [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /home/staticduo/git/litellm/.venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+tests/test_litellm/proxy/_experimental/mcp_server/auth/test_user_api_key_auth_mcp.py::TestMCPDelegateAuthToUpstream::test_build_mcp_server_table_preserves_delegate_auth_to_upstream
+  tests/test_litellm/proxy/_experimental/mcp_server/auth/test_user_api_key_auth_mcp.py:1883: PytestWarning: The test <Function test_build_mcp_server_table_preserves_delegate_auth_to_upstream> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_build_mcp_server_table_preserves_delegate_auth_to_upstream(self):
+
+tests/test_litellm/proxy/_experimental/mcp_server/auth/test_user_api_key_auth_mcp.py::TestMCPDelegateAuthToUpstream::test_build_mcp_server_table_preserves_oauth_passthrough
+  tests/test_litellm/proxy/_experimental/mcp_server/auth/test_user_api_key_auth_mcp.py:1905: PytestWarning: The test <Function test_build_mcp_server_table_preserves_oauth_passthrough> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_build_mcp_server_table_preserves_oauth_passthrough(self):
+
+tests/test_litellm/proxy/_experimental/mcp_server/auth/test_user_api_key_auth_mcp.py::TestAggregateGatewayDcrChallenge::test_challenge_target_excludes_every_non_gateway_managed_mode
+  tests/test_litellm/proxy/_experimental/mcp_server/auth/test_user_api_key_auth_mcp.py:6351: PytestWarning: The test <Function test_challenge_target_excludes_every_non_gateway_managed_mode> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_challenge_target_excludes_every_non_gateway_managed_mode(self):
+
+tests/test_litellm/proxy/_experimental/mcp_server/auth/test_user_api_key_auth_mcp.py::TestMCPRequestHandler::test_duplicate_authorization_header_is_rejected
+  tests/test_litellm/proxy/_experimental/mcp_server/auth/test_user_api_key_auth_mcp.py:965: PytestWarning: The test <Function test_duplicate_authorization_header_is_rejected> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_duplicate_authorization_header_is_rejected(self):
+
+tests/test_litellm/proxy/_experimental/mcp_server/auth/test_user_api_key_auth_mcp.py::TestMCPDelegateAuthToUpstream::test_extract_target_server_names_matches_routing_parser
+  tests/test_litellm/proxy/_experimental/mcp_server/auth/test_user_api_key_auth_mcp.py:2647: PytestWarning: The test <Function test_extract_target_server_names_matches_routing_parser> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_extract_target_server_names_matches_routing_parser(self):
+
+tests/test_litellm/proxy/_experimental/mcp_server/auth/test_user_api_key_auth_mcp.py::TestScopedSessionAdmission::test_scope_field_cannot_be_forged_through_construction
+  tests/test_litellm/proxy/_experimental/mcp_server/auth/test_user_api_key_auth_mcp.py:8566: PytestWarning: The test <Function test_scope_field_cannot_be_forged_through_construction> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_scope_field_cannot_be_forged_through_construction(self):
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+493 passed, 7 warnings in 193.65s (0:03:13)

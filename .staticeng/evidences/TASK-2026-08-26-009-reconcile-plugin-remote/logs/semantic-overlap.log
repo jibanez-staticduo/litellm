@@ -1,0 +1,32 @@
+base=ba47feb
+local_parent=45d1762
+remote_parent=c489ac9
+merge_commit=af92f31
+
+local_semantics:
+- package 0.1.9 and pinned shared-config documentation
+- exact DeepSeek aliases with off/low/high/max and off -> reasoning_effort none
+- exact Qwen3.8 alias with off/low/medium/xhigh and off -> enable_thinking false
+- override sanitization, tombstones, UI-only marker stripping, generated dist/types, 47 tests
+
+remote_semantics:
+- read-only pinned CI and release-only OIDC trusted publishing with identity/ancestry gates
+- explicit supports_reasoning false precedence and AND collision reconciliation
+- supported_reasoning_efforts-driven deterministic generic variants
+- context/input limit retention with output=0 sentinel
+- expanded metadata types, workflow tests, generated dist, and documentation
+
+overlap_and_resolution:
+- src/mapping.ts: retained both generic metadata-driven variants and exact contract enforcement; exact DeepSeek/Qwen aliases remain post-merge exceptions after overrides.
+- src/types.ts: retained remote supported_reasoning_efforts and effort capability fields plus local variant shapes.
+- test/mapping.test.mjs and test/model-groups.test.mjs: automatic merge retained remote metadata tests and local exact-contract/config-hook tests.
+- .github/workflows: accepted remote files unchanged.
+- README.md: automatic merge retained both behavior sets and trusted-publishing notes.
+- src/codemap.yml and test/codemap.yml: combined descriptions to cover both retained behaviors and workflow tests.
+- dist/mapping.js and declarations: regenerated from reconciled TypeScript; no hand-maintained generated conflict resolution remains.
+
+conflict_files=dist/mapping.js,src/codemap.yml,src/mapping.ts,test/codemap.yml
+strategy=minimal semantic union; regenerate generated outputs
+rebase=false
+force=false
+amend=false

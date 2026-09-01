@@ -36,7 +36,7 @@ The reviewed Uvicorn access-log redaction fix is committed on `origin/main`, rep
 - Fedora: healthy, readiness HTTP 200, redacted probe PASS, bounded clean-log counts all zero
 - NAS: healthy, readiness HTTP 200, redacted probe PASS, bounded clean-log counts all zero
 - Connected LazyMCP status after both deployments: enabled, mode `lazymcp`, 27 visible servers, 535 visible tools
-- `staticeng_validate`: see `logs/staticeng-validate.log`
+- `staticeng_validate`: see `.staticeng/evidences/TASK-2026-08-27-008-merge-release-uvicorn-redaction/logs/staticeng-validate.log`
 
 ## Documentation Impact
 

@@ -1,0 +1,18 @@
+Frozen nine-path manifest/base/patch/parser/lock/Cargo/OCI checks: PASS
+Base: 9af49e5b34e25cdc9ad40f9bb50a178f40320417
+Ordered manifest SHA-256: 2354fef3fc6317918da927f062e19a808e333f28b8c958c7fc07ab7b186359bf
+Seven-application-path patch SHA-256: a21069c21ded766dd401df0b125385bf9e07898157a89f55bd103504a9f2d49b
+Dockerfile-plus-seven-path patch SHA-256: 1e926f0c5f74f84177f4899e8757703f5e6efc6c630ffc04f53dc935ab911ff3
+server.py SHA-256: 393408f57980abb4f8375786d81e1e73fb787f413545829c9757520a921d1b0f
+proxy_server.py SHA-256: 08a60623520e888168b40d7fc3d83b6954d08e39b77b0ab5b6c770fcd9e07ed8
+git diff --check: PASS
+
+linux/amd64 build: PASS
+Final image ID: sha256:9aa92dbf680432a423e01cb8c781e0c89a9a241c4f3deab392d3536b5d3bee1e
+Normal entrypoint/cmd preserved
+Python 3.13.15; /app/.venv linked to /usr/bin/python3.13
+cpython-313; SOABI cpython-313-x86_64-linux-gnu; x86_64
+glibc 2.44-r1; uvloop 0.21.0
+Prisma engines under /opt/prisma
+Rust bridge and representative native imports: PASS
+Final embedded SPDX count: 48

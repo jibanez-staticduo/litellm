@@ -1,0 +1,11 @@
+Production pre/post identity:
+container_id=a4fee331519ed8fa2e0ae851f3e0e4a3533ebcae4f0c4752811a1f7a47f2fc8a
+container_image=sha256:0a221cc57c07ae89e5a0223488351ff85ac30053771b22b43a94b3aa5361ae42
+status=running
+health=healthy
+repository_image_id=sha256:7d996445e07067c696697e10edf4f3b7e183baedb00a99da8efbca507b341213
+repository_image_platform=amd64/linux
+Result: unchanged and healthy
+
+Full candidate build: NOT RUN
+Reason: PMA explicitly directed TASK-008 not to build the full candidate; reopened TASK-006 owns full build and smoke. TASK-008 performed exact-package resolution and native ABI probes only. No candidate tag, image, container, network, deployment, or production mutation was created.

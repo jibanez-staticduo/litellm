@@ -31,11 +31,11 @@ OpenCode totals are 41 named-mode captures and eight intrinsic-default captures 
 
 ## Evidence Index
 
-- `logs/opencode-nas.json`: current sanitized NAS metadata shape, selector/default/alias inventory, 49 captures including the additional deployed DeepSeek alias, and scoped OpenCode log audit
-- `logs/opencode-fedora.json`: current sanitized Fedora metadata shape with the same complete matrix and scoped OpenCode log audit
-- `logs/codex-wire.json`: active eight-row catalog matrix, 40 every-mode plus eight switch captures, zero failures, and production-file non-mutation hashes
-- `logs/fedora-api-probes.json`: authenticated host-local API absence, eight bounded retired-alias classifications, and before/after access integrity
-- `logs/fedora-raw-db.jsonl`: four read-only aggregate absence/dependency checks
+- `.staticeng/evidences/TASK-2026-08-27-005-independent-runtime-gates/logs/opencode-nas.json`: current sanitized NAS metadata shape, selector/default/alias inventory, 49 captures including the additional deployed DeepSeek alias, and scoped OpenCode log audit
+- `.staticeng/evidences/TASK-2026-08-27-005-independent-runtime-gates/logs/opencode-fedora.json`: current sanitized Fedora metadata shape with the same complete matrix and scoped OpenCode log audit
+- `.staticeng/evidences/TASK-2026-08-27-005-independent-runtime-gates/logs/codex-wire.json`: active eight-row catalog matrix, 40 every-mode plus eight switch captures, zero failures, and production-file non-mutation hashes
+- `.staticeng/evidences/TASK-2026-08-27-005-independent-runtime-gates/logs/fedora-api-probes.json`: authenticated host-local API absence, eight bounded retired-alias classifications, and before/after access integrity
+- `.staticeng/evidences/TASK-2026-08-27-005-independent-runtime-gates/logs/fedora-raw-db.jsonl`: four read-only aggregate absence/dependency checks
 - `scripts/runtime_clients.py`: independent isolated client harness; it stores no secret and targets loopback only
 
 ## Validation

@@ -1,0 +1,14 @@
+Production pre/post container ID: a4fee331519ed8fa2e0ae851f3e0e4a3533ebcae4f0c4752811a1f7a47f2fc8a
+Production pre/post image ID: sha256:0a221cc57c07ae89e5a0223488351ff85ac30053771b22b43a94b3aa5361ae42
+Production post state/health: running/healthy
+Candidate container removed: yes
+Candidate network removed: yes
+Detached worktree removed: yes
+Candidate image retained for review: sha256:9aa92dbf680432a423e01cb8c781e0c89a9a241c4f3deab392d3536b5d3bee1e
+No production credentials, DB, config, mounts, restart, replacement, deployment, arm64, commit, or push
+
+Promotion blockers remain:
+- exact Wolfi signature/attestation verification unavailable
+- aggregate exact-image SBOM unavailable; embedded APK SPDX captured
+- comparative same-database vulnerability scans and Critical/High disposition unavailable
+- promotion/publication/deployment remain unauthorized

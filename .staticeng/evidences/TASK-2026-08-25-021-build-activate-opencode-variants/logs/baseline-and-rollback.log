@@ -1,0 +1,22 @@
+TASK=TASK-2026-08-25-021-build-activate-opencode-variants
+captured_at=2026-08-25
+installed_command=/home/staticduo/.local/bin/opencode
+installed_target=/home/staticduo/.opencode/bin/opencode
+install_mechanism=installer-managed binary target behind ~/.local/bin symlink; local replacement preserves target path
+rollback=cp -p /home/staticduo/.opencode/backups/TASK-2026-08-25-021/opencode-1.18.23 /home/staticduo/.opencode/bin/opencode && chmod 755 /home/staticduo/.opencode/bin/opencode; cp -p /home/staticduo/.opencode/backups/TASK-2026-08-25-021/opencode.json /home/staticduo/.config/opencode/opencode.json; quit and restart OpenCode
+active_plugin=file:///home/staticduo/git/opencode-litellm/dist/index.js
+active_default_model=LiteLLM/chatgpt/gpt-5.6-sol
+active_small_model=LiteLLM/chatgpt/gpt-5.6-luna
+installed=/home/staticduo/.opencode/bin/opencode type=regular file mode=755 uid=1000 gid=10 size=184584320 mtime=2026-08-25 08:11:59.000000000 +0200
+symlink=/home/staticduo/.local/bin/opencode target='/home/staticduo/.local/bin/opencode' -> '/home/staticduo/.opencode/bin/opencode' mode=777 uid=1000 gid=10
+config=/home/staticduo/.config/opencode/opencode.json mode=600 uid=1000 gid=10 size=35173 mtime=2026-08-25 15:36:29.390630916 +0200
+backup=/home/staticduo/.opencode/backups/TASK-2026-08-25-021/opencode-1.18.23 mode=700 uid=1000 gid=10 size=184584320
+backup=/home/staticduo/.opencode/backups/TASK-2026-08-25-021/opencode.json mode=600 uid=1000 gid=10 size=35173
+de0724a36eaf3166e7f1ff38d0f4478b95ccc47725e9597b3fe66d3d3e18baa2  /home/staticduo/.opencode/bin/opencode
+de0724a36eaf3166e7f1ff38d0f4478b95ccc47725e9597b3fe66d3d3e18baa2  /home/staticduo/.opencode/backups/TASK-2026-08-25-021/opencode-1.18.23
+66772b3d57d1b6c8983c7ec4884d348ca48e1c91f63ed6f1315b6441c172f75f  /home/staticduo/.config/opencode/opencode.json
+66772b3d57d1b6c8983c7ec4884d348ca48e1c91f63ed6f1315b6441c172f75f  /home/staticduo/.opencode/backups/TASK-2026-08-25-021/opencode.json
+1aac0810aba4316bbae6535e8cfdd80292ea71aacd514847903470460a9c49e3  /home/staticduo/git/opencode-litellm/dist/index.js
+1.18.23
+0af9dd61d2d28ea0bf11cbbf654469b686bb9dd0
+ba47feb3bf677eb15e897bb1345944e8c54815a5

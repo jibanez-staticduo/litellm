@@ -1,0 +1,23 @@
+OpenCode source inspected: anomalyco/opencode tag v1.18.21
+
+packages/opencode/src/provider/provider.ts:
+  1543-1551: existing/generated variants are additively merged with config variants; disabled=true entries are filtered out
+  1680-1686: config variants are merged again and disabled=true entries are filtered out
+
+packages/opencode/src/session/llm/request.ts:
+  selected user model variant indexes final model.variants
+  selected variant is the final request-options merge layer
+
+packages/app/src/context/model-variant.ts:
+  undefined/null selection represents the built-in default choice separately from model.variants
+  provider metadata cannot remove this UI sentinel
+
+Supported plugin solution:
+  semantic off uses reasoningEffort none
+  config hook emits medium/xhigh with disabled=true only for exact targets
+  OpenCode filters those tombstones and retains off/low/high/max
+
+Smallest core proposal if named replacement were unsupported:
+  add variantMerge=replace to model config and bypass mergeDeep at provider.ts 1547 and 1682
+
+Conclusion: no core patch is required for named variants. Predeterminado remains an intrinsic UI sentinel and cannot be removed by the current plugin API

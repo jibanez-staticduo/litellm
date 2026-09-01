@@ -1,0 +1,57 @@
+Command: git diff --check -- Dockerfile
+Result: PASS
+
+Command: git diff --numstat -- Dockerfile
+Result:
+5	5	Dockerfile
+
+Command: git diff -- Dockerfile
+Result:
+diff --git a/Dockerfile b/Dockerfile
+index 66ce3af4a6..a8fe908d8c 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -40,8 +40,8 @@ COPY --from=uvbin /uvx /usr/local/bin/uvx
+ RUN apk add --no-cache \
+     bash \
+     gcc \
+-    python3 \
+-    python3-dev \
++    python-3.13=3.13.15-r4 \
++    python-3.13-dev=3.13.15-r4 \
+     rust \
+     openssl \
+     openssl-dev \
+@@ -65,7 +65,7 @@ RUN uv sync --frozen --no-install-project --no-install-workspace --no-default-gr
+     --extra extra_proxy \
+     --extra semantic-router \
+     --extra saml \
+-    --python python3
++    --python python3.13
+
+ # Copy full source tree
+ COPY . .
+@@ -86,7 +86,7 @@ RUN uv sync --frozen --no-default-groups --no-editable \
+     --extra extra_proxy \
+     --extra semantic-router \
+     --extra saml \
+-    --python python3
++    --python python3.13
+
+ RUN HOME=/opt/prisma XDG_CACHE_HOME=/opt/prisma/.cache PRISMA_BINARY_CACHE_DIR=/opt/prisma/binaries \
+     npm_config_cache=/root/.npm \
+@@ -101,7 +101,7 @@ FROM $LITELLM_RUNTIME_IMAGE AS runtime
+ USER root
+
+ # node (without npm) is required by the prisma CLI at runtime
+-RUN apk add --no-cache bash openssl tzdata nodejs python3 libsndfile
++RUN apk add --no-cache bash openssl tzdata nodejs python-3.13=3.13.15-r4 libsndfile
+
+ WORKDIR /app
+ ENV PATH="/app/.venv/bin:${PATH}" \
+
+Static assertion result:
+exact-five-substitutions: PASS
+python-runtime-package-occurrences: 2
+python-dev-package-occurrences: 1
+uv-python-selector-occurrences: 2

@@ -1,0 +1,15 @@
+Command: docker build --platform linux/amd64 --pull=false --progress=plain -t litellm:lazymcp-oauth-candidate-r2 /tmp/opencode/lazymcp-oauth-candidate-r2/worktree
+Result: FAIL at final runtime layer
+Rust fail-closed assertion layer: PASS
+Both frozen Python 3.13 syncs: PASS
+LiteLLM Maturin/Rust bridge build: PASS
+Prisma generation: PASS, generated under /app/.venv/lib/python3.13/site-packages/prisma
+Final runtime validation: FAIL
+
+Exact failure:
+  python -c "from prisma.client import BINARY_PATHS; ..."
+  ModuleNotFoundError: No module named 'prisma'
+
+The root cause visible in the immutable Dockerfile execution is that the final RUN invokes system `python`, while `/app/.venv/bin` is not selected in that runtime shell. The copied virtual environment contains generated Prisma, but the validation interpreter cannot import it. No final image was emitted
+
+Full raw secret-free build output is retained at /tmp/opencode/lazymcp-oauth-candidate-r2/build.log

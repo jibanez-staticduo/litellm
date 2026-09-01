@@ -1,0 +1,6 @@
+Only intended plugin reference changed: True
+File permissions preserved: True (600)
+Manual target override count before: 0
+Manual target override count after: 0
+Old reference: @staticeng/opencode-litellm@0.1.8
+New reference: file:///home/staticduo/git/opencode-litellm/dist/index.js

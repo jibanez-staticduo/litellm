@@ -1,0 +1,40 @@
+TASK-010 exact root Dockerfile diff from pre-change SHA-256 2b64da5e532e2a6d7d10c5375784514c3982596e604c99feb352ea086706351c:
+
+@@ global image arguments and stages
++ARG RUST_TOOLCHAIN_IMAGE=docker.io/library/rust:1.97.1-slim-bookworm@sha256:2775a09d208ff0d7c1f50490c45b62db929e87ba1dcbc3f2132ac71a704bcdd3
++FROM $RUST_TOOLCHAIN_IMAGE AS rust-toolchain
+
+@@ builder declaration and toolchain copies
++ARG TARGETARCH
++COPY --from=rust-toolchain /usr/local/cargo /usr/local/cargo
++COPY --from=rust-toolchain /usr/local/rustup /usr/local/rustup
+
+@@ builder apk package list
+-    rust \
+
+@@ builder environment
++    CARGO_HOME=/usr/local/cargo \
++    RUSTUP_HOME=/usr/local/rustup \
+-    PATH="/app/.venv/bin:${PATH}"
++    PATH="/usr/local/cargo/bin:/app/.venv/bin:${PATH}"
+
+@@ before dependency metadata and first uv sync
++RUN case "$TARGETARCH" in \
++        amd64) expected_arch=x86_64 ;; \
++        arm64) expected_arch=aarch64 ;; \
++        *) exit 1 ;; \
++    esac && \
++    rustc_version="$(rustc -vV)" && \
++    test "$(printf '%s\n' "$rustc_version" | grep -c '^release: ')" -eq 1 && \
++    test "$(printf '%s\n' "$rustc_version" | grep -Fxc 'release: 1.97.1')" -eq 1 && \
++    test "$(printf '%s\n' "$rustc_version" | grep -c '^commit-hash: ')" -eq 1 && \
++    test "$(printf '%s\n' "$rustc_version" | grep -Fxc 'commit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452')" -eq 1 && \
++    test "$(printf '%s\n' "$rustc_version" | grep -c '^host: ')" -eq 1 && \
++    test "$(printf '%s\n' "$rustc_version" | grep -Fxc "host: ${expected_arch}-unknown-linux-gnu")" -eq 1 && \
++    test "$(printf '%s\n' "$rustc_version" | grep -c '^LLVM version: ')" -eq 1 && \
++    test "$(printf '%s\n' "$rustc_version" | grep -Fxc 'LLVM version: 22.1.6')" -eq 1 && \
++    cargo --version | grep -Eq '^cargo 1\.97\.1 ' && \
++    test ! -e /usr/lib/libLLVM.so.22.1 && \
++    test ! -L /usr/lib/libLLVM.so.22.1
+
+No other line changed in TASK-010. The pre-existing authorized TASK-008 Python substitutions remain intact

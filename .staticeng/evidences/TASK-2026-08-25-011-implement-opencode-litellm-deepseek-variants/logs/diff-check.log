@@ -1,0 +1,3 @@
+Command: git diff --check
+Repository: /home/staticduo/git/opencode-litellm
+Result: PASS, no output

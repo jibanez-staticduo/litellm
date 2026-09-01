@@ -1,0 +1,9 @@
+installed_sha256=f7089af27702c25b17d0358d3a48bf7072c481ed364ca86cf2b1d4cfdb7be2c5
+built_sha256=f7089af27702c25b17d0358d3a48bf7072c481ed364ca86cf2b1d4cfdb7be2c5
+installed_mode=755 uid=1000 gid=10 size=186247296
+installed_version=0.0.0-dev-202608251909
+active_processes_preexisting:
+  18127 Tue Aug 25 22:09:49 2026 /home/staticduo/.opencode/bin/opencode serve --hostname 0.0.0.0 --port 4096
+1429715 Tue Aug  4 12:41:26 2026 opencode serve --hostname 0.0.0.0 --port 4912
+3165232 Wed Aug 26 07:44:19 2026 /usr/bin/zsh -c { printf 'staticeng_validate=FAIL pre-existing missing CodeMaps\n'; printf 'staticeng_repair_dry_run=unresolved CodeMap backlog; no apply performed to preserve unrelated artifacts\n'; } > "/home/staticduo/git/litellm/.staticeng/evidences/TASK-2026-08-25-021-build-activate-opencode-variants/logs/staticeng-validation.log"; { printf 'installed_sha256='; sha256sum /home/staticduo/.opencode/bin/opencode | cut -d' ' -f1; printf 'built_sha256='; sha256sum /home/staticduo/git/opencode/packages/opencode/dist/opencode-linux-x64/bin/opencode | cut -d' ' -f1; stat -c 'installed_mode=%a uid=%u gid=%g size=%s' /home/staticduo/.opencode/bin/opencode; /home/staticduo/.opencode/bin/opencode --version | sed 's/^/installed_version=/'; printf 'active_processes_preexisting:\n'; ps -eo pid,lstart,args | rg '[o]pencode.*serve'; printf 'restart_action=Quit the existing OpenCode desktop/web process completely, then relaunch OpenCode normally; config and plugins are loaded only at process start.\n'; } > "/home/staticduo/git/litellm/.staticeng/evidences/TASK-2026-08-25-021-build-activate-opencode-variants/logs/final-install-and-restart.log"
+restart_action=Quit the existing OpenCode desktop/web process completely, then relaunch OpenCode normally; config and plugins are loaded only at process start.

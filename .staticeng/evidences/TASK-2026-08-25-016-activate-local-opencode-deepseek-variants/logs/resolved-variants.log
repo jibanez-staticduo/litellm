@@ -1,0 +1,7 @@
+OpenCode version: 1.18.21
+Discovery/inference base: http://127.0.0.1:18765 (isolated loopback)
+Plugin: file:///home/staticduo/git/opencode-litellm/dist/index.js
+provider deepseek-v4-flash-fp8-mtp: off, low, high, max; medium absent=True; xhigh absent=True
+provider deepseek-v4-flash-fp8-mtp-norefusal: off, low, high, max; medium absent=True; xhigh absent=True
+providers deepseek-v4-flash-fp8-mtp: off, low, high, max; medium absent=True; xhigh absent=True
+providers deepseek-v4-flash-fp8-mtp-norefusal: off, low, high, max; medium absent=True; xhigh absent=True

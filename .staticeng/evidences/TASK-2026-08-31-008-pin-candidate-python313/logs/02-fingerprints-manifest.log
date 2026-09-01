@@ -1,0 +1,14 @@
+Dockerfile pre-change SHA-256: 34fe9cb7cb3e4208dd0463c7f9d091aeec15d4f484e2a171c008b16f8af6462b
+Dockerfile post-change SHA-256: 2b64da5e532e2a6d7d10c5375784514c3982596e604c99feb352ea086706351c
+
+Re-frozen eight-path candidate input manifest:
+2b64da5e532e2a6d7d10c5375784514c3982596e604c99feb352ea086706351c  Dockerfile
+1aa2a86213d076d2e1addc751e0b3ea9660e8c8cd4a9e86cb00144b0ff34f723  gateway/routes/allowlist.py
+440044fcf74a5afc8d35f94f8bad5b71e1702f8b7227933757c0f848f2bc858b  litellm/proxy/_experimental/mcp_server/auth/user_api_key_auth_mcp.py
+5e1ff87728492396a609c886c124fb639624b58f4d21f105ba53853ce1e10fd4  litellm/proxy/_experimental/mcp_server/discoverable_endpoints.py
+1a0cf095cf037b32461b17301adea1f95b5dd62d111a45ae924a818da98b2967  litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py
+2eec9a86b1fe514faebc64356842cca1901ba648185b9e49d4e91e13f122ec9f  litellm/proxy/_experimental/mcp_server/outbound_credentials/session_token.py
+886d5b443d75e6477bd8f609543bdf0160f9105ce71c137f7f6426791f0d308f  litellm/proxy/proxy_server.py
+b02dd1675f11cbdd16450560dcc3e2ccb57170adea0b4471fa6198a44cc11462  litellm/proxy/_experimental/mcp_server/lazymcp_public_resource.py
+
+The seven application fingerprints equal the pre-implementation fingerprints captured before the Dockerfile edit. The failed TASK-006 seven-path manifest is superseded. Immutable candidate image identity is intentionally deferred to TASK-006 because PMA explicitly prohibited the full candidate build in TASK-008.

@@ -1,0 +1,23 @@
+Command: npm run build && npm test
+Repository: /home/staticduo/git/opencode-litellm
+Package: @staticeng/opencode-litellm@0.1.9
+
+Build:
+  tsc -p tsconfig.json
+  PASS
+
+Focused DeepSeek tests:
+  PASS generates exact legacy and V2 variants only for both DeepSeek V4 aliases
+  PASS sanitizes forbidden DeepSeek variants from model and provider overrides
+  PASS preserves unrelated model overrides while enforcing DeepSeek variants
+  PASS config hook replaces preloaded target variants on both OpenCode config surfaces
+
+Suite result:
+  tests 42
+  pass 42
+  fail 0
+  cancelled 0
+  skipped 0
+  todo 0
+
+Result: PASS

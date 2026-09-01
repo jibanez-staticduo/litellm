@@ -1,0 +1,19 @@
+2026-08-26 release candidate review
+
+npm package=@staticeng/opencode-litellm
+registry latest=0.1.8
+registry versions=0.1.0 through 0.1.8
+required release candidate=0.1.9
+publication performed=false
+
+Renewed artifact:
+filename=staticeng-opencode-litellm-0.1.9.tgz
+sha256=0af33f08ce4e8c42da24954dcbdad3345406aad748f3bd184ff6d94478077eea
+files=17
+unpacked_size=42.2 kB
+
+Artifact listing contains only LICENSE, README.md, package.json, and dist files.
+No local path, test harness, active configuration, source tree, or evidence directory is packaged.
+
+Required shared config plugin reference:
+@staticeng/opencode-litellm@0.1.9

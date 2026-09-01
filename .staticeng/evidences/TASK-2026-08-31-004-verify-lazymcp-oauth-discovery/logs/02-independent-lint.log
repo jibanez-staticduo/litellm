@@ -1,0 +1,368 @@
+I001 [*] Import block is un-sorted or un-formatted
+   --> litellm/proxy/proxy_server.py:214:1
+    |
+214 | / import contextlib
+215 | | from collections import defaultdict
+216 | | from contextlib import asynccontextmanager
+217 | | from functools import lru_cache
+218 | |
+219 | | import litellm
+220 | | import litellm._redis
+221 | | from litellm import Router
+222 | | from litellm._logging import verbose_proxy_logger, verbose_router_logger
+223 | | from litellm.caching.caching import DualCache, RedisCache
+224 | | from litellm.caching.redis_cluster_cache import RedisClusterCache
+225 | | from litellm.constants import (
+226 | |     _REALTIME_BODY_CACHE_SIZE,
+227 | |     APSCHEDULER_COALESCE,
+228 | |     APSCHEDULER_MAX_INSTANCES,
+229 | |     APSCHEDULER_MISFIRE_GRACE_TIME,
+230 | |     APSCHEDULER_REPLACE_EXISTING,
+231 | |     CLI_SSO_SESSION_TTL_SECONDS,
+232 | |     DAYS_IN_A_MONTH,
+233 | |     DEFAULT_HEALTH_CHECK_INTERVAL,
+234 | |     DEFAULT_MODEL_CREATED_AT_TIME,
+235 | |     GLOBAL_PROXY_SPEND_CACHE_KEY,
+236 | |     LITELLM_PROXY_ADMIN_NAME,
+237 | |     LITELLM_PROXY_BUDGET_NAME,
+238 | |     MONTHLY_SPEND_REPORT_JOB_ID,
+239 | |     PROMETHEUS_FALLBACK_STATS_JOB_ID,
+240 | |     PROMETHEUS_FALLBACK_STATS_SEND_TIME_HOURS,
+241 | |     PROXY_BATCH_POLLING_ENABLED,
+242 | |     PROXY_BATCH_POLLING_INTERVAL,
+243 | |     PROXY_BATCH_WRITE_AT,
+244 | |     PROXY_BUDGET_RESCHEDULER_MAX_TIME,
+245 | |     PROXY_BUDGET_RESCHEDULER_MIN_TIME,
+246 | |     PROXY_CONFIG_RELOAD_INTERVAL_SECONDS,
+247 | |     WEEKLY_SPEND_REPORT_JOB_ID,
+248 | | )
+249 | | from litellm.exceptions import RejectedRequestError
+250 | | from litellm.integrations.custom_guardrail import ModifyResponseException
+251 | | from litellm.integrations.custom_logger import CustomLogger
+252 | | from litellm.integrations.SlackAlerting.slack_alerting import SlackAlerting
+253 | | from litellm.litellm_core_utils.core_helpers import (
+254 | |     _get_parent_otel_span_from_kwargs,
+255 | |     get_litellm_metadata_from_kwargs,
+256 | | )
+257 | | from litellm.litellm_core_utils.credential_accessor import CredentialAccessor
+258 | | from litellm.litellm_core_utils.litellm_logging import Logging as LiteLLMLoggingObj
+259 | | from litellm.litellm_core_utils.sensitive_data_masker import (
+260 | |     SensitiveDataMasker,
+261 | |     mask_sensitive_keys,
+262 | | )
+263 | | from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
+264 | | from litellm.llms.vertex_ai.vertex_llm_base import VertexBase
+265 | | from litellm.proxy._experimental.mcp_server.byok_oauth_endpoints import (
+266 | |     router as mcp_byok_oauth_router,
+267 | | )
+268 | | from litellm.proxy._experimental.mcp_server.discoverable_endpoints import (
+269 | |     router as mcp_discoverable_endpoints_router,
+270 | | )
+271 | | from litellm.proxy._experimental.mcp_server.rest_endpoints import (
+272 | |     router as mcp_rest_endpoints_router,
+273 | | )
+274 | | from litellm.proxy._experimental.mcp_server.server import app as mcp_app
+275 | | from litellm.proxy._experimental.mcp_server.tool_registry import (
+276 | |     global_mcp_tool_registry,
+277 | | )
+278 | | from litellm.proxy._lazy_features import attach_lazy_features
+279 | | from litellm.proxy._types import *
+280 | | from litellm.proxy.agent_endpoints.a2a_endpoints import router as a2a_router
+281 | | from litellm.proxy.agent_endpoints.agent_registry import global_agent_registry
+282 | | from litellm.proxy.agent_endpoints.endpoints import router as agent_endpoints_router
+283 | | from litellm.proxy.agent_endpoints.model_list_helpers import (
+284 | |     append_agents_to_model_group,
+285 | |     append_agents_to_model_info,
+286 | | )
+287 | | from litellm.proxy.analytics_endpoints.analytics_endpoints import (
+288 | |     router as analytics_router,
+289 | | )
+290 | | from litellm.proxy.anthropic_endpoints.claude_code_endpoints import (
+291 | |     claude_code_marketplace_router,
+292 | | )
+293 | | from litellm.proxy.anthropic_endpoints.endpoints import router as anthropic_router
+294 | | from litellm.proxy.anthropic_endpoints.skills_endpoints import (
+295 | |     router as anthropic_skills_router,
+296 | | )
+297 | | from litellm.proxy.auth.auth_checks import (
+298 | |     ExperimentalUIJWTToken,
+299 | |     can_key_call_resolved_model,
+300 | |     get_team_object,
+301 | |     log_db_metrics,
+302 | | )
+303 | | from litellm.proxy.auth.auth_utils import (
+304 | |     check_response_size_is_safe,
+305 | |     is_request_body_safe,
+306 | |     warn_once_if_custom_auth_skips_common_checks,
+307 | | )
+308 | | from litellm.proxy.auth.handle_jwt import JWTHandler
+309 | | from litellm.proxy.auth.litellm_license import LicenseCheck
+310 | | from litellm.proxy.auth.model_checks import (
+311 | |     expand_wildcard_deployments_for_model_info,
+312 | |     get_all_fallbacks,
+313 | |     get_complete_model_list,
+314 | |     get_key_models,
+315 | |     get_mcp_server_ids,
+316 | |     get_team_models,
+317 | | )
+318 | | from litellm.proxy.auth.user_api_key_auth import (
+319 | |     _fetch_global_spend_with_event_coordination,
+320 | |     user_api_key_auth,
+321 | |     user_api_key_auth_websocket,
+322 | | )
+323 | | from litellm.proxy.batches_endpoints.endpoints import router as batches_router
+324 | |
+325 | | ## Import All Misc routes here ##
+326 | | from litellm.proxy.caching_routes import router as caching_router
+327 | | from litellm.proxy.common_request_processing import (
+328 | |     ProxyBaseLLMRequestProcessing,
+329 | |     _is_azure_model_router_request,
+330 | |     _should_return_raw_model_name,
+331 | |     create_response,
+332 | | )
+333 | | from litellm.proxy.common_utils.auth_cache_invalidation_pubsub import (
+334 | |     AuthCacheInvalidationSubscriber,
+335 | | )
+336 | | from litellm.proxy.common_utils.cache_pydantic_utils import CacheCodec
+337 | | from litellm.proxy.common_utils.callback_utils import initialize_callbacks_on_proxy
+338 | | from litellm.proxy.common_utils.config_sync_pubsub import ConfigSyncSubscriber
+339 | | from litellm.proxy.common_utils.debug_utils import init_verbose_loggers
+340 | | from litellm.proxy.common_utils.debug_utils import router as debugging_endpoints_router
+341 | | from litellm.proxy.common_utils.encrypt_decrypt_utils import (
+342 | |     decrypt_value_helper,
+343 | |     encrypt_value_helper,
+344 | | )
+345 | | from litellm.proxy.common_utils.html_forms.ui_login import build_ui_login_form
+346 | | from litellm.proxy.common_utils.http_parsing_utils import (
+347 | |     _read_request_body,
+348 | |     _safe_get_request_headers,
+349 | |     check_file_size_under_limit,
+350 | |     get_form_data,
+351 | | )
+352 | | from litellm.proxy.common_utils.load_config_utils import (
+353 | |     get_config_file_contents_from_gcs,
+354 | |     get_file_contents_from_s3,
+355 | | )
+356 | | from litellm.proxy.common_utils.model_listing_utils import TeamModelNameTranslator
+357 | | from litellm.proxy.common_utils.openai_endpoint_utils import (
+358 | |     remove_sensitive_info_from_deployment,
+359 | | )
+360 | | from litellm.proxy.common_utils.periodic_reload_schedule import (
+361 | |     MODEL_COST_MAP_RELOAD_PARAM_NAME,
+362 | |     clear_reload_interval,
+363 | |     pod_reload_is_due,
+364 | |     read_reload_schedule,
+365 | |     record_manual_reload,
+366 | |     record_reload_run,
+367 | |     reload_schedule_status,
+368 | |     utc_now,
+369 | |     write_reload_interval,
+370 | | )
+371 | | from litellm.proxy.common_utils.proxy_state import ProxyState
+372 | | from litellm.proxy.common_utils.reset_budget_job import ResetBudgetJob
+373 | | from litellm.proxy.common_utils.scheduled_job_stagger import (
+374 | |     apply_scheduled_job_stagger,
+375 | |     attach_job_timing_logger,
+376 | |     parse_stagger_settings,
+377 | |     stagger_trigger,
+378 | | )
+379 | | from litellm.proxy.common_utils.swagger_utils import ERROR_RESPONSES
+380 | | from litellm.proxy.common_utils.timezone_utils import (
+381 | |     get_budget_reset_settings,
+382 | |     get_budget_reset_time,
+383 | | )
+384 | | from litellm.proxy.common_utils.user_api_key_cache import (
+385 | |     UserApiKeyCache,
+386 | |     get_management_object_ttl,
+387 | | )
+388 | | from litellm.proxy.config_resolvers import resolve_fields
+389 | | from litellm.proxy.config_resolvers.alerting import (
+390 | |     EMAIL_DESCRIPTORS,
+391 | |     SLACK_DESCRIPTORS,
+392 | | )
+393 | | from litellm.proxy.container_endpoints.endpoints import router as container_router
+394 | | from litellm.proxy.credential_endpoints.endpoints import router as credential_router
+395 | | from litellm.proxy.db.db_transaction_queue.spend_log_cleanup import (
+396 | |     SPEND_LOG_CLEANUP_BOUND_SETTINGS,
+397 | |     SpendLogCleanup,
+398 | | )
+399 | | from litellm.proxy.db.exception_handler import (
+400 | |     PrismaDBExceptionHandler,
+401 | |     call_with_db_reconnect_retry,
+402 | | )
+403 | | from litellm.proxy.db.gateway_request_tracking import (
+404 | |     GatewayRequestAccumulator,
+405 | |     flush_gateway_requests,
+406 | | )
+407 | | from litellm.proxy.db.spend_counter_reseed import SpendCounterReseed
+408 | | from litellm.proxy.discovery_endpoints import ui_discovery_endpoints_router
+409 | | from litellm.proxy.fine_tuning_endpoints.endpoints import router as fine_tuning_router
+410 | | from litellm.proxy.fine_tuning_endpoints.endpoints import set_fine_tuning_config
+411 | | from litellm.proxy.google_endpoints.endpoints import router as google_router
+412 | | from litellm.proxy.guardrails.guardrail_endpoints import router as guardrails_router
+413 | | from litellm.proxy.guardrails.init_guardrails import (
+414 | |     init_guardrails_v2,
+415 | |     initialize_guardrails,
+416 | | )
+417 | | from litellm.proxy.health_check import (
+418 | |     health_check_filter_kwargs_from_general_settings,
+419 | |     perform_health_check,
+420 | | )
+421 | | from litellm.proxy.health_endpoints._health_endpoints import router as health_router
+422 | | from litellm.proxy.hooks.model_max_budget_limiter import (
+423 | |     _PROXY_VirtualKeyModelMaxBudgetLimiter,
+424 | | )
+425 | | from litellm.proxy.hooks.prompt_injection_detection import (
+426 | |     _OPTIONAL_PromptInjectionDetection,
+427 | | )
+428 | | from litellm.proxy.hooks.proxy_track_cost_callback import _ProxyDBLogger
+429 | | from litellm.proxy.image_endpoints.endpoints import router as image_router
+430 | | from litellm.proxy.litellm_pre_call_utils import add_litellm_data_to_request
+431 | | from litellm.proxy.logging_endpoints.callback_logs_endpoints import (
+432 | |     rust_control_plane_router,
+433 | | )
+434 | | from litellm.proxy.management_endpoints.access_group_endpoints import (
+435 | |     router as access_group_router,
+436 | | )
+437 | | from litellm.proxy.management_endpoints.auto_router_endpoints import (
+438 | |     router as auto_router_management_router,
+439 | | )
+440 | | from litellm.proxy.management_endpoints.budget_management_endpoints import (
+441 | |     router as budget_management_router,
+442 | | )
+443 | | from litellm.proxy.management_endpoints.cache_settings_endpoints import (
+444 | |     router as cache_settings_router,
+445 | | )
+446 | | from litellm.proxy.management_endpoints.coordination_redis_endpoints import (
+447 | |     get_persisted_coordination_redis_settings,
+448 | |     router as coordination_redis_settings_router,
+449 | | )
+450 | | from litellm.proxy.management_endpoints.callback_management_endpoints import (
+451 | |     router as callback_management_endpoints_router,
+452 | | )
+453 | | from litellm.proxy.management_endpoints.common_utils import (
+454 | |     _user_has_admin_privileges,
+455 | |     _user_has_admin_view,
+456 | |     admin_can_invite_user,
+457 | | )
+458 | | from litellm.proxy.management_endpoints.compliance_endpoints import (
+459 | |     router as compliance_router,
+460 | | )
+461 | | from litellm.proxy.management_endpoints.config_override_endpoints import (
+462 | |     router as config_override_router,
+463 | | )
+464 | | from litellm.proxy.management_endpoints.cost_tracking_settings import (
+465 | |     router as cost_tracking_settings_router,
+466 | | )
+467 | | from litellm.proxy.management_endpoints.customer_endpoints import (
+468 | |     router as customer_router,
+469 | | )
+470 | | from litellm.proxy.management_endpoints.fallback_management_endpoints import (
+471 | |     router as fallback_management_router,
+472 | | )
+473 | | from litellm.proxy.management_endpoints.gateway_request_endpoints import (
+474 | |     router as gateway_request_router,
+475 | | )
+476 | | from litellm.proxy.management_endpoints.internal_user_endpoints import (
+477 | |     router as internal_user_router,
+478 | | )
+479 | | from litellm.proxy.management_endpoints.internal_user_endpoints import (
+480 | |     user_update,
+481 | | )
+482 | | from litellm.proxy.management_endpoints.jwt_key_mapping_endpoints import (
+483 | |     router as jwt_key_mapping_router,
+484 | | )
+485 | | from litellm.proxy.management_endpoints.key_management_endpoints import (
+486 | |     delete_verification_tokens,
+487 | |     duration_in_seconds,
+488 | |     generate_key_helper_fn,
+489 | | )
+490 | | from litellm.proxy.management_endpoints.key_management_endpoints import (
+491 | |     router as key_management_router,
+492 | | )
+493 | | from litellm.proxy.management_endpoints.management_v1 import (
+494 | |     router as management_v1_router,
+495 | | )
+496 | | from litellm.proxy.management_endpoints.management_v1.common import (
+497 | |     MANAGEMENT_V1_PREFIX,
+498 | |     PROBLEM_TYPE_BASE,
+499 | |     ManagementProblem,
+500 | |     problem_response,
+501 | | )
+502 | | from litellm.proxy.management_endpoints.mcp_management_endpoints import (
+503 | |     router as mcp_management_router,
+504 | | )
+505 | | from litellm.proxy.management_endpoints.model_access_group_management_endpoints import (
+506 | |     router as model_access_group_management_router,
+507 | | )
+508 | | from litellm.proxy.management_endpoints.model_management_endpoints import (
+509 | |     _add_model_to_db,
+510 | |     _add_team_model_to_db,
+511 | |     _deduplicate_litellm_router_models,
+512 | |     live_model_ids_snapshot,
+513 | | )
+514 | | from litellm.proxy.management_endpoints.model_management_endpoints import (
+515 | |     router as model_management_router,
+516 | | )
+517 | | from litellm.proxy.management_endpoints.organization_endpoints import (
+518 | |     router as organization_router,
+519 | | )
+520 | | from litellm.proxy.management_endpoints.policy_endpoints import router as policy_router
+521 | | from litellm.proxy.management_endpoints.router_settings_endpoints import (
+522 | |     router as router_settings_router,
+523 | | )
+524 | | from litellm.proxy.management_endpoints.scim.scim_v2 import scim_router
+525 | | from litellm.proxy.management_endpoints.tag_management_endpoints import (
+526 | |     router as tag_management_router,
+527 | | )
+528 | | from litellm.proxy.management_endpoints.team_callback_endpoints import (
+529 | |     router as team_callback_router,
+530 | | )
+531 | | from litellm.proxy.management_endpoints.team_endpoints import router as team_router
+532 | | from litellm.proxy.management_endpoints.team_endpoints import (
+533 | |     update_team,
+534 | |     validate_membership,
+535 | | )
+536 | | from litellm.proxy.management_endpoints.tool_management_endpoints import (
+537 | |     router as tool_management_router,
+538 | | )
+539 | | from litellm.proxy.management_endpoints.ui_sso import (
+540 | |     get_disabled_non_admin_personal_key_creation,
+541 | | )
+542 | | from litellm.proxy.management_endpoints.ui_sso import router as ui_sso_router
+543 | | from litellm.proxy.management_endpoints.usage_endpoints import router as usage_ai_router
+544 | | from litellm.proxy.management_endpoints.user_agent_analytics_endpoints import (
+545 | |     router as user_agent_analytics_router,
+546 | | )
+547 | | from litellm.proxy.management_endpoints.workflow_management_endpoints import (
+548 | |     router as workflow_management_router,
+549 | | )
+550 | | from litellm.proxy.management_helpers.audit_logs import (
+551 | |     create_audit_log_for_update,
+552 | |     create_object_audit_log,
+553 | | )
+554 | | from litellm.proxy.management_helpers.team_metadata_validation import (
+555 | |     TEAM_METADATA_SCHEMA_REGISTRY,
+556 | |     TEAM_METADATA_VALIDATOR_REGISTRY,
+557 | |     parse_team_metadata_schema,
+558 | | )
+559 | | from litellm.proxy.memory.memory_endpoints import router as memory_router
+560 | | from litellm.proxy.middleware.billable_request_metrics_middleware import (
+561 | |     BillableRequestMetricsMiddleware,
+562 | |     BillingRecorder,
+563 | | )
+564 | | from litellm.proxy.plugin_routes import (
+565 | |     register_plugins_from_config,
+566 | | )
+567 | | from litellm.proxy.plugin_routes import (
+568 | |     router as plugin_router,
+569 | | )
+570 | | from litellm.types.proxy.management_endpoints.management_v1 import ProblemDetail
+    | |________________________________________________________________________________^
+571 |
+572 |   try:
+    |
+help: Organize imports
+
+Found 1 error.
+[*] 1 fixable with the `--fix` option.

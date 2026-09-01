@@ -1,0 +1,22 @@
+Commands:
+  npm view @staticeng/opencode-litellm versions --json
+  npm view @staticeng/opencode-litellm@0.1.9 version
+Repository: /home/staticduo/git/opencode-litellm
+
+Published versions returned:
+  0.1.0
+  0.1.1
+  0.1.2
+  0.1.3
+  0.1.4
+  0.1.5
+  0.1.6
+  0.1.7
+  0.1.8
+
+Explicit 0.1.9 query:
+  npm error code E404
+  npm error 404 No match found for version 0.1.9
+
+Conclusion: PASS. Version 0.1.8 is immutable and published; 0.1.9 is the next available patch version
+Registry mutation: none

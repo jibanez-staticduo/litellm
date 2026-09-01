@@ -1,0 +1,20 @@
+Aggregate /lazymcp:
+- no token: PASS 401 Bearer resource_metadata="https://candidate.invalid/.well-known/oauth-protected-resource/lazymcp"
+- selection headers: PASS identical challenge
+- malformed llm_session bearer: PASS 401 Bearer error="invalid_token", resource_metadata="https://candidate.invalid/.well-known/oauth-protected-resource/lazymcp"
+- invalid explicit LiteLLM key plus selection headers: PASS identical invalid_token challenge
+
+Scoped /lazymcp/team-a:
+- no token: PASS exact bare challenge
+- selection headers: PASS challenge invariant
+- malformed llm_session bearer: PASS exact invalid_token challenge
+- invalid explicit LiteLLM key plus selection headers: PASS exact invalid_token challenge
+
+Toolset /toolset/tools-a/lazymcp:
+- no token: FAIL HTTP 503 Database not available; no WWW-Authenticate
+- selection headers: FAIL HTTP 503; no challenge
+- malformed llm_session bearer: FAIL HTTP 503; no challenge
+- invalid explicit LiteLLM key: FAIL HTTP 503; no challenge
+
+Authorized aggregate initialize using isolated ephemeral key: PASS HTTP 200, protocol 2025-06-18
+Authorized tool behavior: BLOCKED because no DB/server authorization exists; no production DB/credential used

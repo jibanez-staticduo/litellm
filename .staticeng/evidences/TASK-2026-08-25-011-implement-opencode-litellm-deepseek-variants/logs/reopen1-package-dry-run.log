@@ -1,0 +1,33 @@
+Command: npm pack --dry-run --json
+Repository: /home/staticduo/git/opencode-litellm
+Result: PASS
+
+Package identity:
+  id: @staticeng/opencode-litellm@0.1.9
+  name: @staticeng/opencode-litellm
+  version: 0.1.9
+  filename: staticeng-opencode-litellm-0.1.9.tgz
+  entryCount: 17
+  size: 9868 bytes
+  unpackedSize: 37879 bytes
+
+Published files:
+  LICENSE
+  README.md
+  dist/helpers.d.ts
+  dist/helpers.js
+  dist/index.d.ts
+  dist/index.js
+  dist/litellm.d.ts
+  dist/litellm.js
+  dist/mapping.d.ts
+  dist/mapping.js
+  dist/merge.d.ts
+  dist/merge.js
+  dist/options.d.ts
+  dist/options.js
+  dist/types.d.ts
+  dist/types.js
+  package.json
+
+Publish action: none

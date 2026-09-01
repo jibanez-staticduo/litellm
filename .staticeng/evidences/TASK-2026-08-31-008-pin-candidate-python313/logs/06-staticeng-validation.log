@@ -1,0 +1,13 @@
+Command: staticeng_validate
+Result: FAIL due to pre-existing repository-wide missing CodeMaps unrelated to TASK-008
+
+Representative failures include missing maps under litellm/llms/gradient_ai, litellm/llms/novita, packaging, terraform, docs, tests, and ui. TASK-008 adds or moves no navigable source and therefore requires no CodeMap update. Repair was not applied because it would create broad unrelated files and violate the exact-scope handoff.
+
+Focused task validation:
+- git diff --check -- Dockerfile: PASS
+- exact five substitutions: PASS
+- pyproject.toml and uv.lock unchanged: PASS
+- seven application path fingerprints unchanged: PASS
+- x86_64/aarch64 exact package resolution: PASS
+- native amd64 Python 3.13.15 and cpython-313 ABI probe: PASS
+- production identity and health unchanged: PASS

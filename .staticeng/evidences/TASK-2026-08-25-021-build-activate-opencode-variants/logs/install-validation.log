@@ -1,0 +1,6 @@
+installed=/home/staticduo/.opencode/bin/opencode mode=755 uid=1000 gid=10 size=186247296 mtime=2026-08-25 21:10:15.924443601 +0200
+f7089af27702c25b17d0358d3a48bf7072c481ed364ca86cf2b1d4cfdb7be2c5  /home/staticduo/.opencode/bin/opencode
+f7089af27702c25b17d0358d3a48bf7072c481ed364ca86cf2b1d4cfdb7be2c5  dist/opencode-linux-x64/bin/opencode
+de0724a36eaf3166e7f1ff38d0f4478b95ccc47725e9597b3fe66d3d3e18baa2  /home/staticduo/.opencode/backups/TASK-2026-08-25-021/opencode-1.18.23
+0.0.0-dev-202608251909
+active_config_unchanged=PASS

@@ -1,0 +1,5 @@
+Command: staticeng_validate
+Invocation scope limitation: the tool validated the active LiteLLM workspace instead of the implementation repository and reported its pre-existing repository-wide missing-CodeMap backlog
+Repair dry-run: staticeng_repair mode=dry-run confirmed the unresolved failures are broad LiteLLM module-boundary CodeMap omissions outside this task
+Scoped implementation review: PASS; opencode-litellm tracked root, src, and test CodeMaps were read and updated, and no maintained source file was added or moved
+No broad repair was applied because it would modify unrelated pre-existing work

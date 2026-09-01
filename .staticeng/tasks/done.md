@@ -2,9 +2,29 @@
 
 | Date | Task ID | SCR ID | Commit | Summary |
 | :--- | :--- | :--- | :--- | :--- |
+| 2026-09-01 | TASK-2026-09-01-009-finalize-premerge-fork-work | SCR-2026-09-01-001-upstream-main-integration | pending-commit | Attributed, verified, and logically committed all intended pre-merge fork work without pushing or integrating upstream. |
+| 2026-08-31 | TASK-2026-08-31-018-close-lazymcp-oauth-workflow | SCR-2026-08-31-001-lazymcp-oauth-discovery | pending-commit | Closed and archived the LazyMCP OAuth workflow for source/candidate scope only while retaining all promotion, deployment, environment, and architecture boundaries. |
+| 2026-08-31 | TASK-2026-08-31-017-final-review-lazymcp-oauth | SCR-2026-08-31-001-lazymcp-oauth-discovery | pending-commit | Approved source/candidate closure with one environment-blocked real-tool verification and all promotion gates retained. |
+| 2026-08-31 | TASK-2026-08-31-016-fix-toolset-challenge-order | SCR-2026-08-31-001-lazymcp-oauth-discovery | pending-commit | Defined admission-before-toolset-resolution ordering and its fail-closed authorization boundary. |
+| 2026-08-31 | TASK-2026-08-31-015-investigate-candidate-route-404 | SCR-2026-08-31-001-lazymcp-oauth-discovery | pending-commit | Traced candidate discovery 404s to intentional trusted-public-base enforcement and corrected the smoke contract. |
+| 2026-08-31 | TASK-2026-08-31-014-advance-wolfi-base | SCR-2026-08-31-001-lazymcp-oauth-discovery | pending-commit | Advanced both Wolfi defaults to the reviewed coherent glibc 2.44 base for the amd64 candidate. |
+| 2026-08-31 | TASK-2026-08-31-013-investigate-wolfi-abi-closure | SCR-2026-08-31-001-lazymcp-oauth-discovery | pending-commit | Identified the coherent Wolfi/Python ABI closure and retained immutable-foundation promotion debt. |
+| 2026-08-31 | TASK-2026-08-31-012-pin-venv-system-python | SCR-2026-08-31-001-lazymcp-oauth-discovery | pending-commit | Bound the copied venv to pinned system Python and made final validation use its explicit interpreter. |
+| 2026-08-31 | TASK-2026-08-31-011-fix-candidate-runtime-python | SCR-2026-08-31-001-lazymcp-oauth-discovery | pending-commit | Diagnosed managed-Python venv provenance as the candidate runtime validation failure. |
+| 2026-08-31 | TASK-2026-08-31-010-pin-candidate-rust-toolchain | SCR-2026-08-31-001-lazymcp-oauth-discovery | pending-commit | Isolated the amd64 candidate build on a digest-pinned Rust 1.97.1 toolchain. |
+| 2026-08-31 | TASK-2026-08-31-009-investigate-candidate-rust-llvm | SCR-2026-08-31-001-lazymcp-oauth-discovery | pending-commit | Traced live Wolfi Rust/LLVM incompatibility and selected deterministic toolchain isolation. |
+| 2026-08-31 | TASK-2026-08-31-008-pin-candidate-python313 | SCR-2026-08-31-001-lazymcp-oauth-discovery | pending-commit | Pinned candidate builder and runtime selection to the established Python 3.13 contract. |
+| 2026-08-31 | TASK-2026-08-31-007-investigate-candidate-python-build | SCR-2026-08-31-001-lazymcp-oauth-discovery | pending-commit | Diagnosed live CPython 3.14 selection and specified the deterministic Python 3.13 correction. |
+| 2026-08-31 | TASK-2026-08-31-006-build-smoke-lazymcp-oauth-candidate | SCR-2026-08-31-001-lazymcp-oauth-discovery | pending-commit | Built and smoke-verified exact amd64 candidate `sha256:9aa92dbf680432a423e01cb8c781e0c89a9a241c4f3deab392d3536b5d3bee1e` with real tool use environment-blocked. |
+| 2026-08-31 | TASK-2026-08-31-005-review-lazymcp-oauth-security | SCR-2026-08-31-001-lazymcp-oauth-discovery | pending-commit | Closed all source security findings and authorized the exact nine-path amd64 candidate build only. |
+| 2026-08-31 | TASK-2026-08-31-004-verify-lazymcp-oauth-discovery | SCR-2026-08-31-001-lazymcp-oauth-discovery | pending-commit | Independently verified focused correctness and preservation before candidate construction. |
+| 2026-08-31 | TASK-2026-08-31-003-implement-lazymcp-oauth-discovery | SCR-2026-08-31-001-lazymcp-oauth-discovery | pending-commit | Implemented exact LazyMCP discovery, challenge, resource binding, audience admission, and toolset ordering. |
+| 2026-08-31 | TASK-2026-08-31-002-design-lazymcp-oauth-discovery | SCR-2026-08-31-001-lazymcp-oauth-discovery | pending-commit | Defined the implementation architecture, exact-resource lifecycle, admission boundary, and verification matrix. |
+| 2026-08-31 | TASK-2026-08-31-001-spec-lazymcp-oauth-discovery | SCR-2026-08-31-001-lazymcp-oauth-discovery | pending-commit | Approved the RFC 9728 LazyMCP OAuth discovery and audience-isolation behavior contract. |
 | 2026-08-27 | TASK-2026-08-27-008-merge-release-uvicorn-redaction | none | 64a3b83bf0 | Committed the Uvicorn redaction fix, published one main-attributable immutable image, and deployed it healthy to Fedora and NAS. |
 | 2026-08-27 | TASK-2026-08-26-023-fix-uvicorn-access-redaction | none | pending-commit | Preserved Uvicorn access-log formatting under secret redaction, added fail-closed regressions, and deployed the independently approved immutable fix with clean production logs. |
 | 2026-08-27 | TASK-2026-08-27-007-final-techlead-closure | SCR-2026-08-26-002-client-model-contracts-020 | pending-commit | Approved and finalized the client model contract workflow after release, runtime, QA, architecture, rollback, and documentation closure. |
+| 2026-08-26 | TASK-2026-08-26-018-add-nas-openrouter-ox-alpha | SCR-2026-08-26-003-add-nas-openrouter-ox-alpha | pending-commit | Added and independently verified the NAS OpenRouter `ox-alpha` credential, deployment, and fresh OpenCode discovery. |
 | 2026-08-21 | TASK-2026-08-21-fix-coordination-redis-wiring | none | pending-commit | Restored, released, deployed, and verified coordination Redis startup and management-route wiring. |
 | 2026-08-19 | TASK-2026-08-19-061-finalize-staging-stop | none | pending-commit | Finalized and pushed the scoped NAS staging-stop records while preserving unrelated Fedora artifacts. |
 | 2026-08-19 | TASK-2026-08-19-060-stop-nas-litellm-staging | none | pending-commit | Stopped only NAS LiteLLM staging, disabled runtime auto-restart, and preserved all data/dependencies. |
@@ -106,3 +126,48 @@
 | 2026-07-16 | TASK-2026-07-16-003-review-litellm-repair-finalization | none | pending-commit | Authorized selective closure commits after cleanup removed incomplete CodeMap side effects. |
 # TASK-2026-08-15-001-diagnose-fedora-litellm-502
 - Closed 2026-08-15: LiteLLM was healthy; shared NPM/OpenResty response-header buffering caused the client-facing `/v1/responses` 502.
+ - TASK-2026-08-25-001-map-deepseek-reasoning-surfaces
+ - TASK-2026-08-25-002-define-deepseek-reasoning-contract
+ - TASK-2026-08-25-004-review-deepseek-hosted-vllm-policy (rejected deployment; task 003 reopened)
+ - TASK-2026-08-25-005-rereview-deepseek-hosted-vllm-policy (rejected staging; task 003 reopened 2)
+ - TASK-2026-08-25-003-implement-deepseek-hosted-vllm-policy
+ - TASK-2026-08-25-006-final-review-deepseek-hosted-vllm-policy
+ - TASK-2026-08-25-008-investigate-staging-auth-blocker
+ - TASK-2026-08-25-010-decide-staging-encryption-context
+ - TASK-2026-08-25-012-review-opencode-litellm-deepseek-variants (release rejected; task 011 reopened)
+ - TASK-2026-08-25-011-implement-opencode-litellm-deepseek-variants
+ - TASK-2026-08-25-013-final-review-opencode-litellm-release
+ - TASK-2026-08-25-015-adapt-local-codex-deepseek-modes
+ - TASK-2026-08-25-017-review-local-opencode-activation (closure rejected; task 016 reopened)
+ - TASK-2026-08-25-018-review-opencode-core-fallback (build rejected; task 011 reopened 3)
+ - TASK-2026-08-25-019-final-review-opencode-variants (functional pass; docs gate pending)
+ - TASK-2026-08-25-011-implement-opencode-litellm-deepseek-variants
+ - TASK-2026-08-25-020-doc-gate-opencode-variants
+ - TASK-2026-08-26-001-map-qwen38-reasoning-surfaces
+ - TASK-2026-08-26-002-define-qwen38-reasoning-contract
+ - TASK-2026-08-25-021-build-activate-opencode-variants (official binary restored; core approach cancelled)
+ - TASK-2026-08-26-006-preflight-npm-publication-auth
+ - TASK-2026-08-26-008-rereview-plugin-artifact
+ - TASK-2026-08-26-011-audit-gpt-thinking-alignment
+ - TASK-2026-08-26-012-discover-client-contract-migration
+ - TASK-2026-08-26-013-specify-model-contract-catalog
+ - TASK-2026-08-26-014-finalize-020-implementation-plan
+ - TASK-2026-08-26-015A-review-020-architecture (release rejected; task 015 reopened)
+ - TASK-2026-08-26-015B-review-020-code (release rejected; task 015 reopened)
+ - TASK-2026-08-26-015-implement-020-model-contracts
+ - TASK-2026-08-26-015C-rereview-020-architecture
+ - TASK-2026-08-26-015D-rereview-020-code
+ - TASK-2026-08-26-016A-review-clean-package-artifact
+ - TASK-2026-08-26-016-publish-opencode-litellm-020
+ - TASK-2026-08-26-017A-investigate-syncthing-peer
+ - TASK-2026-08-26-017B-repair-syncthing-peer
+ - TASK-2026-08-26-017-migrate-shared-opencode-contracts
+ - TASK-2026-08-27-001-diagnose-restart-opencode-failure
+ - TASK-2026-08-26-018-align-codex-model-contracts
+ - TASK-2026-08-27-002-investigate-spark-400
+ - TASK-2026-08-27-003-verify-spark-provider-model
+ - TASK-2026-08-27-004-retire-spark-client-catalogs
+ - TASK-2026-08-26-019-retire-obsolete-model-routes
+ - TASK-2026-08-27-005-independent-runtime-gates
+ - TASK-2026-08-26-020-verify-client-model-contracts-020
+ - TASK-2026-08-27-006-final-architecture-closure

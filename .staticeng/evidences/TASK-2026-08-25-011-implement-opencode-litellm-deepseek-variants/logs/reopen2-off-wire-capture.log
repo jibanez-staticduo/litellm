@@ -1,0 +1,13 @@
+Command: node /tmp/capture-opencode-off-wire.mjs
+Client: active opencode binary
+Plugin: repository dist loaded by ephemeral OPENCODE_CONFIG_CONTENT
+Endpoint: local loopback fixture
+Production endpoint contacted: no
+
+Captured:
+  model: deepseek-v4-flash-fp8-mtp
+  semantic variant: off
+  reasoning_effort: none
+  client exit code: 0
+
+Result: PASS

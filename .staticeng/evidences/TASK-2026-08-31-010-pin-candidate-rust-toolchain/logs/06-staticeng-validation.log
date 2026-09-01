@@ -1,0 +1,4 @@
+staticeng_validate: FAIL on the repository's pre-existing missing-CodeMap inventory
+staticeng_repair mode=dry-run: unresolved missing CodeMaps require module-boundary decisions; no repair applied
+
+No validation error identifies the root Dockerfile or TASK-010 evidence. Tech Lead authorization already records this repository-level blocker and prohibits unrelated repair in this bounded implementation

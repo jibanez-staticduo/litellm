@@ -1,0 +1,5 @@
+[Agent Message] From: tech_lead To: developer
+
+Implement exactly these five substitutions in the root `Dockerfile`: builder `python3` to `python-3.13=3.13.15-r4`; builder `python3-dev` to `python-3.13-dev=3.13.15-r4`; both `uv sync` selectors from `--python python3` to `--python python3.13`; and runtime `python3` to `python-3.13=3.13.15-r4`. Make no other packaging, source, test, lock, configuration, deployment, or production change
+
+Source: .staticeng/tasks/todo/TASK-2026-08-31-008-pin-candidate-python313.md, Reopen 1, Exact Developer Handoff

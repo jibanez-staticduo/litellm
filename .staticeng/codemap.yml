@@ -1,30 +1,53 @@
 scope: repo
 name: litellm
 purpose: >
-  Repository navigation index. Points to current-state
-  product specs, process docs, and module entrypoints.
-
+  Repository navigation index. Points to current-state product specs, process
+  docs, and module entrypoints.
 code_roots:
   - src/
   - agents/
   - docs/
-
-links:
-  - title: Global Context
-    path: Agents_Common.md
-    summary: "Core rules and agent roles."
-
-  - title: Orchestration Strategy
-    path: docs/core/agent_orchestration.md
-    summary: "Collaboration and handoff protocols."
-
-  - title: Technical Architecture
-    path: docs/architecture/TECHNICAL_ARCHITECTURE.md
-    summary: "Global patterns and tech stack."
-
+links: []
 entrypoints: []
 commands:
-  test: "echo 'No global test command defined'"
-  lint: "echo 'No global lint command defined'"
-
-modules: []
+  test: echo 'No global test command defined'
+  lint: echo 'No global lint command defined'
+modules:
+  - path: examples
+    summary: Maintained source module.
+  - path: docker
+    summary: Maintained source module.
+  - path: scripts
+    summary: Maintained source module.
+  - path: litellm
+    summary: Maintained source module.
+  - path: packaging
+    summary: Maintained source module.
+  - path: terraform
+    summary: Maintained source module.
+  - path: docs
+    summary: Maintained source module.
+  - path: ci_cd
+    summary: Maintained source module.
+  - path: tests
+    summary: Maintained source module.
+  - path: enterprise
+    summary: Maintained source module.
+  - path: ui
+    summary: Maintained source module.
+  - path: migrations
+    summary: Maintained source module.
+  - path: litellm-rust
+    summary: Maintained source module.
+  - path: cookbook
+    summary: Maintained source module.
+  - path: gateway
+    summary: Maintained source module.
+  - path: backend
+    summary: Maintained source module.
+  - path: db_scripts
+    summary: Maintained source module.
+  - path: litellm-proxy-extras
+    summary: Maintained source module.
+  - path: helm
+    summary: Maintained source module.

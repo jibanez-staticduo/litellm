@@ -1,0 +1,13 @@
+final_invariant_check=PASS
+allowed_mechanism=plugin-only configuration
+official_binary=/home/staticduo/.opencode/bin/opencode mode=755 uid=1000 gid=10 size=184584320 mtime=2026-08-25 08:11:59.000000000 +0200
+de0724a36eaf3166e7f1ff38d0f4478b95ccc47725e9597b3fe66d3d3e18baa2  /home/staticduo/.opencode/bin/opencode
+de0724a36eaf3166e7f1ff38d0f4478b95ccc47725e9597b3fe66d3d3e18baa2  /home/staticduo/.opencode/backups/TASK-2026-08-25-021/opencode-1.18.23
+version=1.18.23
+symlink=/home/staticduo/.opencode/bin/opencode
+config_baseline=MATCH
+task_owned_core_diff=none
+remaining_opencode_repo_status=untracked .codenomad/ and .staticeng/ only
+active_processes_not_terminated=4096,4912
+restart_required_for_rollback=no
+ui_or_core_workaround_attempted_after_restore=no

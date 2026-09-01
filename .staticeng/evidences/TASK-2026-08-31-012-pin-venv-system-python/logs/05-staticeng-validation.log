@@ -1,0 +1,7 @@
+Command: staticeng_validate
+Result: FAIL due to the known pre-existing repository-wide missing-CodeMap inventory, including unrelated provider, test, UI, docs, packaging, Terraform, Rust, and Helm directories
+
+Command: staticeng_repair mode=dry-run apply=false
+Result: deterministic Markdown normalization was available, but CodeMap findings remained unresolved because they require unrelated module-boundary decisions. No repair was applied because TASK-012 authorizes only the exact Dockerfile substitutions plus task evidence
+
+TASK-012 adds no navigable source and requires no CodeMap update. The bounded Dockerfile checks and git diff check passed independently

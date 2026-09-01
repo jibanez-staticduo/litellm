@@ -1,0 +1,13 @@
+Production container ID after attempt: a4fee331519ed8fa2e0ae851f3e0e4a3533ebcae4f0c4752811a1f7a47f2fc8a
+Production image ID after attempt: sha256:0a221cc57c07ae89e5a0223488351ff85ac30053771b22b43a94b3aa5361ae42
+Production state after attempt: running
+Production health after attempt: healthy
+Pre/post container ID: identical
+Pre/post image ID: identical
+Candidate image inspect: absent (exit 1)
+Candidate containers: none
+Candidate networks: none
+Detached worktree removed: yes
+Detached worktree removal required --force because the authorized applied patch and parser are intentionally modified/untracked in that disposable worktree
+Staging patch retained at /tmp/opencode/lazymcp-oauth-candidate/runtime-tracked.patch; it contains source changes only and no credentials
+Production configuration, database, and credentials were not mounted, read, or mutated

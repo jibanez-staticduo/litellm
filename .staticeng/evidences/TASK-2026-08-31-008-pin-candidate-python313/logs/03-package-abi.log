@@ -1,0 +1,45 @@
+Authorized base OCI index:
+sha256:42df77a9974d6ec8b17a5ee8bc23b532600a44d705acef2409e0933c1251b45f
+linux/amd64 child: sha256:85ecaa3f494ee2339eaf6f74a23f19f934df3019a9a9dfc8c06f53c3aacc4e6b
+linux/arm64 child: sha256:1391b1e3093efd59124d88b3e7389d9e0d6df7a004ec65bf7d9fee22c28d1542
+
+Fresh signed APK index resolution:
+ARCH=x86_64
+P:python-3.13-dev
+V:3.13.15-r4
+A:x86_64
+D:python-3.13-base-dev=3.13.15-r4 python-3.13=3.13.15-r4
+P:python-3.13
+V:3.13.15-r4
+A:x86_64
+D:python-3.13-base=3.13.15-r4
+
+ARCH=aarch64
+P:python-3.13
+V:3.13.15-r4
+A:aarch64
+D:python-3.13-base=3.13.15-r4
+P:python-3.13-dev
+V:3.13.15-r4
+A:aarch64
+D:python-3.13-base-dev=3.13.15-r4 python-3.13=3.13.15-r4
+
+Native linux/amd64 exact-package install probe:
+python-3.13-3.13.15-r4 x86_64 [installed]
+python-3.13-dev-3.13.15-r4 x86_64 [installed]
+version=3.13.15
+cache_tag=cpython-313
+soabi=cpython-313-x86_64-linux-gnu
+platform=linux-x86_64
+executable=/usr/bin/python3.13
+header=/usr/include/python3.13/Python.h
+Result: PASS
+
+Locked uvloop ABI artifacts in unchanged uv.lock:
+cp313 manylinux aarch64: present
+cp313 manylinux x86_64: present
+cp313 musllinux aarch64: present
+cp313 musllinux x86_64: present
+uvloop locked version: 0.21.0
+
+Arm64 package/dependency resolution passes. Arm64 runtime execution is not claimed because this host is x86_64 without arm64 execution support. TASK-006 must fail closed on arm64 promotion until an arm64-capable builder performs the final-image checks.

@@ -1,0 +1,30 @@
+Wolfi index signature verification: PASS
+Reference: cgr.dev/chainguard/wolfi-base@sha256:57108e597a8cf3bd376b810f1c3539c21942daefa242cb9dddaae30f8aac735d
+Identity policy: GitHub Actions workflow in chainguard-images/images
+OIDC issuer: https://token.actions.githubusercontent.com
+Verified attestations: SPDX, SLSA provenance v1, apko image configuration
+
+uv index provenance: PARTIAL
+Reference: ghcr.io/astral-sh/uv@sha256:240fb85ab0f263ef12f492d8476aa3a2e4e1e333f7d67fbdd923d00a506a516a
+Exact amd64 child: sha256:733b4042187702f832f7fdecb3aff14a61b288c4ca37af188bb5715c1caebaf8
+OCI source/revision/version annotations and amd64 SPDX/SLSA attestation-manifest are present
+Cosign signature and legacy Cosign attestation discovery returned no signature/matching attestation; no identity-policy verification was possible
+
+Rust/UI publisher signatures: unavailable
+Rust index: docker.io/library/rust@sha256:2775a09d208ff0d7c1f50490c45b62db929e87ba1dcbc3f2132ac71a704bcdd3
+UI index: docker.io/library/node@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43
+Both are digest-pinned Docker Official Images with source/revision metadata and attestation manifests, but no Cosign signature was found
+No approved explicit exception was supplied, so this remains blocked
+
+Unique immutable candidate publication: PASS
+Tag: docker.staticduo.com/litellm:lazymcp-oauth-candidate-20260901-9aa92dbf6804
+Registry manifest digest: sha256:9f642cc38083d1600e62cfb473799a7d52ba89f6c8ff0c4a00940cddc386e619
+Registry config digest: sha256:9aa92dbf680432a423e01cb8c781e0c89a9a241c4f3deab392d3536b5d3bee1e
+Local image ID: sha256:9aa92dbf680432a423e01cb8c781e0c89a9a241c4f3deab392d3536b5d3bee1e
+Config identity: PASS
+No stable/latest tag moved
+
+Signing/attestation: BLOCKED
+No approved keyless/KMS signing identity was available in the task environment
+The published digest has no signature or attestation
+No identity was invented

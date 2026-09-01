@@ -1,0 +1,39 @@
+Commands:
+  git diff --name-status -- <intended paths>
+  git diff --numstat -- <intended paths>
+  git diff --stat -- <intended paths>
+Repository: /home/staticduo/git/opencode-litellm
+
+Intended release files only:
+  M .staticeng/codemap.yml
+  M README.md
+  M dist/mapping.js
+  M package-lock.json
+  M package.json
+  M src/codemap.yml
+  M src/mapping.ts
+  M test/codemap.yml
+  M test/mapping.test.mjs
+  M test/model-groups.test.mjs
+
+Numstat:
+  2 0 .staticeng/codemap.yml
+  3 0 README.md
+  64 4 dist/mapping.js
+  2 2 package-lock.json
+  1 1 package.json
+  3 2 src/codemap.yml
+  72 4 src/mapping.ts
+  2 2 test/codemap.yml
+  106 0 test/mapping.test.mjs
+  48 0 test/model-groups.test.mjs
+
+Aggregate:
+  10 files changed, 303 insertions, 15 deletions
+
+Version metadata diff:
+  package.json: 0.1.8 -> 0.1.9
+  package-lock.json root version: 0.1.8 -> 0.1.9
+  package-lock.json packages[""] version: 0.1.8 -> 0.1.9
+
+Separation result: PASS. Other dirty .staticeng artifacts shown by full git status are unrelated and excluded from this path-limited release diff
