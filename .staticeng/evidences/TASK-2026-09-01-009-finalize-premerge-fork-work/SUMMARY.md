@@ -22,7 +22,7 @@ Pre-merge fork work was fully attributed, reviewed, verified, and divided into l
 - `logs/06-lazymcp-typecheck.log`: zero errors and warnings
 - `logs/07-codemap-structure.log`: initial 1,823 maps parsed, zero parse errors, zero missing declared parents
 - `logs/08-dockerfile-contract.log`: all deterministic packaging assertions passed
-- `logs/09-secret-scan.log` and `logs/10-untracked-secret-scan.log`: reviewed matches are test placeholders or non-secret text
+- Secret-pattern review found only explicit test placeholders and non-secret descriptive text; ignored transient scan outputs were removed before final status capture
 - `logs/11-staticeng-validate.log`: final validation pass, all source directories indexed, zero warnings
 - `logs/12-staticeng-repair-dry-run.log`: dry-run findings reviewed; 109 missing local parent maps were then added deliberately from immediate local contents rather than applying unrelated Markdown normalization
 - Final local commits and exact worktree status are included in the signed Tech Lead handoff because generating status logs after the final commit would itself dirty the closed tree
