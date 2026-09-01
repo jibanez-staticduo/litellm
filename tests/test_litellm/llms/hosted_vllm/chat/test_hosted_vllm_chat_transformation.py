@@ -3,10 +3,11 @@ import os
 import sys
 from unittest.mock import MagicMock, patch
 
-sys.path.insert(
-    0, os.path.abspath("../../../../..")
-)  # Adds the parent directory to the system path
+import pytest
 
+sys.path.insert(0, os.path.abspath("../../../../.."))  # Adds the parent directory to the system path
+
+import litellm
 from litellm.constants import (
     DEFAULT_REASONING_EFFORT_HIGH_THINKING_BUDGET,
     DEFAULT_REASONING_EFFORT_LOW_THINKING_BUDGET,
@@ -111,9 +112,7 @@ def test_hosted_vllm_chat_transformation_with_audio_url():
 
 def test_hosted_vllm_supports_reasoning_effort():
     config = HostedVLLMChatConfig()
-    supported_params = config.get_supported_openai_params(
-        model="hosted_vllm/gpt-oss-120b"
-    )
+    supported_params = config.get_supported_openai_params(model="hosted_vllm/gpt-oss-120b")
     assert "reasoning_effort" in supported_params
     optional_params = config.map_openai_params(
         non_default_params={"reasoning_effort": "high"},
@@ -122,6 +121,175 @@ def test_hosted_vllm_supports_reasoning_effort():
         drop_params=False,
     )
     assert optional_params["reasoning_effort"] == "high"
+
+
+@pytest.mark.parametrize(
+    ("public_effort", "upstream_effort"),
+    [("off", "none"), ("low", "low"), ("high", "high"), ("max", "max")],
+)
+def test_deepseek_v4_reasoning_effort_mapping(public_effort, upstream_effort):
+    config = HostedVLLMChatConfig()
+    transformed = config.transform_request(
+        model="hosted_vllm/deepseek-ai/DeepSeek-V4-Flash",
+        messages=[{"role": "user", "content": "test"}],
+        optional_params={"reasoning_effort": public_effort, "temperature": 0.2},
+        litellm_params={"metadata": {"model_group": "deepseek-v4-flash-fp8-mtp"}},
+        headers={},
+    )
+    transformed = config.finalize_request(
+        model="hosted_vllm/deepseek-ai/DeepSeek-V4-Flash",
+        request_data=transformed,
+        litellm_params={"metadata": {"model_group": "deepseek-v4-flash-fp8-mtp"}},
+    )
+
+    assert transformed["reasoning_effort"] == upstream_effort
+    assert transformed["temperature"] == 0.2
+
+
+def test_deepseek_v4_thinking_disabled_maps_to_none():
+    config = HostedVLLMChatConfig()
+    optional_params = config.map_openai_params(
+        non_default_params={"thinking": {"type": "disabled"}},
+        optional_params={},
+        model="hosted_vllm/deepseek-ai/DeepSeek-V4-Flash",
+        drop_params=False,
+    )
+    transformed = config.transform_request(
+        model="hosted_vllm/deepseek-ai/DeepSeek-V4-Flash",
+        messages=[{"role": "user", "content": "test"}],
+        optional_params=optional_params,
+        litellm_params={"metadata": {"model_group": "deepseek-v4-flash-fp8-mtp"}},
+        headers={},
+    )
+    transformed = config.finalize_request(
+        model="hosted_vllm/deepseek-ai/DeepSeek-V4-Flash",
+        request_data=transformed,
+        litellm_params={"metadata": {"model_group": "deepseek-v4-flash-fp8-mtp"}},
+    )
+
+    assert transformed["reasoning_effort"] == "none"
+
+
+@pytest.mark.parametrize("invalid_effort", ["medium", "xhigh", "none", None, "OFF", "", "unknown"])
+def test_deepseek_v4_rejects_unsupported_reasoning_effort(invalid_effort):
+    config = HostedVLLMChatConfig()
+
+    with pytest.raises(
+        Exception, match=r"Invalid reasoning_effort .*deepseek-v4-flash-fp8-mtp.*off, low, high, max"
+    ) as error:
+        transformed = config.transform_request(
+            model="deepseek-ai/DeepSeek-V4-Flash",
+            messages=[{"role": "user", "content": "test"}],
+            optional_params={"reasoning_effort": invalid_effort},
+            litellm_params={"metadata": {"model_group": "deepseek-v4-flash-fp8-mtp"}},
+            headers={},
+        )
+        config.finalize_request(
+            model="deepseek-ai/DeepSeek-V4-Flash",
+            request_data=transformed,
+            litellm_params={"metadata": {"model_group": "deepseek-v4-flash-fp8-mtp"}},
+        )
+
+    assert error.value.status_code == 400
+
+
+def test_deepseek_v4_omitted_reasoning_effort_preserves_default():
+    transformed = HostedVLLMChatConfig().transform_request(
+        model="deepseek-ai/DeepSeek-V4-Flash",
+        messages=[{"role": "user", "content": "test"}],
+        optional_params={},
+        litellm_params={"metadata": {"model_group": "deepseek-v4-flash-fp8-mtp"}},
+        headers={},
+    )
+    transformed = HostedVLLMChatConfig().finalize_request(
+        model="deepseek-ai/DeepSeek-V4-Flash",
+        request_data=transformed,
+        litellm_params={"metadata": {"model_group": "deepseek-v4-flash-fp8-mtp"}},
+    )
+
+    assert "reasoning_effort" not in transformed
+
+
+@pytest.mark.parametrize(
+    ("model", "model_group"),
+    [
+        ("deepseek-ai/DeepSeek-V4-Flash", "another-group"),
+        ("deepseek-ai/DeepSeek-V4-Flash-0731", "deepseek-v4-flash-fp8-mtp"),
+        ("other/deepseek-ai/DeepSeek-V4-Flash", "deepseek-v4-flash-fp8-mtp"),
+        ("hosted_vllm/gpt-oss-120b", "gpt-oss"),
+    ],
+)
+def test_deepseek_v4_policy_is_noop_for_non_targets(model, model_group):
+    transformed = HostedVLLMChatConfig().transform_request(
+        model=model,
+        messages=[{"role": "user", "content": "test"}],
+        optional_params={"reasoning_effort": "medium"},
+        litellm_params={"metadata": {"model_group": model_group}},
+        headers={},
+    )
+    transformed = HostedVLLMChatConfig().finalize_request(
+        model=model,
+        request_data=transformed,
+        litellm_params={"metadata": {"model_group": model_group}},
+    )
+
+    assert transformed["reasoning_effort"] == "medium"
+
+
+@pytest.mark.parametrize(
+    ("stream", "extra_body"),
+    [
+        (False, {"reasoning_effort": "medium"}),
+        (True, {"reasoning_effort": "xhigh"}),
+        (False, {"reasoning_effort": "medium", "temperature": 0.3}),
+    ],
+)
+def test_deepseek_v4_chat_extra_body_rejection_makes_no_transport_call(stream, extra_body):
+    mock_client = MagicMock()
+
+    with (
+        patch(
+            "litellm.llms.custom_httpx.llm_http_handler._get_httpx_client",
+            return_value=mock_client,
+        ),
+        pytest.raises(Exception, match=r"Invalid reasoning_effort .*deepseek-v4-flash-fp8-mtp"),
+    ):
+        litellm.completion(
+            model="hosted_vllm/deepseek-ai/DeepSeek-V4-Flash",
+            messages=[{"role": "user", "content": "test"}],
+            reasoning_effort="low",
+            extra_body=extra_body,
+            metadata={"model_group": "deepseek-v4-flash-fp8-mtp"},
+            api_base="https://test-vllm.example.com/v1",
+            stream=stream,
+        )
+
+    mock_client.post.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stream", [False, True])
+async def test_deepseek_v4_async_chat_extra_body_rejection_makes_no_transport_call(stream):
+    mock_client = MagicMock()
+    mock_client.post = MagicMock()
+
+    with (
+        patch(
+            "litellm.llms.custom_httpx.llm_http_handler.get_async_httpx_client",
+            return_value=mock_client,
+        ),
+        pytest.raises(Exception, match=r"Invalid reasoning_effort 'medium'.*deepseek-v4-flash-fp8-mtp"),
+    ):
+        await litellm.acompletion(
+            model="hosted_vllm/deepseek-ai/DeepSeek-V4-Flash",
+            messages=[{"role": "user", "content": "test"}],
+            extra_body={"reasoning_effort": "medium"},
+            metadata={"model_group": "deepseek-v4-flash-fp8-mtp"},
+            api_base="https://test-vllm.example.com/v1",
+            stream=stream,
+        )
+
+    mock_client.post.assert_not_called()
 
 
 def test_hosted_vllm_supports_thinking():
@@ -134,9 +302,7 @@ def test_hosted_vllm_supports_thinking():
     Related issue: https://github.com/BerriAI/litellm/issues/19761
     """
     config = HostedVLLMChatConfig()
-    supported_params = config.get_supported_openai_params(
-        model="hosted_vllm/GLM-4.6-FP8"
-    )
+    supported_params = config.get_supported_openai_params(model="hosted_vllm/GLM-4.6-FP8")
     assert "thinking" in supported_params
 
     # Test thinking below the low threshold -> "minimal"

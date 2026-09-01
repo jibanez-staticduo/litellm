@@ -82,6 +82,15 @@ class BaseResponsesAPIConfig(ABC):
         """
         return headers, None
 
+    def finalize_request(
+        self,
+        *,
+        model: str,
+        request_data: dict,
+        litellm_params: object,
+    ) -> dict:
+        return request_data
+
     @abstractmethod
     def get_supported_openai_params(self, model: str) -> list:
         pass

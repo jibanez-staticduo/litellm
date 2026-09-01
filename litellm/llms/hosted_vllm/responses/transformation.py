@@ -13,6 +13,8 @@ from litellm.secret_managers.main import get_secret_str
 from litellm.types.router import GenericLiteLLMParams
 from litellm.types.utils import LlmProviders
 
+from ..reasoning_policy import get_model_group, normalize_deepseek_v4_responses_reasoning
+
 
 class HostedVLLMResponsesAPIConfig(OpenAIResponsesAPIConfig):
     """
@@ -44,6 +46,19 @@ class HostedVLLMResponsesAPIConfig(OpenAIResponsesAPIConfig):
             }
         )
         return headers
+
+    def finalize_request(
+        self,
+        *,
+        model: str,
+        request_data: dict,
+        litellm_params: object,
+    ) -> dict:
+        return normalize_deepseek_v4_responses_reasoning(
+            model=model,
+            model_group=get_model_group(litellm_params),
+            request_data=request_data,
+        )
 
     def get_complete_url(
         self,

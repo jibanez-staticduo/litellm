@@ -493,6 +493,12 @@ class BaseLLMHTTPHandler:
         if extra_body is not None:
             data = {**data, **extra_body}
 
+        data = provider_config.finalize_request(
+            model=model,
+            request_data=data,
+            litellm_params=litellm_params,
+        )
+
         headers, signed_json_body = provider_config.sign_request(
             headers=headers,
             optional_params=optional_params,
@@ -2544,6 +2550,11 @@ class BaseLLMHTTPHandler:
 
         if extra_body:
             data.update(extra_body)
+        data = responses_api_provider_config.finalize_request(
+            model=model,
+            request_data=data,
+            litellm_params=litellm_params,
+        )
         if custom_llm_provider == "chatgpt" and provider_requires_native_stream:
             data["stream"] = True
         stream = bool(stream or data.get("stream"))
@@ -2727,6 +2738,11 @@ class BaseLLMHTTPHandler:
 
         if extra_body:
             data.update(extra_body)
+        data = responses_api_provider_config.finalize_request(
+            model=model,
+            request_data=data,
+            litellm_params=litellm_params,
+        )
         if custom_llm_provider == "chatgpt" and provider_requires_native_stream:
             data["stream"] = True
         stream = bool(stream or data.get("stream"))

@@ -14,11 +14,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-sys.path.insert(
-    0, os.path.abspath("../../../../..")
-)  # Adds the parent directory to the system path
+sys.path.insert(0, os.path.abspath("../../../../.."))  # Adds the parent directory to the system path
 
 import litellm
+from litellm.llms.hosted_vllm.chat.transformation import HostedVLLMChatConfig
 from litellm.llms.hosted_vllm.responses.transformation import (
     HostedVLLMResponsesAPIConfig,
 )
@@ -73,9 +72,7 @@ def test_hosted_vllm_responses_create_with_string_input():
     Test that hosted_vllm routes directly to the native /v1/responses endpoint
     when the Responses API config is registered, and correctly parses the response.
     """
-    mock_client = _make_mock_http_client(
-        _make_mock_responses_api_response("I'm doing well, thanks!")
-    )
+    mock_client = _make_mock_http_client(_make_mock_responses_api_response("I'm doing well, thanks!"))
 
     with patch(
         "litellm.llms.custom_httpx.llm_http_handler._get_httpx_client",
@@ -114,10 +111,7 @@ def test_hosted_vllm_responses_create_with_explicit_none_extra_body():
     )
 
     # extra_body=None should be normalized to an empty dict (or absent)
-    assert (
-        optional_params.get("extra_body") is not None
-        or "extra_body" not in optional_params
-    )
+    assert optional_params.get("extra_body") is not None or "extra_body" not in optional_params
 
 
 def test_hosted_vllm_provider_config_registration():
@@ -193,3 +187,248 @@ def test_hosted_vllm_validate_environment_custom_api_key():
     )
 
     assert headers.get("Authorization") == "Bearer my-custom-key"
+
+
+@pytest.mark.parametrize(
+    ("public_effort", "upstream_effort"),
+    [("off", "none"), ("low", "low"), ("high", "high"), ("max", "max")],
+)
+def test_deepseek_v4_native_responses_reasoning_policy(public_effort, upstream_effort):
+    config = HostedVLLMResponsesAPIConfig()
+    litellm_params = GenericLiteLLMParams(litellm_metadata={"model_group": "deepseek-v4-flash-fp8-mtp"})
+    transformed = config.transform_responses_api_request(
+        model="deepseek-ai/DeepSeek-V4-Flash",
+        input="test",
+        response_api_optional_request_params={"reasoning": {"effort": public_effort}},
+        litellm_params=litellm_params,
+        headers={},
+    )
+    transformed = config.finalize_request(
+        model="deepseek-ai/DeepSeek-V4-Flash",
+        request_data=transformed,
+        litellm_params=litellm_params,
+    )
+
+    assert transformed["reasoning"] == {"effort": upstream_effort}
+
+
+def test_deepseek_v4_native_responses_rejects_before_transport():
+    mock_client = _make_mock_http_client(_make_mock_responses_api_response())
+
+    with (
+        patch(
+            "litellm.llms.custom_httpx.llm_http_handler._get_httpx_client",
+            return_value=mock_client,
+        ),
+        pytest.raises(Exception, match=r"Invalid reasoning_effort 'medium'.*deepseek-v4-flash-fp8-mtp"),
+    ):
+        litellm.responses(
+            model="hosted_vllm/deepseek-ai/DeepSeek-V4-Flash",
+            input="test",
+            reasoning={"effort": "medium"},
+            litellm_metadata={"model_group": "deepseek-v4-flash-fp8-mtp"},
+            api_base="https://test-vllm.example.com/v1",
+        )
+
+    mock_client.post.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("stream", "reasoning", "extra_body"),
+    [
+        (False, None, {"reasoning": {"effort": "medium"}}),
+        (True, {"effort": "low"}, {"reasoning": {"effort": "xhigh"}}),
+        (False, {"effort": "high"}, {"reasoning": {"effort": None}}),
+    ],
+)
+def test_deepseek_v4_responses_extra_body_rejection_makes_no_transport_call(stream, reasoning, extra_body):
+    mock_client = _make_mock_http_client(_make_mock_responses_api_response())
+
+    with (
+        patch(
+            "litellm.llms.custom_httpx.llm_http_handler._get_httpx_client",
+            return_value=mock_client,
+        ),
+        pytest.raises(Exception, match=r"Invalid reasoning_effort .*deepseek-v4-flash-fp8-mtp"),
+    ):
+        litellm.responses(
+            model="hosted_vllm/deepseek-ai/DeepSeek-V4-Flash",
+            input="test",
+            reasoning=reasoning,
+            extra_body=extra_body,
+            litellm_metadata={"model_group": "deepseek-v4-flash-fp8-mtp"},
+            api_base="https://test-vllm.example.com/v1",
+            stream=stream,
+        )
+
+    mock_client.post.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stream", [False, True])
+async def test_deepseek_v4_async_responses_extra_body_rejection_makes_no_transport_call(stream):
+    mock_client = MagicMock()
+    mock_client.post = MagicMock()
+
+    with (
+        patch(
+            "litellm.llms.custom_httpx.llm_http_handler.get_async_httpx_client",
+            return_value=mock_client,
+        ),
+        pytest.raises(Exception, match=r"Invalid reasoning_effort 'medium'.*deepseek-v4-flash-fp8-mtp"),
+    ):
+        await litellm.aresponses(
+            model="hosted_vllm/deepseek-ai/DeepSeek-V4-Flash",
+            input="test",
+            extra_body={"reasoning": {"effort": "medium"}},
+            litellm_metadata={"model_group": "deepseek-v4-flash-fp8-mtp"},
+            api_base="https://test-vllm.example.com/v1",
+            stream=stream,
+        )
+
+    mock_client.post.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("stream", "extra_body", "error_pattern"),
+    [
+        (False, {"reasoning_effort": "medium"}, r"Invalid reasoning_effort 'medium'"),
+        (
+            True,
+            {"reasoning": {"effort": "low"}, "reasoning_effort": "medium"},
+            r"Conflicting reasoning values.*reasoning.effort='low'.*reasoning_effort='medium'",
+        ),
+        (
+            False,
+            {"reasoning": {"effort": "medium"}, "reasoning_effort": "low"},
+            r"Conflicting reasoning values.*reasoning.effort='medium'.*reasoning_effort='low'",
+        ),
+    ],
+)
+def test_deepseek_v4_responses_compatibility_rejection_makes_no_transport_call(stream, extra_body, error_pattern):
+    mock_client = _make_mock_http_client(_make_mock_responses_api_response())
+
+    with (
+        patch(
+            "litellm.llms.custom_httpx.llm_http_handler._get_httpx_client",
+            return_value=mock_client,
+        ),
+        pytest.raises(Exception, match=error_pattern),
+    ):
+        litellm.responses(
+            model="hosted_vllm/deepseek-ai/DeepSeek-V4-Flash",
+            input="test",
+            extra_body=extra_body,
+            litellm_metadata={"model_group": "deepseek-v4-flash-fp8-mtp"},
+            api_base="https://test-vllm.example.com/v1",
+            stream=stream,
+        )
+
+    mock_client.post.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stream", [False, True])
+async def test_deepseek_v4_async_responses_compatibility_conflict_makes_no_transport_call(stream):
+    mock_client = MagicMock()
+    mock_client.post = MagicMock()
+
+    with (
+        patch(
+            "litellm.llms.custom_httpx.llm_http_handler.get_async_httpx_client",
+            return_value=mock_client,
+        ),
+        pytest.raises(
+            Exception, match=r"Conflicting reasoning values.*reasoning.effort='high'.*reasoning_effort='xhigh'"
+        ),
+    ):
+        await litellm.aresponses(
+            model="hosted_vllm/deepseek-ai/DeepSeek-V4-Flash",
+            input="test",
+            extra_body={"reasoning": {"effort": "high"}, "reasoning_effort": "xhigh"},
+            litellm_metadata={"model_group": "deepseek-v4-flash-fp8-mtp"},
+            api_base="https://test-vllm.example.com/v1",
+            stream=stream,
+        )
+
+    mock_client.post.assert_not_called()
+
+
+def test_deepseek_v4_responses_equal_dual_reasoning_is_canonicalized():
+    mock_client = _make_mock_http_client(_make_mock_responses_api_response())
+
+    with patch(
+        "litellm.llms.custom_httpx.llm_http_handler._get_httpx_client",
+        return_value=mock_client,
+    ):
+        litellm.responses(
+            model="hosted_vllm/deepseek-ai/DeepSeek-V4-Flash",
+            input="test",
+            extra_body={"reasoning": {"effort": "off"}, "reasoning_effort": "off"},
+            litellm_metadata={"model_group": "deepseek-v4-flash-fp8-mtp"},
+            api_base="https://test-vllm.example.com/v1",
+        )
+
+    sent_data = mock_client.post.call_args.kwargs["json"]
+    assert sent_data["reasoning"] == {"effort": "none"}
+    assert "reasoning_effort" not in sent_data
+
+
+def test_unrelated_hosted_vllm_extra_body_behavior_is_unchanged():
+    mock_client = _make_mock_http_client(_make_mock_responses_api_response())
+
+    with patch(
+        "litellm.llms.custom_httpx.llm_http_handler._get_httpx_client",
+        return_value=mock_client,
+    ):
+        litellm.responses(
+            model="hosted_vllm/Qwen/Qwen3-8B",
+            input="test",
+            extra_body={"reasoning": {"effort": "medium"}, "reasoning_effort": "xhigh"},
+            litellm_metadata={"model_group": "qwen"},
+            api_base="https://test-vllm.example.com/v1",
+        )
+
+    sent_data = mock_client.post.call_args.kwargs["json"]
+    assert sent_data["reasoning"] == {"effort": "medium"}
+    assert sent_data["reasoning_effort"] == "xhigh"
+
+
+@pytest.mark.parametrize("stream", [False, True])
+def test_deepseek_v4_responses_chat_bridge_reasoning_policy(stream):
+    from litellm.responses.litellm_completion_transformation.transformation import (
+        LiteLLMCompletionResponsesConfig,
+    )
+
+    bridge_request = LiteLLMCompletionResponsesConfig.transform_responses_api_request_to_chat_completion_request(
+        model="deepseek-ai/DeepSeek-V4-Flash",
+        input="test",
+        responses_api_request={"reasoning": {"effort": "off"}},
+        custom_llm_provider="hosted_vllm",
+        stream=stream,
+        metadata={"model_group": "deepseek-v4-flash-fp8-mtp"},
+    )
+    optional_params = HostedVLLMChatConfig().map_openai_params(
+        non_default_params={
+            "reasoning_effort": bridge_request["reasoning_effort"],
+            "stream": bridge_request["stream"],
+        },
+        optional_params={},
+        model=bridge_request["model"],
+        drop_params=False,
+    )
+    transformed = HostedVLLMChatConfig().transform_request(
+        model=bridge_request["model"],
+        messages=bridge_request["messages"],
+        optional_params=optional_params,
+        litellm_params={"metadata": bridge_request["metadata"]},
+        headers={},
+    )
+    transformed = HostedVLLMChatConfig().finalize_request(
+        model=bridge_request["model"],
+        request_data=transformed,
+        litellm_params={"metadata": bridge_request["metadata"]},
+    )
+
+    assert transformed["reasoning_effort"] == "none"
+    assert transformed.get("stream", False) is stream

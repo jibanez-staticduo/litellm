@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: test_hosted_vllm_chat_transformation.py
+  - path: test_hosted_vllm_ssl_verify.py

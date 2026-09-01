@@ -25,6 +25,9 @@ from litellm.types.llms.openai import (
 
 from ....utils import _remove_additional_properties, _remove_strict_from_schema
 from ...openai.chat.gpt_transformation import OpenAIGPTConfig
+from ..reasoning_policy import get_model_group, normalize_deepseek_v4_reasoning_effort
+
+_THINKING_DISABLED_MARKER: Final = "_hosted_vllm_thinking_disabled"
 
 
 class HostedVLLMChatConfig(OpenAIGPTConfig):
@@ -99,6 +102,7 @@ class HostedVLLMChatConfig(OpenAIGPTConfig):
             non_default_params["tools"] = _tools
 
         thinking: Final = non_default_params.pop("thinking", None)
+        thinking_disabled: Final = isinstance(thinking, dict) and thinking.get("type") == "disabled"
         if thinking is not None and isinstance(thinking, dict):
             if thinking.get("type") == "enabled":
                 if "reasoning_effort" not in non_default_params:
@@ -106,7 +110,40 @@ class HostedVLLMChatConfig(OpenAIGPTConfig):
                         thinking.get("budget_tokens", 0)
                     )
 
-        return super().map_openai_params(non_default_params, optional_params, model, drop_params)
+        mapped_params: Final = super().map_openai_params(non_default_params, optional_params, model, drop_params)
+        if thinking_disabled:
+            mapped_params[_THINKING_DISABLED_MARKER] = True
+        return mapped_params
+
+    def transform_request(
+        self,
+        model: str,
+        messages: list[AllMessageValues],
+        optional_params: dict,
+        litellm_params: dict,
+        headers: dict,
+    ) -> dict:
+        thinking_disabled: Final = optional_params.pop(_THINKING_DISABLED_MARKER, False) is True
+        request_optional_params: Final = (
+            {**optional_params, "reasoning_effort": "off"} if thinking_disabled else optional_params
+        )
+        return super().transform_request(model, messages, request_optional_params, litellm_params, headers)
+
+    def finalize_request(
+        self,
+        *,
+        model: str,
+        request_data: dict,
+        litellm_params: object,
+    ) -> dict:
+        supplied: Final = "reasoning_effort" in request_data
+        normalized_effort: Final = normalize_deepseek_v4_reasoning_effort(
+            model=model,
+            model_group=get_model_group(litellm_params),
+            reasoning_effort=request_data.get("reasoning_effort"),
+            supplied=supplied,
+        )
+        return {**request_data, "reasoning_effort": normalized_effort} if supplied else request_data
 
     def _get_openai_compatible_provider_info(
         self, api_base: str | None, api_key: str | None

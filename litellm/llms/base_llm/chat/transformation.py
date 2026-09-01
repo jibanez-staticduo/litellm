@@ -274,6 +274,15 @@ class BaseConfig(ABC):
         """
         return headers, None
 
+    def finalize_request(
+        self,
+        *,
+        model: str,
+        request_data: dict,
+        litellm_params: object,
+    ) -> dict:
+        return request_data
+
     def get_complete_url(
         self,
         api_base: str | None,
