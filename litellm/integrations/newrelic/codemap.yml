@@ -3,3 +3,5 @@ parent: ../../../.staticeng/codemap.yml
 internals:
   - path: __init__.py
   - path: newrelic.py
+  - path: newrelic_team_handler.py
+  - path: newrelic_metrics.py

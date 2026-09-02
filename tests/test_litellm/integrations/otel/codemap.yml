@@ -14,3 +14,4 @@ internals:
   - path: test_runtime.py
   - path: test_otel_v2_sources_of_truth.py
   - path: test_otel_v2_config_baggage_parenting_guardrails.py
+  - path: test_db_endpoint.py

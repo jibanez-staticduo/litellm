@@ -3,3 +3,4 @@ parent: ../../../../.staticeng/codemap.yml
 internals:
   - path: lib.rs
   - path: gil.rs
+  - path: marshal.rs

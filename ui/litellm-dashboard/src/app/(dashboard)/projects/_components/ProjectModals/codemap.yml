@@ -9,3 +9,6 @@ internals:
   - path: CreateProjectModal.test.tsx
   - path: EditProjectModal.test.tsx
   - path: ProjectBaseForm.tsx
+  - path: projectFormSchema.ts
+  - path: EditProjectModal.integration.test.tsx
+  - path: CreateProjectModal.integration.test.tsx

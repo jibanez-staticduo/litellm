@@ -19,3 +19,7 @@ internals:
   - path: prisma_client.py
   - path: check_migration.py
   - path: query_engine_reaper.py
+  - path: budget_window_spend_writer.py
+  - path: proxy_worker_heartbeat.py
+  - path: shadow_eval_funnel.py
+  - path: token_auth.py

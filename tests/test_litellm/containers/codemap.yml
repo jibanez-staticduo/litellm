@@ -10,3 +10,4 @@ internals:
   - path: test_container_utils.py
   - path: test_container_proxy_ownership.py
   - path: test_azure_container_transformation.py
+  - path: test_endpoint_factory.py

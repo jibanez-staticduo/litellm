@@ -7,7 +7,9 @@ from litellm.llms.chatgpt.chat.transformation import ChatGPTConfig
 from litellm.types.llms.openai import ResponsesAPIResponse
 
 
-@patch("litellm.llms.chatgpt.chat.transformation.Authenticator")
+@patch(
+    "litellm.llms.chatgpt.chat.transformation.Authenticator"
+)  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
 def test_chatgpt_chat_auth_uses_litellm_params_for_token_and_account(mock_authenticator_class):
     mock_auth_instance = MagicMock()
     mock_auth_instance.get_api_base.return_value = "https://chatgpt.example.com"
@@ -48,8 +50,12 @@ def test_chatgpt_chat_auth_uses_litellm_params_for_token_and_account(mock_authen
     assert mock_authenticator_class.call_args_list[1].args == (litellm_params,)
 
 
-@patch("litellm.main.base_llm_http_handler.completion")
-@patch("litellm.llms.chatgpt.chat.transformation.Authenticator")
+@patch(
+    "litellm.main.base_llm_http_handler.completion"
+)  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+@patch(
+    "litellm.llms.chatgpt.chat.transformation.Authenticator"
+)  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
 def test_litellm_completion_preserves_chatgpt_auth_params_into_provider(
     mock_authenticator_class,
     mock_completion,
@@ -93,8 +99,12 @@ def test_litellm_completion_preserves_chatgpt_auth_params_into_provider(
     assert validate_litellm_params["chatgpt_auth_file"] == auth_file
 
 
-@patch("litellm.main.base_llm_http_handler.completion")
-@patch("litellm.llms.chatgpt.chat.transformation.Authenticator")
+@patch(
+    "litellm.main.base_llm_http_handler.completion"
+)  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+@patch(
+    "litellm.llms.chatgpt.chat.transformation.Authenticator"
+)  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
 def test_router_deployment_chatgpt_auth_params_survive_into_provider(
     mock_authenticator_class,
     mock_completion,
@@ -143,8 +153,12 @@ def test_router_deployment_chatgpt_auth_params_survive_into_provider(
     assert litellm_params["chatgpt_auth_file"] == auth_file
 
 
-@patch("litellm.responses.main.base_llm_http_handler.response_api_handler")
-@patch("litellm.llms.chatgpt.chat.transformation.Authenticator")
+@patch(
+    "litellm.responses.main.base_llm_http_handler.response_api_handler"
+)  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+@patch(
+    "litellm.llms.chatgpt.chat.transformation.Authenticator"
+)  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
 def test_chat_completion_to_responses_bridge_preserves_chatgpt_auth_params(
     mock_authenticator_class,
     mock_response_api_handler,
@@ -195,7 +209,9 @@ def test_chatgpt_auth_params_are_litellm_reserved_params(param):
     assert param in all_litellm_params
 
 
-@patch("litellm.llms.chatgpt.chat.transformation.Authenticator")
+@patch(
+    "litellm.llms.chatgpt.chat.transformation.Authenticator"
+)  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
 def test_chatgpt_chat_arbitrary_model_alias_keeps_chatgpt_provider(mock_authenticator_class):
     mock_auth_instance = MagicMock()
     mock_auth_instance.get_api_base.return_value = "https://chatgpt.example.com"

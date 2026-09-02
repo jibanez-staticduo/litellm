@@ -1,6 +1,4 @@
 scope: module
 parent: ../../../../.staticeng/codemap.yml
 modules:
-  - path: agent_engine/
   - path: gemini/
-  - path: text_to_speech/

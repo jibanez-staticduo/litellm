@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: test_common.py
+  - path: test_list_framework.py
+  - path: test_in_memory.py

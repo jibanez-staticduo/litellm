@@ -11,3 +11,4 @@ internals:
   - path: test_add_retry_fallback_headers.py
   - path: test_router_utils_common_utils.py
   - path: test_health_state_cache.py
+  - path: test_reasoning_effort_capability.py

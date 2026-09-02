@@ -3,3 +3,4 @@ parent: ../../../../../.staticeng/codemap.yml
 internals:
   - path: alerting_settings.tsx
   - path: dynamic_form.tsx
+  - path: dynamic_form.integration.test.tsx

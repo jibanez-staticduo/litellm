@@ -2,6 +2,8 @@
 
 | Date | Task ID | SCR ID | Commit | Summary |
 | :--- | :--- | :--- | :--- | :--- |
+| 2026-09-02 | TASK-2026-09-01-013-review-upstream-integration | SCR-2026-09-01-001-upstream-main-integration | pending-commit | Independently reviewed three repair cycles and approved the exact upstream integration after preservation, source, Rust, UI, migration, security, static, and cold-start discovery gates passed. |
+| 2026-09-02 | TASK-2026-09-01-010-integrate-upstream-main | SCR-2026-09-01-001-upstream-main-integration | pending-commit | Integrated frozen upstream main while preserving fork behavior, closing all conflict, source, dependency, migration, LazyMCP discovery, and documentation gates without push or deployment. |
 | 2026-09-01 | TASK-2026-09-01-009-finalize-premerge-fork-work | SCR-2026-09-01-001-upstream-main-integration | pending-commit | Attributed, verified, and logically committed all intended pre-merge fork work without pushing or integrating upstream. |
 | 2026-08-31 | TASK-2026-08-31-018-close-lazymcp-oauth-workflow | SCR-2026-08-31-001-lazymcp-oauth-discovery | pending-commit | Closed and archived the LazyMCP OAuth workflow for source/candidate scope only while retaining all promotion, deployment, environment, and architecture boundaries. |
 | 2026-08-31 | TASK-2026-08-31-017-final-review-lazymcp-oauth | SCR-2026-08-31-001-lazymcp-oauth-discovery | pending-commit | Approved source/candidate closure with one environment-blocked real-tool verification and all promotion gates retained. |

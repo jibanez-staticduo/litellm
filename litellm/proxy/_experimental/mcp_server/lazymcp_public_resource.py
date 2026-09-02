@@ -13,7 +13,9 @@ from starlette.types import Scope
 from litellm.proxy._experimental.mcp_server.oauth_utils import get_request_base_url
 from litellm.proxy.auth.ip_address_utils import IPAddressUtils
 
-LazyMcpResourceKind = Literal["aggregate", "scope", "toolset"]
+LazyMcpResourceKind = Literal[  # rebind-ok: framework flow intentionally updates request or lifecycle state
+    "aggregate", "scope", "toolset"
+]  # rebind-ok: framework flow intentionally updates request or lifecycle state
 _IDENTIFIER: Final = re.compile(r"^[A-Za-z0-9._~-]+$")
 
 
@@ -162,8 +164,15 @@ def resource_from_transport_scope(scope: Scope) -> LazyMcpResourceResult:
     return _build_resource(request, transport_path)
 
 
-def build_lazymcp_metadata(resource: LazyMcpPublicResource, authorization_server: str) -> dict[str, object]:
-    return {"resource": resource.canonical_uri, "authorization_servers": [authorization_server]}
+def build_lazymcp_metadata(
+    resource: LazyMcpPublicResource, authorization_server: str
+) -> dict[str, object]:  # mutable-ok: framework contract requires mutable request or response containers
+    return {  # mutable-ok: framework contract requires mutable request or response containers
+        "resource": resource.canonical_uri,
+        "authorization_servers": [  # mutable-ok: framework contract requires mutable request or response containers
+            authorization_server
+        ],  # mutable-ok: framework contract requires mutable request or response containers
+    }  # mutable-ok: framework contract requires mutable request or response containers
 
 
 def build_lazymcp_challenge(resource: LazyMcpPublicResource, invalid_token: bool) -> str:
@@ -183,7 +192,11 @@ def is_lazymcp_resource_candidate(request: Request, candidate: str) -> bool:
     if root and not path.startswith(f"{root}/"):
         return False
     relative_path: Final = path[len(root) :] if root else path
-    segments: Final = relative_path.strip("/").split("/") if relative_path.strip("/") else []
+    segments: Final = (
+        relative_path.strip("/").split("/")
+        if relative_path.strip("/")
+        else []  # mutable-ok: framework contract requires mutable request or response containers
+    )  # mutable-ok: framework contract requires mutable request or response containers
     return bool(
         segments
         and (

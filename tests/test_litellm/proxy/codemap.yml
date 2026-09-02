@@ -64,3 +64,10 @@ internals:
   - path: test_proxy_utils.py
   - path: test_max_budget_env_var.py
   - path: test_budget_reservation.py
+  - path: test_openai_ws_passthrough_routes.py
+  - path: test_prisma_migration.py
+  - path: test_claude_code_marketplace.py
+  - path: test__types.py
+  - path: test_init_litellm_callbacks.py
+  - path: test_model_deprecations_endpoint.py
+  - path: test_prisma_engine_watchdog.py

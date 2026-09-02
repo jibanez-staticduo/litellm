@@ -8,3 +8,4 @@ internals:
   - path: test_reliability_cache_e2e.py
   - path: conftest.py
   - path: test_reliability_fallbacks_e2e.py
+  - path: test_auto_router_regressions_e2e.py

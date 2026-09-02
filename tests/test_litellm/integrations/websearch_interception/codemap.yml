@@ -9,3 +9,4 @@ internals:
   - path: test_websearch_interception_handler.py
   - path: test_websearch_responses.py
   - path: test_websearch_interception_thinking.py
+  - path: test_websearch_agentic_loop_cap.py

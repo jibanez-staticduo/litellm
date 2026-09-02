@@ -2,3 +2,5 @@ scope: module
 parent: ../../../../.staticeng/codemap.yml
 internals:
   - path: test_newrelic.py
+  - path: test_newrelic_metrics.py
+  - path: test_newrelic_team_handler.py

@@ -14,3 +14,11 @@ internals:
   - path: CLAUDE.md
   - path: CONTRIBUTING.md
   - path: e2e_http.py
+  - path: provider_edge.py
+  - path: test_fixture_bundle.py
+  - path: test_fixture_canonical.py
+  - path: fixture_bundle.py
+  - path: fixture_canonical.py
+  - path: test_provider_edge.py
+  - path: test_fixture_mode.py
+  - path: fixture_mode.py

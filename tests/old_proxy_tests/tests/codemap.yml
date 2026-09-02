@@ -1,31 +1,3 @@
 scope: module
 parent: ../../../.staticeng/codemap.yml
-internals:
-  - path: test_langchain_request.py
-  - path: test_async.py
-  - path: load_test_embedding.py
-  - path: test_mistral_sdk.py
-  - path: test_openai_exception_request.py
-  - path: test_openai_request.py
-  - path: test_llamaindex.py
-  - path: test_openai_simple_embedding.py
-  - path: large_text.py
-  - path: test_gemini_context_caching.py
-  - path: load_test_embedding_100.py
-  - path: test_anthropic_context_caching.py
-  - path: test_openai_request_with_traceparent.py
-  - path: test_openai_js.js
-  - path: test_openai_embedding.py
-  - path: bursty_load_test_completion.py
-  - path: test_vtx_embedding.py
-  - path: test_q.py
-  - path: test_vtx_sdk_embedding.py
-  - path: load_test_q.py
-  - path: test_anthropic_sdk.py
-  - path: load_test_embedding_proxy.py
-  - path: test_openai_tts_request.py
-  - path: test_pass_through_langfuse.py
-  - path: test_vertex_sdk_forward_headers.py
-  - path: test_simple_traceparent_openai.py
-  - path: load_test_completion.py
-  - path: test_langchain_embedding.py
+internals: []

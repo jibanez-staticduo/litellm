@@ -9,3 +9,4 @@ internals:
   - path: test_budget_customer_user_org_e2e.py
   - path: test_config_misc_endpoints_e2e.py
   - path: test_team_management_e2e.py
+  - path: test_model_test_connection_e2e.py

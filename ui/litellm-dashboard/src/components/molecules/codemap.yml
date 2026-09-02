@@ -2,8 +2,4 @@ scope: module
 parent: ../../../../../.staticeng/codemap.yml
 internals:
   - path: cost_optimization_feedback_banner.test.tsx
-  - path: notifications_manager.tsx
-  - path: message_manager.tsx
-  - path: message_manager.test.ts
-  - path: notifications_manager.test.tsx
   - path: cost_optimization_feedback_banner.tsx

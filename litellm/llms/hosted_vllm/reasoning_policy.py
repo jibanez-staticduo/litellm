@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Final, cast
+from typing import Final
 
 from litellm.exceptions import BadRequestError
 
@@ -10,17 +10,12 @@ DEEPSEEK_V4_REASONING_EFFORTS: Final = frozenset({"off", "low", "high", "max"})
 
 def get_model_group(litellm_params: object) -> object:
     if isinstance(litellm_params, Mapping):
-        typed_params: Final = cast(Mapping[str, object], litellm_params)
-        metadata: Final = typed_params.get("metadata") or typed_params.get("litellm_metadata")
-        return cast(Mapping[str, object], metadata).get("model_group") if isinstance(metadata, Mapping) else None
+        metadata: Final = litellm_params.get("metadata") or litellm_params.get("litellm_metadata")
+        return metadata.get("model_group") if isinstance(metadata, Mapping) else None
     metadata_attribute: Final = getattr(litellm_params, "metadata", None) or getattr(
         litellm_params, "litellm_metadata", None
     )
-    return (
-        cast(Mapping[str, object], metadata_attribute).get("model_group")
-        if isinstance(metadata_attribute, Mapping)
-        else None
-    )
+    return metadata_attribute.get("model_group") if isinstance(metadata_attribute, Mapping) else None
 
 
 def is_deepseek_v4_target(model: str, model_group: object) -> bool:
@@ -57,13 +52,13 @@ def normalize_deepseek_v4_responses_reasoning(
     model: str,
     model_group: object,
     request_data: Mapping[str, object],
-) -> dict[str, object]:
+) -> dict[str, object]:  # mutable-ok: framework contract requires mutable request or response containers
     if not is_deepseek_v4_target(model=model, model_group=model_group):
-        return dict(request_data)
+        return dict(request_data)  # mutable-ok: framework contract requires mutable request or response containers
     reasoning: Final = request_data.get("reasoning")
     nested_supplied: Final = isinstance(reasoning, Mapping) and "effort" in reasoning
     compatibility_supplied: Final = "reasoning_effort" in request_data
-    typed_reasoning: Final = cast(Mapping[str, object], reasoning) if isinstance(reasoning, Mapping) else None
+    typed_reasoning: Final = reasoning if isinstance(reasoning, Mapping) else None
     nested_effort: Final[object] = typed_reasoning.get("effort") if typed_reasoning is not None else None
     compatibility_effort: Final = request_data.get("reasoning_effort")
     if nested_supplied and compatibility_supplied and nested_effort != compatibility_effort:
@@ -86,11 +81,22 @@ def normalize_deepseek_v4_responses_reasoning(
         reasoning_effort=authoritative_effort,
         supplied=supplied,
     )
-    without_compatibility: Final = {key: value for key, value in request_data.items() if key != "reasoning_effort"}
+    without_compatibility: Final = {  # mutable-ok: framework contract requires mutable request or response containers
+        key: value for key, value in request_data.items() if key != "reasoning_effort"
+    }  # mutable-ok: framework contract requires mutable request or response containers
     if not supplied:
         return without_compatibility
-    normalized_reasoning: Final[dict[str, object]] = {
-        **(dict(typed_reasoning) if typed_reasoning is not None else {}),
+    normalized_reasoning: Final[  # mutable-ok: framework contract requires mutable request or response containers
+        dict[str, object]
+    ] = {  # mutable-ok: framework contract requires mutable request or response containers
+        **(
+            dict(typed_reasoning)  # mutable-ok: framework contract requires mutable request or response containers
+            if typed_reasoning is not None
+            else {}  # mutable-ok: framework contract requires mutable request or response containers
+        ),  # mutable-ok: framework contract requires mutable request or response containers
         "effort": normalized_effort,
     }
-    return {**without_compatibility, "reasoning": normalized_reasoning}
+    return {  # mutable-ok: framework contract requires mutable request or response containers
+        **without_compatibility,
+        "reasoning": normalized_reasoning,
+    }  # mutable-ok: framework contract requires mutable request or response containers

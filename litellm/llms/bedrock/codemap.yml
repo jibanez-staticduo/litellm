@@ -4,3 +4,4 @@ internals:
   - path: common_utils.py
   - path: cost_calculation.py
   - path: base_aws_llm.py
+  - path: request_metadata.py

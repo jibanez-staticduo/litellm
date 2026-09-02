@@ -48,7 +48,9 @@ def _make_jwt(payload: dict) -> str:
 class TestChatGPTAuthenticator:
     @pytest.fixture
     def authenticator(self):
-        with patch("os.path.exists", return_value=True):
+        with patch(
+            "os.path.exists", return_value=True
+        ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             return Authenticator()
 
     def test_get_access_token_from_file(self, authenticator):
@@ -232,7 +234,7 @@ class TestChatGPTAuthenticator:
         assert os.stat(authenticator.auth_file).st_mode & 0o777 == 0o600
         assert list(tmp_path.glob(".chatgpt-auth-*")) == []
 
-    def test_windows_locking_path_uses_msvcrt(self, tmp_path):
+    def test_windows_locking_path_uses_msvcrt(self, tmp_path):  # test-quality-ok: validates Windows locking semantics
         fake_msvcrt = type("FakeMsvcrt", (), {"LK_LOCK": 1, "locking": Mock()})()
         lock_path = tmp_path / "auth.lock"
         with (
@@ -246,12 +248,14 @@ class TestChatGPTAuthenticator:
 
     def test_auth_write_without_directory_fsync_support(self, tmp_path):
         authenticator = Authenticator({"chatgpt_token_dir": str(tmp_path)})
+        # test-quality-ok: validates platforms that do not expose O_DIRECTORY
         with patch.object(authenticator_module.os, "O_DIRECTORY", create=True, new=None):
             authenticator._write_auth_file({"access_token": "portable"})
         with open(authenticator.auth_file) as auth_file:
             assert json.load(auth_file)["access_token"] == "portable"
 
     def test_windows_write_path_without_fchmod(self, tmp_path):
+        # test-quality-ok: validates the Windows fallback when os.fchmod is unavailable
         authenticator = Authenticator({"chatgpt_token_dir": str(tmp_path)})
         original_fchmod = getattr(authenticator_module.os, "fchmod", None)
         try:

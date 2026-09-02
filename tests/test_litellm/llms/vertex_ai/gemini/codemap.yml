@@ -10,3 +10,6 @@ internals:
   - path: test_context_circulation.py
   - path: test_gemini_streaming_tool_call_finish_reason.py
   - path: test_gemini_image_url_missing_field.py
+  - path: __init__.py
+  - path: test_transformation.py
+  - path: test_grounding_requests.py

@@ -7,3 +7,8 @@ internals:
   - path: assetPaths.ts
   - path: serverRootPath.ts
   - path: assetPaths.test.ts
+  - path: logoTreatments.ts
+  - path: toast.ts
+  - path: logoTreatments.test.ts
+  - path: cva.config.test.ts
+  - path: toast.test.ts

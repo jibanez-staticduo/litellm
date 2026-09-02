@@ -10,3 +10,7 @@ internals:
   - path: PriceDataManagementTab.test.tsx
   - path: AllModelsTab.test.tsx
   - path: PriceDataManagementTab.tsx
+  - path: AccessGroupBudgetModal.tsx
+  - path: AccessGroupBudgetColumns.tsx
+  - path: accessGroupBudgetPayload.ts
+  - path: accessGroupBudgetPayload.test.ts

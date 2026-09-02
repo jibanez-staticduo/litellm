@@ -11,3 +11,4 @@ internals:
   - path: gemini_passthrough_logging_handler.py
   - path: assembly_passthrough_logging_handler.py
   - path: cohere_passthrough_logging_handler.py
+  - path: comprehend_medical_passthrough_logging_handler.py

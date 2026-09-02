@@ -16,3 +16,5 @@ internals:
   - path: PromptTable.tsx
   - path: variable_textarea.test.tsx
   - path: tool_modal.test.tsx
+  - path: add_prompt_form.integration.test.tsx
+  - path: prompt_info.test.tsx

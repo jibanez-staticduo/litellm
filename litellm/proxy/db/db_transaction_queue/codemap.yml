@@ -10,3 +10,4 @@ internals:
   - path: spend_update_queue.py
   - path: spend_log_cleanup_metrics.py
   - path: tool_discovery_queue.py
+  - path: window_spend_update_queue.py

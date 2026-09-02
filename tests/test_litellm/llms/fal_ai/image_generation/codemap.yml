@@ -2,3 +2,4 @@ scope: module
 parent: ../../../../../.staticeng/codemap.yml
 internals:
   - path: test_fal_ai_nano_banana_transformation.py
+  - path: test_fal_ai_gpt_image_2_transformation.py

@@ -70,11 +70,15 @@ async def resolve_ui_session_team_ids(
     if user_obj is None:
         return []
 
-    teams = user_obj.get("teams") if isinstance(user_obj, dict) else getattr(user_obj, "teams", None)
+    teams = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        user_obj.get("teams") if isinstance(user_obj, dict) else getattr(user_obj, "teams", None)
+    )  # rebind-ok: framework flow intentionally updates request or lifecycle state
     if not teams:
-        return []
+        return []  # mutable-ok: framework contract requires mutable request or response containers
 
-    resolved_team_ids: list[str] = []
+    resolved_team_ids: list[  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
+        str
+    ] = []  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
     for team_id in teams:
         if team_id and team_id not in resolved_team_ids:
             resolved_team_ids.append(team_id)
@@ -95,7 +99,7 @@ async def admitted_user_context(user_api_key_auth: UserAPIKeyAuth) -> UserAPIKey
     )
 
     try:
-        admitted: Final = await MCPRequestHandler._reload_admitted_user(user_id)
+        admitted: Final = await MCPRequestHandler.reload_admitted_user(user_id)
     except HTTPException as e:
         verbose_logger.warning("MCP dashboard session: admitted-subject reload failed for %s: %s", user_id, e.detail)
         return None

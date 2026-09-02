@@ -5,3 +5,5 @@ internals:
   - path: useZodForm.test.tsx
   - path: pickDirty.test.ts
   - path: useZodForm.ts
+  - path: urlValidation.test.ts
+  - path: urlValidation.ts

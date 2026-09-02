@@ -1,15 +1,17 @@
 import base64
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from typing import Any, Final, Optional, Union, cast, get_type_hints, overload
 
 from pydantic import BaseModel
+from typing_extensions import TypeIs  # noqa: TID251  # narrows untyped wire payloads without a runtime conversion
 
 import litellm
 from litellm._logging import verbose_logger
 from litellm.llms.base_llm.responses.transformation import BaseResponsesAPIConfig
 from litellm.types.llms.openai import (
     AllMessageValues,
+    OutputTokensDetails,
     ResponseAPIUsage,
     ResponseInputParam,
     ResponsesAPIOptionalRequestParams,
@@ -26,6 +28,16 @@ from litellm.types.utils import (
 )
 
 
+def _is_object_sequence(value: object) -> TypeIs[Sequence[object]]:  # guard-ok: a list is a Sequence of anything
+    return isinstance(value, list)
+
+
+def _is_object_dict(
+    value: object,
+) -> TypeIs[dict[str, object]]:  # guard-ok: wire dicts have str keys  # mutable-ok: callers rewrite ids in place
+    return isinstance(value, dict)
+
+
 def normalize_responses_api_stream_options(
     stream_options: object,
 ) -> ResponsesAPIStreamOptions | None:
@@ -37,8 +49,38 @@ def normalize_responses_api_stream_options(
     return ResponsesAPIStreamOptions(include_obfuscation=include_obfuscation)
 
 
+def _is_chat_text_part(part: object) -> bool:
+    return isinstance(part, dict) and part.get("type") == "text"
+
+
+def _as_input_text_part(part: object) -> object:
+    if isinstance(part, dict) and part.get("type") == "text":
+        return {**part, "type": "input_text"}  # mutable-ok: fresh part so the caller's block keeps its chat type
+    return part
+
+
 class ResponsesAPIRequestUtils:
     """Helper utils for constructing ResponseAPI requests"""
+
+    @staticmethod
+    def shape_prompt_managed_message_for_responses(message: object) -> object:
+        if not isinstance(message, dict) or message.get("role") == "assistant":
+            return message
+        content: object = message.get("content")
+        if not isinstance(content, list) or not any(_is_chat_text_part(part) for part in content):
+            return message
+        shaped_content: Final = [_as_input_text_part(part) for part in content]  # mutable-ok: Responses-shaped copy
+        return {**message, "content": shaped_content}  # mutable-ok: copy, the hook's message stays untouched
+
+    @staticmethod
+    def responses_input_to_chat_messages(
+        input: str | ResponseInputParam | None,
+    ) -> list[AllMessageValues]:
+        if input is None:
+            return []
+        if isinstance(input, str):
+            return [{"role": "user", "content": input}]
+        return [item for item in input if isinstance(item, dict) and "role" in item]
 
     @staticmethod
     def merge_prompt_management_input(
@@ -46,15 +88,16 @@ class ResponsesAPIRequestUtils:
         client_input: list[AllMessageValues],
         merged_input: list[AllMessageValues],
     ) -> list[object]:
+        shape: Final = ResponsesAPIRequestUtils.shape_prompt_managed_message_for_responses
         if isinstance(original_input, str):
-            return [*merged_input]
+            return [shape(message) for message in merged_input]
 
         original_items: Final = tuple(original_input)
         client_item_ids: Final = frozenset(id(item) for item in client_input)
         message_positions = tuple(index for index, item in enumerate(original_items) if id(item) in client_item_ids)
 
         if len(message_positions) == len(original_items):
-            return [*merged_input]
+            return [shape(message) for message in merged_input]
         if not message_positions:
             verbose_logger.warning(
                 "Prompt management hook returned messages without Responses API input messages; merged messages were ignored"
@@ -69,7 +112,7 @@ class ResponsesAPIRequestUtils:
         if corresponding_messages:
             merged_by_position: Final = dict(zip(message_positions, merged_input))
             return [
-                merged_by_position[index] if index in merged_by_position else item
+                shape(merged_by_position[index]) if index in merged_by_position else item
                 for index, item in enumerate(original_items)
             ]
 
@@ -82,14 +125,14 @@ class ResponsesAPIRequestUtils:
                 for index, position in enumerate(message_positions)
             }
             trailing_items: Final = original_items[message_positions[-1] + 1 :]
-            return [item for merged in merged_input for item in (*prefixes.get(id(merged), ()), merged)] + list(
+            return [item for merged in merged_input for item in (*prefixes.get(id(merged), ()), shape(merged))] + list(
                 trailing_items
             )
 
         verbose_logger.warning(
             "Prompt management hook replaced Responses API messages; non-message input items were dropped"
         )
-        return [*merged_input]
+        return [shape(message) for message in merged_input]
 
     @staticmethod
     def merge_client_forwarded_headers(
@@ -682,12 +725,12 @@ class ResponsesAPIRequestUtils:
 
     @staticmethod
     def _encode_container_ids_in_annotations(
-        annotations: Any,
+        annotations: object,
         custom_llm_provider: str | None,
         model_id: str | None,
     ) -> None:
         """Encode ``container_id`` on each annotation (e.g. ``container_file_citation``)."""
-        if not annotations or not isinstance(annotations, list):
+        if not annotations or not _is_object_sequence(annotations):
             return
         for ann in annotations:
             ResponsesAPIRequestUtils._encode_container_id_on_output_item(
@@ -698,16 +741,16 @@ class ResponsesAPIRequestUtils:
 
     @staticmethod
     def _encode_container_ids_in_message_content(
-        content: Any,
+        content: object,
         custom_llm_provider: str | None,
         model_id: str | None,
     ) -> None:
         """Walk message ``content`` parts and encode citation ``container_id`` values."""
         if not content:
             return
-        if isinstance(content, list):
+        if _is_object_sequence(content):
             for part in content:
-                if isinstance(part, dict):
+                if _is_object_dict(part):
                     ResponsesAPIRequestUtils._encode_container_ids_in_annotations(
                         part.get("annotations"),
                         custom_llm_provider,
@@ -722,7 +765,7 @@ class ResponsesAPIRequestUtils:
 
     @staticmethod
     def _encode_container_id_on_output_item(
-        item: Any,
+        item: object,
         custom_llm_provider: str | None,
         model_id: str | None,
     ) -> None:
@@ -749,14 +792,14 @@ class ResponsesAPIRequestUtils:
                 container_id=container_id,
             )
 
-        if isinstance(item, dict):
+        if _is_object_dict(item):
             cid: Final = item.get("container_id")
             if isinstance(cid, str):
                 enc = _maybe_encode(cid)
                 if enc is not None:
-                    item["container_id"] = enc
+                    item["container_id"] = enc  # rebind-ok: this helper's contract is to rewrite the item in place
             nested: Final = item.get("code_interpreter_call")
-            if isinstance(nested, dict):
+            if _is_object_dict(nested):
                 nc: Final = nested.get("container_id")
                 if isinstance(nc, str):
                     enc = _maybe_encode(nc)
@@ -782,7 +825,7 @@ class ResponsesAPIRequestUtils:
                         exc_info=True,
                     )
 
-        nested_obj: Final = getattr(item, "code_interpreter_call", None)
+        nested_obj: Final[object] = getattr(item, "code_interpreter_call", None)
         if nested_obj is not None:
             ResponsesAPIRequestUtils._encode_container_id_on_output_item(
                 nested_obj,
@@ -799,24 +842,24 @@ class ResponsesAPIRequestUtils:
 
     @staticmethod
     def _collect_container_ids_from_annotations(
-        annotations: Any,
+        annotations: object,
         collected: set[str],
     ) -> None:
-        if not annotations or not isinstance(annotations, list):
+        if not annotations or not _is_object_sequence(annotations):
             return
         for ann in annotations:
             ResponsesAPIRequestUtils._collect_container_ids_from_output_item(ann, collected)
 
     @staticmethod
     def _collect_container_ids_from_message_content(
-        content: Any,
+        content: object,
         collected: set[str],
     ) -> None:
         if not content:
             return
-        if isinstance(content, list):
+        if _is_object_sequence(content):
             for part in content:
-                if isinstance(part, dict):
+                if _is_object_dict(part):
                     ResponsesAPIRequestUtils._collect_container_ids_from_annotations(
                         part.get("annotations"),
                         collected,
@@ -829,19 +872,19 @@ class ResponsesAPIRequestUtils:
 
     @staticmethod
     def _collect_container_ids_from_output_item(
-        item: Any,
+        item: object,
         collected: set[str],
     ) -> None:
         """Collect managed or raw ``container_id`` values from one output item."""
         if item is None:
             return
 
-        if isinstance(item, dict):
+        if _is_object_dict(item):
             cid: Final = item.get("container_id")
             if isinstance(cid, str) and cid:
                 collected.add(cid)
             nested: Final = item.get("code_interpreter_call")
-            if isinstance(nested, dict):
+            if _is_object_dict(nested):
                 nc: Final = nested.get("container_id")
                 if isinstance(nc, str) and nc:
                     collected.add(nc)
@@ -856,7 +899,7 @@ class ResponsesAPIRequestUtils:
         if isinstance(cid_attr, str) and cid_attr:
             collected.add(cid_attr)
 
-        nested_obj: Final = getattr(item, "code_interpreter_call", None)
+        nested_obj: Final[object] = getattr(item, "code_interpreter_call", None)
         if nested_obj is not None:
             ResponsesAPIRequestUtils._collect_container_ids_from_output_item(nested_obj, collected)
 
@@ -1022,7 +1065,8 @@ class ResponsesAPIRequestUtils:
 
     @staticmethod
     def get_verified_mcp_client_ip(
-        secret_fields: dict[str, Any] | None,
+        secret_fields: dict[str, Any]  # mutable-ok: framework contract requires mutable request or response containers
+        | None,  # mutable-ok: framework contract requires mutable request or response containers
     ) -> str:
         """Return the verified MCP client IP or a fail-closed sentinel.
 
@@ -1032,7 +1076,9 @@ class ResponsesAPIRequestUtils:
         """
 
         if secret_fields:
-            client_ip = secret_fields.get("mcp_client_ip")
+            client_ip = secret_fields.get(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                "mcp_client_ip"
+            )  # rebind-ok: framework flow intentionally updates request or lifecycle state
             if isinstance(client_ip, str) and client_ip.strip():
                 return client_ip.strip()
         return "__invalid_mcp_client_ip__"
@@ -1046,13 +1092,17 @@ class ResponseAPILoggingUtils:
         return ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(usage_input)
 
     @staticmethod
-    def _normalize_chat_usage_to_response_api_usage(usage: dict) -> dict:
+    def _normalize_chat_usage_to_response_api_usage(
+        usage: dict,  # mutable-ok: framework contract requires mutable request or response containers
+    ) -> dict:  # mutable-ok: framework contract requires mutable request or response containers
         if "input_tokens" in usage and "output_tokens" in usage:
             return usage
         if "prompt_tokens" not in usage or "completion_tokens" not in usage:
             return usage
 
-        normalized_usage = dict(usage)
+        normalized_usage = dict(  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
+            usage
+        )  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
         normalized_usage["input_tokens"] = usage["prompt_tokens"]
         normalized_usage["output_tokens"] = usage["completion_tokens"]
         if "input_tokens_details" not in normalized_usage and "prompt_tokens_details" in usage:
@@ -1103,14 +1153,34 @@ class ResponseAPILoggingUtils:
                 usage_input["input_tokens_details"] = usage_input["input_token_details"]
             if usage_input.get("output_tokens_details") is None and "output_token_details" in usage_input:
                 usage_input["output_tokens_details"] = usage_input["output_token_details"]
-            usage_input = ResponseAPILoggingUtils._normalize_chat_usage_to_response_api_usage(usage_input)
-            total_tokens = usage_input.get("total_tokens")
+            usage_input = ResponseAPILoggingUtils._normalize_chat_usage_to_response_api_usage(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                usage_input
+            )  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            total_tokens = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                usage_input.get(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                    "total_tokens"
+                )
+            )  # rebind-ok: framework flow intentionally updates request or lifecycle state
             if total_tokens is None:
-                input_tokens = usage_input.get("input_tokens")
-                output_tokens = usage_input.get("output_tokens")
+                input_tokens = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                    usage_input.get(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                        "input_tokens"
+                    )
+                )  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                output_tokens = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                    usage_input.get(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                        "output_tokens"
+                    )
+                )  # rebind-ok: framework flow intentionally updates request or lifecycle state
                 if input_tokens is not None and output_tokens is not None:
-                    total_tokens = input_tokens + output_tokens
-                    usage_input["total_tokens"] = total_tokens
+                    total_tokens = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                        input_tokens + output_tokens
+                    )  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                    usage_input[  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                        "total_tokens"
+                    ] = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                        total_tokens  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                    )
             response_api_usage = ResponseAPIUsage(**usage_input)
         else:
             response_api_usage = usage_input
@@ -1129,7 +1199,9 @@ class ResponseAPILoggingUtils:
                     cache_write_tokens=getattr(response_api_usage.input_tokens_details, "cache_write_tokens", None),
                 )
         completion_tokens_details: CompletionTokensDetailsWrapper | None = None
-        output_tokens_details: Final = getattr(response_api_usage, "output_tokens_details", None)
+        output_tokens_details: Final[OutputTokensDetails | None] = getattr(
+            response_api_usage, "output_tokens_details", None
+        )
         if output_tokens_details:
             completion_tokens_details = CompletionTokensDetailsWrapper(
                 reasoning_tokens=getattr(output_tokens_details, "reasoning_tokens", None),

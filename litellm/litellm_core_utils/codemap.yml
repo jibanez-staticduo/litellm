@@ -58,3 +58,10 @@ internals:
   - path: secret_redaction.py
   - path: rules.py
   - path: request_timeout_resolver.py
+  - path: json_fragment_accumulator.py
+  - path: private_json.py
+  - path: aws_partition.py
+  - path: ptu_pricing.py
+  - path: cli_keyring.py
+  - path: realtime_errors.py
+  - path: agentic_loop_settings.py

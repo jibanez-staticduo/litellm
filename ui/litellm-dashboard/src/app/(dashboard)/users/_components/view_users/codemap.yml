@@ -6,3 +6,4 @@ internals:
   - path: UsersTableColumns.tsx
   - path: user_info_view.tsx
   - path: UsersTable.test.tsx
+  - path: user_info_view.integration.test.tsx

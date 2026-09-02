@@ -2,3 +2,4 @@ scope: module
 parent: ../../../.staticeng/codemap.yml
 internals:
   - path: utils.py
+  - path: subtitle_utils.py

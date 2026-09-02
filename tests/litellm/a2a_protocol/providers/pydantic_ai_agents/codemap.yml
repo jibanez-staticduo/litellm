@@ -1,5 +1,0 @@
-scope: module
-parent: ../../../../../.staticeng/codemap.yml
-internals:
-  - path: test_pydantic_ai_agent_transformation.py
-  - path: test_pydantic_ai_agent_headers.py

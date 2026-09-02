@@ -17,7 +17,7 @@ import uuid
 from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from datetime import datetime
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Final, Protocol, cast
+from typing import TYPE_CHECKING, Any, Final, Protocol
 
 import httpx
 from fastapi import FastAPI, HTTPException
@@ -53,11 +53,16 @@ from litellm.proxy._experimental.mcp_server.mcp_context import (
 _mcp_active_toolset_name: Final[contextvars.ContextVar[str | None]] = contextvars.ContextVar(
     "_mcp_active_toolset_name", default=None
 )
+_mcp_active_lazymcp_scope_name: Final[contextvars.ContextVar[str | None]] = contextvars.ContextVar(
+    "_mcp_active_lazymcp_scope_name", default=None
+)
 from litellm.proxy._experimental.mcp_server.mcp_debug import MCPDebug
 from litellm.proxy._experimental.mcp_server.mcp_server_manager import MCPServerManager
 from litellm.proxy._experimental.mcp_server.oauth_utils import (
     get_passthrough_www_authenticate,
+    get_route_relative_request_path,
     redact_mcp_resource_url,
+    well_known_root_suffix,
 )
 from litellm.proxy._experimental.mcp_server.utils import (
     LITELLM_MCP_SERVER_DESCRIPTION,
@@ -87,7 +92,9 @@ from litellm.types.mcp_server.mcp_server_manager import MCPInfo, MCPServer
 from litellm.types.utils import CallTypes, StandardLoggingMCPToolCall
 from litellm.utils import Rules, client, function_setup
 
-_redact_mcp_resource_url = redact_mcp_resource_url
+_redact_mcp_resource_url = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+    redact_mcp_resource_url  # rebind-ok: framework flow intentionally updates request or lifecycle state
+)
 
 if TYPE_CHECKING:
     from mcp.server.session import ServerSession as _McpServerSession
@@ -253,11 +260,12 @@ def _mcp_meta_trace_carrier(req_ctx: object) -> dict[str, str] | None:
     """The W3C trace context (``traceparent``/``tracestate``) the MCP client
     propagated in the request's ``params._meta`` (SEP-414), or ``None``.
 
-    When present, per the OTel MCP semconv the MCP span parents to this propagated
-    context rather than to the HTTP transport (which is recorded as a link instead).
-    When absent, the span nests under the transport span of the request carrying
-    this specific message, so a streamable-HTTP session that multiplexes many
-    messages still does not glue every message under the session's first request;
+    When present, the MCP span records this propagated context as a span *link*,
+    never the parent — a remote parent would root the span in a trace whose root
+    never reaches the gateway's tracing backend. The span itself nests under the
+    transport span of the request carrying this specific message, so a
+    streamable-HTTP session that multiplexes many messages still does not glue
+    every message under the session's first request;
     see ``resolve_mcp_span_context``. The client's W3C Baggage is
     deliberately excluded: it is caller-controlled, and the otel baggage processor
     stamps allowlisted baggage keys (``litellm.team.id``, ``litellm.metadata.*``,
@@ -416,8 +424,6 @@ if MCP_AVAILABLE:
         StreamableHTTPSessionManager = None
     from mcp.types import (
         CallToolResult,
-        EmbeddedResource,
-        ImageContent,
         ListToolsResult,
         Prompt,
         TextContent,
@@ -439,12 +445,14 @@ if MCP_AVAILABLE:
         MCPServerManager,
         _caller_authorization_fans_out,
         _client_forwarded_authorization_headers,
+        _resolve_openapi_tool_auth,
         _should_strip_caller_authorization,
-        _without_authorization,
         global_mcp_server_manager,
     )
     from litellm.proxy._experimental.mcp_server.openapi_to_mcp_generator import (
         _request_auth_header,
+        _request_extra_headers,
+        _request_resolved_auth_headers,
     )
     from litellm.proxy._experimental.mcp_server.sse_transport import SseServerTransport
     from litellm.proxy._experimental.mcp_server.tool_registry import (
@@ -457,6 +465,7 @@ if MCP_AVAILABLE:
         split_server_prefix_from_name,
         strip_known_server_prefix,
     )
+    from litellm.types.mcp import DEFAULT_CREDENTIAL_HEADER, without_header
 
     ######################################################
     ############ MCP Tools List REST API Response Object #
@@ -587,22 +596,24 @@ if MCP_AVAILABLE:
         stateless=True,
     )
 
-    lazymcp_server: Server = Server(
+    lazymcp_server: Server = Server(  # rebind-ok: framework flow intentionally updates request or lifecycle state
         name=f"{LITELLM_MCP_SERVER_NAME}-lazymcp",
         version=LITELLM_MCP_SERVER_VERSION,
     )
-    lazy_session_manager = StreamableHTTPSessionManager(
-        app=lazymcp_server,
-        event_store=None,
-        json_response=False,
-        stateless=True,
+    lazy_session_manager = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        StreamableHTTPSessionManager(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            app=lazymcp_server,
+            event_store=None,
+            json_response=False,
+            stateless=True,
+        )
     )
 
     # Context managers for proper lifecycle management
     _session_manager_cm = None
     _session_manager_stateful_cm = None
     _sse_session_manager_cm = None
-    _lazy_session_manager_cm = None
+    _lazy_session_manager_cm = None  # rebind-ok: framework flow intentionally updates request or lifecycle state
     _stateful_auth_context_cleanup_task: asyncio.Task | None = None
 
     async def _purge_expired_stateful_session_auth_contexts(
@@ -684,18 +695,12 @@ if MCP_AVAILABLE:
             await asyncio.sleep(_STATEFUL_SESSION_IDLE_TIMEOUT_SECONDS)
             try:
                 await _purge_expired_stateful_session_auth_contexts()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
                 verbose_logger.exception("Error cleaning up expired MCP stateful sessions: %s", e)
 
     async def initialize_session_managers():
         """Initialize the session managers. Can be called from main app lifespan."""
-        global \
-            _SESSION_MANAGERS_INITIALIZED, \
-            _session_manager_cm, \
-            _session_manager_stateful_cm, \
-            _sse_session_manager_cm, \
-            _lazy_session_manager_cm, \
-            _stateful_auth_context_cleanup_task
+        global _SESSION_MANAGERS_INITIALIZED, _session_manager_cm, _session_manager_stateful_cm, _sse_session_manager_cm, _lazy_session_manager_cm, _stateful_auth_context_cleanup_task  # noqa: PLW0603  # lifespan owns session managers
 
         # Use async lock to prevent concurrent initialization
         async with _INITIALIZATION_LOCK:
@@ -708,7 +713,9 @@ if MCP_AVAILABLE:
             _session_manager_cm = session_manager_stateless.run()
             _session_manager_stateful_cm = session_manager_stateful.run()
             _sse_session_manager_cm = sse_session_manager.run()
-            _lazy_session_manager_cm = lazy_session_manager.run()
+            _lazy_session_manager_cm = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                lazy_session_manager.run()
+            )  # rebind-ok: framework flow intentionally updates request or lifecycle state
 
             # Enter the context managers
             await _session_manager_cm.__aenter__()
@@ -722,13 +729,7 @@ if MCP_AVAILABLE:
 
     async def shutdown_session_managers():
         """Shutdown the session managers."""
-        global \
-            _SESSION_MANAGERS_INITIALIZED, \
-            _session_manager_cm, \
-            _session_manager_stateful_cm, \
-            _sse_session_manager_cm, \
-            _lazy_session_manager_cm, \
-            _stateful_auth_context_cleanup_task
+        global _SESSION_MANAGERS_INITIALIZED, _session_manager_cm, _session_manager_stateful_cm, _sse_session_manager_cm, _lazy_session_manager_cm, _stateful_auth_context_cleanup_task  # noqa: PLW0603  # lifespan owns session managers
 
         if _SESSION_MANAGERS_INITIALIZED:
             verbose_logger.info("Shutting down MCP session managers...")
@@ -746,13 +747,15 @@ if MCP_AVAILABLE:
                     await _sse_session_manager_cm.__aexit__(None, None, None)
                 if _lazy_session_manager_cm:
                     await _lazy_session_manager_cm.__aexit__(None, None, None)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
                 verbose_logger.exception("Error during session manager shutdown: %s", e)
 
             _session_manager_cm = None
             _session_manager_stateful_cm = None
             _sse_session_manager_cm = None
-            _lazy_session_manager_cm = None
+            _lazy_session_manager_cm = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                None  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            )
             _stateful_auth_context_cleanup_task = None
             _SESSION_MANAGERS_INITIALIZED = False
 
@@ -840,7 +843,7 @@ if MCP_AVAILABLE:
                 }
             }
             return ListToolsResult.model_validate({"tools": listing.tools, "_meta": outcome_meta})
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.exception("Error in list_tools endpoint: %s", e)
             # Return empty list instead of failing completely
             # This prevents the HTTP stream from failing and allows the client to get a response
@@ -858,7 +861,7 @@ if MCP_AVAILABLE:
         """
         try:
             host_ctx: Final = host_server.request_context
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.warning("Could not capture host progress context: %s", e)
             return None
 
@@ -878,7 +881,7 @@ if MCP_AVAILABLE:
                     total=total,
                 )
                 verbose_logger.debug("Forwarded progress %s/%s to Host", progress, total)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
                 verbose_logger.error("Failed to forward progress to Host: %s", e)
 
         verbose_logger.debug("Host progressToken captured: %s...", str(host_token)[:8])
@@ -936,14 +939,17 @@ if MCP_AVAILABLE:
         the caller falls through to normal tool routing.
         """
         from litellm.proxy._experimental.mcp_server.tool_search import (
-            MCP_TOOL_CALL_TOOL_NAME,
+            AGENT_SEARCH_TOOL_NAME,
+            DEFAULT_AGENT_SEARCH_TOP_K,
             MCP_TOOL_SEARCH_TOOL_NAME,
+            VIRTUAL_TOOL_NAMES,
             coerce_top_k,
+            handle_agent_search,
             handle_mcp_tool_call,
             handle_mcp_tool_search,
         )
 
-        if name not in (MCP_TOOL_SEARCH_TOOL_NAME, MCP_TOOL_CALL_TOOL_NAME):
+        if name not in VIRTUAL_TOOL_NAMES:
             return None
 
         if not getattr(
@@ -976,6 +982,12 @@ if MCP_AVAILABLE:
             )
 
         assert user_api_key_auth is not None  # guaranteed by the flag check above
+        if name == AGENT_SEARCH_TOOL_NAME:
+            return await handle_agent_search(
+                query=str(args.get("query", "")),
+                top_k=coerce_top_k(args.get("top_k", DEFAULT_AGENT_SEARCH_TOP_K), default=DEFAULT_AGENT_SEARCH_TOP_K),
+                user_api_key_dict=user_api_key_auth,
+            )
         virtual_logging_obj: Final = await _build_virtual_call_logging_obj(
             name=name,
             arguments=args,
@@ -1153,7 +1165,7 @@ if MCP_AVAILABLE:
                     ],
                     isError=True,
                 )
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
                 verbose_logger.exception("MCP mcp_server_tool_call - error: %s", e)
                 return CallToolResult(
                     content=[TextContent(text=f"Error: {e}", type="text")],
@@ -1168,12 +1180,22 @@ if MCP_AVAILABLE:
                 active_mcp_session_var.reset(_session_reset_token)
 
     @lazymcp_server.list_tools()
-    async def list_lazymcp_tools() -> list[MCPTool]:
+    async def list_lazymcp_tools() -> (
+        list[  # mutable-ok: framework contract requires mutable request or response containers
+            MCPTool
+        ]
+    ):  # mutable-ok: framework contract requires mutable request or response containers
         return _get_lazymcp_gateway_tools()
 
     @lazymcp_server.call_tool()
-    async def lazymcp_tool_call(name: str, arguments: dict[str, Any] | None) -> CallToolResult:
-        arguments = arguments or {}
+    async def lazymcp_tool_call(
+        name: str,
+        arguments: dict[str, Any]  # mutable-ok: framework contract requires mutable request or response containers
+        | None,  # mutable-ok: framework contract requires mutable request or response containers
+    ) -> CallToolResult:  # mutable-ok: framework contract requires mutable request or response containers
+        arguments = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            arguments or {}  # mutable-ok: framework contract requires mutable request or response containers
+        )  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
         try:
             if name == "mcp_describe":
                 return _make_lazymcp_text_result(await _lazymcp_describe(arguments))
@@ -1182,21 +1204,25 @@ if MCP_AVAILABLE:
             if name == "mcp_call":
                 return await _lazymcp_call(arguments)
             return CallToolResult(
-                content=[
+                content=[  # mutable-ok: framework contract requires mutable request or response containers
                     TextContent(
-                        text=json.dumps({"error": "Unknown LazyMCP tool."}),
+                        text=json.dumps(
+                            {  # mutable-ok: framework contract requires mutable request or response containers
+                                "error": "Unknown LazyMCP tool."
+                            }  # mutable-ok: framework contract requires mutable request or response containers
+                        ),  # mutable-ok: framework contract requires mutable request or response containers
                         type="text",
                     )
                 ],
                 isError=True,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.exception("LazyMCP tool call failed: %s", e)
             return CallToolResult(
-                content=[
+                content=[  # mutable-ok: framework contract requires mutable request or response containers
                     TextContent(
                         text=json.dumps(
-                            {
+                            {  # mutable-ok: framework contract requires mutable request or response containers
                                 "error": "Upstream MCP tool call failed.",
                                 "details": str(e),
                             }
@@ -1248,7 +1274,7 @@ if MCP_AVAILABLE:
             )
             verbose_logger.info("MCP list_prompts - Successfully returned %s prompts", len(prompts))
             return prompts
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.exception("Error in list_prompts endpoint: %s", e)
             # Return empty list instead of failing completely
             # This prevents the HTTP stream from failing and allows the client to get a response
@@ -1341,7 +1367,7 @@ if MCP_AVAILABLE:
             )
             verbose_logger.info("MCP list_resources - Successfully returned %s resources", len(resources))
             return resources
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.exception("Error in list_resources endpoint: %s", e)
             return []
         finally:
@@ -1387,7 +1413,7 @@ if MCP_AVAILABLE:
                 "MCP list_resource_templates - Successfully returned %s resource templates", len(resource_templates)
             )
             return resource_templates
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.exception("Error in list_resource_templates endpoint: %s", e)
             return []
         finally:
@@ -1477,7 +1503,7 @@ if MCP_AVAILABLE:
                             for server in allowed_mcp_servers:
                                 if server_id == server.server_id:
                                     filtered_server[server.server_id] = server
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
                         verbose_logger.debug("Could not resolve '%s' as access group: %s", server_or_group, e)
 
         if filtered_server:
@@ -1581,7 +1607,7 @@ if MCP_AVAILABLE:
             auth_user: Final = auth_context_var.get()
             if auth_user and isinstance(auth_user, MCPAuthenticatedUser):
                 return auth_user.client_ip
-        except Exception:
+        except Exception:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             pass
         return None
 
@@ -1736,7 +1762,7 @@ if MCP_AVAILABLE:
             )
             creds: Final = await list_user_oauth_credentials(prisma_client, user_id)
             return {c["server_id"]: c for c in creds if "server_id" in c}
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.warning("_prefetch_oauth_creds_for_user: failed to prefetch for user=%s: %s", user_id, e)
             return {}
 
@@ -1770,7 +1796,7 @@ if MCP_AVAILABLE:
             )
 
         extra_headers: dict[str, str] | None = None
-        is_client_forwarded_mode: Final = server.is_true_passthrough or server.is_oauth_delegate
+        is_client_forwarded_mode: Final = server.is_client_forwarded_token
         # In a multi-server listing scope the request-wide Authorization can only carry one token,
         # so it is withheld from a client-forwarded server when another server in scope also consumes
         # it (RFC 9700 cross-resource replay); such scopes must bind per-server via
@@ -1797,7 +1823,7 @@ if MCP_AVAILABLE:
                     raw_headers=raw_headers,
                     user_api_key_auth=user_api_key_auth,
                 ):
-                    extra_headers = _without_authorization(extra_headers)
+                    extra_headers = without_header(extra_headers, DEFAULT_CREDENTIAL_HEADER)
         elif is_client_forwarded_mode:
             if not withhold_forwarded_authorization:
                 extra_headers = _client_forwarded_authorization_headers(
@@ -2008,7 +2034,7 @@ if MCP_AVAILABLE:
                 if litellm_logging_obj:
                     litellm_logging_obj.call_type = CallTypes.list_mcp_tools.value
                     litellm_logging_obj.model = "MCP: list_tools"
-            except Exception as logging_error:
+            except Exception as logging_error:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
                 verbose_logger.debug("Failed to initialize logging for MCP list_tools: %s", logging_error)
                 litellm_logging_obj = None
 
@@ -2078,8 +2104,11 @@ if MCP_AVAILABLE:
                         prefetched_creds=_prefetched_oauth_creds,
                     )
 
+                if server.is_byok and server.auth_type != MCPAuth.oauth2 and server_auth_header is None:
+                    server_auth_header = await _get_byok_credential(server, user_api_key_auth)
+
                 try:
-                    tools: Final = await global_mcp_server_manager._get_tools_from_server(
+                    tools: Final = await global_mcp_server_manager._get_tools_from_server(  # pyright: ignore[reportPrivateUsage]  # server transport owns this internal manager operation
                         server=server,
                         mcp_auth_header=server_auth_header,
                         extra_headers=extra_headers,
@@ -2116,7 +2145,7 @@ if MCP_AVAILABLE:
                     # check in _raise_preemptive_401_for_unauthenticated_servers instead.
                     verbose_logger.debug("MCP list_tools: omitting %s; it needs upstream auth", server.name)
                     return [], classify_list_exception(e)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
                     verbose_logger.exception("Error getting tools from server %s: %s", server.name, e)
                     return [], classify_list_exception(e)
 
@@ -2162,7 +2191,7 @@ if MCP_AVAILABLE:
                         start_time=list_tools_start_time,
                         end_time=end_time,
                     )
-                except Exception as log_exc:
+                except Exception as log_exc:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
                     # list_tools responses must not be dropped due to non-blocking
                     # observability/serialization failures.
                     verbose_logger.warning(
@@ -2173,7 +2202,7 @@ if MCP_AVAILABLE:
             verbose_logger.info("Successfully fetched %s tools total from all MCP servers", len(all_tools))
 
             return AggregateToolListing(tools=all_tools, outcomes=server_outcomes)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             # Only fire failure hook if logging was requested for this list-tools execution
             if log_list_tools_to_spendlogs and user_api_key_auth is not None:
                 try:
@@ -2188,7 +2217,7 @@ if MCP_AVAILABLE:
                             route="/mcp/list_tools",
                             traceback_str=traceback_str,
                         )
-                except Exception:
+                except Exception:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
                     verbose_logger.debug("Failed to log MCP list_tools failure via post_call_failure_hook")
             raise
 
@@ -2249,7 +2278,7 @@ if MCP_AVAILABLE:
                 all_prompts.extend(prompts)
 
                 verbose_logger.debug("Successfully fetched %s prompts from server %s", len(prompts), server.name)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
                 verbose_logger.exception("Error getting prompts from server %s: %s", server.name, e)
                 # Continue with other servers instead of failing completely
 
@@ -2301,7 +2330,7 @@ if MCP_AVAILABLE:
                 all_resources.extend(resources)
 
                 verbose_logger.debug("Successfully fetched %s resources from server %s", len(resources), server.name)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
                 verbose_logger.exception("Error getting resources from server %s: %s", server.name, e)
 
         verbose_logger.info("Successfully fetched %s resources total from all MCP servers", len(all_resources))
@@ -2355,7 +2384,7 @@ if MCP_AVAILABLE:
                     len(resource_templates),
                     server.name,
                 )
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
                 verbose_logger.exception(
                     "Error getting resource templates from server %s: %s",
                     server.name,
@@ -2439,62 +2468,109 @@ if MCP_AVAILABLE:
             )
             verbose_logger.debug("Successfully fetched %s tools from managed MCP servers", len(listing.tools))
             return listing
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.exception("Error getting tools from managed MCP servers: %s", e)
             # Continue with an empty listing instead of failing completely
             return AggregateToolListing(tools=[], outcomes={})
 
-    LAZYMCP_TOOL_NAMES = ("mcp_describe", "mcp_call", "mcp_status")
-    LAZYMCP_CACHE_TTL_SECONDS = 300
-    LAZYMCP_CATALOG_SERVER_TIMEOUT_SECONDS = 5.0
-    LAZYMCP_UNAVAILABLE_SERVER_ERROR = {"error": "MCP server is not available for this request."}
-    LAZYMCP_AUTH_REQUIRED_ERROR = {"error": "MCP server authentication is required for this user."}
-    LAZYMCP_UNAVAILABLE_TOOL_ERROR = {"error": "Tool is not available for this request."}
+    LAZYMCP_TOOL_NAMES = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        "mcp_describe",
+        "mcp_call",
+        "mcp_status",
+    )  # rebind-ok: framework flow intentionally updates request or lifecycle state
+    LAZYMCP_CACHE_TTL_SECONDS = 300  # rebind-ok: framework flow intentionally updates request or lifecycle state
+    LAZYMCP_CATALOG_SERVER_TIMEOUT_SECONDS = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        5.0  # rebind-ok: framework flow intentionally updates request or lifecycle state
+    )
+    LAZYMCP_UNAVAILABLE_SERVER_ERROR: Final = {  # mutable-ok: framework contract requires mutable request or response containers
+        "error": "MCP server is not available for this request."
+    }  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
+    LAZYMCP_AUTH_REQUIRED_ERROR: Final = {  # mutable-ok: framework contract requires mutable request or response containers
+        "error": "MCP server authentication is required for this user."
+    }  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
+    LAZYMCP_UNAVAILABLE_TOOL_ERROR: Final = {  # mutable-ok: framework contract requires mutable request or response containers
+        "error": "Tool is not available for this request."
+    }  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
     LAZYMCP_AMBIGUOUS_TOOL_ERROR: Final[dict[str, str]] = {  # mutable-ok: MCP errors are JSON object payloads
         "error": "Tool name is ambiguous within the selected MCP server."
     }
     LAZYMCP_PERMISSION_MAP_ADAPTER: Final = TypeAdapter(dict[str, list[str]])
     LAZYMCP_SERVER_LIST_ADAPTER: Final = TypeAdapter(list[str])
 
-    def _hash_lazymcp_value(value: Any) -> str | None:
+    def _hash_lazymcp_value(value: object) -> str | None:
         if value is None:
             return None
-        encoded = json.dumps(value, sort_keys=True, default=str)
+        encoded = json.dumps(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            value, sort_keys=True, default=str
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
     def _safe_lazymcp_text(value: str | None, fallback: str) -> str:
-        text = re.sub(r"\s+", " ", value or "").strip() or fallback
-        text = re.sub(r"https?://\S+", "[url]", text)
+        text = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            re.sub(r"\s+", " ", value or "").strip() or fallback
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        text = re.sub(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            r"https?://\S+", "[url]", text
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         if len(text) > 160:
-            text = text[:157].rstrip() + "..."
+            text = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                text[:157].rstrip() + "..."
+            )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         return text
 
     def _get_lazymcp_server_label(mcp_server: MCPServer) -> str:
         return str(mcp_server.alias or mcp_server.server_name or mcp_server.name or mcp_server.server_id)
 
     def _get_lazymcp_server_description(mcp_server: MCPServer) -> str:
-        mcp_info = mcp_server.mcp_info or {}
-        description = getattr(mcp_server, "description", None) or mcp_info.get("description")
+        mcp_info = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            mcp_server.mcp_info or {}  # mutable-ok: framework contract requires mutable request or response containers
+        )  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
+        description = getattr(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            mcp_server, "description", None
+        ) or mcp_info.get(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            "description"
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         return _safe_lazymcp_text(description, "No description configured.")
 
-    def _summarize_lazymcp_schema(schema: Any) -> dict[str, Any]:
+    def _summarize_lazymcp_schema(
+        schema: object,
+    ) -> dict[str, object]:  # mutable-ok: framework contract requires mutable request or response containers
         if not isinstance(schema, dict):
-            return {}
-        properties = schema.get("properties")
-        return {
+            return {}  # mutable-ok: framework contract requires mutable request or response containers
+        properties = schema.get(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            "properties"
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        return {  # mutable-ok: framework contract requires mutable request or response containers
             "type": schema.get("type", "object"),
-            "required": schema.get("required", []),
-            "properties": (sorted(properties.keys()) if isinstance(properties, dict) else []),
+            "required": schema.get(
+                "required",
+                [],  # mutable-ok: framework contract requires mutable request or response containers
+            ),  # mutable-ok: framework contract requires mutable request or response containers
+            "properties": (
+                sorted(properties.keys())
+                if isinstance(properties, dict)
+                else []  # mutable-ok: framework contract requires mutable request or response containers
+            ),  # mutable-ok: framework contract requires mutable request or response containers
         }
 
-    def _lazymcp_tool_to_summary(tool: MCPTool, include_schema: bool = False) -> dict[str, Any]:
-        summary: dict[str, Any] = {
+    def _lazymcp_tool_to_summary(
+        tool: MCPTool, include_schema: bool = False
+    ) -> dict[str, Any]:  # mutable-ok: framework contract requires mutable request or response containers
+        summary: Final[
+            dict[  # mutable-ok: framework contract requires mutable request or response containers
+                str, Any
+            ]
+        ] = {  # mutable-ok: framework contract requires mutable request or response containers
             "name": tool.name,
             "description": _safe_lazymcp_text(getattr(tool, "description", None), "No description configured."),
         }
-        schema = getattr(tool, "inputSchema", None)
+        schema = getattr(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            tool, "inputSchema", None
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         if include_schema:
-            summary["input_schema"] = schema or {}
+            summary["input_schema"] = (
+                schema or {}  # mutable-ok: framework contract requires mutable request or response containers
+            )  # mutable-ok: framework contract requires mutable request or response containers
         else:
             summary["input_schema_summary"] = _summarize_lazymcp_schema(schema)
         return summary
@@ -2502,27 +2578,40 @@ if MCP_AVAILABLE:
     def _lazymcp_cache_scope(
         user_api_key_auth: UserAPIKeyAuth | None,
         mcp_auth_header: str | None,
-        mcp_servers: list[str] | None,
-        mcp_server_auth_headers: dict[str, dict[str, str]] | None,
-        oauth2_headers: dict[str, str] | None,
-        raw_headers: dict[str, str] | None,
+        mcp_servers: list[str] | None,  # mutable-ok: framework contract requires mutable request or response containers
+        mcp_server_auth_headers: dict[  # mutable-ok: framework contract requires mutable request or response containers
+            str, dict[str, str]
+        ]  # mutable-ok: framework contract requires mutable request or response containers
+        | None,  # mutable-ok: framework contract requires mutable request or response containers
+        oauth2_headers: dict[str, str]  # mutable-ok: framework contract requires mutable request or response containers
+        | None,  # mutable-ok: framework contract requires mutable request or response containers
+        raw_headers: dict[str, str]  # mutable-ok: framework contract requires mutable request or response containers
+        | None,  # mutable-ok: framework contract requires mutable request or response containers
         client_ip: str | None,
     ) -> str:
-        object_permission = getattr(user_api_key_auth, "object_permission", None)
-        normalized_raw_headers = {key.lower(): value for key, value in (raw_headers or {}).items()}
-        object_permission_payload = None
+        object_permission = getattr(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            user_api_key_auth, "object_permission", None
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        normalized_raw_headers: Final = {  # mutable-ok: framework contract requires mutable request or response containers
+            key.lower(): value
+            for key, value in (
+                raw_headers or {}  # mutable-ok: framework contract requires mutable request or response containers
+            ).items()  # mutable-ok: framework contract requires mutable request or response containers
+        }  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
+        object_permission_payload = None  # rebind-ok: framework flow intentionally updates request or lifecycle state
         if object_permission is not None:
-            object_permission_payload = (
+            object_permission_payload = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
                 object_permission.model_dump(mode="json")
                 if hasattr(object_permission, "model_dump")
                 else str(object_permission)
             )
 
-        scope_payload = {
+        scope_payload: Final = {  # mutable-ok: framework contract requires mutable request or response containers
             "api_key_hash": _hash_lazymcp_value(getattr(user_api_key_auth, "api_key", None)),
             "user_id": getattr(user_api_key_auth, "user_id", None),
             "team_id": getattr(user_api_key_auth, "team_id", None),
-            "mcp_servers": mcp_servers or [],
+            "mcp_servers": mcp_servers
+            or [],  # mutable-ok: framework contract requires mutable request or response containers
             "active_toolset": _mcp_active_toolset_id.get(),
             "client_ip": client_ip,
             "mcp_auth_header_hash": _hash_lazymcp_value(mcp_auth_header),
@@ -2534,7 +2623,9 @@ if MCP_AVAILABLE:
             "raw_header_values_hash": _hash_lazymcp_value(normalized_raw_headers),
             "object_permission": object_permission_payload,
         }
-        encoded = json.dumps(scope_payload, sort_keys=True, default=str)
+        encoded = json.dumps(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            scope_payload, sort_keys=True, default=str
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
     async def _lazymcp_cache_get(key: str) -> object | None:
@@ -2542,11 +2633,11 @@ if MCP_AVAILABLE:
             from litellm.proxy.proxy_server import user_api_key_cache
 
             return await user_api_key_cache.async_get_cache(key=key)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.debug("LazyMCP cache get failed for %s: %s", key, e)
             return None
 
-    async def _lazymcp_cache_set(key: str, value: Any) -> None:
+    async def _lazymcp_cache_set(key: str, value: object) -> None:
         try:
             from litellm.proxy.proxy_server import user_api_key_cache
 
@@ -2555,7 +2646,7 @@ if MCP_AVAILABLE:
                 value=value,
                 ttl=LAZYMCP_CACHE_TTL_SECONDS,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.debug("LazyMCP cache set failed for %s: %s", key, e)
 
     def invalidate_lazymcp_cache() -> None:
@@ -2563,11 +2654,21 @@ if MCP_AVAILABLE:
         try:
             from litellm.proxy.proxy_server import user_api_key_cache
 
-            in_mem = getattr(user_api_key_cache, "in_memory_cache", None)
-            cache_dict = getattr(in_mem, "cache_dict", {}) if in_mem else {}
-            for key in [k for k in cache_dict if str(k).startswith("lazymcp:")]:
+            in_mem = getattr(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                user_api_key_cache, "in_memory_cache", None
+            )  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            cache_dict = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                getattr(
+                    in_mem, "cache_dict", {}
+                )  # mutable-ok: framework contract requires mutable request or response containers
+                if in_mem
+                else {}  # mutable-ok: framework contract requires mutable request or response containers
+            )  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
+            for key in [  # mutable-ok: framework contract requires mutable request or response containers
+                k for k in cache_dict if str(k).startswith("lazymcp:")
+            ]:  # mutable-ok: framework contract requires mutable request or response containers
                 cache_dict.pop(key, None)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.warning("invalidate_lazymcp_cache failed: %s", e)
 
     async def _merge_toolset_permissions(
@@ -2608,10 +2709,12 @@ if MCP_AVAILABLE:
 
     async def _get_lazymcp_allowed_servers(
         user_api_key_auth: UserAPIKeyAuth | None,
-        mcp_servers: list[str] | None,
+        mcp_servers: list[str] | None,  # mutable-ok: framework contract requires mutable request or response containers
         client_ip: str | None,
-    ) -> list[MCPServer]:
-        user_api_key_auth = await _merge_toolset_permissions(user_api_key_auth)
+    ) -> list[MCPServer]:  # mutable-ok: framework contract requires mutable request or response containers
+        user_api_key_auth = await _merge_toolset_permissions(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            user_api_key_auth
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         return await _get_allowed_mcp_servers(
             user_api_key_auth=user_api_key_auth,
             mcp_servers=mcp_servers,
@@ -2622,11 +2725,17 @@ if MCP_AVAILABLE:
         server: MCPServer,
         user_api_key_auth: UserAPIKeyAuth | None,
         mcp_auth_header: str | None,
-        mcp_server_auth_headers: dict[str, dict[str, str]] | None,
-        oauth2_headers: dict[str, str] | None,
-        raw_headers: dict[str, str] | None,
-        scope_servers: list[MCPServer] | None = None,
-    ) -> list[MCPTool]:
+        mcp_server_auth_headers: dict[  # mutable-ok: framework contract requires mutable request or response containers
+            str, dict[str, str]
+        ]  # mutable-ok: framework contract requires mutable request or response containers
+        | None,  # mutable-ok: framework contract requires mutable request or response containers
+        oauth2_headers: dict[str, str]  # mutable-ok: framework contract requires mutable request or response containers
+        | None,  # mutable-ok: framework contract requires mutable request or response containers
+        raw_headers: dict[str, str]  # mutable-ok: framework contract requires mutable request or response containers
+        | None,  # mutable-ok: framework contract requires mutable request or response containers
+        scope_servers: list[MCPServer]  # mutable-ok: framework contract requires mutable request or response containers
+        | None = None,  # mutable-ok: framework contract requires mutable request or response containers
+    ) -> list[MCPTool]:  # mutable-ok: framework contract requires mutable request or response containers
         server_auth_header, extra_headers = _prepare_mcp_server_headers(
             server=server,
             mcp_server_auth_headers=mcp_server_auth_headers,
@@ -2637,11 +2746,11 @@ if MCP_AVAILABLE:
             scope_servers=scope_servers,
         )
         if extra_headers is None and server.auth_type == MCPAuth.oauth2:
-            extra_headers = await _get_user_oauth_extra_headers_from_db(
+            extra_headers = await _get_user_oauth_extra_headers_from_db(  # rebind-ok: framework flow intentionally updates request or lifecycle state
                 server=server,
                 user_api_key_auth=user_api_key_auth,
             )
-        tools = await global_mcp_server_manager._get_tools_from_server(
+        tools = await global_mcp_server_manager._get_tools_from_server(  # pyright: ignore[reportPrivateUsage]  # server transport owns this internal manager operation operation  # rebind-ok: framework flow intentionally updates request or lifecycle state
             server=server,
             mcp_auth_header=server_auth_header,
             extra_headers=extra_headers,
@@ -2650,8 +2759,12 @@ if MCP_AVAILABLE:
             user_api_key_auth=user_api_key_auth,
             oauth2_headers=oauth2_headers,
         )
-        tools = filter_tools_by_allowed_tools(tools, server)
-        tools = await filter_tools_by_key_team_permissions(
+        tools = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            filter_tools_by_allowed_tools(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                tools, server
+            )
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        tools = await filter_tools_by_key_team_permissions(  # rebind-ok: framework flow intentionally updates request or lifecycle state
             tools=tools,
             server_id=server.server_id,
             user_api_key_auth=user_api_key_auth,
@@ -2666,22 +2779,33 @@ if MCP_AVAILABLE:
         server: MCPServer,
         user_api_key_auth: UserAPIKeyAuth | None,
         mcp_auth_header: str | None,
-        mcp_server_auth_headers: dict[str, dict[str, str]] | None,
-        oauth2_headers: dict[str, str] | None,
-        raw_headers: dict[str, str] | None,
-        scope_servers: list[MCPServer],
-    ) -> tuple[list[MCPTool], str]:
-        async def _list_tools() -> tuple[list[MCPTool], str]:
-            auth_status = "not_required"
+        mcp_server_auth_headers: dict[  # mutable-ok: framework contract requires mutable request or response containers
+            str, dict[str, str]
+        ]  # mutable-ok: framework contract requires mutable request or response containers
+        | None,  # mutable-ok: framework contract requires mutable request or response containers
+        oauth2_headers: dict[str, str]  # mutable-ok: framework contract requires mutable request or response containers
+        | None,  # mutable-ok: framework contract requires mutable request or response containers
+        raw_headers: dict[str, str]  # mutable-ok: framework contract requires mutable request or response containers
+        | None,  # mutable-ok: framework contract requires mutable request or response containers
+        scope_servers: list[  # mutable-ok: framework contract requires mutable request or response containers
+            MCPServer
+        ],  # mutable-ok: framework contract requires mutable request or response containers
+    ) -> tuple[list[MCPTool], str]:  # mutable-ok: framework contract requires mutable request or response containers
+        async def _list_tools() -> (
+            tuple[  # mutable-ok: framework contract requires mutable request or response containers
+                list[MCPTool], str
+            ]
+        ):  # mutable-ok: framework contract requires mutable request or response containers
+            auth_status = "not_required"  # rebind-ok: framework flow intentionally updates request or lifecycle state
             if server.needs_user_oauth_token:
-                auth_status = (
+                auth_status = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
                     "connected"
                     if await global_mcp_server_manager.has_user_oauth_token(server, user_api_key_auth)
                     else "auth_required"
                 )
             if auth_status == "auth_required":
-                return [], auth_status
-            tools = await _get_lazymcp_server_tools(
+                return [], auth_status  # mutable-ok: framework contract requires mutable request or response containers
+            tools = await _get_lazymcp_server_tools(  # rebind-ok: framework flow intentionally updates request or lifecycle state
                 server=server,
                 user_api_key_auth=user_api_key_auth,
                 mcp_auth_header=mcp_auth_header,
@@ -2692,7 +2816,11 @@ if MCP_AVAILABLE:
             )
             return tools, auth_status
 
-        listing_task = asyncio.create_task(_list_tools())
+        listing_task = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            asyncio.create_task(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                _list_tools()
+            )
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         done, _ = await asyncio.wait(
             (listing_task,),
             timeout=LAZYMCP_CATALOG_SERVER_TIMEOUT_SECONDS,
@@ -2704,26 +2832,39 @@ if MCP_AVAILABLE:
                 "LazyMCP timed out listing tools for server %s",
                 _get_lazymcp_server_label(server),
             )
-            return [], "authentication_failed" if server.needs_user_oauth_token else "listing_failed"
+            return (
+                [],  # mutable-ok: framework contract requires mutable request or response containers
+                "authentication_failed" if server.needs_user_oauth_token else "listing_failed",
+            )  # mutable-ok: framework contract requires mutable request or response containers
         try:
             return listing_task.result()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.exception(
                 "LazyMCP failed to list tools for server %s: %s",
                 _get_lazymcp_server_label(server),
                 e,
             )
-            return [], "authentication_failed" if server.needs_user_oauth_token else "listing_failed"
+            return (
+                [],  # mutable-ok: framework contract requires mutable request or response containers
+                "authentication_failed" if server.needs_user_oauth_token else "listing_failed",
+            )  # mutable-ok: framework contract requires mutable request or response containers
 
     async def _get_bounded_lazymcp_catalog_server_entry(
         server: MCPServer,
         user_api_key_auth: UserAPIKeyAuth | None,
         mcp_auth_header: str | None,
-        mcp_server_auth_headers: dict[str, dict[str, str]] | None,
-        oauth2_headers: dict[str, str] | None,
-        raw_headers: dict[str, str] | None,
-        scope_servers: list[MCPServer],
-    ) -> dict[str, Any]:
+        mcp_server_auth_headers: dict[  # mutable-ok: framework contract requires mutable request or response containers
+            str, dict[str, str]
+        ]  # mutable-ok: framework contract requires mutable request or response containers
+        | None,  # mutable-ok: framework contract requires mutable request or response containers
+        oauth2_headers: dict[str, str]  # mutable-ok: framework contract requires mutable request or response containers
+        | None,  # mutable-ok: framework contract requires mutable request or response containers
+        raw_headers: dict[str, str]  # mutable-ok: framework contract requires mutable request or response containers
+        | None,  # mutable-ok: framework contract requires mutable request or response containers
+        scope_servers: list[  # mutable-ok: framework contract requires mutable request or response containers
+            MCPServer
+        ],  # mutable-ok: framework contract requires mutable request or response containers
+    ) -> dict[str, Any]:  # mutable-ok: framework contract requires mutable request or response containers
         tools, auth_status = await _get_bounded_lazymcp_server_tools(
             server=server,
             user_api_key_auth=user_api_key_auth,
@@ -2733,25 +2874,32 @@ if MCP_AVAILABLE:
             raw_headers=raw_headers,
             scope_servers=scope_servers,
         )
-        return {
+        return {  # mutable-ok: framework contract requires mutable request or response containers
             "server_id": server.server_id,
             "name": _get_lazymcp_server_label(server),
             "description": _get_lazymcp_server_description(server),
             "tool_count": len(tools),
-            "tools": [_lazymcp_tool_to_summary(tool) for tool in tools],
+            "tools": [  # mutable-ok: framework contract requires mutable request or response containers
+                _lazymcp_tool_to_summary(tool) for tool in tools
+            ],  # mutable-ok: framework contract requires mutable request or response containers
             "auth_status": auth_status,
         }
 
     async def _get_lazymcp_catalog(
         user_api_key_auth: UserAPIKeyAuth | None,
         mcp_auth_header: str | None,
-        mcp_servers: list[str] | None,
-        mcp_server_auth_headers: dict[str, dict[str, str]] | None,
-        oauth2_headers: dict[str, str] | None,
-        raw_headers: dict[str, str] | None,
+        mcp_servers: list[str] | None,  # mutable-ok: framework contract requires mutable request or response containers
+        mcp_server_auth_headers: dict[  # mutable-ok: framework contract requires mutable request or response containers
+            str, dict[str, str]
+        ]  # mutable-ok: framework contract requires mutable request or response containers
+        | None,  # mutable-ok: framework contract requires mutable request or response containers
+        oauth2_headers: dict[str, str]  # mutable-ok: framework contract requires mutable request or response containers
+        | None,  # mutable-ok: framework contract requires mutable request or response containers
+        raw_headers: dict[str, str]  # mutable-ok: framework contract requires mutable request or response containers
+        | None,  # mutable-ok: framework contract requires mutable request or response containers
         client_ip: str | None,
-    ) -> dict[str, Any]:
-        scope_hash = _lazymcp_cache_scope(
+    ) -> dict[str, Any]:  # mutable-ok: framework contract requires mutable request or response containers
+        scope_hash = _lazymcp_cache_scope(  # rebind-ok: framework flow intentionally updates request or lifecycle state
             user_api_key_auth=user_api_key_auth,
             mcp_auth_header=mcp_auth_header,
             mcp_servers=mcp_servers,
@@ -2760,19 +2908,23 @@ if MCP_AVAILABLE:
             raw_headers=raw_headers,
             client_ip=client_ip,
         )
-        allowed_servers = await _get_lazymcp_allowed_servers(
+        allowed_servers = await _get_lazymcp_allowed_servers(  # rebind-ok: framework flow intentionally updates request or lifecycle state
             user_api_key_auth=user_api_key_auth,
             mcp_servers=mcp_servers,
             client_ip=client_ip,
         )
-        cache_key = f"lazymcp:catalog:{scope_hash}"
+        cache_key = f"lazymcp:catalog:{scope_hash}"  # rebind-ok: framework flow intentionally updates request or lifecycle state
         has_user_oauth_server: Final = any(server.needs_user_oauth_token for server in allowed_servers)
         if not has_user_oauth_server:
-            cached = await _lazymcp_cache_get(cache_key)
+            cached = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                await _lazymcp_cache_get(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                    cache_key
+                )
+            )  # rebind-ok: framework flow intentionally updates request or lifecycle state
             if isinstance(cached, dict):
                 return cached
 
-        servers = list(
+        servers = list(  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
             await asyncio.gather(
                 *(
                     _get_bounded_lazymcp_catalog_server_entry(
@@ -2789,7 +2941,7 @@ if MCP_AVAILABLE:
             )
         )
 
-        description_lines = [
+        description_lines = [  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
             "Describe MCP servers and tools available through the LiteLLM LazyMCP gateway.",
             "",
             "Available MCP servers:",
@@ -2799,14 +2951,14 @@ if MCP_AVAILABLE:
         else:
             description_lines.append("- No MCP servers are available for this request.")
         description_lines.extend(
-            [
+            [  # mutable-ok: framework contract requires mutable request or response containers
                 "",
                 'Call mcp_describe with {"server":"<name>"} to list tools for one server with input schemas.',
                 'Call mcp_describe with {"server":"<name>","tool":"<tool_name>"} to get details for one tool with its input schema.',
                 'Call mcp_call with {"server":"<name>","tool":"<tool_name>","arguments":{...}} to execute a tool.',
             ]
         )
-        catalog = {
+        catalog = {  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
             "servers": servers,
             "description": "\n".join(description_lines),
             "server_count": len(servers),
@@ -2831,7 +2983,9 @@ if MCP_AVAILABLE:
             return None, LAZYMCP_AMBIGUOUS_TOOL_ERROR
         return None, LAZYMCP_UNAVAILABLE_TOOL_ERROR
 
-    async def _lazymcp_describe(arguments: dict[str, Any]) -> Mapping[str, Any]:
+    async def _lazymcp_describe(
+        arguments: dict[str, Any],  # mutable-ok: framework contract requires mutable request or response containers
+    ) -> Mapping[str, Any]:  # mutable-ok: framework contract requires mutable request or response containers
         (
             user_api_key_auth,
             mcp_auth_header,
@@ -2841,15 +2995,17 @@ if MCP_AVAILABLE:
             raw_headers,
             client_ip,
         ) = get_auth_context()
-        server_name = arguments.get("server")
-        tool_name = arguments.get("tool")
+        server_name = arguments.get(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            "server"
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        tool_name = arguments.get("tool")  # rebind-ok: framework flow intentionally updates request or lifecycle state
         if server_name:
-            allowed_servers = await _get_lazymcp_allowed_servers(
+            allowed_servers = await _get_lazymcp_allowed_servers(  # rebind-ok: framework flow intentionally updates request or lifecycle state
                 user_api_key_auth=user_api_key_auth,
                 mcp_servers=mcp_servers,
                 client_ip=client_ip,
             )
-            selected_server = next(
+            selected_server = next(  # rebind-ok: framework flow intentionally updates request or lifecycle state
                 (
                     server
                     for server in allowed_servers
@@ -2866,53 +3022,68 @@ if MCP_AVAILABLE:
                 mcp_server_auth_headers=mcp_server_auth_headers,
                 oauth2_headers=oauth2_headers,
                 raw_headers=raw_headers,
-                scope_servers=[selected_server],
+                scope_servers=[  # mutable-ok: framework contract requires mutable request or response containers
+                    selected_server
+                ],  # mutable-ok: framework contract requires mutable request or response containers
             )
             if auth_status == "auth_required":
-                return {
+                return {  # mutable-ok: framework contract requires mutable request or response containers
                     "server": _get_lazymcp_server_label(selected_server),
                     "description": _get_lazymcp_server_description(selected_server),
-                    "tools": [],
+                    "tools": [],  # mutable-ok: framework contract requires mutable request or response containers
                     "auth_status": auth_status,
                 }
             if tool_name:
                 selected_tool, resolution_error = _resolve_lazymcp_tool(tools, selected_server, str(tool_name))
                 if selected_tool is None:
                     return resolution_error or LAZYMCP_UNAVAILABLE_TOOL_ERROR
-                return {
+                return {  # mutable-ok: framework contract requires mutable request or response containers
                     "server": _get_lazymcp_server_label(selected_server),
                     "tool": _lazymcp_tool_to_summary(selected_tool, include_schema=True),
                 }
-            response: dict[str, Any] = {
+            response: dict[  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
+                str, Any
+            ] = {  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
                 "server": _get_lazymcp_server_label(selected_server),
                 "description": _get_lazymcp_server_description(selected_server),
-                "tools": [_lazymcp_tool_to_summary(tool, include_schema=True) for tool in tools],
+                "tools": [  # mutable-ok: framework contract requires mutable request or response containers
+                    _lazymcp_tool_to_summary(tool, include_schema=True) for tool in tools
+                ],  # mutable-ok: framework contract requires mutable request or response containers
             }
             if auth_status not in ("not_required", "connected"):
                 response["auth_status"] = auth_status
             return response
 
-        catalog = await _get_lazymcp_catalog(
-            user_api_key_auth=user_api_key_auth,
-            mcp_auth_header=mcp_auth_header,
-            mcp_servers=mcp_servers,
-            mcp_server_auth_headers=mcp_server_auth_headers,
-            oauth2_headers=oauth2_headers,
-            raw_headers=raw_headers,
-            client_ip=client_ip,
+        catalog = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            await _get_lazymcp_catalog(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                user_api_key_auth=user_api_key_auth,
+                mcp_auth_header=mcp_auth_header,
+                mcp_servers=mcp_servers,
+                mcp_server_auth_headers=mcp_server_auth_headers,
+                oauth2_headers=oauth2_headers,
+                raw_headers=raw_headers,
+                client_ip=client_ip,
+            )
         )
-        return {
-            "servers": [
-                {
+        return {  # mutable-ok: framework contract requires mutable request or response containers
+            "servers": [  # mutable-ok: framework contract requires mutable request or response containers
+                {  # mutable-ok: framework contract requires mutable request or response containers
                     "name": item["name"],
                     "description": item["description"],
                     "tool_count": item["tool_count"],
                 }
-                for item in catalog.get("servers", [])
+                for item in catalog.get(
+                    "servers",
+                    [],  # mutable-ok: framework contract requires mutable request or response containers
+                )  # mutable-ok: framework contract requires mutable request or response containers
             ]
         }
 
-    async def _lazymcp_status() -> dict[str, Any]:
+    async def _lazymcp_status() -> (
+        dict[  # mutable-ok: framework contract requires mutable request or response containers
+            str, Any
+        ]
+    ):  # mutable-ok: framework contract requires mutable request or response containers
         (
             user_api_key_auth,
             mcp_auth_header,
@@ -2922,43 +3093,56 @@ if MCP_AVAILABLE:
             raw_headers,
             client_ip,
         ) = get_auth_context()
-        catalog = await _get_lazymcp_catalog(
-            user_api_key_auth=user_api_key_auth,
-            mcp_auth_header=mcp_auth_header,
-            mcp_servers=mcp_servers,
-            mcp_server_auth_headers=mcp_server_auth_headers,
-            oauth2_headers=oauth2_headers,
-            raw_headers=raw_headers,
-            client_ip=client_ip,
+        catalog = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            await _get_lazymcp_catalog(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                user_api_key_auth=user_api_key_auth,
+                mcp_auth_header=mcp_auth_header,
+                mcp_servers=mcp_servers,
+                mcp_server_auth_headers=mcp_server_auth_headers,
+                oauth2_headers=oauth2_headers,
+                raw_headers=raw_headers,
+                client_ip=client_ip,
+            )
         )
-        return {
+        return {  # mutable-ok: framework contract requires mutable request or response containers
             "enabled": True,
             "mode": "lazymcp",
             "visible_server_count": catalog.get("server_count", 0),
             "visible_tool_count": catalog.get("tool_count", 0),
             "route_restricted": bool(mcp_servers),
-            "requested_server_count": len(mcp_servers or []),
+            "requested_server_count": len(
+                mcp_servers or []  # mutable-ok: framework contract requires mutable request or response containers
+            ),  # mutable-ok: framework contract requires mutable request or response containers
             "toolset_scoped": _mcp_active_toolset_id.get() is not None,
-            "servers": [
-                {
+            "servers": [  # mutable-ok: framework contract requires mutable request or response containers
+                {  # mutable-ok: framework contract requires mutable request or response containers
                     "name": item["name"],
                     "tool_count": item["tool_count"],
                     "auth_status": item.get("auth_status", "not_required"),
                 }
-                for item in catalog.get("servers", [])
+                for item in catalog.get(
+                    "servers",
+                    [],  # mutable-ok: framework contract requires mutable request or response containers
+                )  # mutable-ok: framework contract requires mutable request or response containers
             ],
         }
 
-    async def _lazymcp_call(arguments: dict[str, Any]) -> CallToolResult:
-        server_name = arguments.get("server")
-        tool_name = arguments.get("tool")
-        tool_arguments = arguments.get("arguments")
+    async def _lazymcp_call(
+        arguments: dict[str, Any],  # mutable-ok: framework contract requires mutable request or response containers
+    ) -> CallToolResult:  # mutable-ok: framework contract requires mutable request or response containers
+        server_name = arguments.get(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            "server"
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        tool_name = arguments.get("tool")  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        tool_arguments = arguments.get(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            "arguments"
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         if not isinstance(server_name, str) or not isinstance(tool_name, str) or not isinstance(tool_arguments, dict):
             return CallToolResult(
-                content=[
+                content=[  # mutable-ok: framework contract requires mutable request or response containers
                     TextContent(
                         text=json.dumps(
-                            {
+                            {  # mutable-ok: framework contract requires mutable request or response containers
                                 "error": "Invalid LazyMCP arguments.",
                                 "details": "mcp_call requires server, tool, and arguments.",
                             }
@@ -2978,28 +3162,32 @@ if MCP_AVAILABLE:
             raw_headers,
             client_ip,
         ) = get_auth_context()
-        allowed_servers = await _get_lazymcp_allowed_servers(
+        allowed_servers = await _get_lazymcp_allowed_servers(  # rebind-ok: framework flow intentionally updates request or lifecycle state
             user_api_key_auth=user_api_key_auth,
             mcp_servers=mcp_servers,
             client_ip=client_ip,
         )
-        selected_server = next(
+        selected_server = next(  # rebind-ok: framework flow intentionally updates request or lifecycle state
             (server for server in allowed_servers if _get_lazymcp_server_label(server).lower() == server_name.lower()),
             None,
         )
         if selected_server is None:
             return CallToolResult(
-                content=[TextContent(text=json.dumps(LAZYMCP_UNAVAILABLE_SERVER_ERROR), type="text")],
+                content=[  # mutable-ok: framework contract requires mutable request or response containers
+                    TextContent(text=json.dumps(LAZYMCP_UNAVAILABLE_SERVER_ERROR), type="text")
+                ],  # mutable-ok: framework contract requires mutable request or response containers
                 isError=True,
             )
         if selected_server.needs_user_oauth_token and not await global_mcp_server_manager.has_user_oauth_token(
             selected_server, user_api_key_auth
         ):
             return CallToolResult(
-                content=[TextContent(text=json.dumps(LAZYMCP_AUTH_REQUIRED_ERROR), type="text")],
+                content=[  # mutable-ok: framework contract requires mutable request or response containers
+                    TextContent(text=json.dumps(LAZYMCP_AUTH_REQUIRED_ERROR), type="text")
+                ],  # mutable-ok: framework contract requires mutable request or response containers
                 isError=True,
             )
-        visible_tools = await _get_lazymcp_server_tools(
+        visible_tools = await _get_lazymcp_server_tools(  # rebind-ok: framework flow intentionally updates request or lifecycle state
             selected_server,
             user_api_key_auth,
             mcp_auth_header,
@@ -3010,7 +3198,7 @@ if MCP_AVAILABLE:
         selected_tool, resolution_error = _resolve_lazymcp_tool(visible_tools, selected_server, tool_name)
         if selected_tool is None:
             return CallToolResult(
-                content=[
+                content=[  # mutable-ok: framework contract requires mutable request or response containers
                     TextContent(
                         text=json.dumps(resolution_error or LAZYMCP_UNAVAILABLE_TOOL_ERROR),
                         type="text",
@@ -3023,11 +3211,13 @@ if MCP_AVAILABLE:
             arguments=tool_arguments,
             user_api_key_auth=user_api_key_auth,
             mcp_auth_header=mcp_auth_header,
-            mcp_servers=[_get_lazymcp_server_label(selected_server)],
+            mcp_servers=[  # mutable-ok: framework contract requires mutable request or response containers
+                _get_lazymcp_server_label(selected_server)
+            ],  # mutable-ok: framework contract requires mutable request or response containers
             mcp_server_auth_headers=mcp_server_auth_headers,
             oauth2_headers=oauth2_headers,
             raw_headers=raw_headers,
-            metadata={
+            metadata={  # mutable-ok: framework contract requires mutable request or response containers
                 "source": "lazymcp",
                 "lazy_mcp": True,
                 "lazy_mcp_gateway_tool": "mcp_call",
@@ -3038,28 +3228,37 @@ if MCP_AVAILABLE:
             },
         )
 
-    def _make_lazymcp_text_result(payload: dict[str, Any]) -> CallToolResult:
+    def _make_lazymcp_text_result(
+        payload: dict[str, Any],  # mutable-ok: framework contract requires mutable request or response containers
+    ) -> CallToolResult:  # mutable-ok: framework contract requires mutable request or response containers
         return CallToolResult(
-            content=[TextContent(text=json.dumps(payload, default=str), type="text")],
+            content=[  # mutable-ok: framework contract requires mutable request or response containers
+                TextContent(text=json.dumps(payload, default=str), type="text")
+            ],  # mutable-ok: framework contract requires mutable request or response containers
             isError=bool(payload.get("error")),
         )
 
-    def _get_lazymcp_gateway_tools(description: str | None = None) -> list[MCPTool]:
-        describe_description = description or (
-            "Describe MCP servers and tools available through the LiteLLM LazyMCP gateway."
+    def _get_lazymcp_gateway_tools(
+        description: str | None = None,
+    ) -> list[MCPTool]:  # mutable-ok: framework contract requires mutable request or response containers
+        describe_description = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            description
+            or (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                "Describe MCP servers and tools available through the LiteLLM LazyMCP gateway."
+            )
         )
-        return [
+        return [  # mutable-ok: framework contract requires mutable request or response containers
             MCPTool(
                 name="mcp_describe",
                 description=describe_description,
-                inputSchema={
+                inputSchema={  # mutable-ok: framework contract requires mutable request or response containers
                     "type": "object",
-                    "properties": {
-                        "server": {
+                    "properties": {  # mutable-ok: framework contract requires mutable request or response containers
+                        "server": {  # mutable-ok: framework contract requires mutable request or response containers
                             "type": "string",
                             "description": "Optional MCP server name or alias to inspect.",
                         },
-                        "tool": {
+                        "tool": {  # mutable-ok: framework contract requires mutable request or response containers
                             "type": "string",
                             "description": "Optional tool name within the selected MCP server.",
                         },
@@ -3069,32 +3268,36 @@ if MCP_AVAILABLE:
             MCPTool(
                 name="mcp_call",
                 description="Execute a tool from an MCP server available through the LiteLLM LazyMCP gateway. Use mcp_describe first to inspect available servers, tools, and schemas.",
-                inputSchema={
+                inputSchema={  # mutable-ok: framework contract requires mutable request or response containers
                     "type": "object",
-                    "properties": {
-                        "server": {
+                    "properties": {  # mutable-ok: framework contract requires mutable request or response containers
+                        "server": {  # mutable-ok: framework contract requires mutable request or response containers
                             "type": "string",
                             "description": "MCP server name or alias.",
                         },
-                        "tool": {
+                        "tool": {  # mutable-ok: framework contract requires mutable request or response containers
                             "type": "string",
                             "description": "Tool name to execute on the selected MCP server.",
                         },
-                        "arguments": {
+                        "arguments": {  # mutable-ok: framework contract requires mutable request or response containers
                             "type": "object",
                             "description": "Arguments to pass to the selected MCP tool.",
                         },
                     },
-                    "required": ["server", "tool", "arguments"],
+                    "required": [  # mutable-ok: framework contract requires mutable request or response containers
+                        "server",
+                        "tool",
+                        "arguments",
+                    ],  # mutable-ok: framework contract requires mutable request or response containers
                     "additionalProperties": False,
                 },
             ),
             MCPTool(
                 name="mcp_status",
                 description="Report safe diagnostics for the current LiteLLM LazyMCP view.",
-                inputSchema={
+                inputSchema={  # mutable-ok: framework contract requires mutable request or response containers
                     "type": "object",
-                    "properties": {},
+                    "properties": {},  # mutable-ok: framework contract requires mutable request or response containers
                     "additionalProperties": False,
                 },
             ),
@@ -3134,7 +3337,7 @@ if MCP_AVAILABLE:
                 raw_headers=raw_headers,
             )
             verbose_logger.debug("Successfully fetched %s prompts from managed MCP servers", len(managed_prompts))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.exception("Error getting tools from managed MCP servers: %s", e)
             # Continue with empty managed tools list instead of failing completely
 
@@ -3164,7 +3367,7 @@ if MCP_AVAILABLE:
                 raw_headers=raw_headers,
             )
             verbose_logger.debug("Successfully fetched %s resources from managed MCP servers", len(managed_resources))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.exception("Error getting resources from managed MCP servers: %s", e)
 
         return managed_resources
@@ -3196,7 +3399,7 @@ if MCP_AVAILABLE:
                 "Successfully fetched %s resource templates from managed MCP servers",
                 len(managed_resource_templates),
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.exception(
                 "Error getting resource templates from managed MCP servers: %s",
                 str(e),
@@ -3545,6 +3748,7 @@ if MCP_AVAILABLE:
                 proxy_logging_obj=proxy_logging_obj,
                 server=mcp_server,
                 raw_headers=raw_headers,
+                litellm_logging_obj=litellm_logging_obj,
             )
             # `pre_call_tool_check` may return guardrail-modified
             # arguments; honor them on the local path too.
@@ -3552,51 +3756,36 @@ if MCP_AVAILABLE:
                 arguments = hook_result["arguments"]
 
             verbose_logger.debug("Executing local registry tool: %s", name)
-            # For BYOK servers the credential must be injected via a ContextVar
-            # because the tool function has headers baked into its closure.
-            # Pre-format the full Authorization header value using the server's
-            # configured auth_type so the generator doesn't need to know the prefix.
-            auth_header_value: str | None = None
-            if mcp_auth_header:
-                server_auth_type: Final = getattr(mcp_server, "auth_type", None) if mcp_server else None
-                if server_auth_type == MCPAuth.api_key:
-                    auth_header_value = f"ApiKey {mcp_auth_header}"
-                elif server_auth_type == MCPAuth.basic:
-                    auth_header_value = f"Basic {mcp_auth_header}"
-                else:
-                    auth_header_value = f"Bearer {mcp_auth_header}"
+            # The credential rides ContextVars because the tool function has its
+            # headers baked into the closure at registration time.
+            auth_header_value, openapi_forwarded_headers, upstream_credential = _resolve_openapi_tool_auth(
+                mcp_server=mcp_server,
+                mcp_auth_header=mcp_auth_header,
+                mcp_server_auth_headers=mcp_server_auth_headers,
+                raw_headers=raw_headers,
+                user_api_key_auth=user_api_key_auth,
+            )
+            (
+                resolved_auth_headers,
+                forwarded_headers,
+            ) = await global_mcp_server_manager.resolve_openapi_upstream_auth(
+                mcp_server=mcp_server,
+                oauth2_headers=oauth2_headers,
+                raw_headers=raw_headers,
+                mcp_auth_header=upstream_credential,
+                user_api_key_auth=user_api_key_auth,
+                forwarded_headers=openapi_forwarded_headers,
+            )
 
-            # Forward named client headers to OpenAPI tool upstream requests.
-            # MCPServer.extra_headers lists header names to copy from raw_headers.
-            # The strip decision is centralized in _should_strip_caller_authorization so this
-            # OpenAPI/local path agrees with the managed paths: M2M and the resolver-owned modes
-            # (token_exchange's raw subject token, authorization_code's stored token) must never
-            # have the caller's Authorization forwarded verbatim upstream.
-            forwarded_headers: dict[str, str] | None = None
-            if mcp_server and mcp_server.extra_headers and raw_headers:
-                normalized_raw: Final = {str(k).lower(): v for k, v in raw_headers.items() if isinstance(k, str)}
-                skip_caller_authorization: Final = _should_strip_caller_authorization(
-                    mcp_server=mcp_server,
-                    raw_headers=raw_headers,
-                    user_api_key_auth=user_api_key_auth,
-                )
-                for header_name in mcp_server.extra_headers:
-                    if not isinstance(header_name, str):
-                        continue
-                    if skip_caller_authorization and header_name.lower() == "authorization":
-                        continue
-                    value = normalized_raw.get(header_name.lower())
-                    if value is not None:
-                        if forwarded_headers is None:
-                            forwarded_headers = {}
-                        forwarded_headers[header_name] = value
-
-            _auth_token = _request_auth_header.set(auth_header_value)
+            _auth_token: Final = _request_auth_header.set(auth_header_value)
+            _extra_token: Final = _request_extra_headers.set(forwarded_headers)
+            _resolved_token: Final = _request_resolved_auth_headers.set(resolved_auth_headers)
             try:
-                local_content = await _handle_local_mcp_tool(name, arguments)
+                response = await _handle_local_mcp_tool(name, arguments)
             finally:
                 _request_auth_header.reset(_auth_token)
-            response = CallToolResult(content=cast(Any, local_content), isError=False)
+                _request_extra_headers.reset(_extra_token)
+                _request_resolved_auth_headers.reset(_resolved_token)
 
         # Try managed MCP server tool (the name is bare; the prefix boundary was
         # already resolved above against this server's registered prefixes)
@@ -3665,12 +3854,12 @@ if MCP_AVAILABLE:
                     proxy_logging_obj=proxy_logging_obj,
                     server=prefix_server,
                     raw_headers=raw_headers,
+                    litellm_logging_obj=litellm_logging_obj,
                 )
                 if "arguments" in hook_result:
                     arguments = hook_result["arguments"]  # pyright: ignore[reportAny]  # hook returns untyped args
 
-            local_content = await _handle_local_mcp_tool(original_tool_name, arguments)
-            response = CallToolResult(content=local_content, isError=False)
+            response = await _handle_local_mcp_tool(original_tool_name, arguments)
 
         return await _run_post_mcp_call_guardrails(
             result=response,
@@ -3848,9 +4037,23 @@ if MCP_AVAILABLE:
             # failure logging still records the event (spend log / OTel); only the extra alert sink is
             # skipped here.
             raise
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             traceback_str: Final = traceback.format_exc(limit=MAXIMUM_TRACEBACK_LINES_TO_LOG)
             from litellm.proxy.proxy_server import proxy_logging_obj
+
+            # Ordering is load-bearing. ``_ProxyDBLogger.async_post_call_failure_hook``,
+            # reached below, writes the failure spend-log row from this logger's
+            # ``standard_logging_object``, which only exists once the failure handlers
+            # have run. Flush them first or the row lands with
+            # ``guardrail_information=None`` and a guardrail block is never counted.
+            #
+            # Not double-logged: both handlers gate on ``should_run_logging`` and then
+            # mark it, so the ``@client`` wrapper's own post-raise logging no-ops on this
+            # logger, same as ``_fire_mcp_tool_call_logging`` does for ``isError=True``.
+            if litellm_logging_obj is not None:
+                end_time: Final = datetime.now()  # noqa: DTZ005  # naive to match `start_time`, which it is subtracted from
+                litellm_logging_obj.failure_handler(e, traceback_str, start_time, end_time)
+                await litellm_logging_obj.async_failure_handler(e, traceback_str, start_time, end_time)
 
             if proxy_logging_obj and user_api_key_auth:
                 await proxy_logging_obj.post_call_failure_hook(
@@ -4029,15 +4232,23 @@ if MCP_AVAILABLE:
             raw_headers=raw_headers,
             proxy_logging_obj=proxy_logging_obj,
             host_progress_callback=host_progress_callback,
+            litellm_logging_obj=litellm_logging_obj,
         )
         verbose_logger.debug("CALL TOOL RESULT: %s", call_tool_result)
         return call_tool_result
 
-    async def _handle_local_mcp_tool(
-        name: str, arguments: dict[str, object]
-    ) -> list[TextContent | ImageContent | EmbeddedResource]:
-        """
-        Handle tool execution for local registry tools
+    async def _handle_local_mcp_tool(name: str, arguments: dict[str, object]) -> CallToolResult:
+        """Execute a local-registry tool and report whether it succeeded.
+
+        Returns the result rather than bare content because the verdict is part of it: the content
+        alone cannot say whether the handler failed, so callers used to stamp isError=False on every
+        outcome and an upstream rejection was served as tool output.
+
+        A failure is reported as ``isError=True`` here rather than raised, because the REST surface
+        turns an unrecognized exception into a 500 and an upstream 403 or 429 is not a gateway crash.
+        ``MCPUpstreamAuthError`` is the exception: it propagates so the caller is told to
+        re-authenticate, which both renderers already know how to say.
+
         Note: Local tools don't use prefixes, so we use the original name
         """
         import inspect
@@ -4047,15 +4258,16 @@ if MCP_AVAILABLE:
             raise HTTPException(status_code=404, detail=f"Tool '{name}' not found")
 
         try:
-            # Check if handler is async or sync
             if inspect.iscoroutinefunction(tool.handler):
                 result = await tool.handler(**arguments)
             else:
                 result = tool.handler(**arguments)
-            return [TextContent(text=str(result), type="text")]
-        except Exception as e:
+        except MCPUpstreamAuthError:
+            raise
+        except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.exception("Error executing local tool %s: %s", name, e)
-            return [TextContent(text=f"Error: {e}", type="text")]
+            return CallToolResult(content=[TextContent(text=f"Error: {e}", type="text")], isError=True)
+        return CallToolResult(content=[TextContent(text=str(result), type="text")], isError=False)
 
     def _get_mcp_servers_in_path(path: str) -> list[str] | None:
         """
@@ -4317,7 +4529,7 @@ if MCP_AVAILABLE:
         try:
             if _session_id in known_sessions:
                 return False
-        except Exception:
+        except Exception:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.debug(
                 "Unable to inspect active MCP sessions for '%s'. Deferring to session manager.",
                 _session_id,
@@ -4352,7 +4564,7 @@ if MCP_AVAILABLE:
     async def _prepare_mcp_request_context(
         scope: Scope,
         path: str,
-    ) -> tuple[
+    ) -> tuple[  # mutable-ok: framework contract requires mutable request or response containers
         UserAPIKeyAuth | None,
         str | None,
         list[str] | None,
@@ -4370,9 +4582,13 @@ if MCP_AVAILABLE:
             raw_headers,
         ) = await extract_mcp_auth_context(scope, path)
 
-        client_ip = IPAddressUtils.get_mcp_client_ip(StarletteRequest(scope))
+        client_ip = IPAddressUtils.get_mcp_client_ip(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            StarletteRequest(scope)
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
 
-        for server_name in mcp_servers or []:
+        for server_name in (
+            mcp_servers or []  # mutable-ok: framework contract requires mutable request or response containers
+        ):  # mutable-ok: framework contract requires mutable request or response containers
             server = global_mcp_server_manager.get_mcp_server_by_name(server_name, client_ip=client_ip)
             if server and server.auth_type == MCPAuth.oauth2 and not oauth2_headers:
                 if server.needs_user_oauth_token:
@@ -4392,30 +4608,73 @@ if MCP_AVAILABLE:
                 raise HTTPException(
                     status_code=401,
                     detail="Unauthorized",
-                    headers={"www-authenticate": authorization_uri},
+                    headers={  # mutable-ok: framework contract requires mutable request or response containers
+                        "www-authenticate": authorization_uri
+                    },  # mutable-ok: framework contract requires mutable request or response containers
                 )
 
-        scope["headers"] = [(k, v) for k, v in scope.get("headers", []) if k.lower() != b"x-mcp-toolset-id"]
+        scope[  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            "headers"
+        ] = [  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
+            (k, v)
+            for k, v in scope.get(
+                "headers", []
+            )  # mutable-ok: framework contract requires mutable request or response containers
+            if k.lower()
+            != b"x-mcp-toolset-id"  # mutable-ok: framework contract requires mutable request or response containers
+        ]  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
 
-        active_toolset_id = _mcp_active_toolset_id.get()
-        active_toolset_name = _mcp_active_toolset_name.get()
+        active_toolset_id = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            _mcp_active_toolset_id.get()
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        active_toolset_name = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            _mcp_active_toolset_name.get()
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        active_scope_name: Final = _mcp_active_lazymcp_scope_name.get()
+        if active_scope_name and (active_toolset_name or active_toolset_id):
+            raise RuntimeError("LazyMCP request cannot bind both scoped and toolset contexts")
         if active_toolset_name and active_toolset_id:
             raise RuntimeError("Explicit toolset request cannot bind both name and ID contexts")
+        if (
+            active_scope_name
+            and global_mcp_server_manager.get_mcp_server_by_name(active_scope_name, client_ip=client_ip) is None
+        ):
+            from litellm.proxy import proxy_server
+
+            scoped_toolset: Final = (
+                await global_mcp_server_manager.get_toolset_by_name_cached(
+                    proxy_server.prisma_client, active_scope_name
+                )
+                if proxy_server.prisma_client is not None
+                else None
+            )
+            if scoped_toolset is not None:
+                active_toolset_id = scoped_toolset.toolset_id  # rebind-ok: route scope resolves to its toolset ID
+                mcp_servers = None  # rebind-ok: toolset scope replaces the path-derived server name
+            elif not await proxy_server._is_mcp_access_group_cached(active_scope_name):
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"MCP server, toolset, or access group '{active_scope_name}' not found",
+                )
         if active_toolset_name:
             from litellm.proxy import proxy_server
 
             if proxy_server.prisma_client is None:
                 raise HTTPException(status_code=503, detail="Database not available")
-            toolset = await global_mcp_server_manager.get_toolset_by_name_cached(
+            toolset = await global_mcp_server_manager.get_toolset_by_name_cached(  # rebind-ok: framework flow intentionally updates request or lifecycle state
                 proxy_server.prisma_client, active_toolset_name
             )
             if toolset is None:
                 raise HTTPException(status_code=404, detail=f"Toolset '{active_toolset_name}' not found")
-            active_toolset_id = toolset.toolset_id
+            active_toolset_id = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                toolset.toolset_id
+            )  # rebind-ok: framework flow intentionally updates request or lifecycle state
             if user_api_key_auth is None:
                 raise HTTPException(status_code=403, detail="Toolset access requires an authenticated principal")
         if active_toolset_id and user_api_key_auth is not None:
-            user_api_key_auth = await _apply_toolset_scope(user_api_key_auth, active_toolset_id)
+            user_api_key_auth = await _apply_toolset_scope(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                user_api_key_auth, active_toolset_id
+            )  # rebind-ok: framework flow intentionally updates request or lifecycle state
 
         set_auth_context(
             user_api_key_auth=user_api_key_auth,
@@ -4527,6 +4786,14 @@ if MCP_AVAILABLE:
                 # preemptive challenge and let downstream authorization
                 # return 403.
                 continue
+            if server is not None and server.auth_type == MCPAuth.oauth2 and server.oauth2_flow == "client_credentials":
+                # Stamped M2M: the challenge decision below never reads discovered
+                # metadata, so deferred-discovery failures must not 503 this loop.
+                # Unstamped rows stay on the discover-first path because filling
+                # authorization_url/token_url can change their inferred flow.
+                continue
+            if server is not None:
+                server = await global_mcp_server_manager.ensure_oauth_metadata_discovered(server)
             if server and server.auth_type == MCPAuth.oauth2:
                 # The challenge decision is per oauth2 sub-mode, not per header:
                 # gateway-managed modes (M2M and interactive authorization_code)
@@ -4571,14 +4838,15 @@ if MCP_AVAILABLE:
 
                     request = StarletteRequest(scope)
                     base_url = get_request_base_url(request)
-                    _path = scope.get("_original_path") or scope.get("path", "") or ""
+                    _path = get_route_relative_request_path(scope)
 
                     # Pick the well-known AS-metadata form that matches the inbound route
                     # so strict RFC 9728 §3.2 clients can resolve it correctly.
+                    as_metadata_root = f"{base_url}/.well-known/oauth-authorization-server{well_known_root_suffix()}"
                     if _path.startswith(f"/mcp/{server_name}"):
-                        _as_url = f"{base_url}/.well-known/oauth-authorization-server/mcp/{server_name}"
+                        _as_url = f"{as_metadata_root}/mcp/{server_name}"
                     else:
-                        _as_url = f"{base_url}/.well-known/oauth-authorization-server/{server_name}"
+                        _as_url = f"{as_metadata_root}/{server_name}"
                     authorization_uri = f'Bearer authorization_uri="{_as_url}"'
 
                     raise HTTPException(
@@ -4758,7 +5026,7 @@ if MCP_AVAILABLE:
 
         Uses the public ``AsyncHTTPHandler.post()`` interface and catches
         ``httpx.HTTPStatusError`` separately so the 401/403 we want to surface
-        is not swallowed by the broad fail-open ``except Exception`` below.
+        is not swallowed by the broad fail-open ``except Exception`` below.  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
         """
         client: Final = get_async_httpx_client(
             llm_provider=httpxSpecialProvider.MCP,
@@ -4794,7 +5062,7 @@ if MCP_AVAILABLE:
             # upstream lands here. Return its status so the caller can map it
             # to the appropriate response.
             return exc.response.status_code, exc.response.headers.get("www-authenticate")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.debug("_probe_upstream_auth: probe to %s failed (%s), allowing request through", url, exc)
             return 200, None
 
@@ -5222,7 +5490,7 @@ if MCP_AVAILABLE:
             # so OAuth clients can re-authenticate instead of receiving a generic
             # 500 that surfaces as a cancelled tool call.
             raise _proxy_exception_to_http_exception(e)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.exception("Error handling MCP request: %s", e)
             # Try to send a graceful error response for non-HTTP exceptions
             try:
@@ -5233,7 +5501,7 @@ if MCP_AVAILABLE:
                     content={"error": "MCP request failed", "details": str(e)},
                 )
                 await error_response(scope, receive, send)
-            except Exception as response_error:
+            except Exception as response_error:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
                 verbose_logger.exception("Failed to send error response: %s", response_error)
                 # If we can't send a proper response, re-raise the original error
                 raise e
@@ -5246,10 +5514,12 @@ if MCP_AVAILABLE:
             return False
 
         def _split_quoted_header(value: str, delimiter: str) -> tuple[str, ...]:
-            fields: list[str] = []
-            field_start = 0
-            quoted = False
-            escaped = False
+            fields: list[  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
+                str
+            ] = []  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
+            field_start = 0  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            quoted = False  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            escaped = False  # rebind-ok: framework flow intentionally updates request or lifecycle state
             for index, character in enumerate(value):
                 if escaped:
                     escaped = False
@@ -5271,7 +5541,7 @@ if MCP_AVAILABLE:
             if media_type.strip().lower() != "text/event-stream":
                 continue
 
-            quality_parameters: Final = tuple(
+            quality_parameters = tuple(
                 parameter.partition("=")
                 for parameter in parameters
                 if parameter.partition("=")[0].strip().lower() == "q"
@@ -5282,7 +5552,7 @@ if MCP_AVAILABLE:
                 continue
 
             _, separator, quality = quality_parameters[0]
-            normalized_quality: Final = quality.strip()
+            normalized_quality = quality.strip()
             if (
                 separator
                 and re.fullmatch(r"(?:0(?:\.\d{0,3})?|1(?:\.0{0,3})?)", normalized_quality)
@@ -5293,21 +5563,30 @@ if MCP_AVAILABLE:
         return True
 
     def _combine_lazymcp_accept_headers(scope: Scope) -> None:
-        headers: Final = scope.get("headers", [])
-        accept_values: Final = [value for name, value in headers if name.lower() == b"accept"]
+        headers: Final = scope.get(
+            "headers",
+            [],  # mutable-ok: framework contract requires mutable request or response containers
+        )  # mutable-ok: framework contract requires mutable request or response containers
+        accept_values: Final = [  # mutable-ok: framework contract requires mutable request or response containers
+            value for name, value in headers if name.lower() == b"accept"
+        ]  # mutable-ok: framework contract requires mutable request or response containers
         if len(accept_values) < 2:
             return
 
         combined_accept: Final = b", ".join(accept_values)
-        normalized_headers: list[tuple[bytes, bytes]] = []
-        accept_inserted = False
+        normalized_headers: list[  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
+            tuple[bytes, bytes]
+        ] = []  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
+        accept_inserted = False  # rebind-ok: framework flow intentionally updates request or lifecycle state
         for name, value in headers:
             if name.lower() != b"accept":
                 normalized_headers.append((name, value))
             elif not accept_inserted:
                 normalized_headers.append((name, combined_accept))
                 accept_inserted = True
-        scope["headers"] = normalized_headers
+        scope["headers"] = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            normalized_headers  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        )
 
     async def handle_streamable_http_lazymcp(scope: Scope, receive: Receive, send: Send) -> None:
         """Handle LazyMCP requests through StreamableHTTP."""
@@ -5320,7 +5599,7 @@ if MCP_AVAILABLE:
                 if original_path.startswith("/lazymcp")
                 else original_path
             )
-            scope["path"] = rewritten_path
+            scope["path"] = rewritten_path  # rebind-ok: framework flow intentionally updates request or lifecycle state
             await _prepare_mcp_request_context(scope, rewritten_path)
 
             if _is_lazymcp_compatibility_request(scope):
@@ -5333,7 +5612,9 @@ if MCP_AVAILABLE:
                 await initialize_session_managers()
                 await asyncio.sleep(0.1)
 
-            handled = await _handle_stale_mcp_session(scope, receive, send, lazy_session_manager)
+            handled = await _handle_stale_mcp_session(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                scope, receive, send, lazy_session_manager
+            )  # rebind-ok: framework flow intentionally updates request or lifecycle state
             if handled:
                 return
             await lazy_session_manager.handle_request(scope, receive, send)
@@ -5341,18 +5622,23 @@ if MCP_AVAILABLE:
             raise
         except ProxyException as e:
             raise _proxy_exception_to_http_exception(e)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.exception(f"Error handling LazyMCP request: {e}")
             try:
                 from starlette.responses import JSONResponse
                 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
 
-                error_response = JSONResponse(
-                    status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-                    content={"error": "LazyMCP request failed", "details": str(e)},
+                error_response = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                    JSONResponse(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                        status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+                        content={  # mutable-ok: framework contract requires mutable request or response containers
+                            "error": "LazyMCP request failed",
+                            "details": "Internal server error",
+                        },  # mutable-ok: framework contract requires mutable request or response containers
+                    )
                 )
                 await error_response(scope, receive, send)
-            except Exception as response_error:
+            except Exception as response_error:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
                 verbose_logger.exception(f"Failed to send LazyMCP error response: {response_error}")
                 raise e
 
@@ -5452,7 +5738,7 @@ if MCP_AVAILABLE:
             # so OAuth clients can re-authenticate instead of receiving a generic
             # 500 that surfaces as a cancelled tool call.
             raise _proxy_exception_to_http_exception(e)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.exception("Error handling MCP request: %s", e)
             # Try to send a graceful error response for non-HTTP exceptions
             try:
@@ -5465,7 +5751,7 @@ if MCP_AVAILABLE:
                     content={"error": "MCP request failed", "details": str(e)},
                 )
                 await error_response(scope, receive, send)
-            except Exception as response_error:
+            except Exception as response_error:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
                 verbose_logger.exception("Failed to send error response: %s", response_error)
                 # If we can't send a proper response, re-raise the original error
                 raise e

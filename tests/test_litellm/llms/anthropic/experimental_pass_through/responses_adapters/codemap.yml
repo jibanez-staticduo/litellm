@@ -4,3 +4,4 @@ internals:
   - path: __init__.py
   - path: test_responses_adapters_streaming_iterator.py
   - path: test_responses_adapters_transformation.py
+  - path: test_responses_adapters_handler.py

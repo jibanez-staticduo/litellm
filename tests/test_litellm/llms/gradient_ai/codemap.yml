@@ -1,0 +1,6 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+modules:
+  - path: chat/
+internals:
+  - path: __init__.py

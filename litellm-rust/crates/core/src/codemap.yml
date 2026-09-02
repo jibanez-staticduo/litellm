@@ -4,3 +4,4 @@ internals:
   - path: lib.rs
   - path: error.rs
   - path: constants.rs
+  - path: http_utils.rs

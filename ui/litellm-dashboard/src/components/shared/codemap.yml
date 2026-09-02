@@ -13,12 +13,10 @@ internals:
   - path: SearchSelect.tsx
   - path: advanced_date_picker.test.tsx
   - path: AdminOnlyNotice.tsx
-  - path: usage_date_picker.test.tsx
   - path: PageHeader.test.tsx
   - path: Alert.tsx
   - path: chart_loader.tsx
   - path: ToolbarSeparator.tsx
-  - path: usage_date_picker.tsx
   - path: advanced_date_picker.tsx
   - path: MultiSelect.tsx
   - path: CopyButton.tsx
@@ -28,3 +26,20 @@ internals:
   - path: MultiSelect.test.tsx
   - path: chart_loader.test.tsx
   - path: PaginatedSearchSelect.test.tsx
+  - path: InheritedBudgetHint.tsx
+  - path: Sidebar.tsx
+  - path: Meter.test.tsx
+  - path: PaginatedMultiSelect.test.tsx
+  - path: SavingsTiles.tsx
+  - path: EntityLink.tsx
+  - path: PaginationStatusAlerts.tsx
+  - path: Alert.test.tsx
+  - path: Meter.tsx
+  - path: usePaginatedCombobox.ts
+  - path: SummaryCard.tsx
+  - path: Sidebar.test.tsx
+  - path: PasswordInput.tsx
+  - path: PaginationStatusAlerts.test.tsx
+  - path: PaginatedMultiSelect.tsx
+  - path: EntityLink.test.tsx
+  - path: InheritedBudgetHint.test.tsx

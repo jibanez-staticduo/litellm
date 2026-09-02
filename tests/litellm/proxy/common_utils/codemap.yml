@@ -1,4 +1,3 @@
 scope: module
 parent: ../../../../.staticeng/codemap.yml
-internals:
-  - path: test_rbac_utils.py
+internals: []

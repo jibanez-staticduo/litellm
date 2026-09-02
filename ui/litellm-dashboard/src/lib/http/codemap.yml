@@ -11,3 +11,4 @@ internals:
   - path: resolveApiBase.ts
   - path: runtime.ts
   - path: client.test.ts
+  - path: searchToolTypes.test-d.ts

@@ -1,4 +1,3 @@
 scope: module
 parent: ../../../../../.staticeng/codemap.yml
-internals:
-  - path: test_embedding.py
+internals: []

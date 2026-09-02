@@ -27,3 +27,7 @@ internals:
   - path: useMyTeamMember.ts
   - path: MyUserTab.tsx
   - path: AvailableTeamsTableColumns.tsx
+  - path: memberFormValues.ts
+  - path: memberFormValues.test.ts
+  - path: GuardrailsSelect.tsx
+  - path: EditMembership.integration.test.tsx

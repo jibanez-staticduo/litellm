@@ -12,3 +12,8 @@ internals:
   - path: CloudZeroIntegrationSettings.test.tsx
   - path: CloudZeroUpdateModal.tsx
   - path: CloudZeroCreateModal.test.tsx
+  - path: CloudZeroUpdateModal.integration.test.tsx
+  - path: CloudZeroCreateModal.integration.test.tsx
+  - path: cloudZeroPayload.test.ts
+  - path: cloudZeroPayload.ts
+  - path: CloudZeroFormControls.tsx

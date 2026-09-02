@@ -1,4 +1,3 @@
 scope: module
 parent: ../../../../../.staticeng/codemap.yml
-internals:
-  - path: test_discoverable_endpoints.py
+internals: []

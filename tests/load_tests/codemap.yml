@@ -10,3 +10,4 @@ internals:
   - path: test_vertex_embeddings_load_test.py
   - path: test_datadog_load_test.py
   - path: test_memory_usage.py
+  - path: conftest.py

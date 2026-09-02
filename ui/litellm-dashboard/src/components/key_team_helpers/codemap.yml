@@ -13,3 +13,10 @@ internals:
   - path: TagRateLimitEditor.test.tsx
   - path: transform_key_info.test.ts
   - path: filter_helpers.test.ts
+  - path: ModelMaxBudgetEditor.test.ts
+  - path: ModelMaxBudgetEditor.tsx
+  - path: modelMaxBudgetPayload.ts
+  - path: ModelMaxBudgetEditor.integration.test.tsx
+  - path: useModelMaxBudgetField.ts
+  - path: useSeededState.ts
+  - path: modelMaxBudgetPayload.test.ts

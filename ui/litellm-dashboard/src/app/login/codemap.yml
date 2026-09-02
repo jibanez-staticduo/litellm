@@ -4,3 +4,4 @@ internals:
   - path: LoginPage.test.tsx
   - path: page.tsx
   - path: LoginPage.tsx
+  - path: LoginPage.integration.test.tsx

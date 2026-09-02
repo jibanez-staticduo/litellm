@@ -9,3 +9,4 @@ internals:
   - path: DeleteSSOSettingsModal.test.tsx
   - path: BaseSSOSettingsForm.test.tsx
   - path: AddSSOSettingsModal.test.tsx
+  - path: EditSSOSettingsModal.integration.test.tsx

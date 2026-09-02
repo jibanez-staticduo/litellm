@@ -20,3 +20,4 @@ internals:
   - path: test_budget_enforcement_e2e.py
   - path: test_team_member_budget_reset_e2e.py
   - path: test_tag_budget_e2e.py
+  - path: test_model_access_group_budget_e2e.py

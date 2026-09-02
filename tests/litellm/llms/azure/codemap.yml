@@ -1,5 +1,3 @@
 scope: module
 parent: ../../../../.staticeng/codemap.yml
-internals:
-  - path: __init__.py
-  - path: test_azure_embedding.py
+internals: []

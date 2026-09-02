@@ -3,3 +3,5 @@ parent: ../../../../../../../.staticeng/codemap.yml
 internals:
   - path: useSpendLogEndUsers.test.ts
   - path: useSpendLogEndUsers.ts
+  - path: useSpendLogUsers.test.ts
+  - path: useSpendLogUsers.ts

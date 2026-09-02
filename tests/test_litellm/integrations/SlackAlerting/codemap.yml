@@ -6,3 +6,5 @@ internals:
   - path: test_hanging_request_check.py
   - path: test_slack_alerting_utils.py
   - path: test_slack_alerting_digest.py
+  - path: test_ms_teams.py
+  - path: test_model_deprecation_alert.py

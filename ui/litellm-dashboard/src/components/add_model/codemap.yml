@@ -48,3 +48,20 @@ internals:
   - path: handle_add_model_submit.test.tsx
   - path: AddModelForm.tsx
   - path: build_auto_router_routing_test_request.test.ts
+  - path: heuristic_scoring_knobs.test.ts
+  - path: ModelChoiceCombobox.tsx
+  - path: CustomTierPromptEditor.test.tsx
+  - path: tier_set_actions.test.ts
+  - path: heuristic_scoring_knobs.ts
+  - path: TierModelEffortRows.tsx
+  - path: TierModelEffortRows.test.tsx
+  - path: cache_control_settings.test.tsx
+  - path: HeuristicScoringConfig.tsx
+  - path: AccessGroupTagsCombobox.tsx
+  - path: tier_rows.ts
+  - path: TierRestrictions.tsx
+  - path: CustomTierPromptEditor.tsx
+  - path: tier_set_actions.ts
+  - path: tier_rows.test.ts
+  - path: HeuristicScoringConfig.test.tsx
+  - path: complexity_router_keywords.test.ts

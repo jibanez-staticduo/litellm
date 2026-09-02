@@ -65,3 +65,26 @@ internals:
   - path: OpenAPIQuickPicker.tsx
   - path: MCPPermissionManagement.tsx
   - path: MCPStandardsSettings.tsx
+  - path: ImportMCPServers.tsx
+  - path: ToolArgumentsForm.tsx
+  - path: MCPToolsetsTab.integration.test.tsx
+  - path: mcpFieldRules.ts
+  - path: EnvVarsSection.test.tsx
+  - path: UserEnvVarsModal.integration.test.tsx
+  - path: UpstreamTokenHeaderField.tsx
+  - path: editServerPayload.differential.cases.ts
+  - path: mcpFormStore.test.tsx
+  - path: mcp_connect.test.tsx
+  - path: McpFormTestHarness.tsx
+  - path: mcpFieldRules.test.ts
+  - path: CreateMCPServer.permissions.integration.test.tsx
+  - path: importConnectorConfig.ts
+  - path: mcp_server_edit.integration.test.tsx
+  - path: editServerPayload.differential.test.ts
+  - path: mcpFormStore.ts
+  - path: editServerPayload.ts
+  - path: mountedServerFields.test.ts
+  - path: importConnectorConfig.test.ts
+  - path: toolCallArguments.ts
+  - path: mountedServerFields.ts
+  - path: toolCallArguments.test.ts

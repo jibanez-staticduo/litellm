@@ -11,3 +11,4 @@ internals:
   - path: CredentialModal.test.tsx
   - path: CredentialsPanel.tsx
   - path: CredentialsTable.tsx
+  - path: reuse_credentials.test.tsx

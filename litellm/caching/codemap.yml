@@ -21,3 +21,4 @@ internals:
   - path: caching.py
   - path: dual_cache.py
   - path: Readme.md
+  - path: redis_cluster_node_isolation.py

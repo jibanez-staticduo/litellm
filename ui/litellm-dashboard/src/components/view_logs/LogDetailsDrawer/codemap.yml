@@ -42,3 +42,5 @@ internals:
   - path: ClassifyTag.tsx
   - path: HistoryTree.test.tsx
   - path: TokenFlow.test.tsx
+  - path: DrawerHeader.test.tsx
+  - path: SidebarToggle.tsx

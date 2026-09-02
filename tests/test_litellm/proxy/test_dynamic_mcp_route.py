@@ -24,10 +24,9 @@ from fastapi import HTTPException
 # ---------------------------------------------------------------------------
 
 _MCP_MANAGER = "litellm.proxy._experimental.mcp_server.mcp_server_manager.global_mcp_server_manager"
-_HANDLE_HTTP = (
-    "litellm.proxy._experimental.mcp_server.server.handle_streamable_http_mcp"
-)
+_HANDLE_HTTP = "litellm.proxy._experimental.mcp_server.server.handle_streamable_http_mcp"
 _STREAM_ASGI = "litellm.proxy.proxy_server._stream_mcp_asgi_response"
+_LAZYMCP_STREAM_ASGI = "litellm.proxy.lazymcp_routes._forward_lazymcp"
 _PRISMA = "litellm.proxy.proxy_server.prisma_client"
 _IS_ACCESS_GROUP = "litellm.proxy.proxy_server._is_mcp_access_group_cached"
 _USER_API_KEY_CACHE = "litellm.proxy.proxy_server.user_api_key_cache"
@@ -236,9 +235,7 @@ async def test_resolve_mcp_csv_tokens_drops_unknown_and_resolves_access_groups()
     fake_mgr = MagicMock()
     # Only "registered_srv" is a known server alias.
     fake_mgr.get_mcp_server_by_name = MagicMock(
-        side_effect=lambda name, client_ip=None: (
-            _fake_server(name) if name == "registered_srv" else None
-        )
+        side_effect=lambda name, client_ip=None: _fake_server(name) if name == "registered_srv" else None
     )
 
     # "dev_group" is a real access group; "ghost" is not.
@@ -248,9 +245,7 @@ async def test_resolve_mcp_csv_tokens_drops_unknown_and_resolves_access_groups()
         patch(_MCP_MANAGER, fake_mgr),
         patch(_IS_ACCESS_GROUP, new=is_group),
     ):
-        resolved = await _resolve_mcp_csv_tokens(
-            "registered_srv,dev_group,ghost", client_ip=None
-        )
+        resolved = await _resolve_mcp_csv_tokens("registered_srv,dev_group,ghost", client_ip=None)
 
     assert resolved == ["registered_srv", "dev_group"]
     # Access-group lookup must NOT be called for "registered_srv" (already
@@ -501,9 +496,7 @@ async def test_dynamic_mcp_route_unexpected_exception_returns_500_without_traceb
     request = _make_request("/boom/mcp")
 
     fake_mgr = MagicMock()
-    fake_mgr.get_mcp_server_by_name = MagicMock(
-        side_effect=RuntimeError("internal host: redis://10.0.0.1:6379")
-    )
+    fake_mgr.get_mcp_server_by_name = MagicMock(side_effect=RuntimeError("internal host: redis://10.0.0.1:6379"))
 
     with patch(_MCP_MANAGER, fake_mgr):
         with pytest.raises(HTTPException) as exc_info:
@@ -524,9 +517,7 @@ async def test_toolset_mcp_route_unexpected_exception_returns_500_without_traceb
     request = _make_request("/toolset/broken_toolset/mcp")
 
     fake_mgr = MagicMock()
-    fake_mgr.get_toolset_by_name_cached = AsyncMock(
-        side_effect=RuntimeError("connection to db-host:5432 refused")
-    )
+    fake_mgr.get_toolset_by_name_cached = AsyncMock(side_effect=RuntimeError("connection to db-host:5432 refused"))
 
     with (
         patch(_MCP_MANAGER, fake_mgr),
@@ -661,3 +652,90 @@ def test_lazymcp_trailing_slash_route_owners_preserve_alias(path):
         response = _test_client().post(path)
     assert response.status_code == 200
     assert captured_scope["_original_path"] == path
+
+
+@pytest.mark.asyncio
+async def test_scoped_lazymcp_route_defers_toolset_and_group_resolution_until_admission():  # test-quality-ok: mocks isolate admission and lookup ordering at the route boundary
+    from litellm.proxy._experimental.mcp_server import server as server_module
+
+    auth = MagicMock()
+    admission = AsyncMock(return_value=(auth, None, ["dev"], None, None, {}))
+    toolset_lookup = AsyncMock(return_value=None)
+    group_lookup = AsyncMock(return_value=True)
+    fake_mgr = MagicMock()
+    fake_mgr.get_mcp_server_by_name.return_value = None
+    fake_mgr.get_toolset_by_name_cached = toolset_lookup
+    token = server_module._mcp_active_lazymcp_scope_name.set("dev")
+    try:
+        with (
+            patch.object(server_module, "extract_mcp_auth_context", admission),
+            patch.object(server_module.IPAddressUtils, "get_mcp_client_ip", return_value="127.0.0.1"),
+            patch.object(server_module, "global_mcp_server_manager", fake_mgr),
+            patch(_PRISMA, MagicMock()),
+            patch(_IS_ACCESS_GROUP, group_lookup),
+        ):
+            await server_module._prepare_mcp_request_context(
+                {"type": "http", "method": "POST", "path": "/mcp/dev", "headers": []},
+                "/mcp/dev",
+            )
+    finally:
+        server_module._mcp_active_lazymcp_scope_name.reset(token)
+
+    admission.assert_awaited_once()
+    toolset_lookup.assert_awaited_once()
+    group_lookup.assert_awaited_once_with("dev")
+
+
+@pytest.mark.asyncio
+async def test_scoped_lazymcp_unknown_name_returns_exact_404():
+    from litellm.proxy._experimental.mcp_server import server as server_module
+
+    fake_mgr = MagicMock()
+    fake_mgr.get_mcp_server_by_name.return_value = None
+    fake_mgr.get_toolset_by_name_cached = AsyncMock(return_value=None)
+    token = server_module._mcp_active_lazymcp_scope_name.set("missing")
+    try:
+        with (
+            patch.object(
+                server_module,
+                "extract_mcp_auth_context",
+                AsyncMock(return_value=(MagicMock(), None, ["missing"], None, None, {})),
+            ),
+            patch.object(server_module.IPAddressUtils, "get_mcp_client_ip", return_value="127.0.0.1"),
+            patch.object(server_module, "global_mcp_server_manager", fake_mgr),
+            patch(_PRISMA, MagicMock()),
+            patch(_IS_ACCESS_GROUP, AsyncMock(return_value=False)),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await server_module._prepare_mcp_request_context(
+                    {"type": "http", "method": "POST", "path": "/mcp/missing", "headers": []},
+                    "/mcp/missing",
+                )
+    finally:
+        server_module._mcp_active_lazymcp_scope_name.reset(token)
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "MCP server, toolset, or access group 'missing' not found"
+
+
+@pytest.mark.parametrize(
+    "route_name,path,kwargs",
+    (
+        ("root_lazymcp_route", "/lazymcp", {}),
+        ("scoped_lazymcp_route", "/lazymcp/dev", {"scope_name": "dev"}),
+        ("toolset_lazymcp_route", "/toolset/dev/lazymcp", {"toolset_name": "dev"}),
+    ),
+)
+@pytest.mark.asyncio
+async def test_lazymcp_route_handlers_convert_unexpected_errors_safely(route_name, path, kwargs):
+    from litellm.proxy import lazymcp_routes
+
+    handler = getattr(lazymcp_routes, route_name)
+    with patch(  # test-quality-ok: route boundary converts unexpected downstream failures
+        _LAZYMCP_STREAM_ASGI, AsyncMock(side_effect=RuntimeError("redis://10.0.0.1:6379"))
+    ):
+        with pytest.raises(HTTPException) as exc_info:
+            await handler(request=_make_request(path), **kwargs)
+
+    assert exc_info.value.status_code == 500
+    assert exc_info.value.detail == "Internal server error"

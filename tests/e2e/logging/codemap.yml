@@ -9,3 +9,8 @@ internals:
   - path: conftest.py
   - path: test_span_selection.py
   - path: logging_client.py
+  - path: test_team_langfuse_callback_e2e.py
+  - path: gcs_reader.py
+  - path: test_gcs_log_e2e.py
+  - path: s3_reader.py
+  - path: test_s3_log_e2e.py

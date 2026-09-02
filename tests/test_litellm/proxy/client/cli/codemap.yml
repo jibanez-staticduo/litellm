@@ -13,3 +13,5 @@ internals:
   - path: test_auth_commands.py
   - path: test_keys_commands.py
   - path: test_agents.py
+  - path: test_claude_settings.py
+  - path: test_pkce_login.py

@@ -8,3 +8,4 @@ internals:
   - path: a2a_routing.py
   - path: a2a_endpoints.py
   - path: utils.py
+  - path: agent_search.py

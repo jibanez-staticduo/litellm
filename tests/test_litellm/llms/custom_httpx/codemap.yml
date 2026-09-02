@@ -11,3 +11,4 @@ internals:
   - path: test_aiohttp_cleanup_closed.py
   - path: test_aiohttp_so_keepalive.py
   - path: test_async_client_cleanup.py
+  - path: test_container_handler.py

@@ -11,3 +11,4 @@ internals:
   - path: RedisTypeSelector.tsx
   - path: cacheSettingsFields.ts
   - path: CacheFieldSection.tsx
+  - path: index.integration.test.tsx

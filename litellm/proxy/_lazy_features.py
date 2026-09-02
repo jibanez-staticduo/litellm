@@ -8,8 +8,9 @@ omits each feature's routes until the feature is warmed.
 
 import asyncio
 import importlib
-import sys
+import re
 from collections.abc import Callable
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Final
 
@@ -28,6 +29,18 @@ def _include_router(attr_name: str = "router") -> Callable[["FastAPI", object], 
     return _register
 
 
+def _include_discoverable_router(app: "FastAPI", module: object) -> None:
+    router: Final = module.router
+    discovery_routes: Final = tuple(
+        route for route in router.routes if "oauth-protected-resource" in getattr(route, "path", "")
+    )
+    other_routes: Final = tuple(
+        route for route in router.routes if "oauth-protected-resource" not in getattr(route, "path", "")
+    )
+    router.routes[:] = (*discovery_routes, *other_routes)
+    app.include_router(router)
+
+
 def _mount_app(prefix: str, attr_name: str = "app") -> Callable[["FastAPI", object], None]:
     def _register(app: "FastAPI", module: object) -> None:
         app.mount(path=prefix, app=getattr(module, attr_name))
@@ -44,12 +57,27 @@ class LazyFeature:
     # For routes whose path has a leading parameter (e.g. /{server}/authorize)
     # — startswith can't match those, so the matcher also checks endswith.
     path_suffixes: tuple[str, ...] = ()
+    excluded_path_prefixes: tuple[str, ...] = ()
+    path_regexes: tuple[str, ...] = ()
+    matches_fn: Callable[[str], bool] | None = None
     # Keep the stub injected even after load — for mounted ASGI sub-apps
     # whose routes don't appear in the parent app's openapi spec.
     persistent_swagger_stub: bool = False
 
     def matches(self, path: str) -> bool:
+        if any(path.startswith(prefix) for prefix in self.excluded_path_prefixes):
+            return False
+        if self.matches_fn is not None:
+            return self.matches_fn(path)
+        if any(re.fullmatch(pattern, path) for pattern in self.path_regexes):
+            return True
         return any(path.startswith(p) for p in self.path_prefixes) or any(path.endswith(s) for s in self.path_suffixes)
+
+
+def _matches_lazymcp_transport(path: str) -> bool:
+    if "/.well-known/" in path:
+        return False
+    return re.fullmatch(r"(?:/lazymcp(?:/[^/]+)?|/toolset/[^/]+/lazymcp)/?", path) is not None
 
 
 LAZY_FEATURES: Final[tuple[LazyFeature, ...]] = (
@@ -124,6 +152,7 @@ LAZY_FEATURES: Final[tuple[LazyFeature, ...]] = (
         name="tools",
         module_path="litellm.proxy.management_endpoints.tool_management_endpoints",
         path_prefixes=("/v1/tool", "/tool"),
+        excluded_path_prefixes=("/toolset/",),
     ),
     LazyFeature(
         name="search_tools",
@@ -138,14 +167,6 @@ LAZY_FEATURES: Final[tuple[LazyFeature, ...]] = (
         path_prefixes=("/v1/mcp/",),
     ),
     LazyFeature(
-        # Also serves /.well-known/oauth-* (OAuth metadata discovery).
-        # No /mcp/oauth prefix here: the mounted /mcp sub-app would
-        # shadow it, and there are no actual routes there anyway.
-        name="mcp_byok_oauth",
-        module_path="litellm.proxy._experimental.mcp_server.byok_oauth_endpoints",
-        path_prefixes=("/v1/mcp/oauth", "/.well-known/oauth-"),
-    ),
-    LazyFeature(
         # Serves OAuth dance endpoints (/authorize, /token, /callback,
         # /register) plus several /.well-known/ discovery URLs at the proxy
         # root — needed for MCP-over-OAuth flows even before /mcp is hit.
@@ -155,13 +176,29 @@ LAZY_FEATURES: Final[tuple[LazyFeature, ...]] = (
             "/.well-known/oauth-",
             "/.well-known/openid-configuration",
             "/.well-known/jwks.json",
+            "/.well-known/litellm-cli-auth",
             "/authorize",
             "/token",
             "/callback",
             "/register",
+            "/revoke",
+            "/introspect",
         ),
         # Catches the /{mcp_server_name}/authorize|token|register variants.
         path_suffixes=("/authorize", "/token", "/register"),
+        path_regexes=(
+            r"/lazymcp(?:/[^/]+)?/\.well-known/oauth-protected-resource",
+            r"/toolset/[^/]+/lazymcp/\.well-known/oauth-protected-resource",
+        ),
+        register_fn=_include_discoverable_router,
+    ),
+    LazyFeature(
+        # No /mcp/oauth prefix here: the mounted /mcp sub-app would
+        # shadow it, and there are no actual routes there anyway.
+        name="mcp_byok_oauth",
+        module_path="litellm.proxy._experimental.mcp_server.byok_oauth_endpoints",
+        path_prefixes=("/v1/mcp/oauth", "/.well-known/oauth-"),
+        excluded_path_prefixes=("/.well-known/oauth-protected-resource",),
     ),
     LazyFeature(
         name="mcp_rest",
@@ -176,6 +213,12 @@ LAZY_FEATURES: Final[tuple[LazyFeature, ...]] = (
         path_prefixes=("/mcp",),
         register_fn=_mount_app("/mcp", attr_name="app"),
         persistent_swagger_stub=True,
+    ),
+    LazyFeature(
+        name="lazymcp_routes",
+        module_path="litellm.proxy.lazymcp_routes",
+        path_prefixes=("/lazymcp",),
+        matches_fn=_matches_lazymcp_transport,
     ),
     LazyFeature(
         name="config_overrides",
@@ -347,6 +390,9 @@ async def _force_load(app: "FastAPI", feat: LazyFeature) -> bool:
 
 
 def attach_lazy_features(app: "FastAPI") -> None:
+    if not hasattr(app.state, "lazy_loaded"):
+        app.state.lazy_loaded = set()
+        app.state.lazy_locks = {}
     app.include_router(_make_warmup_router(app))
     app.add_middleware(LazyFeatureMiddleware, fastapi_app=app)
 
@@ -395,11 +441,27 @@ def _make_warmup_router(app: "FastAPI") -> "APIRouter":
     return router
 
 
-def inject_lazy_stubs(schema: dict) -> dict:
-    """Inject openapi entries for unloaded features. Uses the snapshot file
-    when available (full route info), otherwise falls back to a single
-    placeholder per feature. Any failure logs and returns the schema unchanged
-    so /openapi.json never 500s on a cosmetic injection bug."""
+def loaded_lazy_modules(app: "FastAPI") -> frozenset[str]:
+    """The set of lazy feature modules whose routers are actually registered
+    on this app (tracked by _force_load), empty before the middleware ever ran.
+    sys.modules is the wrong signal: boot code imports several feature modules
+    (mcp_management, cloudzero, vantage, config_overrides) without mounting
+    their routers, and their stubs must still be injected."""
+    loaded: Final = getattr(app.state, "lazy_loaded", None)
+    if not isinstance(loaded, set):
+        return frozenset()
+    return frozenset(m for m in loaded if isinstance(m, str))
+
+
+def inject_lazy_stubs(
+    schema: dict,
+    loaded_modules: AbstractSet[str],
+    features: tuple[LazyFeature, ...] = LAZY_FEATURES,
+) -> dict:
+    """Inject openapi entries for features not in loaded_modules. Uses the
+    snapshot file when available (full route info), otherwise falls back to a
+    single placeholder per feature. Any failure logs and returns the schema
+    unchanged so /openapi.json never 500s on a cosmetic injection bug."""
     try:
         from litellm.proxy._lazy_openapi_snapshot import load_snapshot
 
@@ -407,8 +469,8 @@ def inject_lazy_stubs(schema: dict) -> dict:
         paths: Final = schema.setdefault("paths", {})
         schemas: Final = schema.setdefault("components", {}).setdefault("schemas", {})
 
-        for feat in LAZY_FEATURES:
-            if feat.module_path in sys.modules and not feat.persistent_swagger_stub:
+        for feat in features:
+            if feat.module_path in loaded_modules and not feat.persistent_swagger_stub:
                 continue
 
             fragment = (snapshot or {}).get(feat.name)

@@ -38,3 +38,5 @@ internals:
   - path: test_messages_e2e.py
   - path: test_messages_azure_foundry_e2e.py
   - path: test_rerank_e2e.py
+  - path: test_together_ai_e2e.py
+  - path: test_bedrock_provider_matrix_e2e.py

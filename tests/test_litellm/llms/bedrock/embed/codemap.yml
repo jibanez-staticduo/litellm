@@ -3,3 +3,4 @@ parent: ../../../../../.staticeng/codemap.yml
 internals:
   - path: test_bedrock_embedding.py
   - path: test_bedrock_async_invoke_embedding.py
+  - path: test_embedding.py

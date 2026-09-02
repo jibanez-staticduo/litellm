@@ -36,3 +36,5 @@ internals:
   - path: ban_copy_deepcopy_kwargs.py
   - path: test_ban_set_verbose.py
   - path: check_fastuuid_usage.py
+  - path: test_no_hardcoded_secrets.py
+  - path: check_migrations_no_data_rewrites.py

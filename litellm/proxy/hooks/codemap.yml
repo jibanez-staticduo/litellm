@@ -23,3 +23,4 @@ internals:
   - path: dynamic_rate_limiter_v3.py
   - path: README.dynamic_rate_limiter_v3.md
   - path: rate_limiter_utils.py
+  - path: batch_enqueued_tokens.py

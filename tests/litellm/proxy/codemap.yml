@@ -1,6 +1,3 @@
 scope: module
 parent: ../../../.staticeng/codemap.yml
-internals:
-  - path: test_claude_code_marketplace.py
-  - path: test_init_litellm_callbacks.py
-  - path: test_prisma_engine_watchdog.py
+internals: []

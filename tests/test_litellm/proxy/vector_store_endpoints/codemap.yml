@@ -4,3 +4,4 @@ internals:
   - path: test_vector_store_tenant_guard.py
   - path: test_vector_store_access_control.py
   - path: test_vector_store_endpoints.py
+  - path: test_vector_store_rbac.py

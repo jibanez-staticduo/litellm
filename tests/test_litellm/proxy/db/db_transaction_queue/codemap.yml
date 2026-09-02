@@ -8,3 +8,4 @@ internals:
   - path: test_daily_spend_update_queue.py
   - path: test_tool_discovery_queue.py
   - path: test_base_update_queue.py
+  - path: test_window_spend_update_queue.py

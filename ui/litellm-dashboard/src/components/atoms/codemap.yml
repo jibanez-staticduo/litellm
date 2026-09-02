@@ -1,7 +1,4 @@
 scope: module
 parent: ../../../../../.staticeng/codemap.yml
-entrypoints:
-  - path: index.ts
-internals:
-  - path: Tooltip.tsx
-  - path: Tooltip.test.tsx
+entrypoints: []
+internals: []

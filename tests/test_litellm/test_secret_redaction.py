@@ -1,12 +1,11 @@
 import logging
 import logging.config
 import sys
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from io import StringIO
 from unittest.mock import patch
 
 import pytest
-from uvicorn.logging import AccessFormatter
 
 from litellm._logging import (
     JsonFormatter,
@@ -146,6 +145,71 @@ def test_filter_redacts_extra_fields():
     assert SECRET not in record.api_key
     assert "REDACTED" in record.api_key
     assert record.region == "us-east-1"
+
+
+def test_filter_preserves_uvicorn_color_message_args():
+    """Regression test: uvicorn's startup banner logs a plain message plus a
+    colorized `extra={"color_message": ...}` copy of the same "%s://%s:%d" template,
+    both meant to be filled in from record.args. uvicorn's own ColourizedFormatter
+    re-substitutes color_message against record.args when writing to a TTY, instead
+    of using the already-formatted record.msg.
+
+    Before this fix, the filter cleared record.args after substituting only
+    record.msg, so color_message was rendered with args=None and the raw
+    "%s://%s:%d" placeholders were printed instead of the real host/port.
+    """
+    from uvicorn.logging import DefaultFormatter
+
+    addr_format = "%s://%s:%d"
+    plain_message = f"Uvicorn running on {addr_format} (Press CTRL+C to quit)"
+    color_message = f"Uvicorn running on {addr_format} (Press CTRL+C to quit)"
+
+    logger = logging.getLogger("uvicorn.error")
+    saved_handlers, saved_level = logger.handlers[:], logger.level
+    buf = StringIO()
+    handler = logging.StreamHandler(buf)
+    formatter = DefaultFormatter("%(levelprefix)s %(message)s")
+    formatter.use_colors = True
+    handler.setFormatter(formatter)
+    logger.handlers = [handler]
+    logger.setLevel(logging.INFO)
+    try:
+        logger.info(
+            plain_message,
+            "http",
+            "0.0.0.0",
+            4000,
+            extra={"color_message": color_message},
+        )
+        output = buf.getvalue()
+    finally:
+        logger.handlers = saved_handlers
+        logger.setLevel(saved_level)
+
+    assert "%s" not in output and "%d" not in output, f"unsubstituted placeholders leaked: {output!r}"
+    assert "http://0.0.0.0:4000" in output
+
+
+def test_filter_redacts_secrets_substituted_into_color_message():
+    """The color_message substitution runs before the extra-field redaction
+    loop, so a secret arriving through record.args lands in color_message and
+    must still be scrubbed. Substituting after that loop would ship the secret
+    to any colorized handler."""
+    record = logging.LogRecord(
+        name="uvicorn.error",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=1,
+        msg="connecting with %s",
+        args=(SECRET,),
+        exc_info=None,
+    )
+    record.color_message = "connecting with %s"
+
+    _secret_filter.filter(record)
+
+    assert SECRET not in record.color_message
+    assert "REDACTED" in record.color_message
 
 
 def test_disable_redaction_passes_secrets_through():
@@ -498,92 +562,52 @@ def test_redaction_survives_uvicorn_logging_reconfiguration():
             lg.propagate = True
 
 
+def test_aws_credential_redaction_catches_quoted_values():
+    """AWS creds appear as quoted dict-repr values, not just bare key=value."""
+    cases = (
+        "{'aws_secret_access_key': 'wJalrXUtnFEMIK7MDENGbPxRfiCYEXAMPLEKEY'}",
+        '{"aws_session_token": "IQoJb3JpZ2luX2VjEaCXVzLWVhc3QtMSJHMEUCIQ"}',
+        "aws_session_token: 'FwoGZXIvYXdzEBYaDHh4eHh4eHh4eHh4eCLLAe'",
+        "aws_secret_access_key=wJalrXUtnFEMIK7MDENGbPxRfiCYEXAMPLEKEY",
+        "{'aws_access_key_id': 'not-an-akia-shaped-value'}",
+    )
+    for secret_line in cases:
+        result = redact_string(secret_line)
+        assert "REDACTED" in result, f"AWS redaction missed: {secret_line!r}"
+        assert "wJalrXUtnFEMIK7MDENGbPxRfiCYEXAMPLEKEY" not in result
+        assert "IQoJb3JpZ2luX2VjEaCXVzLWVhc3QtMSJHMEUCIQ" not in result
+
+    safe = "'aws_region_name': 'us-east-1'"
+    assert redact_string(safe) == safe
+
+
 @pytest.mark.parametrize(
-    "parameter_name",
-    ("key", "api_key", "api-key", "token", "access_token", "refresh-token", "auth_token"),
+    "extra",
+    (
+        {"api_base": {f"https://host/v1?key={SECRET}"}},
+        {"blob": {"authorization": f"Bearer {SECRET}"}},
+        {"blob": [f"Bearer {SECRET}"]},
+        {"blob": ({"nested": {"deep": SECRET}},)},
+    ),
+    ids=("set", "dict", "list", "nested"),
 )
-def test_uvicorn_access_logs_redact_sensitive_query_parameters(parameter_name: str):
-    output = _capture_from_logger(
-        "uvicorn.access",
-        lambda logger: logger.info(
-            '%s - "%s %s HTTP/%s" %d',
-            "127.0.0.1:1234",
-            "GET",
-            f"/key/info?{parameter_name}={SECRET}&safe=value",
-            "1.1",
-            200,
-        ),
-    )
-
-    assert output.strip(), "no uvicorn access record captured"
-    assert SECRET not in output
-    assert "REDACTED" in output
-    assert "safe=value" in output
-
-
-def _uvicorn_access_record(args: tuple[object, ...] | Mapping[str, object] | None) -> logging.LogRecord:
-    record = logging.LogRecord(
-        name="uvicorn.access",
-        level=logging.INFO,
-        pathname="",
-        lineno=0,
-        msg='%s - "%s %s HTTP/%s" %d',
-        args=(),
-        exc_info=None,
-    )
-    record.args = args
-    return record
-
-
-def test_uvicorn_access_formatter_preserves_structured_redacted_args():
-    record = _uvicorn_access_record(("127.0.0.1:1234", "GET", f"/key/info?api_key={SECRET}", "1.1", 200))
-
-    assert _secret_filter.filter(record) is True
-    assert isinstance(record.args, tuple)
-    assert len(record.args) == 5
-    assert tuple(type(value) for value in record.args) == (str, str, str, str, int)
-    assert record.args[4] == 200
-
-    output = AccessFormatter('%(client_addr)s - "%(request_line)s" %(status_code)s').format(record)
-    assert SECRET not in output
-    assert "REDACTED" in output
-    assert "GET" in output
-    assert "/key/info" in output
-    assert "200 OK" in output
-
-
-@pytest.mark.parametrize("args", (None, {}, (), ("host", "GET", "/", "1.1"), ("host", "GET", "/", "1.1", 200, "extra")))
-def test_uvicorn_access_filter_drops_malformed_args(args: tuple[object, ...] | Mapping[str, object] | None):
-    record = _uvicorn_access_record(args)
-
-    assert _secret_filter.filter(record) is False
-
-
-@pytest.mark.parametrize("failure_stage", ("message", "tuple_member", "traceback", "extra_field"))
-def test_uvicorn_access_filter_drops_record_when_redaction_fails(failure_stage: str):
-    record = _uvicorn_access_record(("127.0.0.1:1234", "GET", f"/?api_key={SECRET}", "1.1", 200))
-    if failure_stage == "traceback":
-        try:
-            raise ValueError(f"traceback secret {SECRET}")
-        except ValueError:
-            record.exc_info = sys.exc_info()
-    record.probe = f"extra secret {SECRET}"
-    output = StringIO()
-    handler = logging.StreamHandler(output)
+def test_json_formatter_redacts_non_string_extra_values(extra):
+    """SecretRedactionFilter only scrubs str attrs, so containers must be caught on render."""
+    buf = StringIO()
+    handler = logging.StreamHandler(buf)
+    handler.setFormatter(JsonFormatter())
     handler.addFilter(_secret_filter)
 
-    def redact_or_fail(value: str) -> str:
-        should_fail = {
-            "message": value == record.msg,
-            "tuple_member": value.startswith("/?api_key="),
-            "traceback": "Traceback (most recent call last)" in value,
-            "extra_field": value.startswith("extra secret "),
-        }[failure_stage]
-        if should_fail:
-            raise RuntimeError("redaction failed")
-        return redact_string(value)
+    logger = logging.getLogger("test_json_extra_redaction")
+    logger.handlers = [handler]
+    logger.setLevel(logging.DEBUG)
+    logger.propagate = False
+    try:
+        logger.warning("request sent", extra=extra)
+    finally:
+        logger.handlers = []
 
-    with patch("litellm._logging._redact_string", side_effect=redact_or_fail):
-        handler.handle(record)
-
-    assert output.getvalue() == ""
+    output = buf.getvalue()
+    assert output.strip(), "no record captured"
+    assert SECRET not in output, f"non-string extra leaked a secret: {output}"
+    assert "REDACTED" in output

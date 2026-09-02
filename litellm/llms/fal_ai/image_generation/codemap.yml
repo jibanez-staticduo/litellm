@@ -13,3 +13,4 @@ internals:
   - path: transformation.py
   - path: flux_schnell_transformation.py
   - path: bytedance_transformation.py
+  - path: gpt_image_2_transformation.py

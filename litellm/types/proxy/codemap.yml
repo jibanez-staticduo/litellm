@@ -13,3 +13,5 @@ internals:
   - path: compliance_endpoints.py
   - path: model_listing.py
   - path: claude_code_endpoints.py
+  - path: model_access_group_budget.py
+  - path: model_deprecation.py

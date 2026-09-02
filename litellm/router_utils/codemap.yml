@@ -18,3 +18,4 @@ internals:
   - path: handle_error.py
   - path: cooldown_callbacks.py
   - path: client_initalization_utils.py
+  - path: reasoning_effort_capability.py

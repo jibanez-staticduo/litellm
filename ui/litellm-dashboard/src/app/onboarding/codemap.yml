@@ -10,3 +10,4 @@ internals:
   - path: OnboardingErrorView.test.tsx
   - path: OnboardingFormBody.tsx
   - path: page.tsx
+  - path: OnboardingFormBody.integration.test.tsx

@@ -11,3 +11,5 @@ internals:
   - path: test_cost_calculation_dict_safety.py
   - path: test_count_tokens_oauth.py
   - path: test_anthropic_files_and_batches.py
+  - path: test_anthropic_schema_filter.py
+  - path: test_anthropic_reasoning_effort.py

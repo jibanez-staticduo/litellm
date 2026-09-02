@@ -20,3 +20,4 @@ internals:
   - path: user_api_key_auth.py
   - path: budget_throttle.py
   - path: auth_utils.py
+  - path: fallback_model_access.py

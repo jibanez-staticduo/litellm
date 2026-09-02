@@ -12,3 +12,5 @@ internals:
   - path: useWorker.ts
   - path: useToolsOAuthFlow.tsx
   - path: useUserMcpOAuthFlow.tsx
+  - path: useSyntaxTheme.ts
+  - path: useSyntaxTheme.test.tsx

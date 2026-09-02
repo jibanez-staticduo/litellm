@@ -11,3 +11,6 @@ internals:
   - path: AutoRoutersTabPanel.tsx
   - path: HealthStatusPanel.test.tsx
   - path: LlmCredentialsPanel.tsx
+  - path: AddModelPanel.integration.test.tsx
+  - path: AccessGroupBudgetsPanel.integration.test.tsx
+  - path: AccessGroupBudgetsPanel.tsx

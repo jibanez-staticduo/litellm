@@ -3,16 +3,13 @@ parent: ../../../../../.staticeng/codemap.yml
 internals:
   - path: RouterSettingsAccordion.test.tsx
   - path: PassThroughRoutesSelector.tsx
-  - path: DurationSelect.tsx
   - path: budget_duration_dropdown.tsx
-  - path: chartUtils.test.tsx
   - path: routerSettingsWiring.test.tsx
   - path: PassThroughGuardrailsSection.tsx
   - path: RouterSettingsAccordion.tsx
   - path: OrganizationDropdown.tsx
   - path: MemberTable.tsx
   - path: KeyLifecycleSettings.test.tsx
-  - path: DurationSelect.test.tsx
   - path: ModelSelector.test.tsx
   - path: DefaultProxyAdminTag.tsx
   - path: user_search_modal.test.tsx
@@ -30,7 +27,6 @@ internals:
   - path: team_multi_select.test.tsx
   - path: PremiumLoggingSettings.tsx
   - path: RouterSettingsSummary.tsx
-  - path: chartUtils.tsx
   - path: RateLimitTypeFormItem.test.tsx
   - path: LoadingScreen.test.tsx
   - path: DeleteResourceModal.tsx
@@ -50,3 +46,11 @@ internals:
   - path: LoadingScreen.tsx
   - path: DeleteResourceModal.test.tsx
   - path: simple_table.tsx
+  - path: MountedFormField.tsx
+  - path: formRules.ts
+  - path: PremiumLoggingSettings.test.tsx
+  - path: PassThroughGuardrailsSection.test.tsx
+  - path: UserDropdown.test.tsx
+  - path: UserDropdown.tsx
+  - path: ModelAliasManager.test.tsx
+  - path: MountedFormField.test.tsx

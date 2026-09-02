@@ -31,3 +31,5 @@ internals:
   - path: test_pipeline_config.yaml
   - path: reject_clientside_metadata_tags_config.yaml
   - path: pass_through_config.yaml
+  - path: agentcore_websearch_config.yaml
+  - path: bing_grounding_websearch_config.yaml

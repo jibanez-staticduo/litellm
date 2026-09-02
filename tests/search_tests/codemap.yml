@@ -20,3 +20,4 @@ internals:
   - path: test_dataforseo_search.py
   - path: test_duckduckgo_search.py
   - path: test_serper_search.py
+  - path: test_bing_grounding_search.py

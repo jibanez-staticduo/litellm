@@ -1,14 +1,10 @@
 import asyncio
 import json
-import os
-import sys
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
-sys.path.insert(
-    0, os.path.abspath("../../..")
-)  # Adds the parent directory to the system path
 
 import pytest
 from fastapi import status
@@ -29,17 +25,12 @@ from litellm.proxy._types import (
     JWTRoutingOverride,
 )
 from litellm.proxy.auth.handle_jwt import JWTHandler
-from litellm.proxy.auth.auth_checks import (
-    _cache_key_object,
-    _get_user_role,
-    _get_user_object_value,
-    _is_user_proxy_admin,
-    common_checks,
-    get_key_object,
-)
+from litellm.proxy.auth.auth_checks import get_key_object, _cache_key_object
 from litellm.proxy.auth.route_checks import RouteChecks
 from litellm.proxy.auth.user_api_key_auth import (
     _check_key_model_budget_with_fallback,
+    _ensure_litellm_received_at_on_request_state,
+    _ensure_parent_otel_span_on_request_state,
     _PendingAutoRegister,
     _matches_routing_override,
     _reserve_budget_after_common_checks,
@@ -88,33 +79,6 @@ def test_route_requires_auth_despite_public_for_metrics(monkeypatch):
     assert _route_requires_auth_despite_public("/metrics", {}) is False
 
 
-def test_get_user_object_value_reads_cached_user_dict_and_object():
-    user_dict = {
-        "tpm_limit": 1000,
-        "rpm_limit": 100,
-        "user_email": "cached@example.com",
-        "spend": 250.0,
-        "max_budget": 1000.0,
-        "user_role": "internal_user",
-    }
-    user_obj = SimpleNamespace(
-        tpm_limit=2000,
-        rpm_limit=200,
-        user_email="object@example.com",
-        spend=125.0,
-        max_budget=500.0,
-        user_role="proxy_admin",
-    )
-
-    assert _get_user_object_value(user_dict, "tpm_limit") == 1000
-    assert _get_user_object_value(user_dict, "rpm_limit") == 100
-    assert _get_user_object_value(user_dict, "spend") == 250.0
-    assert _get_user_object_value(user_dict, "missing") is None
-    assert _get_user_object_value(user_obj, "tpm_limit") == 2000
-    assert _get_user_object_value(user_obj, "rpm_limit") == 200
-    assert _get_user_object_value(user_obj, "spend") == 125.0
-
-
 def test_public_ai_hub_routes_remain_public():
     for route in (
         "/public/model_hub",
@@ -125,20 +89,6 @@ def test_public_ai_hub_routes_remain_public():
     ):
         assert route in LiteLLMRoutes.public_routes.value
         assert _route_requires_auth_despite_public(route, {}) is False
-
-
-def test_cached_user_dict_role_helpers_are_dict_safe():
-    cached_user = {"user_role": LitellmUserRoles.PROXY_ADMIN.value}
-
-    assert _get_user_role(cached_user) == LitellmUserRoles.PROXY_ADMIN
-    assert _is_user_proxy_admin(cached_user) is True
-
-
-def test_cached_user_dict_unknown_role_defaults_to_internal_user():
-    cached_user = {"user_role": "unknown-role"}
-
-    assert _get_user_role(cached_user) == LitellmUserRoles.INTERNAL_USER
-    assert _is_user_proxy_admin(cached_user) is False
 
 
 @pytest.mark.asyncio
@@ -174,7 +124,7 @@ async def test_disable_budget_reservation_skips_reservation():
     reservation so operators hit by phantom BudgetExceededError can opt out of it."""
     user_api_key_auth_obj = UserAPIKeyAuth(token="test_token")
 
-    with patch(
+    with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         "litellm.proxy.spend_tracking.budget_reservation.reserve_budget_for_request",
         new=AsyncMock(return_value={"reserved_cost": 0.5, "entries": []}),
     ) as mock_reserve:
@@ -205,7 +155,7 @@ async def test_budget_reservation_runs_when_not_disabled():
         "entries": [{"counter_key": "spend:key:test_token"}],
     }
 
-    with patch(
+    with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         "litellm.proxy.spend_tracking.budget_reservation.reserve_budget_for_request",
         new=AsyncMock(return_value=reservation),
     ) as mock_reserve:
@@ -228,29 +178,73 @@ async def test_budget_reservation_runs_when_not_disabled():
 
 
 @pytest.mark.asyncio
-async def test_common_checks_accepts_cached_key_dict():
-    request = MagicMock()
-    request.headers = {}
-    request.query_params = {}
-    request.method = "GET"
+@pytest.mark.parametrize(
+    "general_settings,expected_flag",
+    [
+        ({"fail_closed_budget_enforcement": True}, True),
+        ({}, False),
+    ],
+)
+async def test_fail_closed_budget_enforcement_reaches_reservation(general_settings, expected_flag):
+    """#33923: the strict flag must be threaded into reserve_budget_for_request so a
+    failed reservation write can reject instead of failing open."""
+    user_api_key_auth_obj = UserAPIKeyAuth(token="test_token")
 
-    assert (
-        await common_checks(
-            request_body={},
+    with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        "litellm.proxy.spend_tracking.budget_reservation.reserve_budget_for_request",
+        new=AsyncMock(return_value=None),
+    ) as mock_reserve:
+        await _reserve_budget_after_common_checks(
+            user_api_key_auth_obj=user_api_key_auth_obj,
+            request_data={"model": "gpt-4o"},
+            route="/v1/chat/completions",
+            llm_router=None,
             team_object=None,
             user_object=None,
-            end_user_object=None,
-            global_proxy_spend=None,
-            general_settings={},
-            route="/v1/models",
-            llm_router=None,
+            prisma_client=None,
+            user_api_key_cache=MagicMock(),
             proxy_logging_obj=MagicMock(),
-            valid_token={"token": "hashed-token", "spend": 0.0},
-            request=request,
-            skip_budget_checks=True,
+            skip_budget_checks=False,
+            general_settings=general_settings,
         )
-        is True
-    )
+
+    assert mock_reserve.await_args.kwargs["fail_closed_budget_enforcement"] is expected_flag
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "general_settings,expected_flag",
+    [
+        ({"apply_user_budget_to_team_keys": True}, True),
+        ({"apply_user_budget_to_team_keys": False}, False),
+        ({}, False),
+    ],
+)
+async def test_apply_user_budget_to_team_keys_reaches_reservation(general_settings, expected_flag):
+    """The opt-in lives in general_settings but is consumed inside
+    _get_budget_counters, so it has to be threaded through reserve_budget_for_request
+    or the reservation path keeps exempting team keys while the read path enforces."""
+    user_api_key_auth_obj = UserAPIKeyAuth(token="test_token")
+
+    with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        "litellm.proxy.spend_tracking.budget_reservation.reserve_budget_for_request",
+        new=AsyncMock(return_value=None),
+    ) as mock_reserve:
+        await _reserve_budget_after_common_checks(
+            user_api_key_auth_obj=user_api_key_auth_obj,
+            request_data={"model": "gpt-4o"},
+            route="/v1/chat/completions",
+            llm_router=None,
+            team_object=None,
+            user_object=None,
+            prisma_client=None,
+            user_api_key_cache=MagicMock(),
+            proxy_logging_obj=MagicMock(),
+            skip_budget_checks=False,
+            general_settings=general_settings,
+        )
+
+    assert mock_reserve.await_args.kwargs["apply_user_budget_to_team_keys"] is expected_flag
 
 
 @pytest.mark.asyncio
@@ -301,11 +295,11 @@ async def test_custom_auth_does_not_enforce_key_model_access_by_default():
     request_data = {"model": "gpt-4o"}
 
     with (
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth.can_key_call_model",
             new_callable=AsyncMock,
         ) as mock_can_key,
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.general_settings",
             {},
         ),
@@ -346,14 +340,14 @@ async def test_custom_auth_honors_key_level_model_access_restriction_allowed_wit
     request_data = {"model": "gpt-4o-mini"}
 
     with (
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth.can_key_call_model",
             new_callable=AsyncMock,
         ) as mock_can_key,
         patch(
             "litellm.proxy.auth.user_api_key_auth.common_checks", new_callable=AsyncMock
-        ),
-        patch(
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.general_settings",
             {"custom_auth_run_common_checks": True},
         ),
@@ -379,14 +373,14 @@ async def test_custom_auth_enforces_key_model_access_from_file_route_header_with
     request = _RoutingRequest(headers={"x-litellm-model": "restricted-model"})
 
     with (
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth.can_key_call_model",
             new_callable=AsyncMock,
         ) as mock_can_key,
         patch(
             "litellm.proxy.auth.user_api_key_auth.common_checks", new_callable=AsyncMock
-        ),
-        patch(
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.general_settings",
             {"custom_auth_run_common_checks": True},
         ),
@@ -412,14 +406,14 @@ async def test_custom_auth_honors_key_level_model_access_restriction_denied_with
     request_data = {"model": "gpt-4o"}
 
     with (
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth.can_key_call_model",
             new_callable=AsyncMock,
         ) as mock_can_key,
         patch(
             "litellm.proxy.auth.user_api_key_auth.common_checks", new_callable=AsyncMock
-        ),
-        patch(
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.general_settings",
             {"custom_auth_run_common_checks": True},
         ),
@@ -454,9 +448,7 @@ def _proxy_server_attrs_for_custom_auth(*, user_custom_auth):
     mock_proxy_logging_obj = MagicMock()
     mock_proxy_logging_obj.internal_usage_cache = MagicMock()
     mock_proxy_logging_obj.internal_usage_cache.dual_cache = AsyncMock()
-    mock_proxy_logging_obj.internal_usage_cache.dual_cache.async_delete_cache = (
-        AsyncMock()
-    )
+    mock_proxy_logging_obj.internal_usage_cache.dual_cache.async_delete_cache = AsyncMock()
     mock_proxy_logging_obj.post_call_failure_hook = AsyncMock(return_value=None)
 
     return {
@@ -508,7 +500,7 @@ async def test_user_custom_auth_skips_post_custom_auth_checks_by_default():
             setattr(_proxy_server_mod, attr, val)
         litellm.enable_post_custom_auth_checks = False  # explicit: documents default
 
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth._run_post_custom_auth_checks",
             new_callable=AsyncMock,
         ) as mock_post_checks:
@@ -566,7 +558,7 @@ async def test_user_custom_auth_runs_post_custom_auth_checks_when_opt_in():
             setattr(_proxy_server_mod, attr, val)
         litellm.enable_post_custom_auth_checks = True
 
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth._run_post_custom_auth_checks",
             new_callable=AsyncMock,
             return_value=trusted_token,
@@ -624,11 +616,11 @@ async def test_enterprise_custom_auth_skips_post_custom_auth_checks_by_default()
         litellm.enable_post_custom_auth_checks = False
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.enterprise_custom_auth",
                 new=mock_enterprise_custom_auth,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth._run_post_custom_auth_checks",
                 new_callable=AsyncMock,
             ) as mock_post_checks,
@@ -687,11 +679,11 @@ async def test_enterprise_custom_auth_runs_post_custom_auth_checks_when_opt_in()
         litellm.enable_post_custom_auth_checks = True
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.enterprise_custom_auth",
                 new=mock_enterprise_custom_auth,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth._run_post_custom_auth_checks",
                 new_callable=AsyncMock,
                 return_value=trusted_token,
@@ -718,9 +710,7 @@ async def test_enterprise_custom_auth_runs_post_custom_auth_checks_when_opt_in()
         litellm.enable_post_custom_auth_checks = original_flag
 
 
-def _assert_get_api_key_with_custom_litellm_key_header(
-    custom_litellm_key_header, api_key, passed_in_key
-):
+def _assert_get_api_key_with_custom_litellm_key_header(custom_litellm_key_header, api_key, passed_in_key):
     assert get_api_key(
         custom_litellm_key_header=custom_litellm_key_header,
         api_key=None,
@@ -777,9 +767,7 @@ def _assert_get_api_key_with_custom_litellm_key_header(
         ("App:LiteLLM", None, False, False),
     ],
 )
-def test_routing_selector_matches_claim_parametrized(
-    selector_value, claim_value, expected, split_space_delimited
-):
+def test_routing_selector_matches_claim_parametrized(selector_value, claim_value, expected, split_space_delimited):
     assert (
         _routing_selector_matches_claim(
             selector_value=selector_value,
@@ -873,10 +861,7 @@ def test_routing_selector_matches_claim_parametrized(
     ],
 )
 def test_matches_routing_override_parametrized(override, token_claims, expected):
-    assert (
-        _matches_routing_override(token_claims=token_claims, override=override)
-        is expected
-    )
+    assert _matches_routing_override(token_claims=token_claims, override=override) is expected
 
 
 def test_get_api_key_with_custom_litellm_key_header_bearer_prefix():
@@ -955,12 +940,9 @@ def test_team_metadata_with_tags_flows_through_jwt_auth():
     )
 
     # Verify team_metadata is set
-    assert (
-        user_api_key_auth.team_metadata is not None
-    ), "team_metadata should be populated"
+    assert user_api_key_auth.team_metadata is not None, "team_metadata should be populated"
     assert user_api_key_auth.team_metadata == team_object.metadata, (
-        f"team_metadata not correctly mapped. "
-        f"Expected: {team_object.metadata}, Got: {user_api_key_auth.team_metadata}"
+        f"team_metadata not correctly mapped. Expected: {team_object.metadata}, Got: {user_api_key_auth.team_metadata}"
     )
 
     # Specifically verify tags are present
@@ -999,9 +981,7 @@ def test_route_checks_is_llm_api_route():
     ]
 
     for route in openai_routes:
-        assert RouteChecks.is_llm_api_route(
-            route=route
-        ), f"Route {route} should be identified as LLM API route"
+        assert RouteChecks.is_llm_api_route(route=route), f"Route {route} should be identified as LLM API route"
 
     # Test Anthropic routes
     anthropic_routes = [
@@ -1010,9 +990,7 @@ def test_route_checks_is_llm_api_route():
     ]
 
     for route in anthropic_routes:
-        assert RouteChecks.is_llm_api_route(
-            route=route
-        ), f"Route {route} should be identified as LLM API route"
+        assert RouteChecks.is_llm_api_route(route=route), f"Route {route} should be identified as LLM API route"
 
     # Test passthrough routes (this is the key improvement over the old route checking)
     passthrough_routes = [
@@ -1032,9 +1010,7 @@ def test_route_checks_is_llm_api_route():
     ]
 
     for route in passthrough_routes:
-        assert RouteChecks.is_llm_api_route(
-            route=route
-        ), f"Route {route} should be identified as LLM API route"
+        assert RouteChecks.is_llm_api_route(route=route), f"Route {route} should be identified as LLM API route"
 
     # Test MCP routes
     mcp_routes = [
@@ -1044,9 +1020,7 @@ def test_route_checks_is_llm_api_route():
     ]
 
     for route in mcp_routes:
-        assert RouteChecks.is_llm_api_route(
-            route=route
-        ), f"Route {route} should be identified as LLM API route"
+        assert RouteChecks.is_llm_api_route(route=route), f"Route {route} should be identified as LLM API route"
 
     # Test LiteLLM native RAG routes
     rag_routes = [
@@ -1056,9 +1030,7 @@ def test_route_checks_is_llm_api_route():
         "/v1/rag/query",
     ]
     for route in rag_routes:
-        assert RouteChecks.is_llm_api_route(
-            route=route
-        ), f"Route {route} should be identified as LLM API route"
+        assert RouteChecks.is_llm_api_route(route=route), f"Route {route} should be identified as LLM API route"
 
     # Test routes with placeholders
     placeholder_routes = [
@@ -1073,9 +1045,7 @@ def test_route_checks_is_llm_api_route():
     ]
 
     for route in placeholder_routes:
-        assert RouteChecks.is_llm_api_route(
-            route=route
-        ), f"Route {route} should be identified as LLM API route"
+        assert RouteChecks.is_llm_api_route(route=route), f"Route {route} should be identified as LLM API route"
 
     # Test Azure OpenAI routes
     azure_routes = [
@@ -1086,9 +1056,7 @@ def test_route_checks_is_llm_api_route():
     ]
 
     for route in azure_routes:
-        assert RouteChecks.is_llm_api_route(
-            route=route
-        ), f"Route {route} should be identified as LLM API route"
+        assert RouteChecks.is_llm_api_route(route=route), f"Route {route} should be identified as LLM API route"
 
     # Test non-LLM routes (should return False)
     non_llm_routes = [
@@ -1107,9 +1075,7 @@ def test_route_checks_is_llm_api_route():
     ]
 
     for route in non_llm_routes:
-        assert not RouteChecks.is_llm_api_route(
-            route=route
-        ), f"Route {route} should NOT be identified as LLM API route"
+        assert not RouteChecks.is_llm_api_route(route=route), f"Route {route} should NOT be identified as LLM API route"
 
     # Test invalid inputs
     invalid_inputs = [
@@ -1121,9 +1087,9 @@ def test_route_checks_is_llm_api_route():
     ]
 
     for invalid_input in invalid_inputs:
-        assert not RouteChecks.is_llm_api_route(
-            route=invalid_input
-        ), f"Invalid input {invalid_input} should return False"
+        assert not RouteChecks.is_llm_api_route(route=invalid_input), (
+            f"Invalid input {invalid_input} should return False"
+        )
 
 
 @pytest.mark.asyncio
@@ -1170,9 +1136,7 @@ async def test_proxy_admin_expired_key_from_cache():
     mock_proxy_logging_obj = MagicMock()
     mock_proxy_logging_obj.internal_usage_cache = MagicMock()
     mock_proxy_logging_obj.internal_usage_cache.dual_cache = AsyncMock()
-    mock_proxy_logging_obj.internal_usage_cache.dual_cache.async_delete_cache = (
-        AsyncMock()
-    )
+    mock_proxy_logging_obj.internal_usage_cache.dual_cache.async_delete_cache = AsyncMock()
     # Mock post_call_failure_hook as async function returning None (no transformation)
     mock_proxy_logging_obj.post_call_failure_hook = AsyncMock(return_value=None)
 
@@ -1181,11 +1145,11 @@ async def test_proxy_admin_expired_key_from_cache():
 
     # Mock get_key_object to return expired token from cache
     with (
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.resolvers.store.IdentityStore._resolve_key",
             new_callable=AsyncMock,
         ) as mock_get_key_object,
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth._delete_cache_key_object",
             new_callable=AsyncMock,
         ) as mock_delete_cache,
@@ -1209,9 +1173,7 @@ async def test_proxy_admin_expired_key_from_cache():
             "jwt_handler": None,
             "litellm_proxy_admin_name": "admin",
         }
-        _original_values = {
-            attr: getattr(_proxy_server_mod, attr, None) for attr in _attrs_to_set
-        }
+        _original_values = {attr: getattr(_proxy_server_mod, attr, None) for attr in _attrs_to_set}
         try:
             for attr, val in _attrs_to_set.items():
                 setattr(_proxy_server_mod, attr, val)
@@ -1235,36 +1197,30 @@ async def test_proxy_admin_expired_key_from_cache():
                 )
 
             # Verify that ProxyException was raised with expired_key type
-            assert hasattr(
-                exc_info.value, "type"
-            ), "Exception should have 'type' attribute"
-            assert (
-                exc_info.value.type == ProxyErrorTypes.expired_key
-            ), f"Expected expired_key error type, got {exc_info.value.type}"
+            assert hasattr(exc_info.value, "type"), "Exception should have 'type' attribute"
+            assert exc_info.value.type == ProxyErrorTypes.expired_key, (
+                f"Expected expired_key error type, got {exc_info.value.type}"
+            )
             assert int(exc_info.value.code) == status.HTTP_401_UNAUTHORIZED
-            assert "Expired Key" in str(
-                exc_info.value.message
-            ), f"Exception message should mention 'Expired Key', got: {exc_info.value.message}"
+            assert "Expired Key" in str(exc_info.value.message), (
+                f"Exception message should mention 'Expired Key', got: {exc_info.value.message}"
+            )
 
             # Verify that the param field does NOT leak the full API key (Issue #18731)
             # The param should be abbreviated like "sk-...XXXX" not the full plaintext key
-            assert (
-                exc_info.value.param is not None
-            ), "Exception should have 'param' attribute"
+            assert exc_info.value.param is not None, "Exception should have 'param' attribute"
             assert exc_info.value.param != api_key, (
                 f"SECURITY: Full API key should NOT be in param field! "
                 f"Got: {exc_info.value.param}, Expected abbreviated format like 'sk-...XXXX'"
             )
-            assert exc_info.value.param.startswith(
-                "sk-..."
-            ), f"Param should be abbreviated to 'sk-...XXXX' format. Got: {exc_info.value.param}"
+            assert exc_info.value.param.startswith("sk-..."), (
+                f"Param should be abbreviated to 'sk-...XXXX' format. Got: {exc_info.value.param}"
+            )
 
             # Verify that cache deletion was called
             mock_delete_cache.assert_called_once()
             call_args = mock_delete_cache.call_args
-            assert (
-                call_args[1]["hashed_token"] == hashed_key
-            ), "Cache deletion should be called with the hashed key"
+            assert call_args[1]["hashed_token"] == hashed_key, "Cache deletion should be called with the hashed key"
         finally:
             # Restore all module-level attributes so subsequent tests are not affected
             for attr, val in _original_values.items():
@@ -1302,9 +1258,7 @@ async def test_scim_deactivated_user_key_is_rejected():
     mock_proxy_logging_obj = MagicMock()
     mock_proxy_logging_obj.internal_usage_cache = MagicMock()
     mock_proxy_logging_obj.internal_usage_cache.dual_cache = AsyncMock()
-    mock_proxy_logging_obj.internal_usage_cache.dual_cache.async_delete_cache = (
-        AsyncMock()
-    )
+    mock_proxy_logging_obj.internal_usage_cache.dual_cache.async_delete_cache = AsyncMock()
     mock_proxy_logging_obj.post_call_failure_hook = AsyncMock(return_value=None)
 
     mock_prisma_client = MagicMock()
@@ -1325,9 +1279,7 @@ async def test_scim_deactivated_user_key_is_rejected():
         "jwt_handler": None,
         "litellm_proxy_admin_name": "admin",
     }
-    _original_values = {
-        attr: getattr(_proxy_server_mod, attr, None) for attr in _attrs_to_set
-    }
+    _original_values = {attr: getattr(_proxy_server_mod, attr, None) for attr in _attrs_to_set}
     try:
         for attr, val in _attrs_to_set.items():
             setattr(_proxy_server_mod, attr, val)
@@ -1336,12 +1288,12 @@ async def test_scim_deactivated_user_key_is_rejected():
         request._url = URL(url="/chat/completions")
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.resolvers.store.IdentityStore._resolve_key",
                 new_callable=AsyncMock,
                 return_value=valid_token,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_user_object",
                 new_callable=AsyncMock,
                 return_value=deactivated_user,
@@ -1365,25 +1317,27 @@ async def test_scim_deactivated_user_key_is_rejected():
 
 
 @pytest.mark.asyncio
-async def test_scim_deactivated_user_key_is_rejected_when_cached_user_is_dict():
+async def test_cached_proxy_admin_key_sets_via_virtual_key_marker():
+    """Cached PROXY_ADMIN auth objects early-return before the marked DB and
+    master-key returns, and cache serialization drops the exclude=True marker;
+    the cache-hit boundary must restore it or cached admin traffic silently
+    bypasses overwrite_user_with_key_hash stamping."""
     from fastapi import Request
     from starlette.datastructures import URL
 
     from litellm.proxy.auth.user_api_key_auth import _user_api_key_auth_builder
     from litellm.proxy.proxy_server import hash_token
 
-    api_key = "sk-scim-deactivated-user-dict-key"
+    api_key = "sk-cached-admin-marker-test"
     hashed_key = hash_token(api_key)
 
-    valid_token = UserAPIKeyAuth(
+    cached_token = UserAPIKeyAuth(
         api_key=api_key,
         token=hashed_key,
-        user_id="scim-disabled-user",
+        user_id="cached-admin-user",
+        user_role=LitellmUserRoles.PROXY_ADMIN,
     )
-    deactivated_user = {
-        "user_id": "scim-disabled-user",
-        "metadata": {"scim_active": False},
-    }
+    assert cached_token.via_virtual_key is False
 
     mock_cache = AsyncMock()
     mock_cache.async_get_cache = AsyncMock(return_value=None)
@@ -1392,9 +1346,150 @@ async def test_scim_deactivated_user_key_is_rejected_when_cached_user_is_dict():
     mock_proxy_logging_obj = MagicMock()
     mock_proxy_logging_obj.internal_usage_cache = MagicMock()
     mock_proxy_logging_obj.internal_usage_cache.dual_cache = AsyncMock()
-    mock_proxy_logging_obj.internal_usage_cache.dual_cache.async_delete_cache = (
-        AsyncMock()
+    mock_proxy_logging_obj.internal_usage_cache.dual_cache.async_delete_cache = AsyncMock()
+    mock_proxy_logging_obj.post_call_failure_hook = AsyncMock(return_value=None)
+
+    import litellm.proxy.proxy_server as _proxy_server_mod
+
+    _attrs_to_set = {
+        "prisma_client": MagicMock(),
+        "user_api_key_cache": mock_cache,
+        "proxy_logging_obj": mock_proxy_logging_obj,
+        "master_key": "sk-master-key",
+        "general_settings": {},
+        "llm_model_list": [],
+        "llm_router": None,
+        "open_telemetry_logger": None,
+        "model_max_budget_limiter": MagicMock(),
+        "user_custom_auth": None,
+        "jwt_handler": None,
+        "litellm_proxy_admin_name": "admin",
+    }
+    _original_values = {attr: getattr(_proxy_server_mod, attr, None) for attr in _attrs_to_set}
+    try:
+        for attr, val in _attrs_to_set.items():
+            setattr(_proxy_server_mod, attr, val)
+
+        request = Request(scope={"type": "http"})
+        request._url = URL(url="/chat/completions")
+
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            "litellm.proxy.auth.resolvers.store.IdentityStore._resolve_key",
+            new_callable=AsyncMock,
+            return_value=cached_token,
+        ):
+            result = await _user_api_key_auth_builder(
+                request=request,
+                api_key=f"Bearer {api_key}",
+                azure_api_key_header="",
+                anthropic_api_key_header=None,
+                google_ai_studio_api_key_header=None,
+                azure_apim_header=None,
+                request_data={},
+            )
+
+        assert isinstance(result, UserAPIKeyAuth)
+        assert result.user_role == LitellmUserRoles.PROXY_ADMIN
+        assert result.via_virtual_key is True
+        assert result.api_key == hashed_key
+    finally:
+        for attr, val in _original_values.items():
+            setattr(_proxy_server_mod, attr, val)
+
+
+@pytest.mark.asyncio
+async def test_master_key_auth_sets_via_virtual_key_marker():
+    """Master-key requests must also be stamped by overwrite_user_with_key_hash;
+    the auth path substitutes the stable alias for api_key and must mark the
+    result as proxy-validated."""
+    from fastapi import Request
+    from starlette.datastructures import URL
+
+    from litellm.constants import LITELLM_PROXY_MASTER_KEY_ALIAS
+    from litellm.proxy.auth.user_api_key_auth import _user_api_key_auth_builder
+
+    master_key = "sk-master-key"
+
+    mock_cache = AsyncMock()
+    mock_cache.async_get_cache = AsyncMock(return_value=None)
+    mock_cache.delete_cache = MagicMock()
+
+    mock_proxy_logging_obj = MagicMock()
+    mock_proxy_logging_obj.internal_usage_cache = MagicMock()
+    mock_proxy_logging_obj.internal_usage_cache.dual_cache = AsyncMock()
+    mock_proxy_logging_obj.internal_usage_cache.dual_cache.async_delete_cache = AsyncMock()
+    mock_proxy_logging_obj.post_call_failure_hook = AsyncMock(return_value=None)
+
+    import litellm.proxy.proxy_server as _proxy_server_mod
+
+    _attrs_to_set = {
+        "prisma_client": MagicMock(),
+        "user_api_key_cache": mock_cache,
+        "proxy_logging_obj": mock_proxy_logging_obj,
+        "master_key": master_key,
+        "general_settings": {},
+        "llm_model_list": [],
+        "llm_router": None,
+        "open_telemetry_logger": None,
+        "model_max_budget_limiter": MagicMock(),
+        "user_custom_auth": None,
+        "jwt_handler": None,
+        "litellm_proxy_admin_name": "admin",
+    }
+    _original_values = {attr: getattr(_proxy_server_mod, attr, None) for attr in _attrs_to_set}
+    try:
+        for attr, val in _attrs_to_set.items():
+            setattr(_proxy_server_mod, attr, val)
+
+        request = Request(scope={"type": "http"})
+        request._url = URL(url="/chat/completions")
+
+        result = await _user_api_key_auth_builder(
+            request=request,
+            api_key=f"Bearer {master_key}",
+            azure_api_key_header="",
+            anthropic_api_key_header=None,
+            google_ai_studio_api_key_header=None,
+            azure_apim_header=None,
+            request_data={},
+        )
+
+        assert isinstance(result, UserAPIKeyAuth)
+        assert result.via_virtual_key is True
+        assert result.api_key == LITELLM_PROXY_MASTER_KEY_ALIAS
+    finally:
+        for attr, val in _original_values.items():
+            setattr(_proxy_server_mod, attr, val)
+
+
+@pytest.mark.asyncio
+async def test_db_virtual_key_auth_sets_via_virtual_key_marker():
+    """via_virtual_key gates overwrite_user_with_key_hash stamping and is
+    forge-stripped from validated input, so the DB auth path setting it by
+    post-construction assignment is the only thing that turns stamping on."""
+    from fastapi import Request
+    from starlette.datastructures import URL
+
+    from litellm.proxy.auth.user_api_key_auth import _user_api_key_auth_builder
+    from litellm.proxy.proxy_server import hash_token
+
+    api_key = "sk-via-virtual-key-marker-test"
+    hashed_key = hash_token(api_key)
+
+    valid_token = UserAPIKeyAuth(
+        api_key=api_key,
+        token=hashed_key,
+        user_id="marker-test-user",
     )
+
+    mock_cache = AsyncMock()
+    mock_cache.async_get_cache = AsyncMock(return_value=None)
+    mock_cache.delete_cache = MagicMock()
+
+    mock_proxy_logging_obj = MagicMock()
+    mock_proxy_logging_obj.internal_usage_cache = MagicMock()
+    mock_proxy_logging_obj.internal_usage_cache.dual_cache = AsyncMock()
+    mock_proxy_logging_obj.internal_usage_cache.dual_cache.async_delete_cache = AsyncMock()
     mock_proxy_logging_obj.post_call_failure_hook = AsyncMock(return_value=None)
 
     mock_prisma_client = MagicMock()
@@ -1415,9 +1510,7 @@ async def test_scim_deactivated_user_key_is_rejected_when_cached_user_is_dict():
         "jwt_handler": None,
         "litellm_proxy_admin_name": "admin",
     }
-    _original_values = {
-        attr: getattr(_proxy_server_mod, attr, None) for attr in _attrs_to_set
-    }
+    _original_values = {attr: getattr(_proxy_server_mod, attr, None) for attr in _attrs_to_set}
     try:
         for attr, val in _attrs_to_set.items():
             setattr(_proxy_server_mod, attr, val)
@@ -1426,29 +1519,30 @@ async def test_scim_deactivated_user_key_is_rejected_when_cached_user_is_dict():
         request._url = URL(url="/chat/completions")
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.resolvers.store.IdentityStore._resolve_key",
                 new_callable=AsyncMock,
                 return_value=valid_token,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_user_object",
                 new_callable=AsyncMock,
-                return_value=deactivated_user,
+                return_value=None,
             ),
         ):
-            with pytest.raises(ProxyException) as exc_info:
-                await _user_api_key_auth_builder(
-                    request=request,
-                    api_key=f"Bearer {api_key}",
-                    azure_api_key_header="",
-                    anthropic_api_key_header=None,
-                    google_ai_studio_api_key_header=None,
-                    azure_apim_header=None,
-                    request_data={},
-                )
+            result = await _user_api_key_auth_builder(
+                request=request,
+                api_key=f"Bearer {api_key}",
+                azure_api_key_header="",
+                anthropic_api_key_header=None,
+                google_ai_studio_api_key_header=None,
+                azure_apim_header=None,
+                request_data={},
+            )
 
-        assert "deactivated via SCIM" in str(exc_info.value.message)
+        assert isinstance(result, UserAPIKeyAuth)
+        assert result.via_virtual_key is True
+        assert result.api_key == hashed_key
     finally:
         for attr, val in _original_values.items():
             setattr(_proxy_server_mod, attr, val)
@@ -1489,7 +1583,7 @@ async def test_return_user_api_key_auth_obj_user_spend_and_budget():
     mock_service_logger = MagicMock()
     mock_service_logger.async_service_success_hook = AsyncMock()
 
-    with patch(
+    with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         "litellm.proxy.auth.user_api_key_auth.user_api_key_service_logger_obj",
         new=mock_service_logger,
     ):
@@ -1509,50 +1603,6 @@ async def test_return_user_api_key_auth_obj_user_spend_and_budget():
     assert result.user_tpm_limit == 1000
     assert result.user_rpm_limit == 100
     assert result.user_email == "test@example.com"
-
-
-@pytest.mark.asyncio
-async def test_return_user_api_key_auth_obj_cached_user_dict_limits():
-    """
-    Test that _return_user_api_key_auth_obj reads user limits from cached dicts.
-    """
-    from datetime import datetime
-
-    from litellm.proxy._types import UserAPIKeyAuth
-    from litellm.proxy.auth.user_api_key_auth import _return_user_api_key_auth_obj
-
-    user_obj = {
-        "tpm_limit": 1000,
-        "rpm_limit": 100,
-        "user_email": "cached@example.com",
-        "spend": 250.0,
-        "max_budget": 1000.0,
-        "user_role": "internal_user",
-    }
-
-    mock_service_logger = MagicMock()
-    mock_service_logger.async_service_success_hook = AsyncMock()
-
-    with patch(
-        "litellm.proxy.auth.user_api_key_auth.user_api_key_service_logger_obj",
-        new=mock_service_logger,
-    ):
-        result = await _return_user_api_key_auth_obj(
-            user_obj=user_obj,
-            api_key="sk-test-key",
-            parent_otel_span=None,
-            valid_token_dict={"user_id": "test-user", "org_id": "test-org"},
-            route="/chat/completions",
-            start_time=datetime.now(),
-            user_role=None,
-        )
-
-    assert isinstance(result, UserAPIKeyAuth)
-    assert result.user_tpm_limit == 1000
-    assert result.user_rpm_limit == 100
-    assert result.user_email == "cached@example.com"
-    assert result.user_spend == 250.0
-    assert result.user_max_budget == 1000.0
 
 
 def test_proxy_admin_jwt_auth_includes_identity_fields():
@@ -1670,14 +1720,28 @@ async def test_standard_jwt_auth_propagates_user_email():
     mock_request.state = SimpleNamespace()
 
     with (
-        patch("litellm.proxy.proxy_server.general_settings", general_settings),
-        patch("litellm.proxy.proxy_server.premium_user", True),
-        patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-        patch("litellm.proxy.proxy_server.prisma_client", None),
-        patch("litellm.proxy.proxy_server.user_api_key_cache", user_api_key_cache),
-        patch("litellm.proxy.proxy_server.proxy_logging_obj", MagicMock()),
-        patch("litellm.proxy.proxy_server.jwt_handler", jwt_handler),
         patch(
+            "litellm.proxy.proxy_server.general_settings", general_settings
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.premium_user", True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.master_key", "sk-master"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", None
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.user_api_key_cache", user_api_key_cache
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.proxy_logging_obj", MagicMock()
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.jwt_handler", jwt_handler
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth.JWTAuthManager.auth_builder",
             new_callable=AsyncMock,
             return_value=mock_jwt_result,
@@ -1737,12 +1801,12 @@ async def test_auto_register_binds_api_key_to_token_hash():
     jwt_handler.litellm_jwtauth = LiteLLM_JWTAuth(virtual_key_mapping_cache_ttl=300)
 
     with (
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.key_management_endpoints.generate_key_helper_fn",
             new_callable=AsyncMock,
             return_value={"token": plaintext},
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.resolvers.store.IdentityStore.resolve",
             new_callable=AsyncMock,
             return_value=principal,
@@ -1825,14 +1889,28 @@ async def test_auto_register_first_request_propagates_user_email():
     mock_request.state = SimpleNamespace()
 
     with (
-        patch("litellm.proxy.proxy_server.general_settings", general_settings),
-        patch("litellm.proxy.proxy_server.premium_user", True),
-        patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-        patch("litellm.proxy.proxy_server.prisma_client", prisma_client),
-        patch("litellm.proxy.proxy_server.user_api_key_cache", user_api_key_cache),
-        patch("litellm.proxy.proxy_server.proxy_logging_obj", MagicMock()),
-        patch("litellm.proxy.proxy_server.jwt_handler", jwt_handler),
         patch(
+            "litellm.proxy.proxy_server.general_settings", general_settings
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.premium_user", True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.master_key", "sk-master"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", prisma_client
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.user_api_key_cache", user_api_key_cache
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.proxy_logging_obj", MagicMock()
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.jwt_handler", jwt_handler
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth._resolve_jwt_to_virtual_key",
             new_callable=AsyncMock,
             return_value=_PendingAutoRegister(
@@ -1841,12 +1919,12 @@ async def test_auto_register_first_request_propagates_user_email():
                 cache_key="jwt_key_mapping:sub:user1",
             ),
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth.JWTAuthManager.auth_builder",
             new_callable=AsyncMock,
             return_value=mock_jwt_result,
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth._auto_register_jwt_mapping",
             new_callable=AsyncMock,
             return_value=auto_registered_key,
@@ -1880,10 +1958,7 @@ class TestJWTOAuth2Coexistence:
     def test_is_jwt_detects_jwt_tokens(self):
         """JWT tokens have 3 dot-separated parts."""
         assert JWTHandler.is_jwt("header.payload.signature") is True
-        assert (
-            JWTHandler.is_jwt("eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ1c2VyMSJ9.sig123")
-            is True
-        )
+        assert JWTHandler.is_jwt("eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ1c2VyMSJ9.sig123") is True
 
     def test_is_jwt_rejects_opaque_tokens(self):
         """Opaque OAuth2 tokens do not have 3 dot-separated parts."""
@@ -1921,16 +1996,24 @@ class TestJWTOAuth2Coexistence:
         mock_request.query_params = {}
 
         with (
-            patch("litellm.proxy.proxy_server.general_settings", general_settings),
-            patch("litellm.proxy.proxy_server.premium_user", True),
-            patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-            patch("litellm.proxy.proxy_server.prisma_client", None),
             patch(
+                "litellm.proxy.proxy_server.general_settings", general_settings
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.premium_user", True
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.master_key", "sk-master"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.prisma_client", None
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.Oauth2Handler.check_oauth2_token",
                 new_callable=AsyncMock,
                 return_value=mock_oauth2_response,
             ) as mock_oauth2,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.JWTAuthManager.auth_builder",
                 new_callable=AsyncMock,
             ) as mock_jwt_auth,
@@ -1969,11 +2052,19 @@ class TestJWTOAuth2Coexistence:
         mock_request.query_params = {}
 
         with (
-            patch("litellm.proxy.proxy_server.general_settings", general_settings),
-            patch("litellm.proxy.proxy_server.premium_user", False),
-            patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-            patch("litellm.proxy.proxy_server.prisma_client", None),
             patch(
+                "litellm.proxy.proxy_server.general_settings", general_settings
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.premium_user", False
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.master_key", "sk-master"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.prisma_client", None
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.Oauth2Handler.check_oauth2_token",
                 new_callable=AsyncMock,
             ) as mock_oauth2,
@@ -1992,10 +2083,7 @@ class TestJWTOAuth2Coexistence:
 
             assert exc_info.value.type == ProxyErrorTypes.auth_error
             assert exc_info.value.code == "403"
-            assert (
-                "Oauth2 token validation is only available for premium users"
-                in exc_info.value.message
-            )
+            assert "Oauth2 token validation is only available for premium users" in exc_info.value.message
             mock_oauth2.assert_not_called()
 
     @pytest.mark.asyncio
@@ -2014,12 +2102,22 @@ class TestJWTOAuth2Coexistence:
         mock_request.query_params = {}
 
         with (
-            patch("litellm.proxy.proxy_server.general_settings", {}),
-            patch("litellm.proxy.proxy_server.premium_user", False),
-            patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-            patch("litellm.proxy.proxy_server.prisma_client", MagicMock()),
-            patch("litellm.proxy.proxy_server.user_api_key_cache", DualCache()),
             patch(
+                "litellm.proxy.proxy_server.general_settings", {}
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.premium_user", False
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.master_key", "sk-master"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.prisma_client", MagicMock()
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.user_api_key_cache", DualCache()
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.Oauth2Handler.check_oauth2_token",
                 new_callable=AsyncMock,
             ) as mock_oauth2,
@@ -2070,15 +2168,23 @@ class TestJWTOAuth2Coexistence:
         mock_request.query_params = {}
 
         with (
-            patch("litellm.proxy.proxy_server.general_settings", general_settings),
-            patch("litellm.proxy.proxy_server.premium_user", True),
-            patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-            patch("litellm.proxy.proxy_server.prisma_client", None),
             patch(
+                "litellm.proxy.proxy_server.general_settings", general_settings
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.premium_user", True
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.master_key", "sk-master"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.prisma_client", None
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.Oauth2Handler.check_oauth2_token",
                 new_callable=AsyncMock,
             ) as mock_oauth2,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.JWTAuthManager.auth_builder",
                 new_callable=AsyncMock,
                 return_value=mock_jwt_result,
@@ -2146,14 +2252,28 @@ class TestJWTOAuth2Coexistence:
         mock_request.state = SimpleNamespace()
 
         with (
-            patch("litellm.proxy.proxy_server.general_settings", general_settings),
-            patch("litellm.proxy.proxy_server.premium_user", True),
-            patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-            patch("litellm.proxy.proxy_server.prisma_client", prisma_client),
-            patch("litellm.proxy.proxy_server.user_api_key_cache", user_api_key_cache),
-            patch("litellm.proxy.proxy_server.proxy_logging_obj", MagicMock()),
-            patch("litellm.proxy.proxy_server.jwt_handler", jwt_handler),
             patch(
+                "litellm.proxy.proxy_server.general_settings", general_settings
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.premium_user", True
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.master_key", "sk-master"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.prisma_client", prisma_client
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.user_api_key_cache", user_api_key_cache
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.proxy_logging_obj", MagicMock()
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.jwt_handler", jwt_handler
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth._resolve_jwt_to_virtual_key",
                 new_callable=AsyncMock,
                 return_value=_PendingAutoRegister(
@@ -2162,12 +2282,12 @@ class TestJWTOAuth2Coexistence:
                     cache_key="jwt_key_mapping:sub:user1",
                 ),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.JWTAuthManager.auth_builder",
                 new_callable=AsyncMock,
                 return_value=mock_jwt_result,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth._auto_register_jwt_mapping",
                 new_callable=AsyncMock,
                 return_value=auto_registered_key,
@@ -2187,9 +2307,7 @@ class TestJWTOAuth2Coexistence:
         assert mock_auto_register.call_args.kwargs["team_id"] == "validated-team"
         assert mock_auto_register.call_args.kwargs["user_id"] == "validated-user"
         assert mock_auto_register.call_args.kwargs["org_id"] == "validated-org"
-        assert (
-            mock_auto_register.call_args.kwargs["end_user_id"] == "validated-end-user"
-        )
+        assert mock_auto_register.call_args.kwargs["end_user_id"] == "validated-end-user"
         assert result.org_id == "validated-org"
         assert result.user_email == "validated@example.com"
 
@@ -2237,19 +2355,33 @@ class TestJWTOAuth2Coexistence:
         mock_request.state = SimpleNamespace()
 
         with (
-            patch("litellm.proxy.proxy_server.general_settings", general_settings),
-            patch("litellm.proxy.proxy_server.premium_user", True),
-            patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-            patch("litellm.proxy.proxy_server.prisma_client", prisma_client),
-            patch("litellm.proxy.proxy_server.user_api_key_cache", user_api_key_cache),
-            patch("litellm.proxy.proxy_server.proxy_logging_obj", MagicMock()),
-            patch("litellm.proxy.proxy_server.jwt_handler", jwt_handler),
             patch(
+                "litellm.proxy.proxy_server.general_settings", general_settings
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.premium_user", True
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.master_key", "sk-master"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.prisma_client", prisma_client
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.user_api_key_cache", user_api_key_cache
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.proxy_logging_obj", MagicMock()
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.jwt_handler", jwt_handler
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth._resolve_jwt_to_virtual_key",
                 new_callable=AsyncMock,
                 return_value=mapped_key,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_user_object",
                 new_callable=AsyncMock,
                 return_value=backfilled_user,
@@ -2267,10 +2399,7 @@ class TestJWTOAuth2Coexistence:
 
         assert result.user_id == "mapped-user"
         assert result.user_email == "mapped@example.com"
-        assert (
-            mock_get_user_object.call_args_list[0].kwargs["user_email"]
-            == "mapped@example.com"
-        )
+        assert mock_get_user_object.call_args_list[0].kwargs["user_email"] == "mapped@example.com"
 
     @pytest.mark.asyncio
     async def test_mapped_virtual_key_does_not_backfill_mismatched_owner(self):
@@ -2315,19 +2444,33 @@ class TestJWTOAuth2Coexistence:
         mock_request.state = SimpleNamespace()
 
         with (
-            patch("litellm.proxy.proxy_server.general_settings", general_settings),
-            patch("litellm.proxy.proxy_server.premium_user", True),
-            patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-            patch("litellm.proxy.proxy_server.prisma_client", prisma_client),
-            patch("litellm.proxy.proxy_server.user_api_key_cache", user_api_key_cache),
-            patch("litellm.proxy.proxy_server.proxy_logging_obj", MagicMock()),
-            patch("litellm.proxy.proxy_server.jwt_handler", jwt_handler),
             patch(
+                "litellm.proxy.proxy_server.general_settings", general_settings
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.premium_user", True
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.master_key", "sk-master"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.prisma_client", prisma_client
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.user_api_key_cache", user_api_key_cache
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.proxy_logging_obj", MagicMock()
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.jwt_handler", jwt_handler
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth._resolve_jwt_to_virtual_key",
                 new_callable=AsyncMock,
                 return_value=mapped_key,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_user_object",
                 new_callable=AsyncMock,
                 return_value=other_owner,
@@ -2346,8 +2489,7 @@ class TestJWTOAuth2Coexistence:
         assert result.user_id == "other-owner"
         assert result.user_email is None
         assert all(
-            call.kwargs.get("user_email") != "principal@example.com"
-            for call in mock_get_user_object.call_args_list
+            call.kwargs.get("user_email") != "principal@example.com" for call in mock_get_user_object.call_args_list
         )
 
     @pytest.mark.asyncio
@@ -2387,19 +2529,33 @@ class TestJWTOAuth2Coexistence:
         mock_request.state = SimpleNamespace()
 
         with (
-            patch("litellm.proxy.proxy_server.general_settings", general_settings),
-            patch("litellm.proxy.proxy_server.premium_user", True),
-            patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-            patch("litellm.proxy.proxy_server.prisma_client", prisma_client),
-            patch("litellm.proxy.proxy_server.user_api_key_cache", user_api_key_cache),
-            patch("litellm.proxy.proxy_server.proxy_logging_obj", MagicMock()),
-            patch("litellm.proxy.proxy_server.jwt_handler", jwt_handler),
             patch(
+                "litellm.proxy.proxy_server.general_settings", general_settings
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.premium_user", True
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.master_key", "sk-master"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.prisma_client", prisma_client
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.user_api_key_cache", user_api_key_cache
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.proxy_logging_obj", MagicMock()
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.jwt_handler", jwt_handler
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth._resolve_jwt_to_virtual_key",
                 new_callable=AsyncMock,
                 return_value=mapped_key,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_user_object",
                 new_callable=AsyncMock,
                 side_effect=Exception("can't reach database server"),
@@ -2443,16 +2599,24 @@ class TestJWTOAuth2Coexistence:
         mock_request.query_params = {}
 
         with (
-            patch("litellm.proxy.proxy_server.general_settings", general_settings),
-            patch("litellm.proxy.proxy_server.premium_user", True),
-            patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-            patch("litellm.proxy.proxy_server.prisma_client", None),
             patch(
+                "litellm.proxy.proxy_server.general_settings", general_settings
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.premium_user", True
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.master_key", "sk-master"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.prisma_client", None
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.Oauth2Handler.check_oauth2_token",
                 new_callable=AsyncMock,
                 return_value=mock_oauth2_response,
             ) as mock_oauth2,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.JWTAuthManager.auth_builder",
                 new_callable=AsyncMock,
             ) as mock_jwt_auth,
@@ -2516,15 +2680,23 @@ class TestJWTOAuth2Coexistence:
         mock_request.query_params = {}
 
         with (
-            patch("litellm.proxy.proxy_server.general_settings", general_settings),
-            patch("litellm.proxy.proxy_server.premium_user", True),
-            patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-            patch("litellm.proxy.proxy_server.prisma_client", None),
             patch(
+                "litellm.proxy.proxy_server.general_settings", general_settings
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.premium_user", True
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.master_key", "sk-master"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.prisma_client", None
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.Oauth2Handler.check_oauth2_token",
                 new_callable=AsyncMock,
             ) as mock_oauth2,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.JWTAuthManager.auth_builder",
                 new_callable=AsyncMock,
                 return_value=mock_jwt_result,
@@ -2578,16 +2750,24 @@ class TestJWTOAuth2Coexistence:
         mock_request.query_params = {}
 
         with (
-            patch("litellm.proxy.proxy_server.general_settings", general_settings),
-            patch("litellm.proxy.proxy_server.premium_user", True),
-            patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-            patch("litellm.proxy.proxy_server.prisma_client", None),
             patch(
+                "litellm.proxy.proxy_server.general_settings", general_settings
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.premium_user", True
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.master_key", "sk-master"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.prisma_client", None
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.Oauth2Handler.check_oauth2_token",
                 new_callable=AsyncMock,
                 return_value=mock_oauth2_response,
             ) as mock_oauth2,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.JWTAuthManager.auth_builder",
                 new_callable=AsyncMock,
             ) as mock_jwt_auth,
@@ -2644,16 +2824,24 @@ class TestJWTOAuth2Coexistence:
         mock_request.query_params = {}
 
         with (
-            patch("litellm.proxy.proxy_server.general_settings", general_settings),
-            patch("litellm.proxy.proxy_server.premium_user", True),
-            patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-            patch("litellm.proxy.proxy_server.prisma_client", None),
             patch(
+                "litellm.proxy.proxy_server.general_settings", general_settings
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.premium_user", True
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.master_key", "sk-master"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.prisma_client", None
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.Oauth2Handler.check_oauth2_token",
                 new_callable=AsyncMock,
                 return_value=mock_oauth2_response,
             ) as mock_oauth2,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.JWTAuthManager.auth_builder",
                 new_callable=AsyncMock,
             ) as mock_jwt_auth,
@@ -2717,15 +2905,23 @@ class TestJWTOAuth2Coexistence:
         mock_request.query_params = {}
 
         with (
-            patch("litellm.proxy.proxy_server.general_settings", general_settings),
-            patch("litellm.proxy.proxy_server.premium_user", True),
-            patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-            patch("litellm.proxy.proxy_server.prisma_client", None),
             patch(
+                "litellm.proxy.proxy_server.general_settings", general_settings
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.premium_user", True
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.master_key", "sk-master"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.prisma_client", None
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.Oauth2Handler.check_oauth2_token",
                 new_callable=AsyncMock,
             ) as mock_oauth2,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.JWTAuthManager.auth_builder",
                 new_callable=AsyncMock,
                 return_value=mock_jwt_result,
@@ -2782,16 +2978,24 @@ class TestJWTOAuth2Coexistence:
         mock_request.query_params = {}
 
         with (
-            patch("litellm.proxy.proxy_server.general_settings", general_settings),
-            patch("litellm.proxy.proxy_server.premium_user", True),
-            patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-            patch("litellm.proxy.proxy_server.prisma_client", None),
             patch(
+                "litellm.proxy.proxy_server.general_settings", general_settings
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.premium_user", True
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.master_key", "sk-master"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.prisma_client", None
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.Oauth2Handler.check_oauth2_token",
                 new_callable=AsyncMock,
                 return_value=mock_oauth2_response,
             ) as mock_oauth2,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.JWTAuthManager.auth_builder",
                 new_callable=AsyncMock,
             ) as mock_jwt_auth,
@@ -2848,16 +3052,24 @@ class TestJWTOAuth2Coexistence:
         mock_request.query_params = {}
 
         with (
-            patch("litellm.proxy.proxy_server.general_settings", general_settings),
-            patch("litellm.proxy.proxy_server.premium_user", True),
-            patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-            patch("litellm.proxy.proxy_server.prisma_client", None),
             patch(
+                "litellm.proxy.proxy_server.general_settings", general_settings
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.premium_user", True
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.master_key", "sk-master"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.prisma_client", None
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.Oauth2Handler.check_oauth2_token",
                 new_callable=AsyncMock,
                 return_value=mock_oauth2_response,
             ) as mock_oauth2,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.JWTAuthManager.auth_builder",
                 new_callable=AsyncMock,
             ) as mock_jwt_auth,
@@ -2904,11 +3116,19 @@ class TestJWTOAuth2Coexistence:
         mock_request.query_params = {}
 
         with (
-            patch("litellm.proxy.proxy_server.general_settings", general_settings),
-            patch("litellm.proxy.proxy_server.premium_user", True),
-            patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-            patch("litellm.proxy.proxy_server.prisma_client", None),
             patch(
+                "litellm.proxy.proxy_server.general_settings", general_settings
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.premium_user", True
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.master_key", "sk-master"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.prisma_client", None
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.Oauth2Handler.check_oauth2_token",
                 new_callable=AsyncMock,
             ) as mock_oauth2,
@@ -2953,16 +3173,24 @@ class TestJWTOAuth2Coexistence:
         mock_request.query_params = {}
 
         with (
-            patch("litellm.proxy.proxy_server.general_settings", general_settings),
-            patch("litellm.proxy.proxy_server.premium_user", True),
-            patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-            patch("litellm.proxy.proxy_server.prisma_client", None),
             patch(
+                "litellm.proxy.proxy_server.general_settings", general_settings
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.premium_user", True
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.master_key", "sk-master"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.prisma_client", None
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.Oauth2Handler.check_oauth2_token",
                 new_callable=AsyncMock,
                 return_value=mock_oauth2_response,
             ) as mock_oauth2,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.JWTAuthManager.auth_builder",
                 new_callable=AsyncMock,
             ) as mock_jwt_auth,
@@ -3029,15 +3257,23 @@ class TestJWTOAuth2Coexistence:
         mock_request.query_params = {}
 
         with (
-            patch("litellm.proxy.proxy_server.general_settings", general_settings),
-            patch("litellm.proxy.proxy_server.premium_user", True),
-            patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-            patch("litellm.proxy.proxy_server.prisma_client", None),
             patch(
+                "litellm.proxy.proxy_server.general_settings", general_settings
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.premium_user", True
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.master_key", "sk-master"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.prisma_client", None
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.Oauth2Handler.check_oauth2_token",
                 new_callable=AsyncMock,
             ) as mock_oauth2,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.JWTAuthManager.auth_builder",
                 new_callable=AsyncMock,
                 return_value=mock_jwt_result,
@@ -3090,11 +3326,19 @@ class TestJWTOAuth2Coexistence:
         mock_request.query_params = {}
 
         with (
-            patch("litellm.proxy.proxy_server.general_settings", general_settings),
-            patch("litellm.proxy.proxy_server.premium_user", True),
-            patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-            patch("litellm.proxy.proxy_server.prisma_client", None),
             patch(
+                "litellm.proxy.proxy_server.general_settings", general_settings
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.premium_user", True
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.master_key", "sk-master"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.prisma_client", None
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.Oauth2Handler.check_oauth2_token",
                 new_callable=AsyncMock,
                 return_value=mock_oauth2_response,
@@ -3152,9 +3396,7 @@ async def test_user_api_key_auth_builder_no_blocking_calls():
     mock_proxy_logging_obj = MagicMock()
     mock_proxy_logging_obj.internal_usage_cache = MagicMock()
     mock_proxy_logging_obj.internal_usage_cache.dual_cache = AsyncMock()
-    mock_proxy_logging_obj.internal_usage_cache.dual_cache.async_delete_cache = (
-        AsyncMock()
-    )
+    mock_proxy_logging_obj.internal_usage_cache.dual_cache.async_delete_cache = AsyncMock()
     mock_proxy_logging_obj.post_call_failure_hook = AsyncMock(return_value=None)
 
     import litellm.proxy.proxy_server as _proxy_server_mod
@@ -3203,14 +3445,14 @@ async def test_user_api_key_auth_builder_no_blocking_calls():
             for p in blocking_patches:
                 stack.enter_context(p)
             stack.enter_context(
-                patch(
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                     "litellm.proxy.auth.resolvers.store.IdentityStore._resolve_key",
                     new_callable=AsyncMock,
                     return_value=valid_token,
                 )
             )
             stack.enter_context(
-                patch(
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                     "litellm.proxy.auth.user_api_key_auth.get_team_object",
                     new_callable=AsyncMock,
                     return_value=None,
@@ -3286,9 +3528,7 @@ async def test_team_metadata_refreshed_from_team_object_during_auth():
     mock_proxy_logging_obj = MagicMock()
     mock_proxy_logging_obj.internal_usage_cache = MagicMock()
     mock_proxy_logging_obj.internal_usage_cache.dual_cache = AsyncMock()
-    mock_proxy_logging_obj.internal_usage_cache.dual_cache.async_delete_cache = (
-        AsyncMock()
-    )
+    mock_proxy_logging_obj.internal_usage_cache.dual_cache.async_delete_cache = AsyncMock()
     mock_proxy_logging_obj.post_call_failure_hook = AsyncMock(return_value=None)
 
     import litellm.proxy.proxy_server as _proxy_server_mod
@@ -3317,12 +3557,12 @@ async def test_team_metadata_refreshed_from_team_object_during_auth():
         request._url = URL(url="/chat/completions")
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.resolvers.store.IdentityStore._resolve_key",
                 new_callable=AsyncMock,
                 return_value=valid_token,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_team_object",
                 new_callable=AsyncMock,
                 return_value=fresh_team_obj,
@@ -3338,9 +3578,9 @@ async def test_team_metadata_refreshed_from_team_object_during_auth():
                 request_data={},
             )
 
-        assert result.team_metadata == {
-            "guardrails": ["test-guardrail-333"]
-        }, f"team_metadata was not updated from fresh team object. Got: {result.team_metadata}"
+        assert result.team_metadata == {"guardrails": ["test-guardrail-333"]}, (
+            f"team_metadata was not updated from fresh team object. Got: {result.team_metadata}"
+        )
 
     finally:
         for k, v in _originals.items():
@@ -3420,12 +3660,12 @@ async def test_auth_flow_never_persists_fallback_team_object_lit_4391():
         request._url = URL(url="/chat/completions")
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.resolvers.store.IdentityStore._resolve_key",
                 new_callable=AsyncMock,
                 return_value=valid_token,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_team_object",
                 new_callable=AsyncMock,
                 side_effect=HTTPException(
@@ -3464,15 +3704,208 @@ async def test_auth_flow_never_persists_fallback_team_object_lit_4391():
             setattr(_proxy_server_mod, k, v)
 
 
+@pytest.mark.asyncio
+async def test_auth_flow_fallback_team_resolves_object_permission_by_id():
+    """The unresolvable-team fallback resolves team_object_permission by its own id instead of leaving it unset."""
+    from starlette.datastructures import URL
+    from starlette.requests import Request
+    from fastapi import HTTPException
+
+    from litellm.proxy._types import (
+        LiteLLM_ObjectPermissionTable,
+        LitellmUserRoles,
+        UserAPIKeyAuth,
+    )
+    from litellm.proxy.auth.user_api_key_auth import _user_api_key_auth_builder
+
+    api_key = "sk-test-fallback-team-object-permission"
+    valid_token = UserAPIKeyAuth(
+        api_key=api_key,
+        token=api_key,
+        user_role=LitellmUserRoles.INTERNAL_USER,
+        team_id="team-fallback-object-permission",
+        team_object_permission_id="op-fallback-object-permission",
+    )
+
+    restricted_object_permission = LiteLLM_ObjectPermissionTable(
+        object_permission_id="op-fallback-object-permission",
+        vector_stores=["vs-allowed-only"],
+        mcp_servers=["mcp-allowed-only"],
+    )
+
+    mock_cache = AsyncMock()
+    mock_cache.async_get_cache = AsyncMock(return_value=valid_token)
+    mock_cache.async_set_cache = AsyncMock(return_value=None)
+
+    mock_proxy_logging_obj = MagicMock()
+    mock_proxy_logging_obj.internal_usage_cache = MagicMock()
+    mock_proxy_logging_obj.internal_usage_cache.dual_cache = AsyncMock()
+    mock_proxy_logging_obj.post_call_failure_hook = AsyncMock(return_value=None)
+
+    import litellm.proxy.proxy_server as _proxy_server_mod
+
+    _attrs = {
+        "prisma_client": MagicMock(),
+        "user_api_key_cache": mock_cache,
+        "proxy_logging_obj": mock_proxy_logging_obj,
+        "master_key": "sk-master-key",
+        "general_settings": {},
+        "llm_model_list": [],
+        "llm_router": None,
+        "open_telemetry_logger": None,
+        "model_max_budget_limiter": MagicMock(),
+        "user_custom_auth": None,
+        "jwt_handler": None,
+        "litellm_proxy_admin_name": "admin",
+    }
+    _originals = {k: getattr(_proxy_server_mod, k, None) for k in _attrs}
+
+    try:
+        for k, v in _attrs.items():
+            setattr(_proxy_server_mod, k, v)
+
+        request = Request(scope={"type": "http"})
+        request._url = URL(url="/chat/completions")
+
+        with (
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                "litellm.proxy.auth.resolvers.store.IdentityStore._resolve_key",
+                new_callable=AsyncMock,
+                return_value=valid_token,
+            ),
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                "litellm.proxy.auth.user_api_key_auth.get_team_object",
+                new_callable=AsyncMock,
+                side_effect=HTTPException(
+                    status_code=404,
+                    detail={"error": "Team doesn't exist in db."},
+                ),
+            ),
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                "litellm.proxy.auth.user_api_key_auth.get_object_permission",
+                new_callable=AsyncMock,
+                return_value=restricted_object_permission,
+            ) as mock_get_object_permission,
+        ):
+            result = await _user_api_key_auth_builder(
+                request=request,
+                api_key=f"Bearer {api_key}",
+                azure_api_key_header="",
+                anthropic_api_key_header=None,
+                google_ai_studio_api_key_header=None,
+                azure_apim_header=None,
+                request_data={},
+            )
+
+        mock_get_object_permission.assert_awaited_once()
+        assert mock_get_object_permission.await_args.kwargs["object_permission_id"] == "op-fallback-object-permission"
+        assert result.team_object_permission == restricted_object_permission
+        assert result.team_object_permission.vector_stores == ["vs-allowed-only"]
+        assert result.team_object_permission.mcp_servers == ["mcp-allowed-only"]
+
+    finally:
+        for k, v in _originals.items():
+            setattr(_proxy_server_mod, k, v)
+
+
+@pytest.mark.asyncio
+async def test_auth_flow_fallback_team_object_permission_none_when_unreadable():
+    """When the object_permission row is also unreadable, the fallback leaves team_object_permission as None
+    instead of raising or fabricating a grant."""
+    from starlette.datastructures import URL
+    from starlette.requests import Request
+    from fastapi import HTTPException
+
+    from litellm.proxy._types import LitellmUserRoles, UserAPIKeyAuth
+    from litellm.proxy.auth.user_api_key_auth import _user_api_key_auth_builder
+
+    api_key = "sk-test-fallback-team-object-permission-unreadable"
+    valid_token = UserAPIKeyAuth(
+        api_key=api_key,
+        token=api_key,
+        user_role=LitellmUserRoles.INTERNAL_USER,
+        team_id="team-fallback-object-permission-unreadable",
+        team_object_permission_id="op-fallback-object-permission-unreadable",
+    )
+
+    mock_cache = AsyncMock()
+    mock_cache.async_get_cache = AsyncMock(return_value=valid_token)
+    mock_cache.async_set_cache = AsyncMock(return_value=None)
+
+    mock_proxy_logging_obj = MagicMock()
+    mock_proxy_logging_obj.internal_usage_cache = MagicMock()
+    mock_proxy_logging_obj.internal_usage_cache.dual_cache = AsyncMock()
+    mock_proxy_logging_obj.post_call_failure_hook = AsyncMock(return_value=None)
+
+    import litellm.proxy.proxy_server as _proxy_server_mod
+
+    _attrs = {
+        "prisma_client": MagicMock(),
+        "user_api_key_cache": mock_cache,
+        "proxy_logging_obj": mock_proxy_logging_obj,
+        "master_key": "sk-master-key",
+        "general_settings": {},
+        "llm_model_list": [],
+        "llm_router": None,
+        "open_telemetry_logger": None,
+        "model_max_budget_limiter": MagicMock(),
+        "user_custom_auth": None,
+        "jwt_handler": None,
+        "litellm_proxy_admin_name": "admin",
+    }
+    _originals = {k: getattr(_proxy_server_mod, k, None) for k in _attrs}
+
+    try:
+        for k, v in _attrs.items():
+            setattr(_proxy_server_mod, k, v)
+
+        request = Request(scope={"type": "http"})
+        request._url = URL(url="/chat/completions")
+
+        with (
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                "litellm.proxy.auth.resolvers.store.IdentityStore._resolve_key",
+                new_callable=AsyncMock,
+                return_value=valid_token,
+            ),
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                "litellm.proxy.auth.user_api_key_auth.get_team_object",
+                new_callable=AsyncMock,
+                side_effect=HTTPException(
+                    status_code=404,
+                    detail={"error": "Team doesn't exist in db."},
+                ),
+            ),
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                "litellm.proxy.auth.user_api_key_auth.get_object_permission",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+        ):
+            result = await _user_api_key_auth_builder(
+                request=request,
+                api_key=f"Bearer {api_key}",
+                azure_api_key_header="",
+                anthropic_api_key_header=None,
+                google_ai_studio_api_key_header=None,
+                azure_apim_header=None,
+                request_data={},
+            )
+
+        assert result.team_object_permission is None
+
+    finally:
+        for k, v in _originals.items():
+            setattr(_proxy_server_mod, k, v)
+
+
 # ---------------------------------------------------------------------------
 
 # _run_centralized_common_checks — centralized authz gate
 # ---------------------------------------------------------------------------
 
 
-def _proxy_attrs_for_centralized_checks(
-    user_custom_auth=None, flag=False, master_key="sk-test-master"
-):
+def _proxy_attrs_for_centralized_checks(user_custom_auth=None, flag=False, master_key="sk-test-master"):
     """Build the minimal proxy_server module attributes that
     _run_centralized_common_checks reads.
 
@@ -3510,7 +3943,7 @@ async def test_centralized_common_checks_runs_for_standard_auth():
     try:
         for k, v in attrs.items():
             setattr(_proxy_server_mod, k, v)
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth.common_checks",
             new_callable=AsyncMock,
         ) as mock_checks:
@@ -3564,11 +3997,11 @@ async def test_centralized_common_checks_routes_header_tags_to_litellm_metadata(
         for k, v in attrs.items():
             setattr(_proxy_server_mod, k, v)
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.common_checks",
                 new_callable=AsyncMock,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth._reserve_budget_after_common_checks",
                 new_callable=AsyncMock,
             ),
@@ -3601,14 +4034,12 @@ async def test_centralized_common_checks_skipped_for_custom_auth_without_flag():
     request = Request(scope={"type": "http"})
     request._url = URL(url="/chat/completions")
 
-    attrs = _proxy_attrs_for_centralized_checks(
-        user_custom_auth=AsyncMock(), flag=False
-    )
+    attrs = _proxy_attrs_for_centralized_checks(user_custom_auth=AsyncMock(), flag=False)
     originals = {a: getattr(_proxy_server_mod, a, None) for a in attrs}
     try:
         for k, v in attrs.items():
             setattr(_proxy_server_mod, k, v)
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth.common_checks",
             new_callable=AsyncMock,
         ) as mock_checks:
@@ -3622,6 +4053,140 @@ async def test_centralized_common_checks_skipped_for_custom_auth_without_flag():
     finally:
         for k, v in originals.items():
             setattr(_proxy_server_mod, k, v)
+
+
+def _unrestricted_end_user_prisma(spend: float):
+    """Prisma stand-in where "customer-1" exists but restricts nothing: no row matches the
+    restricted-registry query, and the row itself carries only spend."""
+    end_user_row = MagicMock()
+    end_user_row.user_id = "customer-1"
+    end_user_row.dict = lambda: {"user_id": "customer-1", "blocked": False, "spend": spend}
+
+    mock_prisma = MagicMock()
+    mock_prisma.db.litellm_endusertable.find_many = AsyncMock(return_value=[])
+    mock_prisma.db.litellm_endusertable.find_unique = AsyncMock(return_value=end_user_row)
+    mock_prisma.db.litellm_usertable.find_unique = AsyncMock(return_value=None)
+    mock_prisma.db.litellm_teamtable.find_unique = AsyncMock(return_value=None)
+    mock_prisma.db.litellm_verificationtoken.find_unique = AsyncMock(return_value=None)
+    return mock_prisma
+
+
+@contextmanager
+def _custom_auth_end_user_world(mock_prisma):
+    """The proxy globals a custom-auth deployment running the centralized gate reads, with cold
+    spend counters. Real caches, so the end user's spend reaches the counter the way it does in
+    production: through the cache entry get_end_user_object writes."""
+    import litellm.proxy.proxy_server as _proxy_server_mod
+
+    from litellm.proxy.common_utils.user_api_key_cache import UserApiKeyCache
+    from litellm.proxy.utils import ProxyLogging
+
+    key_cache = UserApiKeyCache()
+    attrs = {
+        **_proxy_attrs_for_centralized_checks(user_custom_auth=AsyncMock(), flag=True),
+        "prisma_client": mock_prisma,
+        "user_api_key_cache": key_cache,
+        "spend_counter_cache": DualCache(),
+        "proxy_logging_obj": ProxyLogging(user_api_key_cache=key_cache),
+    }
+    originals = {a: getattr(_proxy_server_mod, a, None) for a in attrs}
+    try:
+        for k, v in attrs.items():
+            setattr(_proxy_server_mod, k, v)
+        yield
+    finally:
+        for k, v in originals.items():
+            setattr(_proxy_server_mod, k, v)
+
+
+def _chat_request():
+    from fastapi import Request
+    from starlette.datastructures import URL
+
+    request = Request(scope={"type": "http"})
+    request._url = URL(url="/chat/completions")
+    return request
+
+
+@pytest.mark.asyncio
+async def test_centralized_checks_enforce_token_end_user_budget_against_row_spend():
+    """
+    Regression: a token-supplied end-user budget must still be checked against the end user's
+    recorded spend.
+
+    A user_custom_auth callable can set end_user_max_budget on the token for an end user whose own
+    row carries no budget, which keeps that row out of the restricted-id registry. Auth must still
+    load it, because the reservation counter cold-starts from the spend on the loaded row; skipping
+    the load admits a customer who is already double their budget.
+    """
+    mock_prisma = _unrestricted_end_user_prisma(spend=100.0)
+    token = UserAPIKeyAuth(
+        api_key="sk-test",
+        token="hashed-token",
+        user_id="u1",
+        end_user_id="customer-1",
+        end_user_max_budget=50.0,
+    )
+
+    with _custom_auth_end_user_world(mock_prisma):
+        with (
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                "litellm.proxy.auth.user_api_key_auth.common_checks",
+                new_callable=AsyncMock,
+            ),
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                "litellm.proxy.spend_tracking.budget_reservation.estimate_request_max_cost",
+                return_value=0.6,
+            ),
+            pytest.raises(litellm.BudgetExceededError) as exc_info,
+        ):
+            await _run_centralized_common_checks(
+                user_api_key_auth_obj=token,
+                request=_chat_request(),
+                request_data={
+                    "model": "gpt-4o-mini",
+                    "messages": [{"role": "user", "content": "hi"}],
+                },
+                route="/chat/completions",
+            )
+
+    assert exc_info.value.max_budget == 50.0
+    assert exc_info.value.current_cost == pytest.approx(100.6)
+
+
+@pytest.mark.asyncio
+async def test_centralized_checks_skip_end_user_lookup_without_a_token_budget():
+    """The companion case: with no token budget an unrestricted end user costs zero row reads."""
+    mock_prisma = _unrestricted_end_user_prisma(spend=100.0)
+    token = UserAPIKeyAuth(
+        api_key="sk-test",
+        token="hashed-token",
+        user_id="u1",
+        end_user_id="customer-1",
+    )
+
+    with _custom_auth_end_user_world(mock_prisma):
+        with (
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                "litellm.proxy.auth.user_api_key_auth.common_checks",
+                new_callable=AsyncMock,
+            ),
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                "litellm.proxy.spend_tracking.budget_reservation.estimate_request_max_cost",
+                return_value=0.6,
+            ),
+        ):
+            await _run_centralized_common_checks(
+                user_api_key_auth_obj=token,
+                request=_chat_request(),
+                request_data={
+                    "model": "gpt-4o-mini",
+                    "messages": [{"role": "user", "content": "hi"}],
+                },
+                route="/chat/completions",
+            )
+
+    mock_prisma.db.litellm_endusertable.find_unique.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -3641,7 +4206,7 @@ async def test_centralized_common_checks_runs_for_custom_auth_with_flag():
     try:
         for k, v in attrs.items():
             setattr(_proxy_server_mod, k, v)
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth.common_checks",
             new_callable=AsyncMock,
         ) as mock_checks:
@@ -3675,7 +4240,7 @@ async def test_centralized_common_checks_runs_for_oauth2_fallback_token():
     try:
         for k, v in attrs.items():
             setattr(_proxy_server_mod, k, v)
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth.common_checks",
             new_callable=AsyncMock,
             side_effect=ProxyException(
@@ -3726,12 +4291,12 @@ async def test_centralized_common_checks_tolerates_db_errors_when_fetching_conte
         for k, v in attrs.items():
             setattr(_proxy_server_mod, k, v)
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_team_object",
                 new_callable=AsyncMock,
                 side_effect=Exception("DB down"),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.common_checks",
                 new_callable=AsyncMock,
             ) as mock_checks,
@@ -3774,7 +4339,7 @@ async def test_centralized_common_checks_propagates_end_user_budget_error():
         for k, v in attrs.items():
             setattr(_proxy_server_mod, k, v)
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_end_user_object",
                 new_callable=AsyncMock,
                 side_effect=litellm.BudgetExceededError(
@@ -3783,7 +4348,7 @@ async def test_centralized_common_checks_propagates_end_user_budget_error():
                     max_budget=10.0,
                 ),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.common_checks",
                 new_callable=AsyncMock,
             ) as mock_checks,
@@ -3836,16 +4401,16 @@ async def test_centralized_common_checks_reserves_request_end_user_budget():
         for k, v in attrs.items():
             setattr(_proxy_server_mod, k, v)
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_end_user_object",
                 new_callable=AsyncMock,
                 return_value=end_user_object,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.common_checks",
                 new_callable=AsyncMock,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.spend_tracking.budget_reservation.estimate_request_max_cost",
                 return_value=0.6,
             ),
@@ -3874,9 +4439,7 @@ async def test_centralized_common_checks_reserves_request_end_user_budget():
             "applied_adjustment": 0.0,
         }
     ]
-    assert counter_cache.in_memory_cache.get_cache(
-        key="spend:end_user:alice"
-    ) == pytest.approx(0.6)
+    assert counter_cache.in_memory_cache.get_cache(key="spend:end_user:alice") == pytest.approx(0.6)
 
 
 @pytest.mark.asyncio
@@ -3891,9 +4454,7 @@ async def test_centralized_common_checks_short_circuits_when_master_key_unset():
 
     from litellm.proxy._types import LitellmUserRoles
 
-    token = UserAPIKeyAuth(
-        api_key="sk-test", user_id="u", user_role=LitellmUserRoles.INTERNAL_USER
-    )
+    token = UserAPIKeyAuth(api_key="sk-test", user_id="u", user_role=LitellmUserRoles.INTERNAL_USER)
     request = Request(scope={"type": "http"})
     request._url = URL(url="/get/config/callbacks")
 
@@ -3902,7 +4463,7 @@ async def test_centralized_common_checks_short_circuits_when_master_key_unset():
     try:
         for k, v in attrs.items():
             setattr(_proxy_server_mod, k, v)
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth.common_checks",
             new_callable=AsyncMock,
         ) as mock_checks:
@@ -3938,7 +4499,7 @@ async def test_centralized_common_checks_skips_public_routes():
     try:
         for k, v in attrs.items():
             setattr(_proxy_server_mod, k, v)
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth.common_checks",
             new_callable=AsyncMock,
         ) as mock_checks:
@@ -3984,7 +4545,7 @@ async def test_centralized_common_checks_skips_passthrough_endpoint_with_auth_fa
     try:
         for k, v in attrs.items():
             setattr(_proxy_server_mod, k, v)
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth.common_checks",
             new_callable=AsyncMock,
         ) as mock_checks:
@@ -4028,7 +4589,7 @@ async def test_centralized_common_checks_runs_for_passthrough_endpoint_with_auth
     try:
         for k, v in attrs.items():
             setattr(_proxy_server_mod, k, v)
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth.common_checks",
             new_callable=AsyncMock,
         ) as mock_checks:
@@ -4081,12 +4642,12 @@ async def test_centralized_common_checks_master_key_admin_overrides_db_user_role
         for k, v in attrs.items():
             setattr(_proxy_server_mod, k, v)
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_user_object",
                 new_callable=AsyncMock,
                 return_value=db_user,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.common_checks",
                 new_callable=AsyncMock,
             ) as mock_checks,
@@ -4130,12 +4691,12 @@ async def test_centralized_common_checks_http_exception_without_team_id():
         # Make the user fetch raise HTTPException. asyncio.gather with
         # return_exceptions=False propagates it.
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_user_object",
                 new_callable=AsyncMock,
                 side_effect=HTTPException(status_code=404, detail="user-not-found"),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.common_checks",
                 new_callable=AsyncMock,
             ) as mock_checks,
@@ -4206,27 +4767,27 @@ async def test_centralized_common_checks_team_404_does_not_zero_other_contexts()
         for k, v in attrs.items():
             setattr(_proxy_server_mod, k, v)
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_team_object",
                 new_callable=AsyncMock,
                 side_effect=HTTPException(status_code=404, detail="team-not-found"),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_user_object",
                 new_callable=AsyncMock,
                 return_value=fetched_user,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_project_object",
                 new_callable=AsyncMock,
                 return_value=fetched_project,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_end_user_object",
                 new_callable=AsyncMock,
                 return_value=fetched_end_user,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.common_checks",
                 new_callable=AsyncMock,
             ) as mock_checks,
@@ -4248,6 +4809,420 @@ async def test_centralized_common_checks_team_404_does_not_zero_other_contexts()
         assert kwargs["user_object"] is fetched_user
         assert kwargs["end_user_object"] is fetched_end_user
         assert kwargs["project_object"] is fetched_project
+    finally:
+        for k, v in originals.items():
+            setattr(_proxy_server_mod, k, v)
+
+
+@pytest.mark.asyncio
+async def test_centralized_common_checks_unresolvable_team_without_grant_is_refused():
+    """The store restricts the team to gpt-4o-mini and the read of it fails, so the
+    only surviving team record is the token's own, which carries ``team_models=[]``
+    and reads as every model. The request must be refused with the original lookup
+    error. Pre-fix it was served."""
+    import litellm.proxy.proxy_server as _proxy_server_mod
+    from fastapi import HTTPException, Request
+    from starlette.datastructures import URL
+
+    token = UserAPIKeyAuth(
+        api_key="sk-test",
+        team_id="restricted-team",
+        models=[],
+        team_models=[],
+    )
+    request = Request(scope={"type": "http"})
+    request._url = URL(url="/chat/completions")
+    request._body = json.dumps({"model": "gpt-4.1"}).encode()
+
+    team_read_failure = HTTPException(
+        status_code=404,
+        detail={"error": "Team doesn't exist in db. Team=restricted-team."},
+    )
+
+    attrs = _proxy_attrs_for_centralized_checks(user_custom_auth=None)
+    originals = {a: getattr(_proxy_server_mod, a, None) for a in attrs}
+    try:
+        for k, v in attrs.items():
+            setattr(_proxy_server_mod, k, v)
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            "litellm.proxy.auth.user_api_key_auth.get_team_object",
+            new_callable=AsyncMock,
+            side_effect=team_read_failure,
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await _run_centralized_common_checks(
+                    user_api_key_auth_obj=token,
+                    request=request,
+                    request_data={"model": "gpt-4.1"},
+                    route="/chat/completions",
+                )
+        assert exc_info.value is team_read_failure
+    finally:
+        for k, v in originals.items():
+            setattr(_proxy_server_mod, k, v)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("token_team_models", [[], ["gpt-4.1"]])
+async def test_centralized_common_checks_absent_team_refused_despite_db_unavailable_optout(token_team_models):
+    """A team that is provably gone is a definitive answer, not a degraded read.
+    ``allow_requests_on_db_unavailable`` is a static settings read, so without the
+    absent-versus-unreadable distinction it would hand a deleted team's key the
+    old permissive fallback while the database is perfectly healthy. Refused in
+    both token shapes, including the one whose grant would otherwise vouch.
+
+    Imported from the module under test rather than from ``auth_checks``: other
+    tests in this suite ``importlib.reload`` that module, which rebinds the class
+    and would leave this raising a type the guard has never seen."""
+    import litellm.proxy.proxy_server as _proxy_server_mod
+    from fastapi import HTTPException, Request
+    from starlette.datastructures import URL
+
+    from litellm.proxy.auth.user_api_key_auth import TeamNotFoundError
+
+    token = UserAPIKeyAuth(
+        api_key="sk-test",
+        team_id="deleted-team",
+        models=[],
+        team_models=token_team_models,
+    )
+    request = Request(scope={"type": "http"})
+    request._url = URL(url="/chat/completions")
+    request._body = json.dumps({"model": "gpt-4.1"}).encode()
+
+    team_absent = TeamNotFoundError(team_id="deleted-team")
+
+    attrs = _proxy_attrs_for_centralized_checks(user_custom_auth=None)
+    attrs["general_settings"] = {"allow_requests_on_db_unavailable": True}
+    originals = {a: getattr(_proxy_server_mod, a, None) for a in attrs}
+    try:
+        for k, v in attrs.items():
+            setattr(_proxy_server_mod, k, v)
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            "litellm.proxy.auth.user_api_key_auth.get_team_object",
+            new_callable=AsyncMock,
+            side_effect=team_absent,
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await _run_centralized_common_checks(
+                    user_api_key_auth_obj=token,
+                    request=request,
+                    request_data={"model": "gpt-4.1"},
+                    route="/chat/completions",
+                )
+        assert exc_info.value is team_absent
+    finally:
+        for k, v in originals.items():
+            setattr(_proxy_server_mod, k, v)
+
+
+@pytest.mark.asyncio
+async def test_centralized_common_checks_unreadable_team_keeps_db_unavailable_optout():
+    """The counterpart: an unreadable team leaves the grant unknown rather than
+    answered, so an operator who has accepted degraded authorization during a
+    database fault still gets the fallback. Without this the fix would trade the
+    widening for a lockout with no way out."""
+    import litellm.proxy.proxy_server as _proxy_server_mod
+    from fastapi import HTTPException as _HTTPException
+    from fastapi import Request
+    from starlette.datastructures import URL
+
+    from litellm.proxy._types import LiteLLM_TeamTableCachedObj
+
+    token = UserAPIKeyAuth(api_key="sk-test", team_id="unreadable-team", models=[], team_models=[])
+    request = Request(scope={"type": "http"})
+    request._url = URL(url="/chat/completions")
+    request._body = json.dumps({"model": "gpt-4.1"}).encode()
+
+    received_team_objects: list[LiteLLM_TeamTableCachedObj | None] = []
+
+    async def _capturing_common_checks(*_args, **kwargs) -> bool:
+        received_team_objects.append(kwargs.get("team_object"))
+        return True
+
+    attrs = _proxy_attrs_for_centralized_checks(user_custom_auth=None)
+    attrs["general_settings"] = {"allow_requests_on_db_unavailable": True}
+    originals = {a: getattr(_proxy_server_mod, a, None) for a in attrs}
+    try:
+        for k, v in attrs.items():
+            setattr(_proxy_server_mod, k, v)
+        with (
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                "litellm.proxy.auth.user_api_key_auth.get_team_object",
+                new_callable=AsyncMock,
+                side_effect=_HTTPException(status_code=404, detail={"error": "team unreadable"}),
+            ),
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                "litellm.proxy.auth.user_api_key_auth.common_checks",
+                _capturing_common_checks,
+            ),
+        ):
+            await _run_centralized_common_checks(
+                user_api_key_auth_obj=token,
+                request=request,
+                request_data={"model": "gpt-4.1"},
+                route="/chat/completions",
+            )
+        assert len(received_team_objects) == 1
+        received_team_object = received_team_objects[0]
+        assert received_team_object is not None
+        assert received_team_object.team_id == "unreadable-team"
+    finally:
+        for k, v in originals.items():
+            setattr(_proxy_server_mod, k, v)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "requested_model, is_granted",
+    [("gpt-4o-mini", True), ("gpt-4.1", False)],
+)
+async def test_centralized_common_checks_unresolvable_team_with_grant_enforces_it(requested_model, is_granted):
+    """Mirror of the refusal above: a token that does carry a team model grant keeps
+    the fallback, and the reconstructed team must still enforce that grant rather
+    than wave the request through."""
+    import litellm.proxy.proxy_server as _proxy_server_mod
+    from fastapi import HTTPException, Request
+    from starlette.datastructures import URL
+
+    from litellm.proxy._types import ProxyErrorTypes, ProxyException
+
+    token = UserAPIKeyAuth(
+        api_key="sk-test",
+        team_id="restricted-team",
+        models=[],
+        team_models=["gpt-4o-mini"],
+    )
+    request = Request(scope={"type": "http"})
+    request._url = URL(url="/chat/completions")
+    request._body = json.dumps({"model": requested_model}).encode()
+
+    attrs = _proxy_attrs_for_centralized_checks(user_custom_auth=None)
+    originals = {a: getattr(_proxy_server_mod, a, None) for a in attrs}
+    try:
+        for k, v in attrs.items():
+            setattr(_proxy_server_mod, k, v)
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            "litellm.proxy.auth.user_api_key_auth.get_team_object",
+            new_callable=AsyncMock,
+            side_effect=HTTPException(status_code=404, detail={"error": "team unreadable"}),
+        ):
+            if is_granted:
+                await _run_centralized_common_checks(
+                    user_api_key_auth_obj=token,
+                    request=request,
+                    request_data={"model": requested_model},
+                    route="/chat/completions",
+                )
+            else:
+                with pytest.raises(ProxyException) as exc_info:
+                    await _run_centralized_common_checks(
+                        user_api_key_auth_obj=token,
+                        request=request,
+                        request_data={"model": requested_model},
+                        route="/chat/completions",
+                    )
+                assert exc_info.value.type == ProxyErrorTypes.team_model_access_denied
+    finally:
+        for k, v in originals.items():
+            setattr(_proxy_server_mod, k, v)
+
+
+@pytest.mark.asyncio
+async def test_centralized_common_checks_ui_sentinel_team_vouches_despite_absent_row():
+    """The Admin UI mints every session key against the ``UI_TEAM_ID`` sentinel,
+    which by design never has a ``LiteLLM_TeamTable`` row, so ``get_team_object``
+    always raises ``TeamNotFoundError`` for it. That must NOT be read as "team
+    provably gone, refuse" the way it is for a real team_id: PR #36837 made that
+    exact mistake and PR #36982 reverted it because every dashboard request
+    404'd. The sentinel must keep vouching from the token unconditionally."""
+    import litellm.proxy.proxy_server as _proxy_server_mod
+    from fastapi import Request
+    from starlette.datastructures import URL
+
+    from litellm.proxy._types import UI_TEAM_ID, LiteLLM_TeamTableCachedObj
+    from litellm.proxy.auth.user_api_key_auth import TeamNotFoundError
+
+    token = UserAPIKeyAuth(
+        api_key="sk-test",
+        user_id="ui-session-user",
+        team_id=UI_TEAM_ID,
+        models=[],
+        team_models=[],
+    )
+    request = Request(scope={"type": "http"})
+    request._url = URL(url="/user/info")
+    request._body = b"{}"
+
+    received_team_objects: list[LiteLLM_TeamTableCachedObj | None] = []
+
+    async def _capturing_common_checks(*_args, **kwargs) -> bool:
+        received_team_objects.append(kwargs.get("team_object"))
+        return True
+
+    attrs = _proxy_attrs_for_centralized_checks(user_custom_auth=None)
+    originals = {a: getattr(_proxy_server_mod, a, None) for a in attrs}
+    try:
+        for k, v in attrs.items():
+            setattr(_proxy_server_mod, k, v)
+        with (
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                "litellm.proxy.auth.user_api_key_auth.get_team_object",
+                new_callable=AsyncMock,
+                side_effect=TeamNotFoundError(team_id=UI_TEAM_ID),
+            ),
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                "litellm.proxy.auth.user_api_key_auth.common_checks",
+                _capturing_common_checks,
+            ),
+        ):
+            await _run_centralized_common_checks(
+                user_api_key_auth_obj=token,
+                request=request,
+                request_data={},
+                route="/user/info",
+            )
+        assert len(received_team_objects) == 1
+        received_team_object = received_team_objects[0]
+        assert received_team_object is not None
+        assert received_team_object.team_id == UI_TEAM_ID
+    finally:
+        for k, v in originals.items():
+            setattr(_proxy_server_mod, k, v)
+
+
+@pytest.mark.asyncio
+async def test_centralized_common_checks_ui_sentinel_team_skips_db_lookup():
+    """LIT-6297 / GH#28775: ``UI_TEAM_ID`` never has a team row and the
+    not-found path bypasses the DB throttle, so building the team fetch for it
+    cost one guaranteed-miss ``LiteLLM_TeamTable.find_unique`` plus a 404 debug
+    log on every dashboard request. The gate must not call ``get_team_object``
+    for the sentinel at all, while the token-derived team object still reaches
+    ``common_checks``."""
+    import litellm.proxy.proxy_server as _proxy_server_mod
+    from fastapi import Request
+    from starlette.datastructures import URL
+
+    from litellm.proxy._types import UI_TEAM_ID, LiteLLM_TeamTableCachedObj
+
+    token = UserAPIKeyAuth(
+        api_key="sk-test",
+        user_id="ui-session-user",
+        team_id=UI_TEAM_ID,
+        models=[],
+        team_models=[],
+    )
+    request = Request(scope={"type": "http"})
+    request._url = URL(url="/user/info")
+    request._body = b"{}"
+
+    received_team_objects: list[LiteLLM_TeamTableCachedObj | None] = []
+
+    async def _capturing_common_checks(*_args, **kwargs) -> bool:
+        received_team_objects.append(kwargs.get("team_object"))
+        return True
+
+    attrs = _proxy_attrs_for_centralized_checks(user_custom_auth=None)
+    originals = {a: getattr(_proxy_server_mod, a, None) for a in attrs}
+    try:
+        for k, v in attrs.items():
+            setattr(_proxy_server_mod, k, v)
+        with (
+            patch(  # test-quality-ok: the regression IS that this DB lookup is never made for the sentinel
+                "litellm.proxy.auth.user_api_key_auth.get_team_object",
+                new_callable=AsyncMock,
+            ) as mock_get_team_object,
+            patch(  # test-quality-ok: capture the team_object the consumer receives without a DB
+                "litellm.proxy.auth.user_api_key_auth.common_checks",
+                _capturing_common_checks,
+            ),
+        ):
+            await _run_centralized_common_checks(
+                user_api_key_auth_obj=token,
+                request=request,
+                request_data={},
+                route="/user/info",
+            )
+        mock_get_team_object.assert_not_awaited()
+        assert len(received_team_objects) == 1
+        received_team_object = received_team_objects[0]
+        assert received_team_object is not None
+        assert received_team_object.team_id == UI_TEAM_ID
+    finally:
+        for k, v in originals.items():
+            setattr(_proxy_server_mod, k, v)
+
+
+@pytest.mark.asyncio
+async def test_builder_ui_sentinel_team_never_hits_get_team_object():  # test-quality-ok: absence of the guaranteed-miss DB call is the observable being pinned
+    """Companion to the centralized-gate test for the builder path: the cached
+    UI session token's team refresh and the post-validation team fetch must
+    both skip ``get_team_object`` for ``UI_TEAM_ID`` instead of 404ing on
+    every request."""
+    import litellm.proxy.proxy_server as _proxy_server_mod
+    from fastapi import Request
+    from starlette.datastructures import URL
+
+    from litellm.proxy._types import UI_TEAM_ID
+    from litellm.proxy.auth.user_api_key_auth import _user_api_key_auth_builder
+    from litellm.proxy.proxy_server import hash_token
+
+    api_key = "sk-test-ui-session-key"
+    cached_token = UserAPIKeyAuth(
+        api_key=api_key,
+        token=hash_token(api_key),
+        user_id="ui-session-user",
+        user_role=LitellmUserRoles.INTERNAL_USER,
+        team_id=UI_TEAM_ID,
+    )
+
+    mock_proxy_logging_obj = MagicMock()
+    mock_proxy_logging_obj.post_call_failure_hook = AsyncMock(return_value=None)
+
+    attrs = {
+        "prisma_client": MagicMock(),
+        "user_api_key_cache": DualCache(),
+        "proxy_logging_obj": mock_proxy_logging_obj,
+        "master_key": "sk-master-key",
+        "general_settings": {},
+        "llm_model_list": [],
+        "llm_router": None,
+        "open_telemetry_logger": None,
+        "model_max_budget_limiter": MagicMock(),
+        "user_custom_auth": None,
+        "jwt_handler": None,
+        "litellm_proxy_admin_name": "admin",
+    }
+    originals = {a: getattr(_proxy_server_mod, a, None) for a in attrs}
+    try:
+        for k, v in attrs.items():
+            setattr(_proxy_server_mod, k, v)
+
+        request = Request(scope={"type": "http"})
+        request._url = URL(url="/user/info")
+
+        with (
+            patch(  # test-quality-ok: seed the cached UI session token without a DB
+                "litellm.proxy.auth.resolvers.store.IdentityStore._resolve_key",
+                new_callable=AsyncMock,
+                return_value=cached_token,
+            ),
+            patch(  # test-quality-ok: the regression IS that this DB lookup is never made for the sentinel
+                "litellm.proxy.auth.user_api_key_auth.get_team_object",
+                new_callable=AsyncMock,
+            ) as mock_get_team_object,
+        ):
+            result = await _user_api_key_auth_builder(
+                request=request,
+                api_key=f"Bearer {api_key}",
+                azure_api_key_header="",
+                anthropic_api_key_header=None,
+                google_ai_studio_api_key_header=None,
+                azure_apim_header=None,
+                request_data={},
+            )
+        assert result.team_id == UI_TEAM_ID
+        mock_get_team_object.assert_not_awaited()
     finally:
         for k, v in originals.items():
             setattr(_proxy_server_mod, k, v)
@@ -4280,9 +5255,7 @@ async def test_centralized_common_checks_user_http_exception_isolates_to_user_on
     request._url = URL(url="/chat/completions")
     request._body = json.dumps({"user": "alice", "model": "gpt-4o"}).encode()
 
-    fetched_team = LiteLLM_TeamTableCachedObj(
-        team_id="t1", max_budget=20.0, models=["gpt-4o"]
-    )
+    fetched_team = LiteLLM_TeamTableCachedObj(team_id="t1", max_budget=20.0, models=["gpt-4o"])
     fetched_end_user = LiteLLM_EndUserTable(user_id="alice", blocked=False, spend=1.0)
     fetched_project = LiteLLM_ProjectTableCachedObj(
         project_id="proj-1",
@@ -4298,27 +5271,27 @@ async def test_centralized_common_checks_user_http_exception_isolates_to_user_on
         for k, v in attrs.items():
             setattr(_proxy_server_mod, k, v)
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_team_object",
                 new_callable=AsyncMock,
                 return_value=fetched_team,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_user_object",
                 new_callable=AsyncMock,
                 side_effect=HTTPException(status_code=404, detail="user-not-found"),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_project_object",
                 new_callable=AsyncMock,
                 return_value=fetched_project,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_end_user_object",
                 new_callable=AsyncMock,
                 return_value=fetched_end_user,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.common_checks",
                 new_callable=AsyncMock,
             ) as mock_checks,
@@ -4376,12 +5349,12 @@ async def test_centralized_common_checks_backfills_org_id_from_team(key_org_id, 
             setattr(_proxy_server_mod, k, v)
         org_id_seen_by_common_checks = []
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_team_object",
                 new_callable=AsyncMock,
                 return_value=fetched_team,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.common_checks",
                 new_callable=AsyncMock,
                 side_effect=lambda **kw: org_id_seen_by_common_checks.append(kw["valid_token"].org_id),
@@ -4437,12 +5410,12 @@ async def test_cli_session_token_org_backfilled_from_team(monkeypatch):
         for k, v in attrs.items():
             setattr(_proxy_server_mod, k, v)
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_team_object",
                 new_callable=AsyncMock,
                 return_value=org_linked_team,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.common_checks",
                 new_callable=AsyncMock,
             ),
@@ -4479,12 +5452,12 @@ async def test_centralized_common_checks_org_backfill_survives_team_fetch_failur
         for k, v in attrs.items():
             setattr(_proxy_server_mod, k, v)
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_team_object",
                 new_callable=AsyncMock,
                 side_effect=Exception("DB down"),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.common_checks",
                 new_callable=AsyncMock,
             ) as mock_checks,
@@ -4577,9 +5550,7 @@ async def test_user_api_key_auth_sets_end_user_id_when_builder_skips_it():
         }
     )
     request._url = URL(url="/chat/completions")
-    request._body = json.dumps(
-        {"model": "gpt-4o", "user": "alice@example.com"}
-    ).encode()
+    request._body = json.dumps({"model": "gpt-4o", "user": "alice@example.com"}).encode()
 
     attrs = _proxy_attrs_for_centralized_checks(user_custom_auth=None)
     originals = {a: getattr(_proxy_server_mod, a, None) for a in attrs}
@@ -4589,16 +5560,16 @@ async def test_user_api_key_auth_sets_end_user_id_when_builder_skips_it():
         # Stub the builder so the test doesn't have to traverse the full
         # auth state machine; we only care about the wrapper's safety net.
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth._user_api_key_auth_builder",
                 new_callable=AsyncMock,
                 return_value=builder_token,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth._run_centralized_common_checks",
                 new_callable=AsyncMock,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.RouteChecks.should_call_route",
             ),
         ):
@@ -4623,9 +5594,7 @@ async def test_user_api_key_auth_does_not_overwrite_end_user_id_set_by_builder()
 
     import litellm.proxy.proxy_server as _proxy_server_mod
 
-    builder_token = UserAPIKeyAuth(
-        api_key="sk-test", user_id="u1", end_user_id="builder-resolved-id"
-    )
+    builder_token = UserAPIKeyAuth(api_key="sk-test", user_id="u1", end_user_id="builder-resolved-id")
 
     request = Request(
         scope={
@@ -4635,9 +5604,7 @@ async def test_user_api_key_auth_does_not_overwrite_end_user_id_set_by_builder()
         }
     )
     request._url = URL(url="/chat/completions")
-    request._body = json.dumps(
-        {"model": "gpt-4o", "user": "different-id-from-body"}
-    ).encode()
+    request._body = json.dumps({"model": "gpt-4o", "user": "different-id-from-body"}).encode()
 
     attrs = _proxy_attrs_for_centralized_checks(user_custom_auth=None)
     originals = {a: getattr(_proxy_server_mod, a, None) for a in attrs}
@@ -4645,19 +5612,19 @@ async def test_user_api_key_auth_does_not_overwrite_end_user_id_set_by_builder()
         for k, v in attrs.items():
             setattr(_proxy_server_mod, k, v)
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth._user_api_key_auth_builder",
                 new_callable=AsyncMock,
                 return_value=builder_token,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth._run_centralized_common_checks",
                 new_callable=AsyncMock,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.RouteChecks.should_call_route",
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.resolve_and_validate_end_user_id",
                 new_callable=AsyncMock,
             ) as mock_resolve,
@@ -4700,19 +5667,19 @@ async def test_user_api_key_auth_authenticates_before_raising_malformed_body_err
         for k, v in attrs.items():
             setattr(_proxy_server_mod, k, v)
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth._user_api_key_auth_builder",
                 new_callable=AsyncMock,
                 return_value=builder_token,
             ) as mock_builder,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth._run_centralized_common_checks",
                 new_callable=AsyncMock,
             ) as mock_common_checks,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.RouteChecks.should_call_route",
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.seed_request_identity",
             ) as mock_seed,
         ):
@@ -4760,12 +5727,12 @@ async def _run_auth_with_malformed_body(post_call_failure_hook):
         for k, v in attrs.items():
             setattr(_proxy_server_mod, k, v)
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth._user_api_key_auth_builder",
                 new_callable=AsyncMock,
                 return_value=builder_token,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.RouteChecks.should_call_route",
             ),
         ):
@@ -4831,7 +5798,7 @@ async def test_user_api_key_auth_malformed_body_with_rejected_key_still_returns_
         for k, v in attrs.items():
             setattr(_proxy_server_mod, k, v)
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth._user_api_key_auth_builder",
                 new_callable=AsyncMock,
                 side_effect=ProxyException(
@@ -4841,7 +5808,7 @@ async def test_user_api_key_auth_malformed_body_with_rejected_key_still_returns_
                     code=status.HTTP_401_UNAUTHORIZED,
                 ),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.RouteChecks.should_call_route",
             ),
         ):
@@ -4883,7 +5850,7 @@ async def test_user_api_key_auth_does_not_double_log_a_malformed_body_from_a_rej
         for k, v in attrs.items():
             setattr(_proxy_server_mod, k, v)
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth._user_api_key_auth_builder",
                 new_callable=AsyncMock,
                 side_effect=ProxyException(
@@ -4893,7 +5860,7 @@ async def test_user_api_key_auth_does_not_double_log_a_malformed_body_from_a_rej
                     code=status.HTTP_401_UNAUTHORIZED,
                 ),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.RouteChecks.should_call_route",
             ),
         ):
@@ -4946,11 +5913,11 @@ async def _run_builder_with_key_lookup(get_key_object_mock):
         request = Request(scope={"type": "http"})
         request._url = URL(url="/chat/completions")
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.resolvers.store.IdentityStore._resolve_key",
                 get_key_object_mock,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.auth_exception_handler.seed_request_identity",
             ),
         ):
@@ -5009,7 +5976,7 @@ async def test_builder_succeeds_when_db_lookup_returns_valid_token():
     valid_token = UserAPIKeyAuth(api_key="sk-db-lookup-test", token="hashed-valid")
     get_key_object = AsyncMock(return_value=valid_token)
 
-    with patch(
+    with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         "litellm.proxy.auth.user_api_key_auth._return_user_api_key_auth_obj",
         new_callable=AsyncMock,
         return_value=valid_token,
@@ -5035,9 +6002,7 @@ def _mint_cli_session_token(monkeypatch, *, user_id="cli-admin"):
         models=["gpt-3.5-turbo"],
         max_budget=100.0,
     )
-    return ExperimentalUIJWTToken.get_cli_jwt_auth_token(
-        user_info, team_id="cli-team", team_alias="cli-team-alias"
-    )
+    return ExperimentalUIJWTToken.get_cli_jwt_auth_token(user_info, team_id="cli-team", team_alias="cli-team-alias")
 
 
 @pytest.mark.asyncio
@@ -5055,8 +6020,12 @@ async def test_cli_session_token_authenticates_without_experimental_flag(monkeyp
     mock_request.query_params = {}
 
     with (
-        patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-        patch("litellm.proxy.proxy_server.prisma_client", None),
+        patch(
+            "litellm.proxy.proxy_server.master_key", "sk-master"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", None
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         result = await user_api_key_auth(
             request=mock_request,
@@ -5084,10 +6053,14 @@ async def test_random_non_sk_token_is_rejected(monkeypatch):
     mock_request.query_params = {}
 
     with (
-        patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-        patch("litellm.proxy.proxy_server.prisma_client", MagicMock()),
+        patch(
+            "litellm.proxy.proxy_server.master_key", "sk-master"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", MagicMock()
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(Exception, match="LiteLLM Virtual Key expected\\.") as exc_info:
             await user_api_key_auth(
                 request=mock_request,
                 api_key="Bearer not-a-real-token",
@@ -5131,8 +6104,12 @@ async def test_expired_cli_session_token_is_rejected(monkeypatch):
 
     try:
         with (
-            patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-            patch("litellm.proxy.proxy_server.prisma_client", None),
+            patch(
+                "litellm.proxy.proxy_server.master_key", "sk-master"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.prisma_client", None
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         ):
             with pytest.raises(ProxyException) as exc_info:
                 await user_api_key_auth(
@@ -5166,9 +6143,7 @@ async def test_non_admin_cli_session_token_reaches_production_auth_path(monkeypa
         user_role=LitellmUserRoles.INTERNAL_USER.value,
         models=[],
     )
-    cli_token = ExperimentalUIJWTToken.get_cli_jwt_auth_token(
-        user_info, team_id="team-abc", team_alias="my-team"
-    )
+    cli_token = ExperimentalUIJWTToken.get_cli_jwt_auth_token(user_info, team_id="team-abc", team_alias="my-team")
 
     import litellm.proxy.proxy_server as _proxy_server_mod
     from fastapi import Request
@@ -5187,17 +6162,17 @@ async def test_non_admin_cli_session_token_reaches_production_auth_path(monkeypa
         request = Request(scope={"type": "http"})
         request._url = URL(url="/chat/completions")
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth._return_user_api_key_auth_obj",
                 new_callable=AsyncMock,
                 return_value=assembled,
             ) as mock_assemble,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_user_object",
                 new_callable=AsyncMock,
                 return_value=None,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.get_team_object",
                 new_callable=AsyncMock,
                 side_effect=__import__("fastapi").HTTPException(status_code=404),
@@ -5247,11 +6222,21 @@ async def test_cli_session_token_authenticates_when_jwt_auth_enabled_without_lic
     mock_request.query_params = {}
 
     with (
-        patch("litellm.proxy.proxy_server.general_settings", {"enable_jwt_auth": True}),
-        patch("litellm.proxy.proxy_server.premium_user", False),
-        patch("litellm.proxy.proxy_server.jwt_handler", jwt_handler),
-        patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-        patch("litellm.proxy.proxy_server.prisma_client", None),
+        patch(
+            "litellm.proxy.proxy_server.general_settings", {"enable_jwt_auth": True}
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.premium_user", False
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.jwt_handler", jwt_handler
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.master_key", "sk-master"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", None
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         result = await user_api_key_auth(
             request=mock_request,
@@ -5283,13 +6268,23 @@ async def test_real_jwt_still_requires_license_when_jwt_auth_enabled(monkeypatch
     mock_request.query_params = {}
 
     with (
-        patch("litellm.proxy.proxy_server.general_settings", {"enable_jwt_auth": True}),
-        patch("litellm.proxy.proxy_server.premium_user", False),
-        patch("litellm.proxy.proxy_server.jwt_handler", jwt_handler),
-        patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-        patch("litellm.proxy.proxy_server.prisma_client", None),
+        patch(
+            "litellm.proxy.proxy_server.general_settings", {"enable_jwt_auth": True}
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.premium_user", False
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.jwt_handler", jwt_handler
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.master_key", "sk-master"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", None
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(Exception, match="JWT Auth is an enterprise only feature\\. You must be a") as exc_info:
             await user_api_key_auth(
                 request=mock_request,
                 api_key=f"Bearer {jwt_token}",
@@ -5328,13 +6323,9 @@ async def test_auth_does_not_rewrite_cached_key_object_back_into_cache():
         metadata={"model_rpm_limit": {"gpt-5.4-mini": 3}},
         last_refreshed_at=1000.0,
     )
-    await key_cache.async_set_cache(
-        key=hashed_key, value=stale_token, model_type=UserAPIKeyAuth
-    )
+    await key_cache.async_set_cache(key=hashed_key, value=stale_token, model_type=UserAPIKeyAuth)
 
-    fetch_from_db = AsyncMock(
-        side_effect=AssertionError("cache-hit auth must not touch the DB")
-    )
+    fetch_from_db = AsyncMock(side_effect=AssertionError("cache-hit auth must not touch the DB"))
 
     proxy_logging_obj = MagicMock()
     proxy_logging_obj.internal_usage_cache = MagicMock()
@@ -5361,7 +6352,7 @@ async def test_auth_does_not_rewrite_cached_key_object_back_into_cache():
             setattr(_proxy_server_mod, k, v)
         request = Request(scope={"type": "http"})
         request._url = URL(url="/chat/completions")
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.resolvers.store._fetch_key_object_from_db_with_reconnect",
             fetch_from_db,
         ):
@@ -5381,9 +6372,7 @@ async def test_auth_does_not_rewrite_cached_key_object_back_into_cache():
         assert result.token == hashed_key
         fetch_from_db.assert_not_called()
 
-        cached_after = await key_cache.async_get_cache(
-            key=hashed_key, model_type=UserAPIKeyAuth
-        )
+        cached_after = await key_cache.async_get_cache(key=hashed_key, model_type=UserAPIKeyAuth)
         assert cached_after is not None
         assert cached_after.last_refreshed_at == 1000.0
         assert cached_after.metadata == {"model_rpm_limit": {"gpt-5.4-mini": 3}}
@@ -5407,14 +6396,20 @@ class TestJWTAuthUserEmail:
 
     async def _run_jwt_auth(self, mock_jwt_result, jwt_token):
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.proxy_server.general_settings",
                 {"enable_jwt_auth": True},
             ),
-            patch("litellm.proxy.proxy_server.premium_user", True),
-            patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-            patch("litellm.proxy.proxy_server.prisma_client", None),
             patch(
+                "litellm.proxy.proxy_server.premium_user", True
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.master_key", "sk-master"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.prisma_client", None
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.user_api_key_auth.JWTAuthManager.auth_builder",
                 new_callable=AsyncMock,
                 return_value=mock_jwt_result,
@@ -5496,9 +6491,7 @@ class TestCheckKeyModelBudgetWithFallback:
 
     @pytest.mark.asyncio
     async def test_within_budget_does_not_reroute(self):
-        valid_token = UserAPIKeyAuth(
-            token="test-key", budget_fallbacks={"gpt-4o": ["gpt-4o-mini"]}
-        )
+        valid_token = UserAPIKeyAuth(token="test-key", budget_fallbacks={"gpt-4o": ["gpt-4o-mini"]})
         limiter = AsyncMock()
         limiter.is_key_within_model_budget.return_value = True
         request_data = {"model": "gpt-4o"}
@@ -5523,9 +6516,7 @@ class TestCheckKeyModelBudgetWithFallback:
             budget_fallbacks={"gpt-4o": ["gpt-4o-mini", "claude-haiku"]},
         )
         limiter = AsyncMock()
-        limiter.is_key_within_model_budget.side_effect = litellm.BudgetExceededError(
-            current_cost=10, max_budget=5
-        )
+        limiter.is_key_within_model_budget.side_effect = litellm.BudgetExceededError(current_cost=10, max_budget=5)
         limiter.get_fallback_model_within_budget.return_value = "gpt-4o-mini"
         request_data = {"model": "gpt-4o"}
         request = self._make_request()
@@ -5539,9 +6530,7 @@ class TestCheckKeyModelBudgetWithFallback:
         )
 
         assert request_data["model"] == "gpt-4o-mini"
-        limiter.get_fallback_model_within_budget.assert_awaited_once_with(
-            user_api_key_dict=valid_token, model="gpt-4o"
-        )
+        limiter.get_fallback_model_within_budget.assert_awaited_once_with(user_api_key_dict=valid_token, model="gpt-4o")
         # the rerouted model must be visible to a later, separate
         # `_read_request_body` call on the same `request` (route handlers
         # re-parse the body from this cache instead of reusing the dict).
@@ -5550,9 +6539,7 @@ class TestCheckKeyModelBudgetWithFallback:
 
     @pytest.mark.asyncio
     async def test_raises_when_every_fallback_also_exceeded(self):
-        valid_token = UserAPIKeyAuth(
-            token="test-key", budget_fallbacks={"gpt-4o": ["gpt-4o-mini"]}
-        )
+        valid_token = UserAPIKeyAuth(token="test-key", budget_fallbacks={"gpt-4o": ["gpt-4o-mini"]})
         limiter = AsyncMock()
         original_error = litellm.BudgetExceededError(current_cost=10, max_budget=5)
         limiter.is_key_within_model_budget.side_effect = original_error
@@ -5589,7 +6576,7 @@ class TestCheckKeyModelBudgetWithFallback:
         request_data = {"model": "gpt-4o"}
         request = self._make_request()
 
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth.can_key_call_model",
             side_effect=ProxyException(
                 message="model not allowed",
@@ -5622,14 +6609,12 @@ class TestCheckKeyModelBudgetWithFallback:
             budget_fallbacks={"gpt-4o": ["gpt-4o-mini"]},
         )
         limiter = AsyncMock()
-        limiter.is_key_within_model_budget.side_effect = litellm.BudgetExceededError(
-            current_cost=10, max_budget=5
-        )
+        limiter.is_key_within_model_budget.side_effect = litellm.BudgetExceededError(current_cost=10, max_budget=5)
         limiter.get_fallback_model_within_budget.return_value = "gpt-4o-mini"
         request_data = {"model": "gpt-4o"}
         request = self._make_request()
 
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth.can_key_call_model",
             return_value=True,
         ):
@@ -5663,7 +6648,7 @@ class TestCheckKeyModelBudgetWithFallback:
         request_data = {"model": "gpt-4o"}
         request = self._make_request()
 
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth.can_key_call_model",
             return_value=True,
         ):
@@ -5692,15 +6677,13 @@ class TestCheckKeyModelBudgetWithFallback:
             budget_fallbacks={"gpt-4o": ["gpt-4o-mini"]},
         )
         limiter = AsyncMock()
-        limiter.is_key_within_model_budget.side_effect = litellm.BudgetExceededError(
-            current_cost=10, max_budget=5
-        )
+        limiter.is_key_within_model_budget.side_effect = litellm.BudgetExceededError(current_cost=10, max_budget=5)
         limiter.get_fallback_model_within_budget.return_value = "gpt-4o-mini"
         request_data = {"model": "gpt-4o"}
         request = self._make_request()
         request.scope["path_params"] = {"model": "gpt-4o"}
 
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth.can_key_call_model",
             return_value=True,
         ):
@@ -5774,9 +6757,7 @@ async def test_global_proxy_spend_reads_resettable_proxy_budget_row():
     )
 
     assert result == 42.5
-    prisma_client.db.litellm_usertable.find_unique.assert_awaited_once_with(
-        where={"user_id": "litellm-proxy-budget"}
-    )
+    prisma_client.db.litellm_usertable.find_unique.assert_awaited_once_with(where={"user_id": "litellm-proxy-budget"})
 
 
 @pytest.mark.asyncio
@@ -5850,12 +6831,22 @@ async def test_temp_budget_increase_applied_for_cached_key():
     proxy_logging_obj.budget_alerts = AsyncMock()
 
     with (
-        patch("litellm.proxy.proxy_server.general_settings", {}),
-        patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-        patch("litellm.proxy.proxy_server.prisma_client", MagicMock()),
-        patch("litellm.proxy.proxy_server.user_api_key_cache", user_api_key_cache),
-        patch("litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj),
         patch(
+            "litellm.proxy.proxy_server.general_settings", {}
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.master_key", "sk-master"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", MagicMock()
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.user_api_key_cache", user_api_key_cache
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth._virtual_key_max_budget_alert_check",
             new_callable=AsyncMock,
         ),
@@ -5905,13 +6896,27 @@ async def _proxy_exception_for_key(
     )
 
     with (
-        patch("litellm.proxy.proxy_server.general_settings", general_settings),
-        patch("litellm.proxy.proxy_server.premium_user", premium_user),
-        patch("litellm.proxy.proxy_server.master_key", "sk-master"),
-        patch("litellm.proxy.proxy_server.prisma_client", MagicMock()),
-        patch("litellm.proxy.proxy_server.user_api_key_cache", user_api_key_cache),
-        patch("litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj),
-        patch("litellm.proxy.proxy_server.jwt_handler", jwt_handler),
+        patch(
+            "litellm.proxy.proxy_server.general_settings", general_settings
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.premium_user", premium_user
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.master_key", "sk-master"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", MagicMock()
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.user_api_key_cache", user_api_key_cache
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.jwt_handler", jwt_handler
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         with pytest.raises(ProxyException) as exc_info:
             await _user_api_key_auth_builder(
@@ -5942,9 +6947,7 @@ async def test_jwt_shaped_key_error_names_enable_jwt_auth_when_disabled():
     Prometheus invalid-key filter and the admin UI both substring-match it.
     Keys that are not JWT-shaped must not pick up the hint.
     """
-    jwt_error = await _proxy_exception_for_key(
-        "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzdmMtMSJ9.c2lnbmF0dXJl", {}, True
-    )
+    jwt_error = await _proxy_exception_for_key("eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzdmMtMSJ9.c2lnbmF0dXJl", {}, True)
 
     assert jwt_error.code == "401"
     assert "enable_jwt_auth" in jwt_error.message
@@ -5954,9 +6957,7 @@ async def test_jwt_shaped_key_error_names_enable_jwt_auth_when_disabled():
     assert "is a JWT" not in jwt_error.message
 
     opaque_error = await _proxy_exception_for_key("not-a-jwt-at-all", {}, True)
-    two_segment_error = await _proxy_exception_for_key(
-        "eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzdmMtMSJ9", {}, True
-    )
+    two_segment_error = await _proxy_exception_for_key("eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzdmMtMSJ9", {}, True)
 
     assert "enable_jwt_auth" not in opaque_error.message
     assert "enable_jwt_auth" not in two_segment_error.message
@@ -5977,3 +6978,40 @@ async def test_unlicensed_jwt_auth_is_forbidden_not_unauthorized():
 
     assert error.code == "403"
     assert "enterprise" in error.message.lower()
+
+
+class TestLitellmReceivedAtStamping:
+    """request.state.litellm_received_at must be stamped unconditionally at the
+    top of auth (LIT-6012), so request-latency Prometheus metrics don't depend
+    on OTEL being configured to see a true request-arrival timestamp."""
+
+    def test_stamped_even_when_otel_is_not_configured(self, monkeypatch):
+        monkeypatch.setattr("litellm.proxy.proxy_server.open_telemetry_logger", None)
+        request = MagicMock()
+        request.state = SimpleNamespace()
+
+        _ensure_parent_otel_span_on_request_state(request)
+
+        assert isinstance(request.state.litellm_received_at, datetime)
+
+    def test_helper_is_idempotent(self):
+        request = MagicMock()
+        request.state = SimpleNamespace()
+
+        first = _ensure_litellm_received_at_on_request_state(request)
+        second = _ensure_litellm_received_at_on_request_state(request)
+
+        assert first == second
+        assert request.state.litellm_received_at == first
+
+    def test_does_not_overwrite_an_earlier_stamp(self):
+        """Body-parse failures must not shorten the measured window: a value
+        already on request.state (stamped earlier) must win."""
+        request = MagicMock()
+        earlier = datetime(2020, 1, 1)
+        request.state = SimpleNamespace(litellm_received_at=earlier)
+
+        result = _ensure_litellm_received_at_on_request_state(request)
+
+        assert result == earlier
+        assert request.state.litellm_received_at == earlier

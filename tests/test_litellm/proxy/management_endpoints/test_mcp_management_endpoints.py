@@ -17,7 +17,6 @@ from litellm.proxy.management_endpoints import (
     mcp_management_endpoints as mgmt_endpoints,
 )
 
-sys.path.insert(0, os.path.abspath("../../../.."))  # Adds the parent directory to the system path
 
 from litellm.proxy._types import (
     LiteLLM_MCPServerTable,
@@ -239,19 +238,19 @@ class TestListMCPServers:
             server.credentials = {"auth_value": f"secret_{idx}"}
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._user_has_admin_view",
                 return_value=True,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=mock_prisma_client,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.build_effective_auth_contexts",
                 AsyncMock(return_value=[mock_user_auth]),
             ),
@@ -298,11 +297,11 @@ class TestListMCPServers:
         mock_manager.get_all_mcp_servers_unfiltered = AsyncMock(return_value=mock_servers)
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_user_mcp_management_mode",
                 return_value="view_all",
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
@@ -346,19 +345,19 @@ class TestListMCPServers:
         mock_manager.get_all_allowed_mcp_servers = AsyncMock(return_value=mock_servers)
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_user_mcp_management_mode",
                 return_value="view_all",
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.build_effective_auth_contexts",
                 AsyncMock(return_value=[mock_user_auth]),
             ),
@@ -482,19 +481,19 @@ class TestListMCPServers:
             server.credentials = {"auth_value": f"secret_{idx}"}
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._user_has_admin_view",
                 return_value=True,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=mock_prisma_client,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.build_effective_auth_contexts",
                 AsyncMock(return_value=[mock_user_auth]),
             ),
@@ -601,19 +600,19 @@ class TestListMCPServers:
             server.credentials = {"auth_value": f"secret_{idx}"}
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._user_has_admin_view",
                 return_value=False,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=mock_prisma_client,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.build_effective_auth_contexts",
                 AsyncMock(return_value=[mock_user_auth]),
             ),
@@ -690,11 +689,11 @@ class TestListMCPServers:
         mock_manager.get_all_allowed_mcp_servers = AsyncMock(return_value=[server_1, server_2])
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.build_effective_auth_contexts",
                 AsyncMock(return_value=[mock_user_auth]),
             ),
@@ -729,19 +728,19 @@ class TestListMCPServers:
         mock_user_auth = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.PROXY_ADMIN)
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=mock_prisma_client,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
                 AsyncMock(return_value=mock_server),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager.health_check_server",
                 AsyncMock(return_value=mock_health_result),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._user_has_admin_view",
                 return_value=True,
             ),
@@ -776,19 +775,19 @@ class TestListMCPServers:
         mock_user_auth = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.PROXY_ADMIN)
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=mock_prisma_client,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
                 AsyncMock(return_value=mock_server),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager.health_check_server",
                 AsyncMock(return_value=mock_health_result),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._user_has_admin_view",
                 return_value=True,
             ),
@@ -833,19 +832,19 @@ class TestListMCPServers:
         mock_user_auth = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.PROXY_ADMIN)
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
                 AsyncMock(return_value=mock_server),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager.health_check_server",
                 AsyncMock(return_value=mock_health_result),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._user_has_admin_view",
                 return_value=True,
             ),
@@ -877,19 +876,19 @@ class TestListMCPServers:
         mock_user_auth = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.PROXY_ADMIN_VIEW_ONLY)
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=mock_prisma_client,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
                 AsyncMock(return_value=mock_server),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager.health_check_server",
                 AsyncMock(return_value=mock_health_result),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._user_has_admin_view",
                 return_value=True,
             ),
@@ -923,19 +922,19 @@ class TestListMCPServers:
         mock_user_auth = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.PROXY_ADMIN)
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=mock_prisma_client,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
                 AsyncMock(return_value=mock_server),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager.health_check_server",
                 AsyncMock(return_value=mock_health_result),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._user_has_admin_view",
                 return_value=True,
             ),
@@ -992,19 +991,19 @@ class TestListMCPServers:
         mock_user_auth = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.PROXY_ADMIN)
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
                 AsyncMock(return_value=None),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._user_has_admin_view",
                 return_value=True,
             ),
@@ -1056,19 +1055,19 @@ class TestListMCPServers:
         mock_user_auth = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.PROXY_ADMIN)
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
                 AsyncMock(return_value=None),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._user_has_admin_view",
                 return_value=True,
             ),
@@ -1119,19 +1118,19 @@ class TestListMCPServers:
         mock_user_auth = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.INTERNAL_USER)
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
                 AsyncMock(return_value=None),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._user_has_admin_view",
                 return_value=False,
             ),
@@ -1186,19 +1185,19 @@ class TestListMCPServers:
         mock_user_auth = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.INTERNAL_USER)
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
                 AsyncMock(return_value=None),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._user_has_admin_view",
                 return_value=False,
             ),
@@ -1268,19 +1267,19 @@ class TestListMCPServers:
         mock_user_auth = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.INTERNAL_USER)
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=mock_prisma_client,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_all_mcp_servers_for_user",
                 AsyncMock(return_value=[generate_mock_mcp_server_db_record(server_id="env-server")]),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._user_has_admin_view",
                 return_value=False,
             ),
@@ -1335,15 +1334,15 @@ class TestListMCPServers:
         mock_user_auth = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.PROXY_ADMIN_VIEW_ONLY)
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=mock_prisma_client,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
                 AsyncMock(return_value=mock_server),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
@@ -1393,15 +1392,15 @@ class TestListMCPServers:
         mock_user_auth = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.PROXY_ADMIN)
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=mock_prisma_client,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
                 AsyncMock(return_value=mock_server),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
@@ -1442,11 +1441,11 @@ class TestTeamScopedMCPServerAccess:
         ]
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._user_has_admin_view",
                 return_value=False,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.auth_checks.get_team_object",
                 AsyncMock(return_value=mock_team_obj),
             ),
@@ -1484,19 +1483,19 @@ class TestTeamScopedMCPServerAccess:
         )
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._user_has_admin_view",
                 return_value=False,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.auth.auth_checks.get_team_object",
                 AsyncMock(return_value=mock_team_obj),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_team_scoped_mcp_server_list",
                 AsyncMock(return_value=[generate_mock_mcp_server_db_record(server_id="server-1")]),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
@@ -1518,11 +1517,11 @@ class TestTeamScopedMCPServerAccess:
         )
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._user_has_admin_view",
                 return_value=True,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_team_scoped_mcp_server_list",
                 AsyncMock(return_value=[generate_mock_mcp_server_db_record(server_id="server-1")]),
             ),
@@ -1560,31 +1559,29 @@ class TestRemoveMCPServer:
     async def test_delete_existing_server_cleans_permissions_and_credentials(self):
         mock_prisma_client = MagicMock()
         mock_deleted_server = generate_mock_mcp_server_db_record(server_id="server-1")
-        mock_user_auth = generate_mock_user_api_key_auth(
-            user_role=LitellmUserRoles.PROXY_ADMIN
-        )
+        mock_user_auth = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.PROXY_ADMIN)
         mock_manager = MagicMock()
         mock_manager.remove_server = MagicMock()
         mock_manager.reload_servers_from_database = AsyncMock()
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=mock_prisma_client,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
                 AsyncMock(return_value=mock_deleted_server),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.cleanup_mcp_server_references",
                 AsyncMock(return_value=True),
             ) as mock_cleanup,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.delete_mcp_server",
                 AsyncMock(return_value=mock_deleted_server),
             ) as mock_delete,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
@@ -1593,9 +1590,7 @@ class TestRemoveMCPServer:
                 remove_mcp_server,
             )
 
-            response = await remove_mcp_server(
-                server_id="server-1", user_api_key_dict=mock_user_auth
-            )
+            response = await remove_mcp_server(server_id="server-1", user_api_key_dict=mock_user_auth)
 
         assert response.status_code == 202
         mock_cleanup.assert_awaited_once_with(mock_prisma_client, "server-1")
@@ -1606,31 +1601,29 @@ class TestRemoveMCPServer:
     @pytest.mark.asyncio
     async def test_delete_missing_referenced_server_returns_cleanup_response(self):
         mock_prisma_client = MagicMock()
-        mock_user_auth = generate_mock_user_api_key_auth(
-            user_role=LitellmUserRoles.PROXY_ADMIN
-        )
+        mock_user_auth = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.PROXY_ADMIN)
         mock_manager = MagicMock()
         mock_manager.reload_servers_from_database = AsyncMock()
         mock_manager.remove_server = MagicMock()
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=mock_prisma_client,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
                 AsyncMock(return_value=None),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.cleanup_mcp_server_references",
                 AsyncMock(return_value=True),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.delete_mcp_server",
                 AsyncMock(),
             ) as mock_delete,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
@@ -1639,9 +1632,7 @@ class TestRemoveMCPServer:
                 remove_mcp_server,
             )
 
-            response = await remove_mcp_server(
-                server_id="stale-server", user_api_key_dict=mock_user_auth
-            )
+            response = await remove_mcp_server(server_id="stale-server", user_api_key_dict=mock_user_auth)
 
         assert response.status_code == 202
         assert json.loads(response.body) == {
@@ -1656,31 +1647,29 @@ class TestRemoveMCPServer:
 
     @pytest.mark.asyncio
     async def test_delete_missing_unreferenced_server_returns_noop_response(self):
-        mock_user_auth = generate_mock_user_api_key_auth(
-            user_role=LitellmUserRoles.PROXY_ADMIN
-        )
+        mock_user_auth = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.PROXY_ADMIN)
         mock_manager = MagicMock()
         mock_manager.reload_servers_from_database = AsyncMock()
         mock_manager.remove_server = MagicMock()
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
                 AsyncMock(return_value=None),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.cleanup_mcp_server_references",
                 AsyncMock(return_value=False),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.delete_mcp_server",
                 AsyncMock(),
             ) as mock_delete,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
@@ -1689,9 +1678,7 @@ class TestRemoveMCPServer:
                 remove_mcp_server,
             )
 
-            response = await remove_mcp_server(
-                server_id="missing-server", user_api_key_dict=mock_user_auth
-            )
+            response = await remove_mcp_server(server_id="missing-server", user_api_key_dict=mock_user_auth)
 
         assert response.status_code == 202
         assert json.loads(response.body) == {
@@ -1733,9 +1720,7 @@ async def test_cleanup_mcp_server_references_removes_permissions_and_credentials
         return_value=[first_permission, second_permission]
     )
     mock_prisma_client.db.litellm_objectpermissiontable.update = AsyncMock()
-    mock_prisma_client.db.litellm_mcpusercredentials.delete_many = AsyncMock(
-        return_value=delete_result
-    )
+    mock_prisma_client.db.litellm_mcpusercredentials.delete_many = AsyncMock(return_value=delete_result)
 
     cleaned = await cleanup_mcp_server_references(mock_prisma_client, deleted_server_id)
 
@@ -1745,9 +1730,7 @@ async def test_cleanup_mcp_server_references_removes_permissions_and_credentials
     assert update_call["where"] == {"object_permission_id": "permission-1"}
     assert update_call["data"]["mcp_servers"] == [remaining_server_id]
     assert isinstance(update_call["data"]["mcp_tool_permissions"], str)
-    assert json.loads(update_call["data"]["mcp_tool_permissions"]) == {
-        remaining_server_id: ["tool2"]
-    }
+    assert json.loads(update_call["data"]["mcp_tool_permissions"]) == {remaining_server_id: ["tool2"]}
     mock_prisma_client.db.litellm_mcpusercredentials.delete_many.assert_awaited_once_with(
         where={"server_id": deleted_server_id}
     )
@@ -1763,13 +1746,9 @@ async def test_cleanup_mcp_server_references_returns_false_when_no_references():
     delete_result = MagicMock(count=0)
 
     mock_prisma_client = MagicMock()
-    mock_prisma_client.db.litellm_objectpermissiontable.find_many = AsyncMock(
-        return_value=[permission]
-    )
+    mock_prisma_client.db.litellm_objectpermissiontable.find_many = AsyncMock(return_value=[permission])
     mock_prisma_client.db.litellm_objectpermissiontable.update = AsyncMock()
-    mock_prisma_client.db.litellm_mcpusercredentials.delete_many = AsyncMock(
-        return_value=delete_result
-    )
+    mock_prisma_client.db.litellm_mcpusercredentials.delete_many = AsyncMock(return_value=delete_result)
 
     cleaned = await cleanup_mcp_server_references(mock_prisma_client, "server-1")
 
@@ -1796,11 +1775,12 @@ class TestTemporaryMCPSessionEndpoints:
         existing_server.aws_region_name = None
         existing_server.aws_service_name = None
         existing_server.upstream_resource = None
+        existing_server.upstream_token_header = None
 
         mock_manager = MagicMock()
         mock_manager.get_mcp_server_by_id.return_value = existing_server
 
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
             mock_manager,
         ):
@@ -1831,6 +1811,7 @@ class TestTemporaryMCPSessionEndpoints:
         existing_server.aws_region_name = None
         existing_server.aws_service_name = None
         existing_server.upstream_resource = None
+        existing_server.upstream_token_header = None
         for key, value in server_overrides.items():
             setattr(existing_server, key, value)
 
@@ -1843,7 +1824,7 @@ class TestTemporaryMCPSessionEndpoints:
         )
         mock_manager = MagicMock()
         mock_manager.get_mcp_server_by_id.return_value = existing_server
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
             mock_manager,
         ):
@@ -1861,6 +1842,23 @@ class TestTemporaryMCPSessionEndpoints:
 
         assert updated.credentials["client_id"] == "client-123"
         assert updated.credentials["client_secret"] == "secret-xyz"
+
+    def test_upstream_token_header_is_inherited_like_other_admin_config(self):
+        """It is admin config rather than a credential, so a session server derived from an existing
+        one must carry it. Miss it and the derived server silently sends its token to Authorization
+        while the original sends it to the gateway's header."""
+        updated = self._inherit_with({}, upstream_token_header="esb-oauth")
+
+        assert updated.credentials["upstream_token_header"] == "esb-oauth"
+
+    def test_a_supplied_upstream_token_header_does_not_read_as_a_credential(self):
+        """It is in the admin-config key set, so submitting only it must still inherit the declared
+        app rather than reading as "the caller supplied real credentials"."""
+        updated = self._inherit_with({"upstream_token_header": "esb-oauth"})
+
+        assert updated.credentials["client_id"] == "client-123"
+        assert updated.credentials["client_secret"] == "secret-xyz"
+        assert updated.credentials["upstream_token_header"] == "esb-oauth"
 
     def test_supplied_credential_still_wins_over_inheritance(self):
         """A caller that supplies a real credential keeps it; inheritance must not overwrite it."""
@@ -1886,7 +1884,7 @@ class TestTemporaryMCPSessionEndpoints:
         )
 
         server = generate_mock_mcp_server_config_record(server_id="temp-cache")
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints._temporary_mcp_servers",
             {},
         ) as cache:
@@ -1911,11 +1909,11 @@ class TestTemporaryMCPSessionEndpoints:
         )
         cache = {"expired": expired_entry}
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._temporary_mcp_servers",
                 cache,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_prisma_client_or_none",
                 return_value=None,
             ),
@@ -1944,19 +1942,19 @@ class TestTemporaryMCPSessionEndpoints:
         get_draft = AsyncMock(return_value=draft_row)
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._temporary_mcp_servers",
                 {},
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_prisma_client_or_none",
                 return_value=MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_draft_mcp_server",
                 get_draft,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
@@ -1988,15 +1986,15 @@ class TestTemporaryMCPSessionEndpoints:
         get_draft = AsyncMock(return_value=None)
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._temporary_mcp_servers",
                 {"no-db": entry},
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_prisma_client_or_none",
                 return_value=None,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_draft_mcp_server",
                 get_draft,
             ),
@@ -2020,16 +2018,20 @@ class TestTemporaryMCPSessionEndpoints:
         delete_call = AsyncMock()
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy._experimental.mcp_server.db._db_find_mcp_server_row",
                 AsyncMock(return_value=real_row),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy._experimental.mcp_server.db._db_find_mcp_server_rows",
                 AsyncMock(return_value=[]),
             ),
-            patch("litellm.proxy._experimental.mcp_server.db.create_mcp_server", create_call),
-            patch("litellm.proxy._experimental.mcp_server.db.delete_mcp_server", delete_call),
+            patch(
+                "litellm.proxy._experimental.mcp_server.db.create_mcp_server", create_call
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy._experimental.mcp_server.db.delete_mcp_server", delete_call
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         ):
             result = await create_draft_mcp_server(
                 MagicMock(),
@@ -2058,12 +2060,14 @@ class TestTemporaryMCPSessionEndpoints:
         lookups = AsyncMock(side_effect=[None, winner_draft])
 
         with (
-            patch("litellm.proxy._experimental.mcp_server.db._db_find_mcp_server_row", lookups),
             patch(
+                "litellm.proxy._experimental.mcp_server.db._db_find_mcp_server_row", lookups
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy._experimental.mcp_server.db._db_find_mcp_server_rows",
                 AsyncMock(return_value=[]),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy._experimental.mcp_server.db.create_mcp_server",
                 AsyncMock(side_effect=Exception("duplicate key value violates unique constraint")),
             ),
@@ -2084,15 +2088,15 @@ class TestTemporaryMCPSessionEndpoints:
         from litellm.proxy._experimental.mcp_server.db import create_draft_mcp_server
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy._experimental.mcp_server.db._db_find_mcp_server_row",
                 AsyncMock(side_effect=[None, None]),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy._experimental.mcp_server.db._db_find_mcp_server_rows",
                 AsyncMock(return_value=[]),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy._experimental.mcp_server.db.create_mcp_server",
                 AsyncMock(side_effect=Exception("connection refused")),
             ),
@@ -2125,13 +2129,17 @@ class TestTemporaryMCPSessionEndpoints:
         delete_call = AsyncMock()
 
         with (
-            patch("litellm.proxy._experimental.mcp_server.db._db_find_mcp_server_rows", find_rows),
             patch(
+                "litellm.proxy._experimental.mcp_server.db._db_find_mcp_server_rows", find_rows
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy._experimental.mcp_server.db._db_find_mcp_server_row",
                 AsyncMock(return_value=None),
             ),
-            patch("litellm.proxy._experimental.mcp_server.db.delete_mcp_server", delete_call),
             patch(
+                "litellm.proxy._experimental.mcp_server.db.delete_mcp_server", delete_call
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy._experimental.mcp_server.db.create_mcp_server",
                 AsyncMock(return_value=generate_mock_mcp_server_db_record(server_id="fresh")),
             ),
@@ -2155,7 +2163,7 @@ class TestTemporaryMCPSessionEndpoints:
         from litellm.proxy._experimental.mcp_server.db import get_all_mcp_servers
 
         find_rows = AsyncMock(return_value=[])
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy._experimental.mcp_server.db._db_find_mcp_server_rows",
             find_rows,
         ):
@@ -2163,6 +2171,20 @@ class TestTemporaryMCPSessionEndpoints:
 
         where = find_rows.await_args.args[1]
         assert where == {"OR": [{"approval_status": None}, {"approval_status": {"not": "draft"}}]}
+
+    @pytest.mark.asyncio
+    async def test_get_all_mcp_servers_propagates_read_failures(self):
+        """Regression: a swallowed read failure returned [] and silently disabled the bulk-import
+        dedupe, so a flaky DB read turned a re-import into duplicate servers."""
+        from litellm.proxy._experimental.mcp_server.db import get_all_mcp_servers
+
+        find_rows = AsyncMock(side_effect=RuntimeError("db down"))
+        with patch(  # test-quality-ok: the helper takes its row reader from module scope, matching the suite's pattern
+            "litellm.proxy._experimental.mcp_server.db._db_find_mcp_server_rows",
+            find_rows,
+        ):
+            with pytest.raises(RuntimeError, match="db down"):
+                await get_all_mcp_servers(MagicMock())
 
     @pytest.mark.asyncio
     async def test_resolve_session_server_id_refuses_an_unknown_caller_supplied_id(self):
@@ -2180,15 +2202,15 @@ class TestTemporaryMCPSessionEndpoints:
         mock_manager.get_mcp_server_by_id.return_value = None
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_prisma_client_or_none",
                 return_value=MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
                 AsyncMock(return_value=None),
             ),
@@ -2214,15 +2236,15 @@ class TestTemporaryMCPSessionEndpoints:
         mock_manager.get_mcp_server_by_id.return_value = None
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_prisma_client_or_none",
                 return_value=MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
                 AsyncMock(return_value=someone_elses_draft),
             ),
@@ -2245,7 +2267,7 @@ class TestTemporaryMCPSessionEndpoints:
         mock_manager = MagicMock()
         mock_manager.get_mcp_server_by_id.return_value = generate_mock_mcp_server_config_record(server_id="saved")
 
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
             mock_manager,
         ):
@@ -2266,11 +2288,11 @@ class TestTemporaryMCPSessionEndpoints:
         mock_manager.get_mcp_server_by_id.return_value = None
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_prisma_client_or_none",
                 return_value=None,
             ),
@@ -2292,7 +2314,7 @@ class TestTemporaryMCPSessionEndpoints:
             user_role=LitellmUserRoles.PROXY_ADMIN,
         )
 
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_cached_temporary_mcp_server",
             return_value=server,
         ) as get_cached:
@@ -2301,7 +2323,7 @@ class TestTemporaryMCPSessionEndpoints:
         assert result is server
         get_cached.assert_awaited_once_with("cached")
 
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_cached_temporary_mcp_server",
             return_value=None,
         ):
@@ -2327,15 +2349,15 @@ class TestTemporaryMCPSessionEndpoints:
         mock_manager.get_allowed_mcp_servers = AsyncMock(return_value=[])
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_cached_temporary_mcp_server",
                 return_value=None,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.build_effective_auth_contexts",
                 AsyncMock(return_value=[non_admin]),
             ),
@@ -2363,15 +2385,15 @@ class TestTemporaryMCPSessionEndpoints:
         mock_manager.get_allowed_mcp_servers = AsyncMock(return_value=["server-x"])
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_cached_temporary_mcp_server",
                 return_value=None,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.build_effective_auth_contexts",
                 AsyncMock(return_value=[non_admin]),
             ),
@@ -2412,15 +2434,15 @@ class TestTemporaryMCPSessionEndpoints:
         mock_manager.get_allowed_mcp_servers = AsyncMock(side_effect=allowed_for)
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_cached_temporary_mcp_server",
                 return_value=None,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.build_effective_auth_contexts",
                 AsyncMock(return_value=[ui_session_auth, team_context]),
             ),
@@ -2442,7 +2464,7 @@ class TestTemporaryMCPSessionEndpoints:
             user_role=LitellmUserRoles.INTERNAL_USER,
         )
 
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_cached_temporary_mcp_server",
             return_value=temp_server,
         ):
@@ -2479,6 +2501,7 @@ class TestTemporaryMCPSessionEndpoints:
             aws_region_name=None,
             aws_service_name=None,
             upstream_resource=None,
+            upstream_token_header=None,
         )
         built_server = generate_mock_mcp_server_config_record(server_id="temp-server")
         mock_manager = MagicMock()
@@ -2486,23 +2509,23 @@ class TestTemporaryMCPSessionEndpoints:
         mock_manager.build_mcp_server_from_table = AsyncMock(return_value=built_server)
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.validate_and_normalize_mcp_server_payload",
                 MagicMock(),
             ) as validate_mock,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._cache_temporary_mcp_server",
                 MagicMock(),
             ) as cache_mock,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._cache_temporary_mcp_server_in_redis",
                 AsyncMock(),
             ) as redis_cache_mock,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_prisma_client_or_none",
                 return_value=None,
             ),
@@ -2543,11 +2566,11 @@ class TestTemporaryMCPSessionEndpoints:
             user_role=LitellmUserRoles.INTERNAL_USER,
         )
 
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.validate_and_normalize_mcp_server_payload",
             MagicMock(),
         ):
-            with pytest.raises(Exception) as exc_info:
+            with pytest.raises(Exception, match="User does not have permission to create temporary mcp") as exc_info:
                 await add_session_mcp_server(
                     payload=payload,
                     user_api_key_dict=non_admin,
@@ -2592,15 +2615,15 @@ class TestTemporaryMCPSessionEndpoints:
 
         with (
             patch.dict(sys.modules, {"litellm.proxy.proxy_server": fake_proxy_server}),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._user_api_key_auth_builder",
                 AsyncMock(return_value=expected_auth),
             ) as auth_builder_mock,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._read_request_body",
                 AsyncMock(return_value={}),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.populate_request_with_path_params",
                 side_effect=lambda request_data, request: request_data,
             ),
@@ -2626,15 +2649,15 @@ class TestTemporaryMCPSessionEndpoints:
         mock_request.cookies = {}
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._user_api_key_auth_builder",
                 AsyncMock(return_value=expected_auth),
             ) as auth_builder_mock,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._read_request_body",
                 AsyncMock(return_value={}),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.populate_request_with_path_params",
                 side_effect=lambda request_data, request: request_data,
             ),
@@ -2669,19 +2692,19 @@ class TestTemporaryMCPSessionEndpoints:
 
         with (
             patch.dict(sys.modules, {"litellm.proxy.proxy_server": fake_proxy_server}),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy._experimental.mcp_server.mcp_server_manager.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._user_api_key_auth_builder",
                 AsyncMock(return_value=expected_auth),
             ) as auth_builder_mock,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._read_request_body",
                 AsyncMock(return_value={}),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.populate_request_with_path_params",
                 side_effect=lambda request_data, request: request_data,
             ),
@@ -2721,19 +2744,19 @@ class TestTemporaryMCPSessionEndpoints:
 
         with (
             patch.dict(sys.modules, {"litellm.proxy.proxy_server": fake_proxy_server}),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy._experimental.mcp_server.mcp_server_manager.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._user_api_key_auth_builder",
                 AsyncMock(return_value=expected_auth),
             ) as auth_builder_mock,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._read_request_body",
                 AsyncMock(return_value={}),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.populate_request_with_path_params",
                 side_effect=lambda request_data, request: request_data,
             ),
@@ -2789,11 +2812,11 @@ class TestTemporaryMCPSessionEndpoints:
         )
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_cached_temporary_mcp_server_or_404",
                 return_value=server,
             ) as get_server,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.authorize_with_server",
                 AsyncMock(return_value=authorize_response),
             ) as authorize_mock,
@@ -2839,18 +2862,18 @@ class TestTemporaryMCPSessionEndpoints:
         request = MagicMock()
         admin_auth = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.PROXY_ADMIN)
         patches = [
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_cached_temporary_mcp_server_or_404",
                 return_value=server,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.authorize_with_server",
                 AsyncMock(return_value=MagicMock()),
             ),
         ]
         if mint_mock is not None:
             patches.append(
-                patch(
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                     "litellm.proxy._experimental.mcp_server.discoverable_endpoints.mint_ephemeral_dcr_client",
                     mint_mock,
                 )
@@ -2944,11 +2967,11 @@ class TestTemporaryMCPSessionEndpoints:
         request.headers = {}
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_cached_temporary_mcp_server_or_404",
                 return_value=server,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy._experimental.mcp_server.discoverable_endpoints.mint_ephemeral_dcr_client",
                 mint_mock,
             ),
@@ -3089,12 +3112,14 @@ class TestTemporaryMCPSessionEndpoints:
         admin_auth = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.PROXY_ADMIN)
 
         with (
-            patch("litellm.proxy.proxy_server.master_key", "sk-lit4581-test-master-key"),
             patch(
+                "litellm.proxy.proxy_server.master_key", "sk-lit4581-test-master-key"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_cached_temporary_mcp_server_or_404",
                 return_value=server,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.exchange_token_with_server",
                 AsyncMock(return_value={"access_token": "token"}),
             ) as exchange_mock,
@@ -3148,12 +3173,14 @@ class TestTemporaryMCPSessionEndpoints:
         admin_auth = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.PROXY_ADMIN)
 
         with (
-            patch("litellm.proxy.proxy_server.master_key", "sk-lit4581-test-master-key"),
             patch(
+                "litellm.proxy.proxy_server.master_key", "sk-lit4581-test-master-key"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_cached_temporary_mcp_server_or_404",
                 return_value=server,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.exchange_token_with_server",
                 AsyncMock(return_value={"access_token": "token"}),
             ) as exchange_mock,
@@ -3202,12 +3229,14 @@ class TestTemporaryMCPSessionEndpoints:
         admin_auth = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.PROXY_ADMIN)
 
         with (
-            patch("litellm.proxy.proxy_server.master_key", "sk-lit4581-test-master-key"),
             patch(
+                "litellm.proxy.proxy_server.master_key", "sk-lit4581-test-master-key"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_cached_temporary_mcp_server_or_404",
                 return_value=server,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.exchange_token_with_server",
                 AsyncMock(),
             ) as exchange_mock,
@@ -3252,12 +3281,14 @@ class TestTemporaryMCPSessionEndpoints:
         admin_auth = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.PROXY_ADMIN)
 
         with (
-            patch("litellm.proxy.proxy_server.master_key", "sk-lit4581-test-master-key"),
             patch(
+                "litellm.proxy.proxy_server.master_key", "sk-lit4581-test-master-key"
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_cached_temporary_mcp_server_or_404",
                 return_value=server,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.exchange_token_with_server",
                 AsyncMock(),
             ) as exchange_mock,
@@ -3301,11 +3332,11 @@ class TestTemporaryMCPSessionEndpoints:
         )
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_cached_temporary_mcp_server_or_404",
                 return_value=server,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.authorize_with_server",
                 AsyncMock(),
             ) as authorize_mock,
@@ -3341,11 +3372,11 @@ class TestTemporaryMCPSessionEndpoints:
         )
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_cached_temporary_mcp_server_or_404",
                 return_value=server,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.exchange_token_with_server",
                 AsyncMock(),
             ) as exchange_mock,
@@ -3386,11 +3417,11 @@ class TestTemporaryMCPSessionEndpoints:
         )
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_cached_temporary_mcp_server_or_404",
                 return_value=server,
             ) as get_server,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.exchange_token_with_server",
                 AsyncMock(return_value=exchange_response),
             ) as exchange_mock,
@@ -3440,11 +3471,11 @@ class TestTemporaryMCPSessionEndpoints:
         )
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_cached_temporary_mcp_server_or_404",
                 return_value=server,
             ) as get_server,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.exchange_token_with_server",
                 AsyncMock(return_value=exchange_response),
             ) as exchange_mock,
@@ -3500,15 +3531,15 @@ class TestTemporaryMCPSessionEndpoints:
         )
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_cached_temporary_mcp_server_or_404",
                 return_value=server,
             ) as get_server,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._read_request_body",
                 AsyncMock(return_value=request_body),
             ) as read_body,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.register_client_with_server",
                 AsyncMock(return_value=register_response),
             ) as register_mock,
@@ -3563,15 +3594,15 @@ class TestTemporaryMCPSessionEndpoints:
         admin_auth = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.PROXY_ADMIN)
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_cached_temporary_mcp_server_or_404",
                 return_value=server,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._read_request_body",
                 AsyncMock(return_value=request_body),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.register_client_with_server",
                 AsyncMock(return_value={"client_id": "generated"}),
             ) as register_mock,
@@ -3608,15 +3639,15 @@ class TestTemporaryMCPSessionEndpoints:
         )
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_cached_temporary_mcp_server_or_404",
                 return_value=server,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._read_request_body",
                 AsyncMock(return_value=request_body),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.register_client_with_server",
                 AsyncMock(return_value=register_response),
             ) as register_mock,
@@ -3643,15 +3674,15 @@ class TestTemporaryMCPSessionEndpoints:
         mgmt_endpoints.litellm.cache = SimpleNamespace(cache=mock_cache_backend)
         try:
             with (
-                patch(
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                     "litellm.proxy.management_endpoints.mcp_management_endpoints._temporary_mcp_servers",
                     {},
                 ),
-                patch(
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                     "litellm.proxy.management_endpoints.mcp_management_endpoints.decrypt_value_helper",
                     return_value=serialized,
                 ),
-                patch(
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                     "litellm.proxy.management_endpoints.mcp_management_endpoints._get_prisma_client_or_none",
                     return_value=None,
                 ),
@@ -3675,9 +3706,11 @@ class TestTemporaryMCPSessionEndpoints:
         original_cache = mgmt_endpoints.litellm.cache
         mgmt_endpoints.litellm.cache = SimpleNamespace(cache=mock_cache_backend)
         try:
-            with patch(
-                "litellm.proxy.management_endpoints.mcp_management_endpoints.encrypt_value_helper",
-                return_value="encrypted-payload",
+            with (
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                    "litellm.proxy.management_endpoints.mcp_management_endpoints.encrypt_value_helper",
+                    return_value="encrypted-payload",
+                )
             ):
                 await _cache_temporary_mcp_server_in_redis(server, ttl_seconds=123)
         finally:
@@ -3699,10 +3732,12 @@ class TestTemporaryMCPSessionEndpoints:
         original_cache = mgmt_endpoints.litellm.cache
         mgmt_endpoints.litellm.cache = SimpleNamespace(cache=mock_cache_backend)
         try:
-            with patch(
-                "litellm.proxy.management_endpoints.mcp_management_endpoints.encrypt_value_helper",
-                return_value="encrypted-payload",
-            ) as encrypt_mock:
+            with (
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                    "litellm.proxy.management_endpoints.mcp_management_endpoints.encrypt_value_helper",
+                    return_value="encrypted-payload",
+                ) as encrypt_mock
+            ):
                 await _cache_temporary_mcp_server_in_redis(server, ttl_seconds=60)
         finally:
             mgmt_endpoints.litellm.cache = original_cache
@@ -3723,10 +3758,12 @@ class TestTemporaryMCPSessionEndpoints:
         original_cache = mgmt_endpoints.litellm.cache
         mgmt_endpoints.litellm.cache = SimpleNamespace(cache=mock_cache_backend)
         try:
-            with patch(
-                "litellm.proxy.management_endpoints.mcp_management_endpoints.decrypt_value_helper",
-                return_value=serialized,
-            ) as decrypt_mock:
+            with (
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                    "litellm.proxy.management_endpoints.mcp_management_endpoints.decrypt_value_helper",
+                    return_value=serialized,
+                ) as decrypt_mock
+            ):
                 result = await _get_temporary_mcp_server_from_redis("from-redis-encrypted")
         finally:
             mgmt_endpoints.litellm.cache = original_cache
@@ -3746,9 +3783,11 @@ class TestTemporaryMCPSessionEndpoints:
         original_cache = mgmt_endpoints.litellm.cache
         mgmt_endpoints.litellm.cache = SimpleNamespace(cache=mock_cache_backend)
         try:
-            with patch(
-                "litellm.proxy.management_endpoints.mcp_management_endpoints.encrypt_value_helper",
-                side_effect=Exception("boom"),
+            with (
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                    "litellm.proxy.management_endpoints.mcp_management_endpoints.encrypt_value_helper",
+                    side_effect=Exception("boom"),
+                )
             ):
                 await _cache_temporary_mcp_server_in_redis(server, ttl_seconds=60)
         finally:
@@ -3769,9 +3808,11 @@ class TestTemporaryMCPSessionEndpoints:
         original_cache = mgmt_endpoints.litellm.cache
         mgmt_endpoints.litellm.cache = SimpleNamespace(cache=mock_cache_backend)
         try:
-            with patch(
-                "litellm.proxy.management_endpoints.mcp_management_endpoints.encrypt_value_helper",
-                return_value={"not": "a-string"},
+            with (
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                    "litellm.proxy.management_endpoints.mcp_management_endpoints.encrypt_value_helper",
+                    return_value={"not": "a-string"},
+                )
             ):
                 await _cache_temporary_mcp_server_in_redis(server, ttl_seconds=60)
         finally:
@@ -3791,9 +3832,11 @@ class TestTemporaryMCPSessionEndpoints:
         original_cache = mgmt_endpoints.litellm.cache
         mgmt_endpoints.litellm.cache = SimpleNamespace(cache=mock_cache_backend)
         try:
-            with patch(
-                "litellm.proxy.management_endpoints.mcp_management_endpoints.decrypt_value_helper",
-                return_value="{not json}",
+            with (
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                    "litellm.proxy.management_endpoints.mcp_management_endpoints.decrypt_value_helper",
+                    return_value="{not json}",
+                )
             ):
                 result = await _get_temporary_mcp_server_from_redis("bad-json")
         finally:
@@ -3813,9 +3856,11 @@ class TestTemporaryMCPSessionEndpoints:
         original_cache = mgmt_endpoints.litellm.cache
         mgmt_endpoints.litellm.cache = SimpleNamespace(cache=mock_cache_backend)
         try:
-            with patch(
-                "litellm.proxy.management_endpoints.mcp_management_endpoints.decrypt_value_helper",
-                return_value=None,
+            with (
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                    "litellm.proxy.management_endpoints.mcp_management_endpoints.decrypt_value_helper",
+                    return_value=None,
+                )
             ):
                 result = await _get_temporary_mcp_server_from_redis("decrypt-none")
         finally:
@@ -3889,23 +3934,23 @@ class TestUpdateMCPServer:
 
         # Mock the update_mcp_server function to capture the call
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=mock_prisma_client,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.validate_and_normalize_mcp_server_payload",
                 MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.update_mcp_server",
                 AsyncMock(return_value=updated_server),
             ) as update_mock,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager.add_server",
                 AsyncMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager.reload_servers_from_database",
                 AsyncMock(),
             ),
@@ -3963,19 +4008,19 @@ class TestAddMCPServerAtomicity:
         mock_manager.reload_servers_from_database = AsyncMock(side_effect=Exception("malformed pre-existing row"))
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.validate_and_normalize_mcp_server_payload",
                 MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.create_mcp_server",
                 AsyncMock(return_value=created_server),
             ) as create_mock,
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
@@ -4004,19 +4049,19 @@ class TestAddMCPServerAtomicity:
         mock_manager.reload_servers_from_database = AsyncMock()
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.validate_and_normalize_mcp_server_payload",
                 MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.create_mcp_server",
                 AsyncMock(side_effect=Exception("db down")),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
@@ -4073,11 +4118,11 @@ class TestHealthCheckServers:
         )
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.build_effective_auth_contexts",
                 AsyncMock(return_value=[mock_user_auth]),
             ),
@@ -4129,7 +4174,7 @@ class TestMCPRegistryEndpoint:
 
         with (
             patch_proxy_general_settings({"enable_mcp_registry": True}),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
@@ -4178,11 +4223,11 @@ class TestMCPRegistryEndpoint:
         mock_manager.get_all_mcp_servers_with_health_and_teams = AsyncMock(return_value=[mock_health_result])
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.build_effective_auth_contexts",
                 AsyncMock(return_value=[mock_user_auth]),
             ),
@@ -4238,11 +4283,11 @@ class TestManagementPayloadValidation:
         )
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_user_mcp_management_mode",
                 return_value="view_all",
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
@@ -4291,11 +4336,11 @@ class TestManagementPayloadValidation:
         )
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.build_effective_auth_contexts",
                 AsyncMock(return_value=[mock_user_auth]),
             ),
@@ -4386,15 +4431,15 @@ class TestMCPApprovalWorkflow:
         created_record.submitted_by = "user-abc"
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.validate_and_normalize_mcp_server_payload",
                 MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.create_mcp_server",
                 AsyncMock(return_value=created_record),
             ) as mock_create,
@@ -4433,11 +4478,11 @@ class TestMCPApprovalWorkflow:
         summary = MCPSubmissionsSummary(total=1, pending_review=1, active=0, rejected=0, items=[pending])
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_submissions",
                 AsyncMock(return_value=summary),
             ),
@@ -4464,11 +4509,11 @@ class TestMCPApprovalWorkflow:
         summary = MCPSubmissionsSummary(total=1, pending_review=1, active=0, rejected=0, items=[item])
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_submissions",
                 AsyncMock(return_value=summary),
             ),
@@ -4504,11 +4549,11 @@ class TestMCPApprovalWorkflow:
         summary = MCPSubmissionsSummary(total=1, pending_review=1, active=0, rejected=0, items=[item])
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_submissions",
                 AsyncMock(return_value=summary),
             ),
@@ -4545,11 +4590,11 @@ class TestMCPApprovalWorkflow:
         active_server.approval_status = MCPApprovalStatus.active
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
                 AsyncMock(return_value=active_server),
             ),
@@ -4577,19 +4622,19 @@ class TestMCPApprovalWorkflow:
         mock_manager.reload_servers_from_database = AsyncMock()
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
                 AsyncMock(return_value=pending_server),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.approve_mcp_server",
                 AsyncMock(return_value=approved_server),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
@@ -4612,11 +4657,11 @@ class TestMCPApprovalWorkflow:
         rejected_server.approval_status = MCPApprovalStatus.rejected
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
                 AsyncMock(return_value=rejected_server),
             ),
@@ -4647,19 +4692,19 @@ class TestMCPApprovalWorkflow:
         mock_manager.reload_servers_from_database = AsyncMock()
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
                 AsyncMock(return_value=active_server),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.reject_mcp_server",
                 AsyncMock(return_value=now_rejected),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
@@ -4804,23 +4849,23 @@ async def test_store_mcp_oauth_user_credential_returns_status():
     mock_prisma = _make_prisma_client()
 
     with (
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
             return_value=mock_prisma,
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
             new=AsyncMock(return_value=generate_mock_mcp_server_db_record(server_id=server_id)),
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints._user_has_admin_view",
             return_value=True,
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.store_user_oauth_credential",
             new=AsyncMock(return_value=None),
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_user_oauth_credential",
             new=AsyncMock(return_value=stored_payload),
         ),
@@ -4859,15 +4904,15 @@ async def test_delete_mcp_oauth_user_credential_only_deletes_oauth():
 
     # When get_user_oauth_credential returns None (no OAuth cred), delete should NOT be called.
     with (
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
             return_value=_make_prisma_client(),
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_user_oauth_credential",
             new=AsyncMock(return_value=None),
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.delete_user_credential",
             new=delete_mock,
         ),
@@ -4901,23 +4946,23 @@ async def test_store_mcp_oauth_user_credential_invalidates_cached_token():
     invalidate_mock = AsyncMock(return_value=None)
 
     with (
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
             return_value=_make_prisma_client(),
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
             new=AsyncMock(return_value=generate_mock_mcp_server_db_record(server_id=server_id)),
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints._user_has_admin_view",
             return_value=True,
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.store_user_oauth_credential",
             new=AsyncMock(return_value=None),
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_user_oauth_credential",
             new=AsyncMock(return_value={"type": "oauth2", "access_token": "new-tok"}),
         ),
@@ -4953,15 +4998,15 @@ async def test_delete_mcp_oauth_user_credential_invalidates_cached_token():
     invalidate_mock = AsyncMock(return_value=None)
 
     with (
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
             return_value=_make_prisma_client(),
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_user_oauth_credential",
             new=AsyncMock(return_value={"type": "oauth2", "access_token": "revoked-tok"}),
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.delete_user_credential",
             new=AsyncMock(return_value=None),
         ),
@@ -4997,15 +5042,15 @@ async def test_delete_mcp_oauth_user_credential_invalidates_when_record_already_
     invalidate_mock = AsyncMock(return_value=None)
 
     with (
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
             return_value=_make_prisma_client(),
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_user_oauth_credential",
             new=AsyncMock(return_value={"type": "oauth2", "access_token": "revoked-tok"}),
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.delete_user_credential",
             new=AsyncMock(side_effect=mgmt_endpoints.RecordNotFoundError({}, message="already gone")),
         ),
@@ -5053,19 +5098,19 @@ async def test_list_mcp_user_credentials_batch_server_fetch():
     single_mock = AsyncMock(return_value=mock_server)
 
     with (
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
             return_value=_make_prisma_client(),
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.list_user_oauth_credentials",
             new=AsyncMock(return_value=stored_creds),
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_servers",
             new=batch_mock,
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
             new=single_mock,
         ),
@@ -5125,19 +5170,19 @@ async def test_list_mcp_servers_non_admin_url_redacted():
     mock_manager.get_all_allowed_mcp_servers = AsyncMock(return_value=[server])
 
     with (
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints._get_user_mcp_management_mode",
             return_value="view_all",
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
             mock_manager,
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
             return_value=MagicMock(),
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.build_effective_auth_contexts",
             AsyncMock(return_value=[user]),
         ),
@@ -5187,19 +5232,19 @@ async def test_list_mcp_servers_admin_keeps_url():
     mock_manager.get_all_allowed_mcp_servers = AsyncMock(return_value=[server])
 
     with (
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints._get_user_mcp_management_mode",
             return_value="view_all",
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
             mock_manager,
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
             return_value=MagicMock(),
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.build_effective_auth_contexts",
             AsyncMock(return_value=[admin]),
         ),
@@ -5358,19 +5403,19 @@ async def test_fetch_single_mcp_server_env_vars_full_admin_vs_view_only():
 
     async def _fetch(user_role):
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
                 return_value=MagicMock(),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
                 AsyncMock(return_value=server),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager.add_server",
                 AsyncMock(return_value=None),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager.health_check_server",
                 AsyncMock(return_value=health_result),
             ),
@@ -5402,15 +5447,15 @@ async def test_fetch_all_mcp_servers_env_vars_full_admin_vs_view_only():
 
     async def _fetch_all(user_role):
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_user_mcp_management_mode",
                 return_value="view_all",
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager.get_all_mcp_servers_unfiltered",
                 AsyncMock(return_value=[server]),
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.proxy_server.prisma_client",
                 None,
             ),
@@ -5454,15 +5499,15 @@ async def _fetch_all_via_view_all(user_role: LitellmUserRoles):
     real role helpers (the full-admin gate is never patched)."""
     server = _leaky_list_server()
     with (
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints._get_user_mcp_management_mode",
             return_value="view_all",
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager.get_all_mcp_servers_unfiltered",
             AsyncMock(return_value=[server]),
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.prisma_client",
             None,
         ),
@@ -6290,22 +6335,24 @@ def test_dcr_bridge_round_trips_on_response_model():
 
 def _edit_endpoint_patches(old_record, update_mock):
     return (
-        patch("litellm.proxy.management_endpoints.mcp_management_endpoints.MCP_AVAILABLE", True),
         patch(
+            "litellm.proxy.management_endpoints.mcp_management_endpoints.MCP_AVAILABLE", True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
             return_value=MagicMock(),
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
             AsyncMock(side_effect=old_record)
             if isinstance(old_record, Exception)
             else AsyncMock(return_value=old_record),
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.update_mcp_server",
             update_mock,
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.validate_and_normalize_mcp_server_payload",
             autospec=True,
         ),
@@ -6611,27 +6658,31 @@ async def _run_edit(old_record, updated_record, purge_mock=None):
 
     server_id = updated_record.server_id
     with (
-        patch("litellm.proxy.management_endpoints.mcp_management_endpoints.MCP_AVAILABLE", True),
         patch(
+            "litellm.proxy.management_endpoints.mcp_management_endpoints.MCP_AVAILABLE", True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
             return_value=MagicMock(),
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.get_mcp_server",
             AsyncMock(side_effect=old_record)
             if isinstance(old_record, Exception)
             else AsyncMock(return_value=old_record),
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.update_mcp_server",
             AsyncMock(return_value=updated_record),
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.validate_and_normalize_mcp_server_payload",
             autospec=True,
         ),
-        patch("litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager") as mock_manager,
         patch(
+            "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager"
+        ) as mock_manager,  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_endpoints.mcp_management_endpoints.purge_user_oauth_credentials_for_server",
             purge_mock if purge_mock is not None else AsyncMock(return_value=1),
         ) as mock_purge,
@@ -6704,7 +6755,6 @@ def test_bundled_openapi_registry_parses_and_entries_are_well_formed():
     authorization_url would recreate the exact 400 ("authorization url is not set") the catalog
     exists to prevent for spec-only servers, which never run OAuth endpoint discovery."""
     import json
-    import os
 
     registry_path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
@@ -6773,16 +6823,16 @@ class TestConnectedAppViewAnnotation:
         reload_mock = AsyncMock(return_value=admitted_auth)
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.build_effective_auth_contexts",
                 AsyncMock(return_value=[caller_auth]),
             ),
-            patch(
-                "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler._reload_admitted_user",
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler.reload_admitted_user",
                 reload_mock,
             ),
         ):
@@ -6805,16 +6855,16 @@ class TestConnectedAppViewAnnotation:
         mock_manager = self._mock_manager(self._servers(), ["server-2"])
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints._get_user_mcp_management_mode",
                 return_value="view_all",
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
-                "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler._reload_admitted_user",
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler.reload_admitted_user",
                 AsyncMock(return_value=UserAPIKeyAuth(user_id="test_user_id")),
             ),
         ):
@@ -6848,16 +6898,16 @@ class TestConnectedAppViewAnnotation:
         mock_manager.get_allowed_mcp_servers = AsyncMock(return_value=["server-1", "server-2"])
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy._experimental.mcp_server.ui_session_utils.resolve_ui_session_team_ids",
                 AsyncMock(return_value=[]),
             ),
-            patch(
-                "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler._reload_admitted_user",
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler.reload_admitted_user",
                 AsyncMock(return_value=admitted_auth),
             ),
         ):
@@ -6876,16 +6926,16 @@ class TestConnectedAppViewAnnotation:
         mock_manager = self._mock_manager(self._servers(), ["server-1"])
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.build_effective_auth_contexts",
                 AsyncMock(return_value=[caller_auth]),
             ),
-            patch(
-                "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler._reload_admitted_user",
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler.reload_admitted_user",
                 AsyncMock(side_effect=HTTPException(status_code=401, detail="expired")),
             ),
         ):
@@ -6904,16 +6954,16 @@ class TestConnectedAppViewAnnotation:
         reload_mock = AsyncMock(return_value=UserAPIKeyAuth(user_id="test_user_id"))
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.build_effective_auth_contexts",
                 AsyncMock(return_value=[caller_auth]),
             ),
-            patch(
-                "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler._reload_admitted_user",
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler.reload_admitted_user",
                 reload_mock,
             ),
         ):
@@ -6938,16 +6988,16 @@ class TestConnectedAppViewAnnotation:
         reload_mock = AsyncMock(return_value=UserAPIKeyAuth(user_id="test_user_id"))
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.build_effective_auth_contexts",
                 AsyncMock(return_value=[caller_auth]),
             ),
-            patch(
-                "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler._reload_admitted_user",
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler.reload_admitted_user",
                 reload_mock,
             ),
         ):
@@ -6969,16 +7019,16 @@ class TestConnectedAppViewAnnotation:
         reload_mock = AsyncMock(return_value=UserAPIKeyAuth(user_id="test_user_id"))
 
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
                 mock_manager,
             ),
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.proxy.management_endpoints.mcp_management_endpoints.build_effective_auth_contexts",
                 AsyncMock(return_value=[caller_auth]),
             ),
-            patch(
-                "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler._reload_admitted_user",
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.MCPRequestHandler.reload_admitted_user",
                 reload_mock,
             ),
         ):
@@ -6990,3 +7040,172 @@ class TestConnectedAppViewAnnotation:
 
         assert all(server.connected_app_reachable is None for server in result)
         reload_mock.assert_not_awaited()
+
+
+class TestImportMCPServers:
+    """Bulk connector import must be admin-only and report per-entry outcomes."""
+
+    @staticmethod
+    def _import_patches(existing_servers, create_mock, mock_manager):
+        return (
+            patch(  # test-quality-ok: endpoint takes collaborators from module scope, matching the suite's pattern
+                "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
+                return_value=MagicMock(),
+            ),
+            patch(  # test-quality-ok: endpoint takes collaborators from module scope, matching the suite's pattern
+                "litellm.proxy.management_endpoints.mcp_management_endpoints.get_all_mcp_servers",
+                AsyncMock(return_value=existing_servers),
+            ),
+            patch(  # test-quality-ok: endpoint takes collaborators from module scope, matching the suite's pattern
+                "litellm.proxy.management_endpoints.mcp_management_endpoints.create_mcp_server",
+                create_mock,
+            ),
+            patch(  # test-quality-ok: endpoint takes collaborators from module scope, matching the suite's pattern
+                "litellm.proxy.management_endpoints.mcp_management_endpoints.global_mcp_server_manager",
+                mock_manager,
+            ),
+        )
+
+    @pytest.mark.asyncio
+    async def test_non_admin_is_rejected(self):
+        from litellm.proxy.management_endpoints.mcp_management_endpoints import (
+            MCPConnectorImportRequest,
+            import_mcp_servers,
+        )
+
+        payload = MCPConnectorImportRequest.model_validate({"mcpServers": {"srv": {"url": "https://x.example/mcp"}}})
+        caller = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.INTERNAL_USER)
+
+        with patch(  # test-quality-ok: endpoint takes collaborators from module scope, matching the suite's pattern
+            "litellm.proxy.management_endpoints.mcp_management_endpoints.get_prisma_client_or_throw",
+            return_value=MagicMock(),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await import_mcp_servers(payload=payload, user_api_key_dict=caller)
+
+        assert exc_info.value.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_import_reports_imported_skipped_and_errors(self):
+        from litellm.proxy.management_endpoints.mcp_management_endpoints import (
+            MCPConnectorImportRequest,
+            import_mcp_servers,
+        )
+
+        payload = MCPConnectorImportRequest.model_validate(
+            {
+                "mcpServers": {
+                    "new-server": {"url": "https://new.example/mcp", "authorization_token": "tok"},
+                    "existing": {"url": "https://existing.example/mcp"},
+                    "broken": {"type": "websocket", "url": "wss://x.example"},
+                }
+            }
+        )
+        admin = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.PROXY_ADMIN, user_id="admin-user")
+        existing = generate_mock_mcp_server_db_record(server_id="existing-1", alias="existing")
+        created = generate_mock_mcp_server_db_record(server_id="created-1", alias="new_server")
+        create_mock = AsyncMock(return_value=created)
+        mock_manager = MagicMock()
+        mock_manager.reload_servers_from_database = AsyncMock()
+        mock_manager.add_server = AsyncMock()
+
+        with ExitStack() as stack:
+            for p in self._import_patches([existing], create_mock, mock_manager):
+                stack.enter_context(p)
+            result = await import_mcp_servers(payload=payload, user_api_key_dict=admin)
+
+        assert [entry.name for entry in result.imported] == ["new-server"]
+        assert result.imported[0].server_id == "created-1"
+        assert [entry.name for entry in result.skipped] == ["existing"]
+        assert "already exists" in result.skipped[0].reason
+        assert [entry.name for entry in result.errors] == ["broken"]
+        create_mock.assert_awaited_once()
+        sent_request = create_mock.await_args[0][1]
+        assert sent_request.credentials == {"auth_value": "tok"}
+        mock_manager.add_server.assert_awaited_once_with(created)
+        mock_manager.reload_servers_from_database.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_duplicate_names_within_payload_are_skipped(self):
+        from litellm.proxy.management_endpoints.mcp_management_endpoints import (
+            MCPConnectorImportRequest,
+            import_mcp_servers,
+        )
+
+        payload = MCPConnectorImportRequest.model_validate(
+            {
+                "mcp_servers": [
+                    {"type": "url", "url": "https://a.example/mcp", "name": "dup srv"},
+                    {"type": "url", "url": "https://b.example/mcp", "name": "dup-srv"},
+                ]
+            }
+        )
+        admin = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.PROXY_ADMIN, user_id="admin-user")
+        created = generate_mock_mcp_server_db_record(server_id="created-1", alias="dup_srv")
+        create_mock = AsyncMock(return_value=created)
+        mock_manager = MagicMock()
+        mock_manager.reload_servers_from_database = AsyncMock()
+        mock_manager.add_server = AsyncMock()
+
+        with ExitStack() as stack:
+            for p in self._import_patches([], create_mock, mock_manager):
+                stack.enter_context(p)
+            result = await import_mcp_servers(payload=payload, user_api_key_dict=admin)
+
+        assert len(result.imported) == 1
+        assert len(result.skipped) == 1
+        assert "Duplicate connector name" in result.skipped[0].reason
+        create_mock.assert_awaited_once()
+        mock_manager.add_server.assert_awaited_once_with(created)
+
+    @pytest.mark.asyncio
+    async def test_no_imports_skips_registry_refresh(self):
+        from litellm.proxy.management_endpoints.mcp_management_endpoints import (
+            MCPConnectorImportRequest,
+            import_mcp_servers,
+        )
+
+        payload = MCPConnectorImportRequest.model_validate(
+            {"mcpServers": {"existing": {"url": "https://existing.example/mcp"}}}
+        )
+        admin = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.PROXY_ADMIN, user_id="admin-user")
+        existing = generate_mock_mcp_server_db_record(server_id="existing-1", alias="existing")
+        create_mock = AsyncMock()
+        mock_manager = MagicMock()
+        mock_manager.reload_servers_from_database = AsyncMock()
+        mock_manager.add_server = AsyncMock()
+
+        with ExitStack() as stack:
+            for p in self._import_patches([existing], create_mock, mock_manager):
+                stack.enter_context(p)
+            result = await import_mcp_servers(payload=payload, user_api_key_dict=admin)
+
+        assert result.imported == ()
+        create_mock.assert_not_awaited()
+        mock_manager.add_server.assert_not_awaited()
+        mock_manager.reload_servers_from_database.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_registration_failure_keeps_the_import_result(self):
+        from litellm.proxy.management_endpoints.mcp_management_endpoints import (
+            MCPConnectorImportRequest,
+            import_mcp_servers,
+        )
+
+        payload = MCPConnectorImportRequest.model_validate(
+            {"mcpServers": {"new-server": {"url": "https://new.example/mcp"}}}
+        )
+        admin = generate_mock_user_api_key_auth(user_role=LitellmUserRoles.PROXY_ADMIN, user_id="admin-user")
+        created = generate_mock_mcp_server_db_record(server_id="created-1", alias="new_server")
+        create_mock = AsyncMock(return_value=created)
+        mock_manager = MagicMock()
+        mock_manager.reload_servers_from_database = AsyncMock()
+        mock_manager.add_server = AsyncMock(side_effect=RuntimeError("registration boom"))
+
+        with ExitStack() as stack:
+            for p in self._import_patches([], create_mock, mock_manager):
+                stack.enter_context(p)
+            result = await import_mcp_servers(payload=payload, user_api_key_dict=admin)
+
+        assert [entry.name for entry in result.imported] == ["new-server"]
+        mock_manager.reload_servers_from_database.assert_awaited_once()

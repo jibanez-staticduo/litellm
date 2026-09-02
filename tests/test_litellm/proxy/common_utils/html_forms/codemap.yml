@@ -2,3 +2,4 @@ scope: module
 parent: ../../../../../.staticeng/codemap.yml
 internals:
   - path: test_ui_login.py
+  - path: test_native_client_consent.py

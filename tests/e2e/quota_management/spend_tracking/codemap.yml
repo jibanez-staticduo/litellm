@@ -7,3 +7,8 @@ internals:
   - path: spend_e2e_client.py
   - path: conftest.py
   - path: test_spend_tracking_e2e.py
+  - path: test_cost_headers_e2e.py
+  - path: test_cache_cost_accounting_e2e.py
+  - path: test_service_tier_pricing_e2e.py
+  - path: cost_rows.py
+  - path: test_provider_edge_spend_e2e.py

@@ -1,0 +1,7 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: common.py
+  - path: in_memory.py
+  - path: list_framework.py

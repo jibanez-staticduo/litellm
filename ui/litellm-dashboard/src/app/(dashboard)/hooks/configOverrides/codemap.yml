@@ -5,3 +5,7 @@ internals:
   - path: useUpdateHashicorpVaultConfig.ts
   - path: hashicorpVaultApi.ts
   - path: useHashicorpVaultConfig.ts
+  - path: useUpdateCyberArkConfig.ts
+  - path: useCyberArkConfig.ts
+  - path: cyberArkApi.ts
+  - path: useDeleteCyberArkConfig.ts

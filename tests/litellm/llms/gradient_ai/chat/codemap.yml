@@ -1,4 +1,0 @@
-scope: module
-parent: ../../../../../.staticeng/codemap.yml
-internals:
-  - path: test_gradient_ai_chat_transformation.py

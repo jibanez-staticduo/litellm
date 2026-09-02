@@ -58,3 +58,5 @@ internals:
   - path: test_prometheus_mcp_tool_metrics.py
   - path: test_prompt_manager_ssti.py
   - path: test_custom_guardrail.py
+  - path: test_prometheus_caller_identity.py
+  - path: test_prometheus_metrics_endpoint.py

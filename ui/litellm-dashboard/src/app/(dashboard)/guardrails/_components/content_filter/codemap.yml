@@ -20,4 +20,8 @@ internals:
   - path: ContentFilterDisplay.tsx
   - path: PatternTable.tsx
   - path: ContentFilterConfiguration.tsx
-  - path: dialog_layering.ts
+  - path: TagsInput.test.tsx
+  - path: CompetitorIntentConfiguration.test.tsx
+  - path: ThresholdInput.tsx
+  - path: ThresholdInput.test.tsx
+  - path: TagsInput.tsx

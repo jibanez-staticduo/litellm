@@ -25,3 +25,4 @@ internals:
   - path: test_parallel_request_limiter_v3.py
   - path: test_proxy_rate_limit_provider_field.py
   - path: test_post_call_failure_hook_integration.py
+  - path: test_batch_enqueued_tokens.py

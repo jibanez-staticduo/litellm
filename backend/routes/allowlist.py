@@ -36,6 +36,7 @@ BACKEND_PATH_PREFIXES: tuple[str, ...] = (
     # Models & routing config
     "/model/",
     "/v1/model/info",
+    "/v1/model/deprecations",
     "/v2/model/",
     "/model_group",
     "/model_access_group/",

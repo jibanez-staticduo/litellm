@@ -29,6 +29,7 @@ from litellm.proxy._experimental.mcp_server.loopback_oauth import (
     complete_loopback_oauth,
     mark_loopback_oauth_ready,
     start_loopback_oauth,
+    validate_loopback_oauth_server,
 )
 from litellm.types.mcp import MCPAuth, MCPTransport
 from litellm.types.mcp_server.mcp_server_manager import MCPServer
@@ -440,8 +441,6 @@ def test_server_binding_requires_exact_upstream_resource() -> None:
     wrong: Final = server().model_copy(update={"upstream_resource": None})
 
     with pytest.raises(HTTPException) as exc:
-        from litellm.proxy._experimental.mcp_server.loopback_oauth import validate_loopback_oauth_server
-
         validate_loopback_oauth_server(wrong)
 
     assert exc.value.status_code == 400

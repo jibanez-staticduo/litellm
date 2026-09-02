@@ -7,3 +7,4 @@ internals:
   - path: utils.py
   - path: Readme.md
   - path: budget_alert_types.py
+  - path: ms_teams.py

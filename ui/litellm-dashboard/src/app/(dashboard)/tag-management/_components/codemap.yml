@@ -8,3 +8,4 @@ internals:
   - path: tagTableColumns.tsx
   - path: index.test.tsx
   - path: tag_info.tsx
+  - path: tag_info.integration.test.tsx

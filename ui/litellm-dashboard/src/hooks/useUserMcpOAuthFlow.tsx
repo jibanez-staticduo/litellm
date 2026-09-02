@@ -22,7 +22,7 @@ import {
   startMCPLoopbackOAuth,
   storeMCPOAuthUserCredential,
 } from "@/components/networking";
-import NotificationsManager from "@/components/molecules/notifications_manager";
+import { toast } from "@/lib/toast";
 import { extractErrorMessage } from "@/utils/errorUtils";
 import { generateCodeChallenge, generateCodeVerifier } from "@/utils/pkce";
 import { getSecureItem, setSecureItem } from "@/utils/secureStorage";
@@ -144,7 +144,7 @@ export const useUserMcpOAuthFlow = ({
           "Tunnel unavailable. Start the macOS SSH tunnel, verify http://127.0.0.1:43119/healthz, then retry.";
         setError(message);
         setStatus("error");
-        NotificationsManager.error(message);
+        toast.error(message);
         return;
       }
       if (abortController.signal.aborted) return;
@@ -160,7 +160,7 @@ export const useUserMcpOAuthFlow = ({
           popup.close();
           loopbackWindowRef.current = null;
           setStatus("success");
-          NotificationsManager.success("Connected successfully");
+          toast.success("Connected successfully");
           onSuccess();
           return;
         }
@@ -175,7 +175,7 @@ export const useUserMcpOAuthFlow = ({
       const message = extractErrorMessage(err);
       setError(message);
       setStatus("error");
-      NotificationsManager.error(message);
+      toast.error(message);
     } finally {
       if (loopbackAbortRef.current === abortController) loopbackAbortRef.current = null;
     }
@@ -245,7 +245,7 @@ export const useUserMcpOAuthFlow = ({
       const msg = extractErrorMessage(err);
       setError(msg);
       setStatus("error");
-      NotificationsManager.error(msg);
+      toast.error(msg);
     }
   }, [accessToken, serverId, serverAlias, scopes, preClientId, startLoopbackOAuthFlow, useLoopbackOAuth]);
 
@@ -326,13 +326,13 @@ export const useUserMcpOAuthFlow = ({
 
       setStatus("success");
       setError(null);
-      NotificationsManager.success("Connected successfully");
+      toast.success("Connected successfully");
       onSuccess();
     } catch (err) {
       const msg = extractErrorMessage(err);
       setError(msg);
       setStatus("error");
-      NotificationsManager.error(msg);
+      toast.error(msg);
     } finally {
       clearStorage(FLOW_STATE_KEY);
       setTimeout(() => {

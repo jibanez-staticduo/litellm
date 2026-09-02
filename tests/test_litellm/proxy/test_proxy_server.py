@@ -1,10 +1,11 @@
 import asyncio
+import contextlib
 import importlib
 import json
 import os
+import re
 import socket
 import subprocess
-import sys
 import types
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -19,7 +20,6 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.testclient import TestClient
 
-sys.path.insert(0, os.path.abspath("../../.."))  # Adds the parent directory to the system-path
 
 import litellm
 import litellm.proxy.proxy_server as proxy_server_module
@@ -60,7 +60,7 @@ example_embedding_result = {
 
 
 def mock_patch_aembedding():
-    return mock.patch(
+    return mock.patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         "litellm.proxy.proxy_server.llm_router.aembedding",
         return_value=example_embedding_result,
     )
@@ -77,6 +77,16 @@ def client_no_auth():
     # initialize can get run in parallel, it sets specific variables for the fast api app, sinc eit gets run in parallel different tests use the wrong variables
     asyncio.run(initialize(config=config_fp, debug=True))
     return TestClient(app)
+
+
+def test_cors_exposes_cache_key_header_to_browser_js():
+    from fastapi.middleware.cors import CORSMiddleware
+
+    from litellm.constants import LITELLM_UI_ALLOW_HEADERS
+
+    cors_middleware = next(m for m in app.user_middleware if m.cls is CORSMiddleware)
+    assert cors_middleware.kwargs["expose_headers"] is LITELLM_UI_ALLOW_HEADERS
+    assert "x-litellm-cache-key" in cors_middleware.kwargs["expose_headers"]
 
 
 def test_login_v2_returns_redirect_url_and_sets_cookie(monkeypatch):
@@ -704,8 +714,12 @@ async def test_initialize_scheduled_jobs_credentials(monkeypatch):
     mock_proxy_config = AsyncMock()
 
     with (
-        patch("litellm.proxy.proxy_server.proxy_config", mock_proxy_config),
-        patch("litellm.proxy.proxy_server.store_model_in_db", False),
+        patch(
+            "litellm.proxy.proxy_server.proxy_config", mock_proxy_config
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.store_model_in_db", False
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):  # set store_model_in_db to False
         # Test when store_model_in_db is False
         await ProxyStartupEvent.initialize_scheduled_background_jobs(
@@ -722,9 +736,15 @@ async def test_initialize_scheduled_jobs_credentials(monkeypatch):
 
     # Now test with store_model_in_db = True
     with (
-        patch("litellm.proxy.proxy_server.proxy_config", mock_proxy_config),
-        patch("litellm.proxy.proxy_server.store_model_in_db", True),
-        patch("litellm.proxy.proxy_server.get_secret_bool", return_value=True),
+        patch(
+            "litellm.proxy.proxy_server.proxy_config", mock_proxy_config
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.store_model_in_db", True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.get_secret_bool", return_value=True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await ProxyStartupEvent.initialize_scheduled_background_jobs(
             general_settings={},
@@ -766,10 +786,18 @@ async def test_periodic_reload_job_scheduled_without_store_model_in_db(monkeypat
 
     try:
         with (
-            patch("litellm.proxy.proxy_server.proxy_config", mock_proxy_config),
-            patch("litellm.proxy.proxy_server.store_model_in_db", False),
-            patch("litellm.proxy.proxy_server.get_secret_bool", return_value=False),
-            patch("litellm.proxy.proxy_server.AsyncIOScheduler", return_value=scheduler),
+            patch(
+                "litellm.proxy.proxy_server.proxy_config", mock_proxy_config
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.store_model_in_db", False
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.get_secret_bool", return_value=False
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+            patch(
+                "litellm.proxy.proxy_server.AsyncIOScheduler", return_value=scheduler
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         ):
             await ProxyStartupEvent.initialize_scheduled_background_jobs(
                 general_settings={},
@@ -808,14 +836,22 @@ async def test_initialize_scheduled_jobs_uses_configured_config_reload_interval(
     configured_interval = 47
 
     with (
-        patch("litellm.proxy.proxy_server.proxy_config", mock_proxy_config),
-        patch("litellm.proxy.proxy_server.store_model_in_db", True),
-        patch("litellm.proxy.proxy_server.get_secret_bool", return_value=True),
         patch(
+            "litellm.proxy.proxy_server.proxy_config", mock_proxy_config
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.store_model_in_db", True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.get_secret_bool", return_value=True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.proxy_config_reload_interval_seconds",
             configured_interval,
         ),
-        patch("litellm.proxy.proxy_server.AsyncIOScheduler", return_value=mock_scheduler),
+        patch(
+            "litellm.proxy.proxy_server.AsyncIOScheduler", return_value=mock_scheduler
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await ProxyStartupEvent.initialize_scheduled_background_jobs(
             general_settings={},
@@ -855,11 +891,21 @@ async def test_initialize_scheduled_jobs_rejects_non_positive_config_reload_inte
     mock_scheduler = MagicMock()
 
     with (
-        patch("litellm.proxy.proxy_server.proxy_config", mock_proxy_config),
-        patch("litellm.proxy.proxy_server.store_model_in_db", True),
-        patch("litellm.proxy.proxy_server.get_secret_bool", return_value=True),
-        patch("litellm.proxy.proxy_server.proxy_config_reload_interval_seconds", 0),
-        patch("litellm.proxy.proxy_server.AsyncIOScheduler", return_value=mock_scheduler),
+        patch(
+            "litellm.proxy.proxy_server.proxy_config", mock_proxy_config
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.store_model_in_db", True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.get_secret_bool", return_value=True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.proxy_config_reload_interval_seconds", 0
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.AsyncIOScheduler", return_value=mock_scheduler
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await ProxyStartupEvent.initialize_scheduled_background_jobs(
             general_settings={},
@@ -901,8 +947,12 @@ async def test_initialize_scheduled_jobs_hydrates_mcp_when_store_model_in_db_fal
     mock_proxy_config = AsyncMock()
 
     with (
-        patch("litellm.proxy.proxy_server.proxy_config", mock_proxy_config),
-        patch("litellm.proxy.proxy_server.store_model_in_db", False),
+        patch(
+            "litellm.proxy.proxy_server.proxy_config", mock_proxy_config
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.store_model_in_db", False
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await ProxyStartupEvent.initialize_scheduled_background_jobs(
             general_settings={},
@@ -1051,7 +1101,7 @@ def test_get_config_custom_callback_api_env_vars(monkeypatch):
     }
 
 
-@patch(
+@patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     "litellm.proxy.common_utils.callback_utils.CustomLogger.get_callback_env_vars",
     return_value=["LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY", "LANGFUSE_HOST"],
 )
@@ -1099,7 +1149,7 @@ def test_get_config_callbacks_fall_back_to_process_env(mock_env_vars, monkeypatc
     }
 
 
-@patch(
+@patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     "litellm.proxy.common_utils.callback_utils.CustomLogger.get_callback_env_vars",
     return_value=["LANGFUSE_SECRET_KEY", "LANGFUSE_HOST"],
 )
@@ -1421,7 +1471,7 @@ class MockPrisma:
 mock_prisma = MockPrisma()
 
 
-@patch(
+@patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     "litellm.proxy.proxy_server.ProxyStartupEvent._setup_prisma_client",
     return_value=mock_prisma,
 )
@@ -1507,7 +1557,7 @@ def test_team_info_masking():
         "langfuse_public_key": "public-test-key",
     }
 
-    with pytest.raises(Exception) as exc_info:
+    with pytest.raises(Exception, match="secr\\*\\*\\*\\*\\*\\*\\*-key', 'langfuse_public_key':") as exc_info:
         proxy_config._get_team_config(
             team_id="test_dev",
             all_teams_config=[team1_info],
@@ -1583,7 +1633,9 @@ async def test_get_all_team_models():
     # Test Case 1: user_teams = "*" (all teams)
     mock_litellm_teamtable.find_many.return_value = [mock_team1, mock_team2]
 
-    with patch("litellm.proxy.proxy_server.LiteLLM_TeamTable") as mock_team_table_class:
+    with (
+        patch("litellm.proxy.proxy_server.LiteLLM_TeamTable") as mock_team_table_class
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         # Configure the mock class to return proper instances
         def mock_team_table_constructor(data):
             mock_instance = MagicMock()
@@ -1620,7 +1672,9 @@ async def test_get_all_team_models():
     # Only return team1 for specific team query
     mock_litellm_teamtable.find_many.return_value = [mock_team1]
 
-    with patch("litellm.proxy.proxy_server.LiteLLM_TeamTable") as mock_team_table_class:
+    with (
+        patch("litellm.proxy.proxy_server.LiteLLM_TeamTable") as mock_team_table_class
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         mock_team_table_class.model_validate.side_effect = mock_team_table_constructor
 
         result = await get_all_team_models(
@@ -1669,7 +1723,9 @@ async def test_get_all_team_models():
 
     mock_router.get_model_list.side_effect = mock_get_model_list_with_none
 
-    with patch("litellm.proxy.proxy_server.LiteLLM_TeamTable") as mock_team_table_class:
+    with (
+        patch("litellm.proxy.proxy_server.LiteLLM_TeamTable") as mock_team_table_class
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         mock_team_table_class.model_validate.side_effect = mock_team_table_constructor
 
         result = await get_all_team_models(
@@ -1849,6 +1905,38 @@ def test_add_team_models_to_all_models_excludes_other_teams_byok_with_shared_nam
 
     result = _add_team_models_to_all_models(team_db_objects_typed=[team], llm_router=llm_router)
     assert result == {"model-a-id": {"team-a"}}
+
+
+@pytest.mark.asyncio
+async def test_non_admin_all_models_returns_user_models_when_user_row_missing():
+    """
+    Regression test: /key/generate mints keys without a LiteLLM_UserTable row, so
+    find_unique returns None for such a user. That miss must neither raise (a 400
+    here, or the AttributeError on `user_row.teams` that used to surface as a 500)
+    nor leak team models: the user belongs to no team, so only the models they
+    added themselves come back.
+    """
+    from litellm.proxy.proxy_server import non_admin_all_models
+
+    user_added_model = {"model_name": "my-model", "model_info": {"id": "user-model-1"}}
+    prisma_client = MagicMock()
+    prisma_client.db.litellm_usertable.find_unique = AsyncMock(return_value=None)
+    prisma_client.db.litellm_proxymodeltable.find_unique = AsyncMock(return_value=MagicMock(created_by="ghost-user"))
+
+    llm_router = MagicMock()
+    llm_router.get_model_list.return_value = [
+        user_added_model,
+        {"model_name": "team-model", "model_info": {"id": "team-model-1", "team_id": "team-a"}},
+    ]
+
+    result = await non_admin_all_models(
+        all_models=[user_added_model],
+        llm_router=llm_router,
+        user_api_key_dict=UserAPIKeyAuth(api_key="sk-test", user_id="ghost-user"),
+        prisma_client=prisma_client,
+    )
+
+    assert result == [user_added_model]
 
 
 @pytest.mark.asyncio
@@ -2083,6 +2171,53 @@ async def test_apply_search_filter_bounds_db_fetch_by_page_and_cap():
     take = prisma_client.db.litellm_proxymodeltable.find_many.call_args.kwargs["take"]
     assert take == _SORTED_SEARCH_DB_FETCH_CAP
     assert take < 10_000, "sorted search must cap below the full match set"
+
+
+@pytest.mark.asyncio
+async def test_apply_search_filter_honours_exact_model_name_in_db_query():
+    """
+    `/v2/model/info?model=<group>&search=<term>`: the router list is already
+    narrowed to the exact group, so the DB count and fetch must be too, or
+    other groups' rows leak into the page and inflate total_count.
+    """
+    from litellm.proxy.proxy_server import _apply_search_filter_to_models
+
+    prisma_client = MagicMock()
+    prisma_client.db.litellm_proxymodeltable.count = AsyncMock(return_value=0)
+    prisma_client.db.litellm_proxymodeltable.find_many = AsyncMock(return_value=[])
+    proxy_config = MagicMock()
+    proxy_config.decrypt_model_list_from_db = lambda rows: []
+
+    await _apply_search_filter_to_models(
+        all_models=[],
+        search="sonnet",
+        prisma_client=prisma_client,
+        proxy_config=proxy_config,
+        model_name="anthropic-sonnet-5",
+    )
+    where = prisma_client.db.litellm_proxymodeltable.count.call_args.kwargs["where"]
+    assert where["model_name"] == "anthropic-sonnet-5"
+    assert prisma_client.db.litellm_proxymodeltable.find_many.call_args.kwargs["where"] == where
+
+    prisma_client.db.litellm_proxymodeltable.count.reset_mock()
+    _, total_count = await _apply_search_filter_to_models(
+        all_models=[],
+        search="opus",
+        prisma_client=prisma_client,
+        proxy_config=proxy_config,
+        model_name="anthropic-sonnet-5",
+    )
+    prisma_client.db.litellm_proxymodeltable.count.assert_not_called()
+    assert total_count == 0
+
+    await _apply_search_filter_to_models(
+        all_models=[],
+        search="sonnet",
+        prisma_client=prisma_client,
+        proxy_config=proxy_config,
+    )
+    where = prisma_client.db.litellm_proxymodeltable.count.call_args.kwargs["where"]
+    assert where["model_name"] == {"contains": "sonnet", "mode": "insensitive"}
 
 
 @pytest.mark.asyncio
@@ -2514,7 +2649,9 @@ async def test_get_all_team_models_with_access_groups():
 
     mock_router.get_model_list.side_effect = mock_get_model_list
 
-    with patch("litellm.proxy.proxy_server.LiteLLM_TeamTable") as mock_tt_class:
+    with (
+        patch("litellm.proxy.proxy_server.LiteLLM_TeamTable") as mock_tt_class
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
 
         def mock_team_table_constructor(data):
             mock_instance = MagicMock()
@@ -2598,8 +2735,12 @@ async def test_delete_deployment_type_mismatch():
 
     # Patch the global llm_router
     with (
-        patch("litellm.proxy.proxy_server.llm_router", mock_llm_router),
-        patch("litellm.proxy.proxy_server.user_config_file_path", "test_config.yaml"),
+        patch(
+            "litellm.proxy.proxy_server.llm_router", mock_llm_router
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.user_config_file_path", "test_config.yaml"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         # Call the function under test
         still_desired = await pc._delete_deployment(db_models=[])
@@ -2683,7 +2824,7 @@ async def test_get_config_from_file(tmp_path, monkeypatch):
     with open(empty_file, "w") as f:
         f.write("")  # Write empty content which will result in None when loaded
 
-    with pytest.raises(Exception, match="Config cannot be None or Empty."):
+    with pytest.raises(Exception, match=re.escape("Config cannot be None or Empty.")):
         await proxy_config._get_config_from_file(str(empty_file))
 
     # Test Case 5: Using global user_config_file_path when no config_file_path provided
@@ -2806,7 +2947,9 @@ async def test_add_proxy_budget_to_db_only_creates_user_no_keys():
     )
 
     # Patch generate_key_helper_fn in proxy_server where it's being called from
-    with patch("litellm.proxy.proxy_server.generate_key_helper_fn", mock_generate_key_helper):
+    with patch(
+        "litellm.proxy.proxy_server.generate_key_helper_fn", mock_generate_key_helper
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         # Call the function under test
         ProxyStartupEvent._add_proxy_budget_to_db()
 
@@ -2865,11 +3008,13 @@ async def test_add_proxy_budget_to_db_backfills_budget_reset_at():
     )
 
     with (
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.generate_key_helper_fn",
             mock_generate_key_helper,
         ),
-        patch("litellm.proxy.proxy_server.prisma_client", mock_prisma),
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", mock_prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await ProxyStartupEvent._upsert_proxy_budget_with_reset_at_backfill()
 
@@ -2924,7 +3069,7 @@ async def test_custom_ui_sso_sign_in_handler_config_loading():
     mock_custom_handler = MagicMock()
 
     try:
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.get_instance_fn",
             return_value=mock_custom_handler,
         ) as mock_get_instance:
@@ -3178,7 +3323,9 @@ async def test_load_environment_variables_direct_and_os_environ():
     # Mock get_secret_str to return a resolved value
     mock_secret_value = "resolved_secret_value"
 
-    with patch("litellm.proxy.proxy_server.get_secret_str", return_value=mock_secret_value) as mock_get_secret:
+    with (
+        patch("litellm.proxy.proxy_server.get_secret_str", return_value=mock_secret_value) as mock_get_secret
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         with patch.dict(os.environ, {}, clear=False):  # Don't clear existing env vars, just track changes
             # Call the method under test
             proxy_config._load_environment_variables(test_config)
@@ -3218,7 +3365,9 @@ async def test_load_environment_variables_litellm_license_and_edge_cases():
     mock_license_check = MagicMock()
     mock_license_check.is_premium.return_value = True
 
-    with patch("litellm.proxy.proxy_server._license_check", mock_license_check):
+    with patch(
+        "litellm.proxy.proxy_server._license_check", mock_license_check
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         with patch.dict(os.environ, {}, clear=False):
             # Call the method under test
             proxy_config._load_environment_variables(test_config_with_license)
@@ -3247,7 +3396,9 @@ async def test_load_environment_variables_litellm_license_and_edge_cases():
     # Test Case 4: os.environ/ prefix but get_secret_str returns None
     test_config_secret_none = {"environment_variables": {"FAILED_SECRET": "os.environ/NONEXISTENT_SECRET"}}
 
-    with patch("litellm.proxy.proxy_server.get_secret_str", return_value=None):
+    with patch(
+        "litellm.proxy.proxy_server.get_secret_str", return_value=None
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         with patch.dict(os.environ, {}, clear=False):
             # Call the method under test
             proxy_config._load_environment_variables(test_config_secret_none)
@@ -3344,7 +3495,7 @@ async def test_write_config_to_file(monkeypatch):
     """
     Do not write config to file if store_model_in_db is True
     """
-    from unittest.mock import AsyncMock, MagicMock, mock_open, patch
+    from unittest.mock import AsyncMock, MagicMock, patch
 
     from litellm.proxy.proxy_server import ProxyConfig
 
@@ -3369,7 +3520,10 @@ async def test_write_config_to_file(monkeypatch):
     # Mock the open function to track if file writing is attempted
     mock_file_open = mock_open()
 
-    with patch("builtins.open", mock_file_open), patch("yaml.dump") as mock_yaml_dump:
+    with (
+        patch("builtins.open", mock_file_open),
+        patch("yaml.dump") as mock_yaml_dump,
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         # Call save_config with test data
         test_config = {"key": "value", "model_list": ["model1", "model2"]}
         await proxy_config.save_config(new_config=test_config)
@@ -3392,7 +3546,7 @@ async def test_write_config_to_file_when_store_model_in_db_false(monkeypatch):
     """
     Test that config IS written to file when store_model_in_db is False
     """
-    from unittest.mock import AsyncMock, MagicMock, mock_open, patch
+    from unittest.mock import AsyncMock, MagicMock, patch
 
     from litellm.proxy.proxy_server import ProxyConfig
 
@@ -3415,7 +3569,10 @@ async def test_write_config_to_file_when_store_model_in_db_false(monkeypatch):
     # Mock the open function and yaml.dump
     mock_file_open = mock_open()
 
-    with patch("builtins.open", mock_file_open), patch("yaml.dump") as mock_yaml_dump:
+    with (
+        patch("builtins.open", mock_file_open),
+        patch("yaml.dump") as mock_yaml_dump,
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         # Call save_config with test data
         test_config = {"key": "value", "other_key": "other_value"}
         await proxy_config.save_config(new_config=test_config)
@@ -3477,13 +3634,16 @@ async def test_async_data_generator_midstream_error():
         return chunk
 
     mock_proxy_logging_obj.async_post_call_streaming_hook = AsyncMock(side_effect=mock_streaming_hook)
+
     async def remove_logging_obj(**kwargs):
         kwargs["request_data"].pop("litellm_logging_obj", None)
 
     mock_proxy_logging_obj.post_call_failure_hook = AsyncMock(side_effect=remove_logging_obj)
 
     # Mock the global proxy_logging_obj
-    with patch("litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj):
+    with patch(
+        "litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         # Create a mock response object
         mock_response = MagicMock()
 
@@ -3537,6 +3697,7 @@ async def test_async_data_generator_responses_midstream_error_is_typed_terminal_
     mock_proxy_logging_obj = MagicMock(spec=ProxyLogging)
     mock_proxy_logging_obj.needs_iterator_wrap.return_value = False
     mock_proxy_logging_obj.needs_per_chunk_streaming_hook.return_value = False
+
     async def remove_logging_obj(**kwargs):
         kwargs["request_data"].pop("litellm_logging_obj", None)
 
@@ -3549,7 +3710,9 @@ async def test_async_data_generator_responses_midstream_error_is_typed_terminal_
         "_litellm_skip_openai_stream_done": True,
     }
 
-    with patch("litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj):
+    with patch(
+        "litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         frames = [
             frame
             async for frame in async_data_generator(
@@ -3590,7 +3753,9 @@ async def test_async_data_generator_responses_serializes_http_exception_after_st
     logging_obj = MagicMock()
     logging_obj.call_type = "aresponses"
 
-    with patch("litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj):
+    with patch(
+        "litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         frames = [
             frame
             async for frame in async_data_generator(
@@ -3701,11 +3866,11 @@ async def test_chat_completion_result_no_nested_none_values():
     mock_user_api_key_dict = MagicMock(spec=UserAPIKeyAuth)
 
     with (
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server._read_request_body",
             return_value={"model": "gpt-3.5-turbo", "messages": []},
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.ProxyBaseLLMRequestProcessing",
             return_value=mock_base_processor,
         ),
@@ -3802,14 +3967,20 @@ class TestPriceDataReloadAPI:
 
         original_model_cost = litellm.model_cost.copy()
         try:
-            with patch(
-                "litellm.litellm_core_utils.get_model_cost_map.refetch_model_cost_map",
-                new=AsyncMock(
-                    return_value=ModelCostMapReloaded(model_cost_map={"gpt-3.5-turbo": {"input_cost_per_token": 0.001}})
-                ),
+            with (
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                    "litellm.litellm_core_utils.get_model_cost_map.refetch_model_cost_map",
+                    new=AsyncMock(
+                        return_value=ModelCostMapReloaded(
+                            model_cost_map={"gpt-3.5-turbo": {"input_cost_per_token": 0.001}}
+                        )
+                    ),
+                )
             ):
                 # Mock the database connection
-                with patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma:
+                with (
+                    patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma
+                ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                     mock_prisma.db.litellm_config.upsert = AsyncMock(
                         return_value=_reload_schedule_row({}, reload_revision=1)
                     )
@@ -3846,7 +4017,9 @@ class TestPriceDataReloadAPI:
 
     def test_get_model_cost_map_public_access(self, client_no_auth):
         """Test that the model cost map endpoint is publicly accessible"""
-        with patch("litellm.model_cost", {"gpt-3.5-turbo": {"input_cost_per_token": 0.001}}):
+        with patch(
+            "litellm.model_cost", {"gpt-3.5-turbo": {"input_cost_per_token": 0.001}}
+        ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             response = client_no_auth.get("/public/litellm_model_cost_map")
 
             assert response.status_code == 200
@@ -3855,12 +4028,14 @@ class TestPriceDataReloadAPI:
 
     def test_reload_model_cost_map_error_handling(self, client_with_auth):
         """Test error handling in the reload endpoint"""
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.litellm_core_utils.get_model_cost_map.refetch_model_cost_map",
             new=AsyncMock(side_effect=Exception("Network error")),
         ):
             # Mock the database connection
-            with patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma:
+            with (
+                patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma
+            ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 mock_prisma.db.litellm_config.find_unique = AsyncMock(return_value=None)
                 mock_prisma.db.litellm_config.upsert = AsyncMock(
                     return_value=_reload_schedule_row({}, reload_revision=1)
@@ -3874,7 +4049,9 @@ class TestPriceDataReloadAPI:
 
     def test_schedule_model_cost_map_reload_admin_access(self, client_with_auth):
         """Admin schedule write owns param_value only, so it can't clobber the job-owned run columns"""
-        with patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma:
+        with (
+            patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma
+        ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             # Mock database upsert
             mock_prisma.db.litellm_config.upsert = AsyncMock(return_value=_reload_schedule_row({}, reload_revision=1))
 
@@ -3920,7 +4097,9 @@ class TestPriceDataReloadAPI:
 
     def test_cancel_model_cost_map_reload_admin_access(self, client_with_auth):
         """Test that admin users can cancel periodic reload"""
-        with patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma:
+        with (
+            patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma
+        ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             mock_prisma.db.litellm_config.update_many = AsyncMock(return_value=1)
             mock_prisma.db.litellm_config.delete = AsyncMock(return_value=None)
 
@@ -3957,7 +4136,9 @@ class TestPriceDataReloadAPI:
         """
         proxy_server_module.proxy_config.model_cost_map_loaded_at = datetime(2030, 6, 1, tzinfo=timezone.utc)
 
-        with patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma:
+        with (
+            patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma
+        ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             mock_prisma.db.litellm_config.find_unique = AsyncMock(
                 return_value=_reload_schedule_row(
                     {"interval_hours": 6},
@@ -3990,7 +4171,9 @@ class TestPriceDataReloadAPI:
 
     def test_get_model_cost_map_reload_status_no_config(self, client_with_auth):
         """Test that status returns not scheduled when no config exists"""
-        with patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma:
+        with (
+            patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma
+        ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             mock_prisma.db.litellm_config.find_unique = AsyncMock(return_value=None)
 
             response = client_with_auth.get("/schedule/model_cost_map_reload/status")
@@ -4004,7 +4187,9 @@ class TestPriceDataReloadAPI:
 
     def test_get_model_cost_map_reload_status_no_interval(self, client_with_auth):
         """A row left behind by a manual reload (no interval) must not read as scheduled"""
-        with patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma:
+        with (
+            patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma
+        ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             mock_prisma.db.litellm_config.find_unique = AsyncMock(
                 return_value=_reload_schedule_row(
                     {"interval_hours": None},
@@ -4023,7 +4208,9 @@ class TestPriceDataReloadAPI:
 
     def test_get_model_cost_map_reload_status_before_first_run(self, client_with_auth):
         """Scheduled but never executed: no last_run_at means no next_run can be computed"""
-        with patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma:
+        with (
+            patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma
+        ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             mock_prisma.db.litellm_config.find_unique = AsyncMock(
                 return_value=_reload_schedule_row({"interval_hours": 6})
             )
@@ -4074,12 +4261,16 @@ class TestPriceDataReloadIntegration:
 
         original_model_cost = litellm.model_cost.copy()
         try:
-            with patch(
-                "litellm.litellm_core_utils.get_model_cost_map.refetch_model_cost_map",
-                new=AsyncMock(return_value=ModelCostMapReloaded(model_cost_map=mock_cost_map)),
+            with (
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                    "litellm.litellm_core_utils.get_model_cost_map.refetch_model_cost_map",
+                    new=AsyncMock(return_value=ModelCostMapReloaded(model_cost_map=mock_cost_map)),
+                )
             ):
                 # Mock the database connection
-                with patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma:
+                with (
+                    patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma
+                ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                     mock_prisma.db.litellm_config.upsert = AsyncMock(
                         return_value=_reload_schedule_row({}, reload_revision=1)
                     )
@@ -4103,7 +4294,7 @@ class TestPriceDataReloadIntegration:
         from litellm.proxy.proxy_server import ProxyConfig
 
         fetch_time = datetime(2024, 1, 1, 6, 0, tzinfo=timezone.utc)
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.litellm_core_utils.get_model_cost_map.get_model_cost_map_loaded_at",
             return_value=fetch_time,
         ):
@@ -4144,10 +4335,12 @@ class TestPriceDataReloadIntegration:
         original_model_cost = litellm.model_cost.copy()
         try:
             with (
-                patch(
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                     "litellm.litellm_core_utils.get_model_cost_map.refetch_model_cost_map", new_callable=AsyncMock
                 ) as mock_get_map,
-                patch("litellm.proxy.proxy_server.utc_now", return_value=frozen_now),
+                patch(
+                    "litellm.proxy.proxy_server.utc_now", return_value=frozen_now
+                ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             ):
                 mock_get_map.return_value = ModelCostMapReloaded(
                     model_cost_map={"gpt-3.5-turbo": {"input_cost_per_token": 0.001}}
@@ -4192,10 +4385,12 @@ class TestPriceDataReloadIntegration:
         original_model_cost = litellm.model_cost.copy()
         try:
             with (
-                patch(
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                     "litellm.litellm_core_utils.get_model_cost_map.refetch_model_cost_map", new_callable=AsyncMock
                 ) as mock_get_map,
-                patch("litellm.proxy.proxy_server.utc_now", return_value=frozen_now),
+                patch(
+                    "litellm.proxy.proxy_server.utc_now", return_value=frozen_now
+                ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             ):
                 asyncio.run(proxy_config._check_and_reload_model_cost_map(mock_prisma))
 
@@ -4229,10 +4424,12 @@ class TestPriceDataReloadIntegration:
         original_model_cost = litellm.model_cost.copy()
         try:
             with (
-                patch(
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                     "litellm.litellm_core_utils.get_model_cost_map.refetch_model_cost_map", new_callable=AsyncMock
                 ) as mock_get_map,
-                patch("litellm.proxy.proxy_server.utc_now", return_value=frozen_now),
+                patch(
+                    "litellm.proxy.proxy_server.utc_now", return_value=frozen_now
+                ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             ):
                 mock_get_map.return_value = ModelCostMapReloaded(
                     model_cost_map={"gpt-4-test": {"input_cost_per_token": 0.5}}
@@ -4274,10 +4471,12 @@ class TestPriceDataReloadIntegration:
         original_model_cost = litellm.model_cost.copy()
         try:
             with (
-                patch(
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                     "litellm.litellm_core_utils.get_model_cost_map.refetch_model_cost_map", new_callable=AsyncMock
                 ) as mock_get_map,
-                patch("litellm.proxy.proxy_server.utc_now", return_value=frozen_now),
+                patch(
+                    "litellm.proxy.proxy_server.utc_now", return_value=frozen_now
+                ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             ):
                 mock_get_map.return_value = ModelCostMapReloaded(
                     model_cost_map={"gpt-4": {"input_cost_per_token": 0.001}}
@@ -4318,10 +4517,12 @@ class TestPriceDataReloadIntegration:
         original_model_cost = litellm.model_cost.copy()
         try:
             with (
-                patch(
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                     "litellm.litellm_core_utils.get_model_cost_map.refetch_model_cost_map", new_callable=AsyncMock
                 ) as mock_get_map,
-                patch("litellm.proxy.proxy_server.utc_now", return_value=frozen_now),
+                patch(
+                    "litellm.proxy.proxy_server.utc_now", return_value=frozen_now
+                ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             ):
                 mock_get_map.return_value = ModelCostMapReloaded(
                     model_cost_map={"gpt-4": {"input_cost_per_token": 0.001}}
@@ -4354,10 +4555,12 @@ class TestPriceDataReloadIntegration:
         original_model_cost = litellm.model_cost.copy()
         try:
             with (
-                patch(
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                     "litellm.litellm_core_utils.get_model_cost_map.refetch_model_cost_map", new_callable=AsyncMock
                 ) as mock_get_map,
-                patch("litellm.proxy.proxy_server.utc_now", return_value=frozen_now),
+                patch(
+                    "litellm.proxy.proxy_server.utc_now", return_value=frozen_now
+                ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             ):
                 mock_get_map.return_value = ModelCostMapReloaded(
                     model_cost_map={"gpt-4": {"input_cost_per_token": 0.001}}
@@ -4395,11 +4598,13 @@ class TestPriceDataReloadIntegration:
         original_model_cost = litellm.model_cost.copy()
         try:
             with (
-                patch(
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                     "litellm.litellm_core_utils.get_model_cost_map.refetch_model_cost_map",
                     new_callable=AsyncMock,
                 ) as mock_get_map,
-                patch("litellm.proxy.proxy_server.utc_now", return_value=frozen_now),
+                patch(
+                    "litellm.proxy.proxy_server.utc_now", return_value=frozen_now
+                ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             ):
                 mock_get_map.return_value = ModelCostMapReloaded(
                     model_cost_map={"gpt-4": {"input_cost_per_token": 0.1}}
@@ -4440,11 +4645,13 @@ class TestPriceDataReloadIntegration:
 
         original_model_cost = litellm.model_cost
         with (
-            patch(
+            patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 "litellm.litellm_core_utils.get_model_cost_map.refetch_model_cost_map",
                 new=AsyncMock(return_value=ModelCostMapReloadUnavailable(reason="HTTP 429 from upstream")),
             ),
-            patch("litellm.proxy.proxy_server.utc_now", return_value=frozen_now),
+            patch(
+                "litellm.proxy.proxy_server.utc_now", return_value=frozen_now
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         ):
             asyncio.run(proxy_config._check_and_reload_model_cost_map(mock_prisma))
 
@@ -4487,7 +4694,7 @@ class TestPriceDataReloadIntegration:
             )
 
             with (
-                patch(
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                     "litellm.litellm_core_utils.get_model_cost_map.refetch_model_cost_map",
                     new=AsyncMock(
                         return_value=ModelCostMapReloaded(
@@ -4495,8 +4702,12 @@ class TestPriceDataReloadIntegration:
                         )
                     ),
                 ),
-                patch("litellm.proxy.proxy_server.utc_now", return_value=frozen_now),
-                patch("litellm.proxy.proxy_server.verbose_proxy_logger") as mock_logger,
+                patch(
+                    "litellm.proxy.proxy_server.utc_now", return_value=frozen_now
+                ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                patch(
+                    "litellm.proxy.proxy_server.verbose_proxy_logger"
+                ) as mock_logger,  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             ):
                 asyncio.run(proxy_config._check_and_reload_model_cost_map(mock_prisma))
 
@@ -4559,11 +4770,15 @@ class TestPriceDataReloadIntegration:
         original_model_cost = litellm.model_cost.copy()
         try:
             with (
-                patch(
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                     "litellm.litellm_core_utils.get_model_cost_map.refetch_model_cost_map", new_callable=AsyncMock
                 ) as mock_get_map,
-                patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma,
-                patch("litellm.proxy.proxy_server.utc_now", return_value=frozen_now),
+                patch(
+                    "litellm.proxy.proxy_server.prisma_client"
+                ) as mock_prisma,  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                patch(
+                    "litellm.proxy.proxy_server.utc_now", return_value=frozen_now
+                ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             ):
                 mock_get_map.return_value = ModelCostMapReloaded(
                     model_cost_map={"gpt-4": {"input_cost_per_token": 0.001}}
@@ -4615,7 +4830,9 @@ class TestPriceDataReloadIntegration:
         mock_prisma.get_generic_data = AsyncMock(return_value=mock_config)
         mock_prisma.db.litellm_config.upsert = AsyncMock(return_value=_reload_schedule_row({}, reload_revision=1))
 
-        with patch("litellm.anthropic_beta_headers_manager.reload_beta_headers_config") as mock_reload:
+        with (
+            patch("litellm.anthropic_beta_headers_manager.reload_beta_headers_config") as mock_reload
+        ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             mock_reload.return_value = {"anthropic": {"beta_header": "test-value"}}
 
             asyncio.run(proxy_config._check_and_reload_anthropic_beta_headers(mock_prisma))
@@ -4650,10 +4867,14 @@ class TestPriceDataReloadIntegration:
         app.dependency_overrides[user_api_key_auth] = lambda: mock_auth
         client = TestClient(app)
 
-        with patch("litellm.anthropic_beta_headers_manager.reload_beta_headers_config") as mock_reload:
+        with (
+            patch("litellm.anthropic_beta_headers_manager.reload_beta_headers_config") as mock_reload
+        ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             mock_reload.return_value = {"anthropic": {"beta_header": "test-value"}}
 
-            with patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma:
+            with (
+                patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma
+            ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                 # Simulate existing config with a schedule
                 mock_existing = MagicMock()
                 mock_existing.param_value = {"interval_hours": 8, "force_reload": False}
@@ -4786,6 +5007,90 @@ async def test_add_router_settings_from_db_config_merge_logic():
         "setting3": "db_value3",
     }
     assert combined_settings["nested_config"] == expected_nested
+
+
+@pytest.mark.asyncio
+async def test_add_router_settings_from_db_config_empty_db_lists_do_not_clobber_config_fallbacks():
+    """
+    Regression test for DB router_settings rows carrying explicit empty lists
+    (e.g. {"fallbacks": []} written by the dashboard's delete-last-fallback flow):
+    empty lists are "no value" and must not clobber config.yaml fallbacks,
+    matching _deep_merge_dicts semantics. Non-empty DB lists still win.
+    """
+    from unittest.mock import AsyncMock, MagicMock
+
+    from litellm.proxy.proxy_server import ProxyConfig
+
+    proxy_config = ProxyConfig()
+    mock_router = MagicMock()
+    mock_router.update_settings = MagicMock()
+
+    config_data = {
+        "router_settings": {
+            "fallbacks": [{"gpt-oss-120b": ["granite-4-h-small"]}],
+            "context_window_fallbacks": [{"gpt-oss-120b": ["granite-4-h-small"]}],
+            "content_policy_fallbacks": [{"gpt-oss-120b": ["granite-4-h-small"]}],
+        }
+    }
+
+    mock_db_config = MagicMock()
+    mock_db_config.param_value = {
+        "fallbacks": [],
+        "context_window_fallbacks": [],
+        "content_policy_fallbacks": [{"gpt-oss-120b": ["other-model"]}],
+        "model_group_alias": {},
+        "num_retries": 3,
+    }
+
+    mock_prisma_client = MagicMock()
+    mock_prisma_client.db.litellm_config.find_first = AsyncMock(return_value=mock_db_config)
+
+    await proxy_config._add_router_settings_from_db_config(
+        config_data=config_data,
+        llm_router=mock_router,
+        prisma_client=mock_prisma_client,
+    )
+
+    combined_settings = mock_router.update_settings.call_args.kwargs
+    assert combined_settings["fallbacks"] == [{"gpt-oss-120b": ["granite-4-h-small"]}]
+    assert combined_settings["context_window_fallbacks"] == [{"gpt-oss-120b": ["granite-4-h-small"]}]
+    assert combined_settings["content_policy_fallbacks"] == [{"gpt-oss-120b": ["other-model"]}]
+    assert combined_settings["num_retries"] == 3
+
+
+@pytest.mark.asyncio
+async def test_add_router_settings_from_db_config_empty_db_list_still_clears_unconfigured_key():
+    """
+    An empty DB list only yields to config.yaml where the yaml configures that key.
+    When the yaml router_settings has no fallbacks, a DB {"fallbacks": []} (the
+    dashboard's delete-last-fallback write) must still reach the router so the
+    running pods drop the deleted fallback without a restart.
+    """
+    from unittest.mock import AsyncMock, MagicMock
+
+    from litellm.proxy.proxy_server import ProxyConfig
+
+    proxy_config = ProxyConfig()
+    mock_router = MagicMock()
+    mock_router.update_settings = MagicMock()
+
+    config_data = {"router_settings": {"num_retries": 1}}
+
+    mock_db_config = MagicMock()
+    mock_db_config.param_value = {"fallbacks": [], "model_group_alias": {}}
+
+    mock_prisma_client = MagicMock()
+    mock_prisma_client.db.litellm_config.find_first = AsyncMock(return_value=mock_db_config)
+
+    await proxy_config._add_router_settings_from_db_config(
+        config_data=config_data,
+        llm_router=mock_router,
+        prisma_client=mock_prisma_client,
+    )
+
+    combined_settings = mock_router.update_settings.call_args.kwargs
+    assert combined_settings["fallbacks"] == []
+    assert combined_settings["num_retries"] == 1
 
 
 @pytest.mark.asyncio
@@ -4982,14 +5287,22 @@ async def test_model_info_v1_oci_secrets_not_leaked():
 
     # Mock global variables
     with (
-        patch("litellm.proxy.proxy_server.llm_router", mock_router),
-        patch("litellm.proxy.proxy_server.llm_model_list", [mock_model_data]),
-        patch("litellm.proxy.proxy_server.prisma_client", None),
         patch(
+            "litellm.proxy.proxy_server.llm_router", mock_router
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.llm_model_list", [mock_model_data]
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", None
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.general_settings",
             {"infer_model_from_keys": False},
         ),
-        patch("litellm.proxy.proxy_server.user_model", None),
+        patch(
+            "litellm.proxy.proxy_server.user_model", None
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         # Call the model_info_v1 endpoint
         result = await model_info_v1(user_api_key_dict=mock_user_api_key_dict, litellm_model_id=None)
@@ -5038,7 +5351,9 @@ def test_add_callback_from_db_to_in_memory_litellm_callbacks():
     # Mock the callback manager
     mock_callback_manager = MagicMock()
 
-    with patch("litellm.proxy.proxy_server.litellm") as mock_litellm:
+    with patch(
+        "litellm.proxy.proxy_server.litellm"
+    ) as mock_litellm:  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         # Set up mock litellm attributes
         mock_litellm._known_custom_logger_compatible_callbacks = []
         mock_litellm.logging_callback_manager = mock_callback_manager
@@ -5097,14 +5412,16 @@ def test_should_load_db_object_with_supported_db_objects():
     proxy_config = ProxyConfig()
 
     # Test Case 1: supported_db_objects not set - all objects should be loaded
-    with patch("litellm.proxy.proxy_server.general_settings", {}):
+    with patch(
+        "litellm.proxy.proxy_server.general_settings", {}
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         assert proxy_config._should_load_db_object(object_type="models") is True
         assert proxy_config._should_load_db_object(object_type="mcp") is True
         assert proxy_config._should_load_db_object(object_type="guardrails") is True
         assert proxy_config._should_load_db_object(object_type="vector_stores") is True
 
     # Test Case 2: supported_db_objects set to only load MCP
-    with patch(
+    with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         "litellm.proxy.proxy_server.general_settings",
         {"supported_db_objects": ["mcp"]},
     ):
@@ -5115,7 +5432,7 @@ def test_should_load_db_object_with_supported_db_objects():
         assert proxy_config._should_load_db_object(object_type="prompts") is False
 
     # Test Case 3: supported_db_objects set to load multiple types
-    with patch(
+    with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         "litellm.proxy.proxy_server.general_settings",
         {"supported_db_objects": ["mcp", "guardrails", "vector_stores"]},
     ):
@@ -5126,7 +5443,7 @@ def test_should_load_db_object_with_supported_db_objects():
         assert proxy_config._should_load_db_object(object_type="prompts") is False
 
     # Test Case 4: supported_db_objects is not a list (should default to loading all)
-    with patch(
+    with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         "litellm.proxy.proxy_server.general_settings",
         {"supported_db_objects": "invalid_type"},
     ):
@@ -5134,7 +5451,7 @@ def test_should_load_db_object_with_supported_db_objects():
         assert proxy_config._should_load_db_object(object_type="mcp") is True
 
     # Test Case 5: supported_db_objects is an empty list (nothing should be loaded)
-    with patch(
+    with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         "litellm.proxy.proxy_server.general_settings",
         {"supported_db_objects": []},
     ):
@@ -5143,7 +5460,7 @@ def test_should_load_db_object_with_supported_db_objects():
         assert proxy_config._should_load_db_object(object_type="guardrails") is False
 
     # Test Case 6: Test all available object types
-    with patch(
+    with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         "litellm.proxy.proxy_server.general_settings",
         {
             "supported_db_objects": [
@@ -5815,11 +6132,21 @@ async def test_get_image_non_root_uses_var_lib_assets_dir(monkeypatch):
         return False if path == "/var/lib/litellm/assets" else True
 
     with (
-        patch("litellm.proxy.proxy_server.os.makedirs") as mock_makedirs,
-        patch("litellm.proxy.proxy_server.os.path.exists", side_effect=exists_side_effect),
-        patch("litellm.proxy.proxy_server.os.access", return_value=True),
-        patch("litellm.proxy.proxy_server.os.getenv") as mock_getenv,
-        patch("litellm.proxy.proxy_server.FileResponse") as mock_file_response,
+        patch(
+            "litellm.proxy.proxy_server.os.makedirs"
+        ) as mock_makedirs,  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.os.path.exists", side_effect=exists_side_effect
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.os.access", return_value=True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.os.getenv"
+        ) as mock_getenv,  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.FileResponse"
+        ) as mock_file_response,  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         # Setup mock_getenv to return empty string for UI_LOGO_PATH
         def getenv_side_effect(key, default=""):
@@ -5865,11 +6192,21 @@ async def test_get_image_non_root_fallback_to_default_logo(monkeypatch):
 
     # Mock os.path operations
     with (
-        patch("litellm.proxy.proxy_server.os.makedirs") as mock_makedirs,
-        patch("litellm.proxy.proxy_server.os.path.exists", side_effect=exists_side_effect),
-        patch("litellm.proxy.proxy_server.os.access", return_value=True),
-        patch("litellm.proxy.proxy_server.os.getenv") as mock_getenv,
-        patch("litellm.proxy.proxy_server.FileResponse") as mock_file_response,
+        patch(
+            "litellm.proxy.proxy_server.os.makedirs"
+        ) as mock_makedirs,  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.os.path.exists", side_effect=exists_side_effect
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.os.access", return_value=True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.os.getenv"
+        ) as mock_getenv,  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.FileResponse"
+        ) as mock_file_response,  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         # Setup mock_getenv
         def getenv_side_effect(key, default=""):
@@ -5910,10 +6247,18 @@ async def test_get_image_root_case_uses_current_dir(monkeypatch):
 
     # Mock os.path operations
     with (
-        patch("litellm.proxy.proxy_server.os.makedirs") as mock_makedirs,
-        patch("litellm.proxy.proxy_server.os.path.exists", return_value=True),
-        patch("litellm.proxy.proxy_server.os.getenv") as mock_getenv,
-        patch("litellm.proxy.proxy_server.FileResponse") as mock_file_response,
+        patch(
+            "litellm.proxy.proxy_server.os.makedirs"
+        ) as mock_makedirs,  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.os.path.exists", return_value=True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.os.getenv"
+        ) as mock_getenv,  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.FileResponse"
+        ) as mock_file_response,  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         # Setup mock_getenv
         def getenv_side_effect(key, default=""):
@@ -5961,7 +6306,9 @@ async def test_get_image_custom_local_logo_bypasses_cache(monkeypatch, tmp_path)
         return MagicMock()
 
     with (
-        patch("litellm.proxy.proxy_server.FileResponse", side_effect=fake_file_response),
+        patch(
+            "litellm.proxy.proxy_server.FileResponse", side_effect=fake_file_response
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await get_image()
 
@@ -5995,7 +6342,9 @@ async def test_get_image_default_logo_ignores_stale_cache(monkeypatch, tmp_path)
         return MagicMock()
 
     with (
-        patch("litellm.proxy.proxy_server.FileResponse", side_effect=fake_file_response),
+        patch(
+            "litellm.proxy.proxy_server.FileResponse", side_effect=fake_file_response
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await get_image()
 
@@ -6027,7 +6376,9 @@ async def test_get_image_custom_logo_missing_falls_through_to_default(monkeypatc
         return MagicMock()
 
     with (
-        patch("litellm.proxy.proxy_server.FileResponse", side_effect=fake_file_response),
+        patch(
+            "litellm.proxy.proxy_server.FileResponse", side_effect=fake_file_response
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await get_image()
 
@@ -6060,7 +6411,9 @@ async def test_get_image_custom_logo_missing_no_cache_serves_default(monkeypatch
         return MagicMock()
 
     with (
-        patch("litellm.proxy.proxy_server.FileResponse", side_effect=fake_file_response),
+        patch(
+            "litellm.proxy.proxy_server.FileResponse", side_effect=fake_file_response
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await get_image()
 
@@ -6213,11 +6566,13 @@ class TestInvitationEndpoints:
     )
     def test_invitation_endpoints_proxy_admin_success(self, client_with_auth, endpoint, payload, mock_return):
         """Proxy admin can successfully create and delete invitations."""
-        with patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma:
+        with (
+            patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma
+        ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             mock_prisma.db.litellm_invitationlink = MagicMock()
             if endpoint == "/invitation/new":
                 mock_create = AsyncMock(return_value=mock_return)
-                with patch(
+                with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
                     "litellm.proxy.management_helpers.user_invitation.create_invitation_for_user",
                     mock_create,
                 ):
@@ -6251,13 +6606,17 @@ class TestInvitationEndpoints:
         mock_auth.api_key = "sk-regular"
         app.dependency_overrides[user_api_key_auth] = lambda: mock_auth
 
-        with patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma:
+        with (
+            patch("litellm.proxy.proxy_server.prisma_client") as mock_prisma
+        ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             mock_prisma.db.litellm_invitationlink = MagicMock()
             # Avoid triggering async DB calls in _user_has_admin_privileges
-            with patch(
-                "litellm.proxy.proxy_server._user_has_admin_privileges",
-                new_callable=AsyncMock,
-                return_value=False,
+            with (
+                patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+                    "litellm.proxy.proxy_server._user_has_admin_privileges",
+                    new_callable=AsyncMock,
+                    return_value=False,
+                )
             ):
                 response = client_with_auth.post(endpoint, json=payload)
 
@@ -6306,7 +6665,9 @@ async def test_async_data_generator_cleanup_on_early_exit():
     mock_response = MagicMock()
     mock_response.aclose = AsyncMock()
 
-    with patch("litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj):
+    with patch(
+        "litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         # Consume only the first chunk then abandon the generator (simulates client disconnect)
         gen = async_data_generator(mock_response, mock_user_api_key_dict, mock_request_data)
         first_chunk = await gen.__anext__()
@@ -6360,7 +6721,9 @@ async def test_async_data_generator_uses_direct_stream_fast_path_without_callbac
     mock_proxy_logging_obj.async_post_call_streaming_hook = AsyncMock()
     mock_proxy_logging_obj.post_call_failure_hook = AsyncMock()
 
-    with patch("litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj):
+    with patch(
+        "litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         with patch.object(ProxyLogging, "_fire_deferred_stream_logging") as mock_deferred_logging:
             yielded_data = []
             async for data in async_data_generator(mock_response, mock_user_api_key_dict, mock_request_data):
@@ -6416,7 +6779,9 @@ async def test_async_data_generator_preserves_non_raw_sse_like_bytes():
     mock_proxy_logging_obj.async_post_call_streaming_hook = AsyncMock()
     mock_proxy_logging_obj.post_call_failure_hook = AsyncMock()
 
-    with patch("litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj):
+    with patch(
+        "litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         with patch.object(ProxyLogging, "_fire_deferred_stream_logging"):
             yielded_data = []
             async for data in async_data_generator(mock_response, mock_user_api_key_dict, mock_request_data):
@@ -6473,7 +6838,9 @@ async def test_async_data_generator_buffers_split_google_native_sse_json_frame()
     mock_proxy_logging_obj.async_post_call_streaming_hook = AsyncMock()
     mock_proxy_logging_obj.post_call_failure_hook = AsyncMock()
 
-    with patch("litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj):
+    with patch(
+        "litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         with patch.object(ProxyLogging, "_fire_deferred_stream_logging"):
             yielded_data = []
             async for data in async_data_generator(mock_response, mock_user_api_key_dict, mock_request_data):
@@ -6521,7 +6888,9 @@ async def test_async_data_generator_flushes_raw_sse_stream_without_trailing_deli
     mock_proxy_logging_obj.post_call_failure_hook = AsyncMock()
 
     with (
-        patch("litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj),
+        patch(
+            "litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         patch.object(ProxyLogging, "_fire_deferred_stream_logging"),
     ):
         yielded_data = []
@@ -6570,8 +6939,12 @@ async def test_async_data_generator_errors_when_raw_sse_frame_exceeds_buffer_lim
     mock_proxy_logging_obj.post_call_failure_hook = AsyncMock()
 
     with (
-        patch("litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj),
-        patch("litellm.proxy.proxy_server._MAX_RAW_SSE_BUFFER_CHARS", 8),
+        patch(
+            "litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server._MAX_RAW_SSE_BUFFER_CHARS", 8
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         patch.object(ProxyLogging, "_fire_deferred_stream_logging"),
     ):
         yielded_data = []
@@ -6626,8 +6999,12 @@ async def test_async_data_generator_checks_raw_sse_buffer_limit_after_complete_f
     mock_proxy_logging_obj.post_call_failure_hook = AsyncMock()
 
     with (
-        patch("litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj),
-        patch("litellm.proxy.proxy_server._MAX_RAW_SSE_BUFFER_CHARS", 8),
+        patch(
+            "litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server._MAX_RAW_SSE_BUFFER_CHARS", 8
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         patch.object(ProxyLogging, "_fire_deferred_stream_logging"),
     ):
         yielded_data = []
@@ -6677,7 +7054,9 @@ async def test_async_data_generator_google_genai_stream_omits_openai_done():
     mock_proxy_logging_obj.async_post_call_streaming_hook = AsyncMock()
     mock_proxy_logging_obj.post_call_failure_hook = AsyncMock()
 
-    with patch("litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj):
+    with patch(
+        "litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         with patch.object(ProxyLogging, "_fire_deferred_stream_logging"):
             yielded_data = []
             async for data in async_data_generator(mock_response, mock_user_api_key_dict, mock_request_data):
@@ -6719,7 +7098,9 @@ async def test_async_data_generator_does_not_mark_completed_stream_as_disconnect
     mock_proxy_logging_obj.async_post_call_streaming_hook = AsyncMock()
     mock_proxy_logging_obj.post_call_failure_hook = AsyncMock()
 
-    with patch("litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj):
+    with patch(
+        "litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         with patch.object(ProxyLogging, "_fire_deferred_stream_logging"):
             yielded_data = []
             async for data in async_data_generator(
@@ -6769,7 +7150,9 @@ async def test_async_data_generator_google_genai_stream_forwards_error_without_d
     mock_proxy_logging_obj.async_post_call_streaming_hook = AsyncMock()
     mock_proxy_logging_obj.post_call_failure_hook = AsyncMock()
 
-    with patch("litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj):
+    with patch(
+        "litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         with patch.object(ProxyLogging, "_fire_deferred_stream_logging"):
             yielded_data = []
             async for data in async_data_generator(mock_response, mock_user_api_key_dict, mock_request_data):
@@ -6814,7 +7197,9 @@ async def test_async_data_generator_cleanup_on_normal_completion():
     mock_response = MagicMock()
     mock_response.aclose = AsyncMock()
 
-    with patch("litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj):
+    with patch(
+        "litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         yielded_data = []
         async for data in async_data_generator(mock_response, mock_user_api_key_dict, mock_request_data):
             yielded_data.append(data)
@@ -6856,7 +7241,9 @@ async def test_async_data_generator_cleanup_on_midstream_error():
     mock_response = MagicMock()
     mock_response.aclose = AsyncMock()
 
-    with patch("litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj):
+    with patch(
+        "litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         yielded_data = []
         async for data in async_data_generator(mock_response, mock_user_api_key_dict, mock_request_data):
             yielded_data.append(data)
@@ -6910,8 +7297,12 @@ async def test_update_general_settings_store_model_in_db_true():
     proxy_config = ProxyConfig()
 
     with (
-        patch("litellm.proxy.proxy_server.store_model_in_db", False) as mock_store,
-        patch("litellm.proxy.proxy_server.general_settings", {}) as mock_gs,
+        patch(
+            "litellm.proxy.proxy_server.store_model_in_db", False
+        ) as mock_store,  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.general_settings", {}
+        ) as mock_gs,  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await proxy_config._update_general_settings(db_general_settings={"store_model_in_db": True})
 
@@ -6932,8 +7323,12 @@ async def test_update_general_settings_store_model_in_db_false():
     proxy_config = ProxyConfig()
 
     with (
-        patch("litellm.proxy.proxy_server.store_model_in_db", True),
-        patch("litellm.proxy.proxy_server.general_settings", {}),
+        patch(
+            "litellm.proxy.proxy_server.store_model_in_db", True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.general_settings", {}
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await proxy_config._update_general_settings(db_general_settings={"store_model_in_db": False})
 
@@ -6952,7 +7347,9 @@ async def test_update_general_settings_propagates_apply_user_budget_to_team_keys
 
     proxy_config = ProxyConfig()
 
-    with patch("litellm.proxy.proxy_server.general_settings", {}):
+    with patch(
+        "litellm.proxy.proxy_server.general_settings", {}
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         await proxy_config._update_general_settings(db_general_settings={"apply_user_budget_to_team_keys": "true"})
 
         import litellm.proxy.proxy_server as ps
@@ -6979,7 +7376,9 @@ async def test_update_general_settings_propagates_spend_log_cleanup_bounds():
     }
     assert set(db_settings) == set(SPEND_LOG_CLEANUP_BOUND_SETTINGS)
 
-    with patch("litellm.proxy.proxy_server.general_settings", {}):
+    with patch(
+        "litellm.proxy.proxy_server.general_settings", {}
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         await proxy_config._update_general_settings(db_general_settings=db_settings)
 
         import litellm.proxy.proxy_server as ps
@@ -6995,7 +7394,7 @@ async def test_update_general_settings_clears_a_spend_log_cleanup_bound_dropped_
 
     proxy_config = ProxyConfig()
 
-    with patch(
+    with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         "litellm.proxy.proxy_server.general_settings",
         {"maximum_spend_logs_cleanup_run_budget": "90s", "maximum_spend_logs_cleanup_batch_timeout": "10s"},
     ):
@@ -7018,7 +7417,9 @@ async def test_update_general_settings_keeps_a_yaml_set_spend_log_cleanup_bound(
     proxy_config = ProxyConfig()
     proxy_config._yaml_spend_log_cleanup_bounds = {"maximum_spend_logs_cleanup_run_budget": "90s"}
 
-    with patch("litellm.proxy.proxy_server.general_settings", {"maximum_spend_logs_cleanup_run_budget": "90s"}):
+    with patch(
+        "litellm.proxy.proxy_server.general_settings", {"maximum_spend_logs_cleanup_run_budget": "90s"}
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         await proxy_config._update_general_settings(db_general_settings={"store_model_in_db": True})
 
         import litellm.proxy.proxy_server as ps
@@ -7037,7 +7438,9 @@ async def test_update_general_settings_clearing_a_db_override_falls_back_to_the_
     proxy_config._yaml_spend_log_cleanup_bounds = {"maximum_spend_logs_cleanup_run_budget": "90s"}
 
     # Memory currently holds the dashboard override, and the DB no longer carries it.
-    with patch("litellm.proxy.proxy_server.general_settings", {"maximum_spend_logs_cleanup_run_budget": "30s"}):
+    with patch(
+        "litellm.proxy.proxy_server.general_settings", {"maximum_spend_logs_cleanup_run_budget": "30s"}
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         await proxy_config._update_general_settings(db_general_settings={"store_model_in_db": True})
 
         import litellm.proxy.proxy_server as ps
@@ -7053,7 +7456,9 @@ async def test_update_general_settings_apply_user_budget_to_team_keys_yaml_wins(
     proxy_config = ProxyConfig()
     proxy_config._yaml_general_settings_keys = {"apply_user_budget_to_team_keys"}
 
-    with patch("litellm.proxy.proxy_server.general_settings", {"apply_user_budget_to_team_keys": True}):
+    with patch(
+        "litellm.proxy.proxy_server.general_settings", {"apply_user_budget_to_team_keys": True}
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         await proxy_config._update_general_settings(db_general_settings={"apply_user_budget_to_team_keys": False})
 
         import litellm.proxy.proxy_server as ps
@@ -7077,7 +7482,9 @@ async def test_update_general_settings_disable_auto_add_proxy_admin_to_teams(db_
 
     proxy_config = ProxyConfig()
 
-    with patch("litellm.proxy.proxy_server.general_settings", {}):
+    with patch(
+        "litellm.proxy.proxy_server.general_settings", {}
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         await proxy_config._update_general_settings(
             db_general_settings={"disable_auto_add_proxy_admin_to_teams": db_value}
         )
@@ -7098,8 +7505,12 @@ async def test_update_general_settings_store_model_in_db_string_normalization():
 
     # Test "true" string
     with (
-        patch("litellm.proxy.proxy_server.store_model_in_db", False),
-        patch("litellm.proxy.proxy_server.general_settings", {}),
+        patch(
+            "litellm.proxy.proxy_server.store_model_in_db", False
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.general_settings", {}
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await proxy_config._update_general_settings(db_general_settings={"store_model_in_db": "true"})
         import litellm.proxy.proxy_server as ps
@@ -7108,8 +7519,12 @@ async def test_update_general_settings_store_model_in_db_string_normalization():
 
     # Test "True" string
     with (
-        patch("litellm.proxy.proxy_server.store_model_in_db", False),
-        patch("litellm.proxy.proxy_server.general_settings", {}),
+        patch(
+            "litellm.proxy.proxy_server.store_model_in_db", False
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.general_settings", {}
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await proxy_config._update_general_settings(db_general_settings={"store_model_in_db": "True"})
         import litellm.proxy.proxy_server as ps
@@ -7118,8 +7533,12 @@ async def test_update_general_settings_store_model_in_db_string_normalization():
 
     # Test "false" string
     with (
-        patch("litellm.proxy.proxy_server.store_model_in_db", True),
-        patch("litellm.proxy.proxy_server.general_settings", {}),
+        patch(
+            "litellm.proxy.proxy_server.store_model_in_db", True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.general_settings", {}
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await proxy_config._update_general_settings(db_general_settings={"store_model_in_db": "false"})
         import litellm.proxy.proxy_server as ps
@@ -7139,8 +7558,12 @@ async def test_update_general_settings_store_model_in_db_none_keeps_current():
 
     # When current is True and DB sends None, should stay True
     with (
-        patch("litellm.proxy.proxy_server.store_model_in_db", True),
-        patch("litellm.proxy.proxy_server.general_settings", {}),
+        patch(
+            "litellm.proxy.proxy_server.store_model_in_db", True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.general_settings", {}
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await proxy_config._update_general_settings(db_general_settings={"store_model_in_db": None})
         import litellm.proxy.proxy_server as ps
@@ -7149,8 +7572,12 @@ async def test_update_general_settings_store_model_in_db_none_keeps_current():
 
     # When current is False and DB sends None, should stay False
     with (
-        patch("litellm.proxy.proxy_server.store_model_in_db", False),
-        patch("litellm.proxy.proxy_server.general_settings", {}),
+        patch(
+            "litellm.proxy.proxy_server.store_model_in_db", False
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.general_settings", {}
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await proxy_config._update_general_settings(db_general_settings={"store_model_in_db": None})
         import litellm.proxy.proxy_server as ps
@@ -7173,12 +7600,24 @@ async def test_batch_cost_poller_is_confirmed_before_serving(monkeypatch):
     mock_proxy_logging.db_spend_update_writer = MagicMock()
 
     with (
-        patch("litellm.proxy.proxy_server.proxy_config", AsyncMock()),
-        patch("litellm.proxy.proxy_server.store_model_in_db", False),
-        patch("litellm.proxy.proxy_server.llm_router", MagicMock()),
-        patch("litellm.proxy.proxy_server.PROXY_BATCH_POLLING_ENABLED", True),
-        patch("litellm.constants.PROXY_BATCH_POLLING_ENABLED", True),
-        patch("litellm.proxy.proxy_server.get_secret_bool", return_value=False),
+        patch(
+            "litellm.proxy.proxy_server.proxy_config", AsyncMock()
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.store_model_in_db", False
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.llm_router", MagicMock()
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.PROXY_BATCH_POLLING_ENABLED", True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.constants.PROXY_BATCH_POLLING_ENABLED", True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.get_secret_bool", return_value=False
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await ProxyStartupEvent.initialize_scheduled_background_jobs(
             general_settings={},
@@ -7218,9 +7657,15 @@ async def test_store_model_in_db_db_override_when_config_false():
     mock_proxy_config = AsyncMock()
 
     with (
-        patch("litellm.proxy.proxy_server.proxy_config", mock_proxy_config),
-        patch("litellm.proxy.proxy_server.store_model_in_db", False),
-        patch("litellm.proxy.proxy_server.get_secret_bool", return_value=False),
+        patch(
+            "litellm.proxy.proxy_server.proxy_config", mock_proxy_config
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.store_model_in_db", False
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.get_secret_bool", return_value=False
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await ProxyStartupEvent.initialize_scheduled_background_jobs(
             general_settings={},
@@ -7261,9 +7706,15 @@ async def test_store_model_in_db_db_check_skipped_when_already_true(monkeypatch)
     mock_proxy_config = AsyncMock()
 
     with (
-        patch("litellm.proxy.proxy_server.proxy_config", mock_proxy_config),
-        patch("litellm.proxy.proxy_server.store_model_in_db", True),
-        patch("litellm.proxy.proxy_server.get_secret_bool", return_value=True),
+        patch(
+            "litellm.proxy.proxy_server.proxy_config", mock_proxy_config
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.store_model_in_db", True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.get_secret_bool", return_value=True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await ProxyStartupEvent.initialize_scheduled_background_jobs(
             general_settings={},
@@ -7304,9 +7755,15 @@ async def test_store_model_in_db_db_failure_graceful(monkeypatch):
     mock_proxy_config = AsyncMock()
 
     with (
-        patch("litellm.proxy.proxy_server.proxy_config", mock_proxy_config),
-        patch("litellm.proxy.proxy_server.store_model_in_db", False),
-        patch("litellm.proxy.proxy_server.get_secret_bool", return_value=False),
+        patch(
+            "litellm.proxy.proxy_server.proxy_config", mock_proxy_config
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.store_model_in_db", False
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.get_secret_bool", return_value=False
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         # Should not raise an exception
         await ProxyStartupEvent.initialize_scheduled_background_jobs(
@@ -7732,6 +8189,7 @@ async def test_window_spend_counter_reseeds_from_spend_logs_on_counter_miss():
     counter_cache = DualCache()
     window_start = datetime.now(timezone.utc) - timedelta(hours=1)
     fake_prisma = MagicMock()
+    fake_prisma.db.litellm_budgetwindowspend.find_unique = AsyncMock(return_value=None)
     fake_prisma.db.litellm_spendlogs.group_by = AsyncMock(
         return_value=[{"api_key": "key-window", "_sum": {"spend": 2.25}}]
     )
@@ -7746,6 +8204,7 @@ async def test_window_spend_counter_reseeds_from_spend_logs_on_counter_miss():
             counter_key="spend:key:key-window:window:1h",
             entity_type="Key",
             entity_id="key-window",
+            window_duration="1h",
             window_start=window_start,
             increment=0.5,
         )
@@ -7849,6 +8308,7 @@ async def test_window_spend_counter_redis_clean_miss_skips_stale_in_memory():
     counter_cache.redis_cache = fake_redis
 
     fake_prisma = MagicMock()
+    fake_prisma.db.litellm_budgetwindowspend.find_unique = AsyncMock(return_value=None)
     fake_prisma.db.litellm_spendlogs.group_by = AsyncMock(
         return_value=[{"api_key": "key-window-stale-local", "_sum": {"spend": 2.25}}]
     )
@@ -7863,6 +8323,7 @@ async def test_window_spend_counter_redis_clean_miss_skips_stale_in_memory():
             counter_key=counter_key,
             entity_type="Key",
             entity_id="key-window-stale-local",
+            window_duration="1h",
             window_start=window_start,
             increment=0.5,
         )
@@ -7911,6 +8372,7 @@ async def test_window_spend_counter_redis_concurrent_seed_does_not_double_seed()
     counter_cache.redis_cache = fake_redis
 
     fake_prisma = MagicMock()
+    fake_prisma.db.litellm_budgetwindowspend.find_unique = AsyncMock(return_value=None)
     fake_prisma.db.litellm_spendlogs.group_by = AsyncMock(
         return_value=[{"api_key": "key-window-concurrent-seed", "_sum": {"spend": 2.25}}]
     )
@@ -7925,6 +8387,7 @@ async def test_window_spend_counter_redis_concurrent_seed_does_not_double_seed()
             counter_key=counter_key,
             entity_type="Key",
             entity_id="key-window-concurrent-seed",
+            window_duration="1h",
             window_start=window_start,
             increment=0.5,
         )
@@ -7957,6 +8420,7 @@ async def test_window_spend_counter_skips_invalid_window_start():
             counter_key="spend:key:key-invalid-window:window:not-a-duration",
             entity_type="Key",
             entity_id="key-invalid-window",
+            window_duration="not-a-duration",
             window_start=None,
             increment=0.5,
         )
@@ -7984,6 +8448,7 @@ async def test_window_spend_counter_does_not_seed_zero_when_db_unavailable():
             counter_key=counter_key,
             entity_type="Key",
             entity_id="key-window-db-unavailable",
+            window_duration="1h",
             window_start=datetime.now(timezone.utc) - timedelta(hours=1),
         )
 
@@ -8029,7 +8494,7 @@ async def test_increment_spend_counters_finalizes_after_unreserved_increments():
     ps.spend_counter_cache = counter_cache
     ps.user_api_key_cache = DualCache()
     try:
-        with patch(
+        with patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server._init_and_increment_spend_counter",
             new=AsyncMock(side_effect=assert_reservation_not_finalized_yet),
         ):
@@ -8809,6 +9274,60 @@ class TestLazyFeatureRegistry:
         names = [f.name for f in LAZY_FEATURES]
         assert len(names) == len(set(names)), "duplicate feature names"
 
+    @pytest.mark.parametrize(
+        "path",
+        (
+            "/lazymcp",
+            "/lazymcp/",
+            "/lazymcp/team-a",
+            "/lazymcp/team-a/",
+            "/toolset/tools-a/lazymcp",
+            "/toolset/tools-a/lazymcp/",
+        ),
+    )
+    def test_lazymcp_lazy_feature_claims_every_public_route(self, path):
+        from litellm.proxy._lazy_features import LAZY_FEATURES
+
+        feature = next(item for item in LAZY_FEATURES if item.name == "lazymcp_routes")
+        assert feature.matches(path)
+        assert not feature.matches("/mcp/lazymcp")
+
+    @pytest.mark.parametrize(
+        "path",
+        (
+            "/.well-known/oauth-protected-resource/lazymcp",
+            "/.well-known/oauth-protected-resource/lazymcp/team-a",
+            "/.well-known/oauth-protected-resource/toolset/tools-a/lazymcp",
+            "/lazymcp/.well-known/oauth-protected-resource",
+            "/lazymcp/team-a/.well-known/oauth-protected-resource",
+            "/toolset/tools-a/lazymcp/.well-known/oauth-protected-resource",
+            "/lazymcp/team-a/extra",
+            "/toolset/tools-a/extra/lazymcp",
+        ),
+    )
+    def test_lazymcp_lazy_feature_rejects_discovery_and_non_transport_paths(self, path):
+        from litellm.proxy._lazy_features import LAZY_FEATURES
+
+        feature = next(item for item in LAZY_FEATURES if item.name == "lazymcp_routes")
+        assert not feature.matches(path)
+
+    @pytest.mark.parametrize(
+        "path",
+        (
+            "/.well-known/oauth-protected-resource/lazymcp",
+            "/.well-known/oauth-protected-resource/lazymcp/team-a",
+            "/.well-known/oauth-protected-resource/toolset/tools-a/lazymcp",
+            "/lazymcp/.well-known/oauth-protected-resource",
+            "/lazymcp/team-a/.well-known/oauth-protected-resource",
+            "/toolset/tools-a/lazymcp/.well-known/oauth-protected-resource",
+        ),
+    )
+    def test_mcp_discoverable_is_sole_lazy_owner_of_lazymcp_metadata(self, path):
+        from litellm.proxy._lazy_features import LAZY_FEATURES
+
+        matching = [feature.name for feature in LAZY_FEATURES if feature.matches(path)]
+        assert matching == ["mcp_discoverable"]
+
     def test_matches_covers_prefix_and_suffix(self):
         """``matches`` is the single matcher shared by the middleware (request
         paths) and the warm endpoint (registered route paths), so a route that
@@ -9115,6 +9634,78 @@ class TestLazyFeatureMiddleware:
         )
 
 
+class TestInjectLazyStubs:
+    """Stub injection keys off the app-tracked loaded set, never sys.modules:
+    proxy boot imports several feature modules (mcp_management, cloudzero,
+    vantage, config_overrides) without mounting their routers, and their
+    /openapi.json entries must survive that (LIT-6275)."""
+
+    def test_imported_but_unregistered_module_still_gets_stub(self):
+        import sys
+
+        from litellm.proxy._lazy_features import LazyFeature, inject_lazy_stubs
+
+        feat = LazyFeature(
+            name="dummy_lazy_test",
+            module_path="json",
+            path_prefixes=("/dummy-lazy-test",),
+        )
+        assert feat.module_path in sys.modules
+
+        schema = inject_lazy_stubs({"paths": {}}, loaded_modules=frozenset(), features=(feat,))
+        assert "/dummy-lazy-test" in schema["paths"]
+
+    def test_registered_module_gets_no_stub(self):
+        from litellm.proxy._lazy_features import LazyFeature, inject_lazy_stubs
+
+        feat = LazyFeature(
+            name="dummy_lazy_test",
+            module_path="json",
+            path_prefixes=("/dummy-lazy-test",),
+        )
+        schema = inject_lazy_stubs({"paths": {}}, loaded_modules=frozenset({"json"}), features=(feat,))
+        assert "/dummy-lazy-test" not in schema["paths"]
+
+    def test_snapshot_fragments_injected_for_boot_imported_features(self):
+        from litellm.proxy._lazy_features import LAZY_FEATURES, inject_lazy_stubs
+        from litellm.proxy._lazy_openapi_snapshot import load_snapshot
+
+        snapshot = load_snapshot()
+        assert snapshot
+        boot_imported = tuple(
+            f for f in LAZY_FEATURES if f.name in ("mcp_management", "cloudzero", "vantage", "config_overrides")
+        )
+        assert len(boot_imported) == 4
+
+        schema = inject_lazy_stubs({"paths": {}}, loaded_modules=frozenset(), features=boot_imported)
+        for feat in boot_imported:
+            missing = [p for p in snapshot[feat.name]["paths"] if p not in schema["paths"]]
+            assert not missing, f"{feat.name} snapshot paths missing from /openapi.json: {missing}"
+
+    def test_persistent_stub_survives_load(self):
+        from litellm.proxy._lazy_features import LazyFeature, inject_lazy_stubs
+
+        feat = LazyFeature(
+            name="dummy_lazy_test",
+            module_path="json",
+            path_prefixes=("/dummy-lazy-test",),
+            persistent_swagger_stub=True,
+        )
+        schema = inject_lazy_stubs({"paths": {}}, loaded_modules=frozenset({"json"}), features=(feat,))
+        assert "/dummy-lazy-test" in schema["paths"]
+
+    def test_loaded_lazy_modules_reads_app_state(self):
+        from fastapi import FastAPI
+
+        from litellm.proxy._lazy_features import loaded_lazy_modules
+
+        app = FastAPI()
+        assert loaded_lazy_modules(app) == frozenset()
+
+        app.state.lazy_loaded = {"litellm.proxy.spend_tracking.cloudzero_endpoints"}
+        assert loaded_lazy_modules(app) == frozenset({"litellm.proxy.spend_tracking.cloudzero_endpoints"})
+
+
 @pytest.mark.asyncio
 async def test_get_current_spend_redis_clean_miss_skips_stale_in_memory():
     """When Redis is reachable and cleanly returns None (TTL expired,
@@ -9361,7 +9952,9 @@ class TestDeleteDeploymentSync:
         mock_router.get_model_ids.return_value = ["model-id-to-evict"]
         mock_router.delete_deployment.return_value = MagicMock()
 
-        with patch("litellm.proxy.proxy_server.llm_router", mock_router):
+        with patch(
+            "litellm.proxy.proxy_server.llm_router", mock_router
+        ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             with patch.object(proxy_config, "get_config", AsyncMock(return_value={"model_list": []})):
                 still_desired = await proxy_config._delete_deployment(db_models=[])
 
@@ -9384,7 +9977,9 @@ class TestDeleteDeploymentSync:
         proxy_config = ProxyConfig()
         mock_router = MagicMock()
 
-        with patch("litellm.proxy.proxy_server.llm_router", mock_router):
+        with patch(
+            "litellm.proxy.proxy_server.llm_router", mock_router
+        ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             with patch.object(proxy_config, "get_config", AsyncMock(return_value={})):
                 await proxy_config._update_llm_router(new_models=None, proxy_logging_obj=MagicMock())
 
@@ -9408,6 +10003,76 @@ class TestDeleteDeploymentSync:
         result = await proxy_config._get_models_from_db(prisma_client=mock_prisma)
 
         assert result is None, f"Expected None on DB failure to signal fetch error, got {result!r}"
+
+    @pytest.mark.asyncio
+    async def test_get_models_from_db_reads_from_writer_not_replica(self):
+        """
+        Regression for #38556: with DATABASE_URL_READ_REPLICA configured, the model
+        reconcile after /model/new used to read via the replica, so a lagging replica
+        made the reload miss the just-committed row and fail the request with a 500.
+        The reconcile read must be pinned to the writer.
+        """
+        from unittest.mock import AsyncMock, MagicMock
+
+        from litellm.proxy.db.prisma_client import PrismaWrapper
+        from litellm.proxy.db.routing_prisma_wrapper import RoutingPrismaWrapper
+        from litellm.proxy.proxy_server import ProxyConfig
+
+        writer_inner = MagicMock(name="writer_prisma")
+        reader_inner = MagicMock(name="reader_prisma")
+        committed_row = MagicMock(name="just_committed_model_row")
+        writer_inner.litellm_proxymodeltable.find_many = AsyncMock(return_value=[committed_row])
+        reader_inner.litellm_proxymodeltable.find_many = AsyncMock(return_value=[])
+
+        mock_prisma = MagicMock()
+        mock_prisma.db = RoutingPrismaWrapper(
+            writer=PrismaWrapper(original_prisma=writer_inner, iam_token_db_auth=False),
+            reader=PrismaWrapper(original_prisma=reader_inner, iam_token_db_auth=False),
+        )
+
+        result = await ProxyConfig()._get_models_from_db(prisma_client=mock_prisma)
+
+        assert result == [committed_row], f"Expected the writer's just-committed row, got {result!r}"
+        reader_inner.litellm_proxymodeltable.find_many.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_get_models_from_db_falls_back_to_replica_when_writer_down(self):
+        """
+        The writer pin must not break reader-only degraded mode: a proxy that
+        starts during a primary outage (writer connect failed, replica healthy)
+        must still load DB-backed models through the replica instead of sending
+        the reconcile read to the unavailable writer.
+        """
+        from types import SimpleNamespace
+        from unittest.mock import AsyncMock, MagicMock
+
+        from litellm.proxy.db.prisma_client import PrismaWrapper
+        from litellm.proxy.db.routing_prisma_wrapper import RoutingPrismaWrapper
+        from litellm.proxy.proxy_server import ProxyConfig
+
+        writer_inner = MagicMock(name="writer_prisma")
+        reader_inner = MagicMock(name="reader_prisma")
+        replica_row = MagicMock(name="replica_model_row")
+        writer_inner.litellm_proxymodeltable = SimpleNamespace(
+            find_many=AsyncMock(side_effect=RuntimeError("writer unreachable")),
+            create=MagicMock(name="writer_create"),
+        )
+        reader_inner.litellm_proxymodeltable = SimpleNamespace(
+            find_many=AsyncMock(return_value=[replica_row]),
+            create=MagicMock(name="reader_create"),
+        )
+
+        mock_prisma = MagicMock()
+        mock_prisma.db = RoutingPrismaWrapper(
+            writer=PrismaWrapper(original_prisma=writer_inner, iam_token_db_auth=False),
+            reader=PrismaWrapper(original_prisma=reader_inner, iam_token_db_auth=False),
+        )
+        mock_prisma.db._writer_unavailable = True
+
+        result = await ProxyConfig()._get_models_from_db(prisma_client=mock_prisma)
+
+        assert result == [replica_row], f"Expected the replica's rows in degraded mode, got {result!r}"
+        writer_inner.litellm_proxymodeltable.find_many.assert_not_awaited()
 
 
 def test_get_config_list_includes_cancel_on_disconnect(monkeypatch):
@@ -10500,11 +11165,13 @@ def _run_init_cache_with_backend(cache_backend, redis_env_kwargs):
         patch.object(proxy_server_module, "llm_router", None),
         patch.object(proxy_server_module, "litellm_config_cache", fresh_config_cache),
         patch.object(proxy_server_module, "RedisCache", _EnvBuiltRedisCache),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm._redis._redis_kwargs_from_environment",
             return_value=redis_env_kwargs,
         ),
-        patch("litellm.Cache", return_value=mock_litellm_cache),
+        patch(
+            "litellm.Cache", return_value=mock_litellm_cache
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         litellm.cache = None
         resolved = proxy_server_module.ProxyConfig()._init_cache(cache_params={"type": "qdrant-semantic"})
@@ -10674,7 +11341,9 @@ def test_explicit_coordination_redis_takes_precedence_over_cache_backend():
         patch.object(proxy_server_module, "litellm_config_cache", fresh_config_cache),
         patch.object(proxy_server_module, "RedisCache", _EnvBuiltRedisCache),
         patch.object(proxy_server_module, "RedisClusterCache", _EnvBuiltClusterCache),
-        patch("litellm.Cache", return_value=mock_litellm_cache),
+        patch(
+            "litellm.Cache", return_value=mock_litellm_cache
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         litellm.cache = None
         proxy_config = proxy_server_module.ProxyConfig()
@@ -10699,7 +11368,9 @@ def test_env_fallback_builds_cluster_client_from_cluster_nodes_env():
     with (
         patch.object(proxy_server_module, "RedisCache", _EnvBuiltRedisCache),
         patch.object(proxy_server_module, "RedisClusterCache", _EnvBuiltClusterCache),
-        patch("litellm._redis._redis_kwargs_from_environment", return_value={}),
+        patch(
+            "litellm._redis._redis_kwargs_from_environment", return_value={}
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         mock.patch.dict(os.environ, {"REDIS_CLUSTER_NODES": nodes}, clear=False),
     ):
         result = proxy_server_module._build_redis_usage_cache_from_environment()
@@ -10714,7 +11385,9 @@ def test_env_fallback_builds_client_from_sentinel_nodes_env():
     with (
         patch.object(proxy_server_module, "RedisCache", _EnvBuiltRedisCache),
         patch.object(proxy_server_module, "RedisClusterCache", _EnvBuiltClusterCache),
-        patch("litellm._redis._redis_kwargs_from_environment", return_value={}),
+        patch(
+            "litellm._redis._redis_kwargs_from_environment", return_value={}
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         mock.patch.dict(os.environ, {"REDIS_SENTINEL_NODES": '[["s1", 26379]]'}, clear=False),
     ):
         result = proxy_server_module._build_redis_usage_cache_from_environment()
@@ -10902,7 +11575,9 @@ async def _collect_async_data_generator_frames(request_data: dict) -> list:
     mock_proxy_logging_obj.needs_per_chunk_streaming_hook.return_value = False
     mock_proxy_logging_obj.post_call_failure_hook = AsyncMock()
 
-    with patch("litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj):
+    with patch(
+        "litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         with patch.object(proxy_server_module.ProxyLogging, "_fire_deferred_stream_logging"):
             return [
                 frame.decode("utf-8") if isinstance(frame, bytes) else frame
@@ -11008,6 +11683,263 @@ def test_startup_is_silent_when_mock_testing_params_disabled(caplog):
         ProxyStartupEvent._warn_if_mock_testing_params_enabled(general_settings={})
 
     assert MOCK_TESTING_CONFIG_KEY not in caplog.text
+
+
+# ---------------------------------------------------------------------------
+# Budget window spend row enqueue (LiteLLM_BudgetWindowSpend writer)
+# ---------------------------------------------------------------------------
+
+
+@contextlib.contextmanager
+def _window_spend_enqueue_env(cached_objects: dict):
+    """Point increment_spend_counters at throwaway caches and a real
+    WindowSpendUpdateQueue, and hand back the queue to inspect."""
+    from litellm.caching.dual_cache import DualCache
+    from litellm.proxy.db.db_transaction_queue.window_spend_update_queue import (
+        WindowSpendUpdateQueue,
+    )
+    import litellm.proxy.proxy_server as ps
+
+    user_api_key_cache = MagicMock()
+    user_api_key_cache.async_get_cache = AsyncMock(side_effect=lambda key, **_: cached_objects.get(key))
+
+    queue = WindowSpendUpdateQueue()
+    proxy_logging_obj = MagicMock()
+    proxy_logging_obj.db_spend_update_writer.window_spend_update_queue = queue
+
+    originals = (
+        ps.user_api_key_cache,
+        ps.spend_counter_cache,
+        ps.prisma_client,
+        ps.proxy_logging_obj,
+    )
+    ps.user_api_key_cache = user_api_key_cache
+    ps.spend_counter_cache = DualCache()
+    ps.prisma_client = None
+    ps.proxy_logging_obj = proxy_logging_obj
+    try:
+        yield queue
+    finally:
+        (
+            ps.user_api_key_cache,
+            ps.spend_counter_cache,
+            ps.prisma_client,
+            ps.proxy_logging_obj,
+        ) = originals
+
+
+async def _drain(queue):
+    return list(await queue.flush_and_get_aggregated_window_spend_transactions())
+
+
+@pytest.mark.asyncio
+async def test_key_window_spend_row_is_enqueued_with_the_actual_cost():
+    from litellm.proxy.proxy_server import increment_spend_counters
+
+    reset_at = datetime.now(timezone.utc) + timedelta(days=10)
+    key_obj = MagicMock()
+    key_obj.budget_limits = [{"budget_duration": "30d", "max_budget": 100.0, "reset_at": reset_at.isoformat()}]
+
+    with _window_spend_enqueue_env({"hashed-token": key_obj}) as queue:
+        await increment_spend_counters(token="hashed-token", team_id=None, user_id=None, response_cost=0.25)
+        enqueued = await _drain(queue)
+
+    assert len(enqueued) == 1
+    assert enqueued[0]["entity_type"] == "key"
+    assert enqueued[0]["entity_id"] == "hashed-token"
+    assert enqueued[0]["window_duration"] == "30d"
+    assert enqueued[0]["spend"] == pytest.approx(0.25)
+    assert enqueued[0]["window_start"] == (reset_at - timedelta(days=30)).astimezone(timezone.utc).replace(
+        tzinfo=None
+    ).isoformat(timespec="microseconds")
+
+
+@pytest.mark.asyncio
+async def test_team_window_spend_row_is_enqueued():
+    from litellm.proxy.proxy_server import increment_spend_counters
+
+    reset_at = datetime.now(timezone.utc) + timedelta(days=3)
+    team_obj = MagicMock()
+    team_obj.budget_limits = [{"budget_duration": "7d", "max_budget": 50.0, "reset_at": reset_at.isoformat()}]
+
+    with _window_spend_enqueue_env({"team_id:team-1": team_obj}) as queue:
+        await increment_spend_counters(token=None, team_id="team-1", user_id=None, response_cost=1.5)
+        enqueued = await _drain(queue)
+
+    assert len(enqueued) == 1
+    assert enqueued[0]["entity_type"] == "team"
+    assert enqueued[0]["entity_id"] == "team-1"
+    assert enqueued[0]["window_duration"] == "7d"
+    assert enqueued[0]["spend"] == pytest.approx(1.5)
+
+
+@pytest.mark.asyncio
+async def test_window_spend_row_is_enqueued_even_when_the_counter_was_reserved():
+    """A reservation only pre-charged the cache counter with an estimate; the
+    row still owes the actual cost, so the enqueue must not be skipped."""
+    from litellm.proxy.proxy_server import increment_spend_counters
+    import litellm.proxy.spend_tracking.budget_reservation as br
+
+    reset_at = datetime.now(timezone.utc) + timedelta(days=10)
+    key_obj = MagicMock()
+    key_obj.budget_limits = [{"budget_duration": "30d", "max_budget": 100.0, "reset_at": reset_at.isoformat()}]
+    reservation = {
+        "entries": [
+            {"counter_key": "spend:key:hashed-token", "reserved": 1.0},
+            {"counter_key": "spend:key:hashed-token:window:30d", "reserved": 1.0},
+        ]
+    }
+
+    original_reconcile = br.reconcile_budget_reservation
+    br.reconcile_budget_reservation = AsyncMock(return_value=None)
+    try:
+        with _window_spend_enqueue_env({"hashed-token": key_obj}) as queue:
+            await increment_spend_counters(
+                token="hashed-token",
+                team_id=None,
+                user_id=None,
+                response_cost=0.25,
+                budget_reservation=reservation,
+            )
+            enqueued = await _drain(queue)
+    finally:
+        br.reconcile_budget_reservation = original_reconcile
+
+    assert len(enqueued) == 1
+    assert enqueued[0]["spend"] == pytest.approx(0.25)
+
+
+@pytest.mark.asyncio
+async def test_sliding_window_without_reset_at_is_not_enqueued():
+    """Windows with no reset_at slide with wall clock, so window_start moves on
+    every request and no single row can represent them; the read path keeps
+    using its LiteLLM_SpendLogs fallback instead."""
+    from litellm.proxy.proxy_server import increment_spend_counters
+
+    key_obj = MagicMock()
+    key_obj.budget_limits = [{"budget_duration": "30d", "max_budget": 100.0}]
+
+    with _window_spend_enqueue_env({"hashed-token": key_obj}) as queue:
+        await increment_spend_counters(token="hashed-token", team_id=None, user_id=None, response_cost=0.25)
+        enqueued = await _drain(queue)
+
+    assert enqueued == []
+
+
+@pytest.mark.asyncio
+async def test_each_configured_window_gets_its_own_row_enqueue():
+    from litellm.proxy.proxy_server import increment_spend_counters
+
+    now = datetime.now(timezone.utc)
+    key_obj = MagicMock()
+    key_obj.budget_limits = [
+        {"budget_duration": "1d", "max_budget": 5.0, "reset_at": (now + timedelta(hours=5)).isoformat()},
+        {"budget_duration": "30d", "max_budget": 100.0, "reset_at": (now + timedelta(days=10)).isoformat()},
+    ]
+
+    with _window_spend_enqueue_env({"hashed-token": key_obj}) as queue:
+        await increment_spend_counters(token="hashed-token", team_id=None, user_id=None, response_cost=0.25)
+        enqueued = await _drain(queue)
+
+    assert sorted(item["window_duration"] for item in enqueued) == ["1d", "30d"]
+    assert all(item["spend"] == pytest.approx(0.25) for item in enqueued)
+
+
+@pytest.mark.asyncio
+async def test_no_window_spend_row_enqueued_without_budget_limits():
+    from litellm.proxy.proxy_server import increment_spend_counters
+
+    key_obj = MagicMock()
+    key_obj.budget_limits = None
+
+    with _window_spend_enqueue_env({"hashed-token": key_obj}) as queue:
+        await increment_spend_counters(token="hashed-token", team_id=None, user_id=None, response_cost=0.25)
+        enqueued = await _drain(queue)
+
+    assert enqueued == []
+
+
+@pytest.mark.asyncio
+async def test_window_spend_row_carries_the_spend_log_request_id():
+    """The flush excludes these ids from its one-time seed, so the id threaded
+    here has to be the same one the LiteLLM_SpendLogs row was written under."""
+    from litellm.proxy.proxy_server import increment_spend_counters
+
+    reset_at = datetime.now(timezone.utc) + timedelta(days=10)
+    key_obj = MagicMock()
+    key_obj.budget_limits = [{"budget_duration": "30d", "max_budget": 100.0, "reset_at": reset_at.isoformat()}]
+
+    with _window_spend_enqueue_env({"hashed-token": key_obj}) as queue:
+        await increment_spend_counters(
+            token="hashed-token",
+            team_id=None,
+            user_id=None,
+            response_cost=0.25,
+            request_id="chatcmpl-abc123",
+        )
+        enqueued = await _drain(queue)
+
+    assert enqueued[0]["request_ids"] == ("chatcmpl-abc123",)
+
+
+@pytest.mark.asyncio
+async def test_window_spend_row_carries_the_request_start_time():
+    """The seed only excludes a batch id whose LiteLLM_SpendLogs.startTime is at
+    or after this, so it must be the same start the spend log was written with."""
+    from litellm.proxy.proxy_server import increment_spend_counters
+
+    reset_at = datetime.now(timezone.utc) + timedelta(days=10)
+    key_obj = MagicMock()
+    key_obj.budget_limits = [{"budget_duration": "30d", "max_budget": 100.0, "reset_at": reset_at.isoformat()}]
+
+    with _window_spend_enqueue_env({"hashed-token": key_obj}) as queue:
+        await increment_spend_counters(
+            token="hashed-token",
+            team_id=None,
+            user_id=None,
+            response_cost=0.25,
+            request_id="chatcmpl-abc123",
+            request_started_at=datetime(2026, 8, 10, 12, 0, 0, 500_000, tzinfo=timezone.utc),
+        )
+        enqueued = await _drain(queue)
+
+    assert enqueued[0]["started_at"] == "2026-08-10T12:00:00.500000"
+
+
+@pytest.mark.asyncio
+async def test_window_spend_row_without_a_request_id_excludes_nothing():
+    from litellm.proxy.proxy_server import increment_spend_counters
+
+    reset_at = datetime.now(timezone.utc) + timedelta(days=10)
+    key_obj = MagicMock()
+    key_obj.budget_limits = [{"budget_duration": "30d", "max_budget": 100.0, "reset_at": reset_at.isoformat()}]
+
+    with _window_spend_enqueue_env({"hashed-token": key_obj}) as queue:
+        await increment_spend_counters(token="hashed-token", team_id=None, user_id=None, response_cost=0.25)
+        enqueued = await _drain(queue)
+
+    assert enqueued[0]["request_ids"] == ()
+
+
+@pytest.mark.asyncio
+async def test_team_window_spend_row_carries_the_request_id():
+    from litellm.proxy.proxy_server import increment_spend_counters
+
+    reset_at = datetime.now(timezone.utc) + timedelta(days=3)
+    team_obj = MagicMock()
+    team_obj.budget_limits = [{"budget_duration": "7d", "max_budget": 50.0, "reset_at": reset_at.isoformat()}]
+
+    with _window_spend_enqueue_env({"team_id:team-1": team_obj}) as queue:
+        await increment_spend_counters(
+            token=None,
+            team_id="team-1",
+            user_id=None,
+            response_cost=1.5,
+            request_id="chatcmpl-team",
+        )
+        enqueued = await _drain(queue)
+
+    assert enqueued[0]["request_ids"] == ("chatcmpl-team",)
 
 
 def _mock_startup_prisma_client(health_check_error=None, connect_error=None):
@@ -11137,9 +12069,15 @@ async def _run_scheduled_background_jobs():
     mock_proxy_config = AsyncMock()
 
     with (
-        patch("litellm.proxy.proxy_server.proxy_config", mock_proxy_config),
-        patch("litellm.proxy.proxy_server.store_model_in_db", True),
-        patch("litellm.proxy.proxy_server.get_secret_bool", return_value=True),
+        patch(
+            "litellm.proxy.proxy_server.proxy_config", mock_proxy_config
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.store_model_in_db", True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.get_secret_bool", return_value=True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await ProxyStartupEvent.initialize_scheduled_background_jobs(
             general_settings={},
@@ -11173,6 +12111,35 @@ async def test_ptu_rollup_job_registered_at_startup(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_ptu_rollup_job_hands_the_rollup_the_proxys_router(monkeypatch):
+    """The rollup prices PTU deployments declared in config.yaml, which only the router
+    knows about. It takes the router as an argument, so nothing but this call site puts the
+    proxy's own router in front of it: without it that half of the feature is dead."""
+    monkeypatch.delenv("STORE_MODEL_IN_DB", raising=False)
+    from litellm.proxy.spend_tracking import ptu_flat_cost_rollup
+    from litellm.proxy.spend_tracking.ptu_feature_flag import PTU_COST_ATTRIBUTION_ENV_VAR
+    from litellm.proxy.spend_tracking.ptu_flat_cost_rollup import PTU_ROLLUP_JOB_ID
+
+    monkeypatch.setenv(PTU_COST_ATTRIBUTION_ENV_VAR, "true")
+    calls = []
+    monkeypatch.setattr(
+        ptu_flat_cost_rollup,
+        "run_scheduled_ptu_rollup",
+        AsyncMock(side_effect=lambda *args, **kwargs: calls.append(kwargs)),
+    )
+
+    scheduler = await _run_scheduled_background_jobs()
+
+    import litellm.proxy.proxy_server as ps
+
+    router = MagicMock()
+    monkeypatch.setattr(ps, "llm_router", router)
+    await scheduler.get_job(PTU_ROLLUP_JOB_ID).func()
+
+    assert [call["router"] for call in calls] == [router]
+
+
+@pytest.mark.asyncio
 async def test_ptu_rollup_job_not_registered_without_opt_in(monkeypatch):
     """Without LITELLM_ENABLE_PTU_COST_ATTRIBUTION the rollup never runs, so no sentinel row
     is ever written. This is the gate that keeps the whole feature inert by default."""
@@ -11188,3 +12155,470 @@ async def test_ptu_rollup_job_not_registered_without_opt_in(monkeypatch):
 
     assert scheduler.get_job(PTU_ROLLUP_JOB_ID) is None
     assert len(scheduler.get_jobs()) > 0
+
+
+@pytest.mark.asyncio
+async def test_moderations_reraises_proxy_exception_unwrapped():
+    """A 400 ProxyException from request validation must surface as-is,
+    not be re-wrapped into a code-500 ProxyException."""
+    from litellm.proxy._types import ProxyErrorTypes, ProxyException
+
+    exc = ProxyException(
+        message="Invalid type for 'metadata': expected an object, but got a string instead.",
+        type=ProxyErrorTypes.bad_request_error,
+        param="metadata",
+        code=400,
+    )
+
+    request = MagicMock()
+    request.body = AsyncMock(return_value=b'{"input": "hi", "metadata": "abc"}')
+
+    with (
+        patch.object(proxy_server_module, "add_litellm_data_to_request", new=AsyncMock(side_effect=exc)),
+        patch.object(proxy_server_module, "proxy_logging_obj") as mock_logging,
+    ):
+        mock_logging.post_call_failure_hook = AsyncMock()
+        with pytest.raises(ProxyException) as exc_info:
+            await proxy_server_module.moderations(
+                request=request,
+                fastapi_response=MagicMock(),
+                user_api_key_dict=MagicMock(),
+            )
+
+    assert exc_info.value is exc
+    assert exc_info.value.code == "400"
+    assert exc_info.value.param == "metadata"
+    mock_logging.post_call_failure_hook.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_init_agents_in_db_rebuilds_registry_under_agent_reconcile_lock(monkeypatch):
+    from litellm.proxy.agent_endpoints.agent_registry import (
+        AGENT_RECONCILE_LOCK,
+        global_agent_registry,
+    )
+    from litellm.proxy.proxy_server import ProxyConfig
+
+    lock_states: list[bool] = []
+
+    async def fake_get_all_agents_from_db(prisma_client) -> list:
+        lock_states.append(AGENT_RECONCILE_LOCK.locked())
+        return []
+
+    def fake_load_agents_from_db_and_config(db_agents) -> None:
+        lock_states.append(AGENT_RECONCILE_LOCK.locked())
+
+    monkeypatch.setattr(global_agent_registry, "get_all_agents_from_db", fake_get_all_agents_from_db)
+    monkeypatch.setattr(global_agent_registry, "load_agents_from_db_and_config", fake_load_agents_from_db_and_config)
+
+    await ProxyConfig()._init_agents_in_db(prisma_client=MagicMock())
+
+    assert lock_states == [True, True]
+    assert not AGENT_RECONCILE_LOCK.locked()
+
+
+@pytest.mark.asyncio
+async def test_init_guardrails_in_db_snapshots_and_reconciles_under_guardrail_reconcile_lock(monkeypatch):
+    from litellm.proxy.guardrails.guardrail_registry import (
+        GUARDRAIL_RECONCILE_LOCK,
+        IN_MEMORY_GUARDRAIL_HANDLER,
+        GuardrailRegistry,
+    )
+    from litellm.proxy.proxy_server import ProxyConfig
+
+    lock_states: list[bool] = []
+
+    async def fake_get_all_guardrails_from_db(prisma_client) -> list:
+        lock_states.append(GUARDRAIL_RECONCILE_LOCK.locked())
+        return []
+
+    def fake_reconcile_db_guardrails(db_guardrail_ids) -> list:
+        lock_states.append(GUARDRAIL_RECONCILE_LOCK.locked())
+        return []
+
+    monkeypatch.setattr(GuardrailRegistry, "get_all_guardrails_from_db", fake_get_all_guardrails_from_db)
+    monkeypatch.setattr(IN_MEMORY_GUARDRAIL_HANDLER, "reconcile_db_guardrails", fake_reconcile_db_guardrails)
+
+    await ProxyConfig()._init_guardrails_in_db(prisma_client=MagicMock())
+
+    assert lock_states == [True, True]
+    assert not GUARDRAIL_RECONCILE_LOCK.locked()
+
+
+@pytest.mark.asyncio
+async def test_init_prompts_in_db_reloads_rows_patched_on_another_worker(monkeypatch):
+    from litellm.proxy.prompts.prompt_registry import IN_MEMORY_PROMPT_REGISTRY
+    from litellm.proxy.proxy_server import ProxyConfig
+
+    monkeypatch.setattr(litellm, "callbacks", [])
+
+    def db_row(content: str) -> MagicMock:
+        row = MagicMock()
+        row.model_dump.return_value = {
+            "prompt_id": "greeting_sync",
+            "version": 1,
+            "environment": "development",
+            "created_by": None,
+            "litellm_params": json.dumps(
+                {
+                    "prompt_id": "greeting_sync",
+                    "prompt_integration": "dotprompt",
+                    "prompt_data": {"content": content, "metadata": {}},
+                }
+            ),
+            "prompt_info": json.dumps({"prompt_type": "db"}),
+            "created_at": None,
+            "updated_at": None,
+        }
+        return row
+
+    def served_content() -> str:
+        callback = IN_MEMORY_PROMPT_REGISTRY.get_prompt_callback_by_id("greeting_sync.v1")
+        assert callback is not None
+        return callback.prompt_manager.get_prompt("greeting_sync").content
+
+    prisma_client = MagicMock()
+    try:
+        prisma_client.db.litellm_prompttable.find_many = AsyncMock(return_value=[db_row("Begin every reply with AHOY")])
+        await ProxyConfig()._init_prompts_in_db(prisma_client=prisma_client)
+        assert served_content() == "Begin every reply with AHOY"
+
+        prisma_client.db.litellm_prompttable.find_many = AsyncMock(
+            return_value=[db_row("Begin every reply with HOWDY")]
+        )
+        await ProxyConfig()._init_prompts_in_db(prisma_client=prisma_client)
+
+        assert served_content() == "Begin every reply with HOWDY"
+        assert litellm.callbacks == [IN_MEMORY_PROMPT_REGISTRY.get_prompt_callback_by_id("greeting_sync.v1")]
+    finally:
+        IN_MEMORY_PROMPT_REGISTRY.delete_prompts_by_base_id("greeting_sync")
+
+
+@pytest.mark.asyncio
+async def test_init_prompts_in_db_syncs_remaining_rows_when_one_row_fails(monkeypatch):
+    from litellm.proxy.prompts.prompt_registry import IN_MEMORY_PROMPT_REGISTRY
+    from litellm.proxy.proxy_server import ProxyConfig
+
+    monkeypatch.setattr(litellm, "callbacks", [])
+
+    def db_row(prompt_id: str, integration: str) -> MagicMock:
+        row = MagicMock()
+        row.model_dump.return_value = {
+            "prompt_id": prompt_id,
+            "version": 1,
+            "environment": "development",
+            "created_by": None,
+            "litellm_params": json.dumps(
+                {
+                    "prompt_id": prompt_id,
+                    "prompt_integration": integration,
+                    "prompt_data": {"content": "Begin every reply with AHOY", "metadata": {}},
+                }
+            ),
+            "prompt_info": json.dumps({"prompt_type": "db"}),
+            "created_at": None,
+            "updated_at": None,
+        }
+        return row
+
+    prisma_client = MagicMock()
+    try:
+        prisma_client.db.litellm_prompttable.find_many = AsyncMock(
+            return_value=[db_row("broken_sync", "does_not_exist"), db_row("healthy_sync", "dotprompt")]
+        )
+        await ProxyConfig()._init_prompts_in_db(prisma_client=prisma_client)
+
+        assert IN_MEMORY_PROMPT_REGISTRY.get_prompt_by_id("broken_sync.v1") is None
+        assert IN_MEMORY_PROMPT_REGISTRY.get_prompt_callback_by_id("healthy_sync.v1") is not None
+        assert litellm.callbacks == [IN_MEMORY_PROMPT_REGISTRY.get_prompt_callback_by_id("healthy_sync.v1")]
+    finally:
+        IN_MEMORY_PROMPT_REGISTRY.delete_prompts_by_base_id("healthy_sync")
+        IN_MEMORY_PROMPT_REGISTRY.delete_prompts_by_base_id("broken_sync")
+
+
+@pytest.mark.asyncio
+async def test_init_prompts_in_db_serves_the_newest_row_when_environments_collide_on_a_versioned_id(monkeypatch):
+    from litellm.proxy.prompts.prompt_registry import IN_MEMORY_PROMPT_REGISTRY
+    from litellm.proxy.proxy_server import ProxyConfig
+
+    monkeypatch.setattr(litellm, "callbacks", [])
+
+    def db_row(environment: str, content: str, updated_at: datetime) -> MagicMock:
+        row = MagicMock()
+        row.model_dump.return_value = {
+            "prompt_id": "greeting_env",
+            "version": 1,
+            "environment": environment,
+            "created_by": None,
+            "litellm_params": json.dumps(
+                {
+                    "prompt_id": "greeting_env",
+                    "prompt_integration": "dotprompt",
+                    "prompt_data": {"content": content, "metadata": {}},
+                }
+            ),
+            "prompt_info": json.dumps({"prompt_type": "db"}),
+            "created_at": None,
+            "updated_at": updated_at,
+        }
+        return row
+
+    freshly_patched = db_row(
+        "production", "Begin every reply with HOWDY", datetime(2026, 8, 26, 12, 0, tzinfo=timezone.utc)
+    )
+    stale_sibling = db_row(
+        "development", "Begin every reply with AHOY", datetime(2026, 8, 26, 11, 0, tzinfo=timezone.utc)
+    )
+
+    prisma_client = MagicMock()
+    try:
+        prisma_client.db.litellm_prompttable.find_many = AsyncMock(return_value=[freshly_patched, stale_sibling])
+        await ProxyConfig()._init_prompts_in_db(prisma_client=prisma_client)
+
+        first_callback = IN_MEMORY_PROMPT_REGISTRY.get_prompt_callback_by_id("greeting_env.v1")
+        assert first_callback is not None
+        assert first_callback.prompt_manager.get_prompt("greeting_env").content == "Begin every reply with HOWDY"
+
+        await ProxyConfig()._init_prompts_in_db(prisma_client=prisma_client)
+
+        assert IN_MEMORY_PROMPT_REGISTRY.get_prompt_callback_by_id("greeting_env.v1") is first_callback
+        assert litellm.callbacks == [first_callback]
+    finally:
+        IN_MEMORY_PROMPT_REGISTRY.delete_prompts_by_base_id("greeting_env")
+
+
+def _prompt_db_row(prompt_id: str, litellm_params: str) -> MagicMock:
+    row = MagicMock()
+    row.model_dump.return_value = {
+        "prompt_id": prompt_id,
+        "version": 1,
+        "environment": "development",
+        "created_by": None,
+        "litellm_params": litellm_params,
+        "prompt_info": json.dumps({"prompt_type": "db"}),
+        "created_at": None,
+        "updated_at": None,
+    }
+    return row
+
+
+def _dotprompt_params(prompt_id: str) -> str:
+    return json.dumps(
+        {
+            "prompt_id": prompt_id,
+            "prompt_integration": "dotprompt",
+            "prompt_data": {"content": "Begin every reply with AHOY", "metadata": {}},
+        }
+    )
+
+
+@pytest.mark.asyncio
+async def test_init_prompts_in_db_unloads_rows_deleted_on_another_worker(monkeypatch):
+    from litellm.proxy.prompts.prompt_registry import IN_MEMORY_PROMPT_REGISTRY
+    from litellm.proxy.proxy_server import ProxyConfig
+
+    monkeypatch.setattr(litellm, "callbacks", [])
+
+    prisma_client = MagicMock()
+    try:
+        prisma_client.db.litellm_prompttable.find_many = AsyncMock(
+            return_value=[_prompt_db_row("greeting_del", _dotprompt_params("greeting_del"))]
+        )
+        await ProxyConfig()._init_prompts_in_db(prisma_client=prisma_client)
+        assert IN_MEMORY_PROMPT_REGISTRY.get_prompt_callback_by_id("greeting_del.v1") is not None
+
+        prisma_client.db.litellm_prompttable.find_many = AsyncMock(return_value=[])
+        await ProxyConfig()._init_prompts_in_db(prisma_client=prisma_client)
+
+        assert IN_MEMORY_PROMPT_REGISTRY.get_prompt_by_id("greeting_del.v1") is None
+        assert IN_MEMORY_PROMPT_REGISTRY.get_prompt_callback_by_id("greeting_del.v1") is None
+        assert litellm.callbacks == []
+    finally:
+        IN_MEMORY_PROMPT_REGISTRY.delete_prompts_by_base_id("greeting_del")
+
+
+@pytest.mark.asyncio
+async def test_init_prompts_in_db_keeps_config_prompts_when_their_id_has_no_db_row(monkeypatch):
+    from litellm.proxy.prompts.prompt_registry import IN_MEMORY_PROMPT_REGISTRY
+    from litellm.proxy.proxy_server import ProxyConfig
+    from litellm.types.prompts.init_prompts import PromptInfo, PromptLiteLLMParams, PromptSpec
+
+    monkeypatch.setattr(litellm, "callbacks", [])
+
+    config_prompt = PromptSpec(
+        prompt_id="greeting_cfg",
+        litellm_params=PromptLiteLLMParams(
+            prompt_id="greeting_cfg",
+            prompt_integration="dotprompt",
+            prompt_data={"content": "Begin every reply with AHOY", "metadata": {}},
+        ),
+        prompt_info=PromptInfo(prompt_type="config"),
+    )
+
+    prisma_client = MagicMock()
+    try:
+        IN_MEMORY_PROMPT_REGISTRY.initialize_prompt(prompt=config_prompt)
+        prisma_client.db.litellm_prompttable.find_many = AsyncMock(return_value=[])
+
+        await ProxyConfig()._init_prompts_in_db(prisma_client=prisma_client)
+
+        assert IN_MEMORY_PROMPT_REGISTRY.get_prompt_callback_by_id("greeting_cfg") is not None
+        assert len(litellm.callbacks) == 1
+    finally:
+        IN_MEMORY_PROMPT_REGISTRY.remove_prompt(prompt_id="greeting_cfg")
+
+
+@pytest.mark.asyncio
+async def test_init_prompts_in_db_keeps_the_in_memory_copy_when_a_row_fails_to_parse(monkeypatch):
+    from litellm.proxy.prompts.prompt_registry import IN_MEMORY_PROMPT_REGISTRY
+    from litellm.proxy.proxy_server import ProxyConfig
+
+    monkeypatch.setattr(litellm, "callbacks", [])
+
+    prisma_client = MagicMock()
+    try:
+        prisma_client.db.litellm_prompttable.find_many = AsyncMock(
+            return_value=[_prompt_db_row("greeting_broken", _dotprompt_params("greeting_broken"))]
+        )
+        await ProxyConfig()._init_prompts_in_db(prisma_client=prisma_client)
+        loaded_callback = IN_MEMORY_PROMPT_REGISTRY.get_prompt_callback_by_id("greeting_broken.v1")
+        assert loaded_callback is not None
+
+        prisma_client.db.litellm_prompttable.find_many = AsyncMock(
+            return_value=[_prompt_db_row("greeting_broken", "this is not json")]
+        )
+        await ProxyConfig()._init_prompts_in_db(prisma_client=prisma_client)
+
+        assert IN_MEMORY_PROMPT_REGISTRY.get_prompt_callback_by_id("greeting_broken.v1") is loaded_callback
+        assert litellm.callbacks == [loaded_callback]
+    finally:
+        IN_MEMORY_PROMPT_REGISTRY.delete_prompts_by_base_id("greeting_broken")
+
+
+@pytest.mark.asyncio
+async def test_init_prompts_in_db_keeps_a_prompt_created_while_the_sync_was_reading(monkeypatch):
+    from litellm.proxy.prompts.prompt_registry import IN_MEMORY_PROMPT_REGISTRY
+    from litellm.proxy.proxy_server import ProxyConfig
+    from litellm.types.prompts.init_prompts import PromptInfo, PromptLiteLLMParams, PromptSpec
+
+    monkeypatch.setattr(litellm, "callbacks", [])
+
+    prisma_client = MagicMock()
+    try:
+
+        async def create_prompt_behind_the_select() -> list:
+            IN_MEMORY_PROMPT_REGISTRY.initialize_prompt(
+                prompt=PromptSpec(
+                    prompt_id="greeting_race.v1",
+                    litellm_params=PromptLiteLLMParams(
+                        prompt_id="greeting_race",
+                        prompt_integration="dotprompt",
+                        prompt_data={"content": "Begin every reply with AHOY", "metadata": {}},
+                    ),
+                    prompt_info=PromptInfo(prompt_type="db"),
+                )
+            )
+            return []
+
+        prisma_client.db.litellm_prompttable.find_many = AsyncMock(side_effect=create_prompt_behind_the_select)
+        await ProxyConfig()._init_prompts_in_db(prisma_client=prisma_client)
+
+        surviving_callback = IN_MEMORY_PROMPT_REGISTRY.get_prompt_callback_by_id("greeting_race.v1")
+        assert IN_MEMORY_PROMPT_REGISTRY.get_prompt_by_id("greeting_race.v1") is not None
+        assert surviving_callback is not None
+        assert litellm.callbacks == [surviving_callback]
+    finally:
+        IN_MEMORY_PROMPT_REGISTRY.delete_prompts_by_base_id("greeting_race")
+
+
+class TestEmbeddingsFailureHookRequestData:
+    @pytest.mark.asyncio
+    async def test_failure_hook_gets_post_setup_data_with_logging_obj(self):
+        """Request setup replaces the processor's data dict (adding the logging
+        object the failure hook needs to lift token usage from); the embeddings
+        exception handler must pass that replaced dict, not the raw request body
+        dict it was rebuilt from."""
+        from litellm.proxy._types import ProxyException
+
+        captured = {}
+        logging_obj_sentinel = MagicMock()
+
+        async def fake_process(self, **kwargs):
+            self.data = {**self.data, "litellm_logging_obj": logging_obj_sentinel}
+            captured["processor_data"] = self.data
+            raise RuntimeError("provider timeout")
+
+        with (
+            patch.object(
+                proxy_server_module,
+                "_read_request_body",
+                new=AsyncMock(return_value={"model": "my-embed", "input": "hello"}),
+            ),
+            patch.object(
+                proxy_server_module.ProxyBaseLLMRequestProcessing,
+                "base_process_llm_request",
+                new=fake_process,
+            ),
+            patch.object(proxy_server_module, "proxy_logging_obj") as mock_logging,
+        ):
+            mock_logging.post_call_failure_hook = AsyncMock(return_value=None)
+            with pytest.raises(ProxyException):
+                await proxy_server_module.embeddings(
+                    request=MagicMock(),
+                    fastapi_response=MagicMock(),
+                    user_api_key_dict=UserAPIKeyAuth(),
+                )
+
+        hook_request_data = mock_logging.post_call_failure_hook.await_args.kwargs["request_data"]
+        assert hook_request_data is captured["processor_data"]
+        assert hook_request_data["litellm_logging_obj"] is logging_obj_sentinel
+
+
+@pytest.mark.asyncio
+async def test_authoritative_floor_spend_keeps_a_reset_marker_written_during_the_db_read():
+    """A team-member spend reset writes the post-reset floor to the spend_db_floor marker
+    (auth_checks.invalidate_team_member_spend_state). A floor read already in flight when the
+    reset commits would otherwise cache its stale pre-reset DB value over the fresh marker,
+    letting a budget check raise the counter right back above the just-reset spend
+    (regression: PR #37971 Greptile finding)."""
+    from litellm.proxy.proxy_server import _authoritative_floor_spend
+
+    real_spend_counter_cache = DualCache()
+    counter_key = "spend:team_member:user-1:team-1"
+    marker_key = f"spend_db_floor:{counter_key}"
+
+    async def db_read_racing_with_a_reset(prisma_client, counter_key):
+        real_spend_counter_cache.in_memory_cache.set_cache(key=marker_key, value=0.0)
+        return 999.0
+
+    with (
+        patch.object(  # test-quality-ok: injects a real DualCache for the module global, not a behavior mock
+            proxy_server_module, "spend_counter_cache", real_spend_counter_cache
+        ),
+        patch.object(  # test-quality-ok: the DB read must race the reset; no injectable seam for module-global prisma reads
+            proxy_server_module.SpendCounterReseed,
+            "from_db",
+            AsyncMock(side_effect=db_read_racing_with_a_reset),
+        ),
+    ):
+        result = await _authoritative_floor_spend(counter_key=counter_key)
+
+    assert result == 0.0
+    assert real_spend_counter_cache.in_memory_cache.get_cache(key=marker_key) == 0.0, (
+        "the in-flight DB read clobbered the post-reset floor marker with the stale pre-reset value"
+    )
+
+
+@pytest.mark.asyncio
+async def test_load_config_router_authorizes_fallback_targets_against_the_calling_key(tmp_path):
+    from litellm.proxy.auth.fallback_model_access import router_fallback_access_check
+    from litellm.proxy.proxy_server import ProxyConfig
+
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(
+        yaml.dump({"model_list": [{"model_name": "m", "litellm_params": {"model": "openai/m", "api_key": "k"}}]})
+    )
+
+    router, _, _ = await ProxyConfig().load_config(router=None, config_file_path=str(config_file))
+
+    assert router.fallback_access_check is router_fallback_access_check

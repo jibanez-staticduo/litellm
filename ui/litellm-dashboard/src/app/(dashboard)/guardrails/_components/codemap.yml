@@ -36,3 +36,7 @@ internals:
   - path: TeamGuardrailsTab.test.tsx
   - path: GuardrailTestPlayground.tsx
   - path: pii_configuration.tsx
+  - path: TeamGuardrailsTab.integration.test.tsx
+  - path: add_guardrail_form.characterization.test.tsx
+  - path: GuardrailFormField.tsx
+  - path: guardrail_info.characterization.test.tsx

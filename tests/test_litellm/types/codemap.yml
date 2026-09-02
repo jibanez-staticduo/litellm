@@ -9,3 +9,4 @@ internals:
   - path: test_guardrails_case_normalization.py
   - path: test_uk_pii_entities.py
   - path: test_prometheus_label_value_sanitize.py
+  - path: test_mcp.py

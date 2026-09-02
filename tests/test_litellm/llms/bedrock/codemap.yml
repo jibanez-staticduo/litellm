@@ -11,3 +11,5 @@ internals:
   - path: test_anthropic_beta_support.py
   - path: test_web_identity_session_policy.py
   - path: test_claude_platform_provider.py
+  - path: test_request_metadata.py
+  - path: test_nova_imported_models.py

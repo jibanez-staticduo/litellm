@@ -2,3 +2,5 @@ scope: module
 parent: ../../../../.staticeng/codemap.yml
 modules:
   - path: image_generation/
+internals:
+  - path: test_cost_calculator.py

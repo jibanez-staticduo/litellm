@@ -1,0 +1,14 @@
+Resolved 453 packages in 2ms
+72:    "RestrictedPython>=8.5,<9.0",
+4348:    { name = "restrictedpython" },
+4561:    { name = "restrictedpython", marker = "extra == 'proxy'", specifier = ">=8.5,<9.0" },
+8267:name = "restrictedpython"
+8268:version = "8.5"
+10539:version = "8.5"
+Prisma schema loaded from litellm/proxy/schema.prisma
+The schema at /home/staticduo/git/litellm/litellm/proxy/schema.prisma is valid 🚀
+Prisma schema loaded from schema.prisma
+The schema at /home/staticduo/git/litellm/schema.prisma is valid 🚀
+Prisma schema loaded from litellm-proxy-extras/litellm_proxy_extras/schema.prisma
+The schema at /home/staticduo/git/litellm/litellm-proxy-extras/litellm_proxy_extras/schema.prisma is valid 🚀
+0 errors, 0 warnings, 0 notes

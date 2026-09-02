@@ -39,3 +39,4 @@ internals:
   - path: test_keys.py
   - path: test_otel_thread_leak.py
   - path: test_team_logging.py
+  - path: _wait_helpers.py

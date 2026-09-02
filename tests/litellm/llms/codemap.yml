@@ -5,7 +5,6 @@ modules:
   - path: azure/
   - path: bedrock/
   - path: deepseek/
-  - path: gradient_ai/
   - path: oci/
   - path: openai_like/
   - path: vertex_ai/

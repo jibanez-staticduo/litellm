@@ -1,4 +1,3 @@
 scope: module
 parent: ../../.staticeng/codemap.yml
-internals:
-  - path: scim_e2e_test.json
+internals: []

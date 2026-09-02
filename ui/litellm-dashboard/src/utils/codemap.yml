@@ -56,3 +56,4 @@ internals:
   - path: errorUtils.ts
   - path: mcpTokenStore.ts
   - path: ptuDatetime.ts
+  - path: entityLinks.test.ts

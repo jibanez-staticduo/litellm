@@ -7,3 +7,4 @@ internals:
   - path: streaming_iterator.py
   - path: utils.py
   - path: http_handler.py
+  - path: background_cost_polling.py

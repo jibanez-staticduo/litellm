@@ -8,3 +8,4 @@ internals:
   - path: test_route_check_unit_tests.py
   - path: test_usage_endpoints.py
   - path: test_sso_sign_in.py
+  - path: test_team_delete_member_add_race.py

@@ -30,3 +30,6 @@ internals:
   - path: install.sh
   - path: benchmark_model_response_creator.py
   - path: benchmark_proxy_vs_provider.py
+  - path: check_test_quality.py
+  - path: sync_together_ai_models.py
+  - path: test_quality_gate.py

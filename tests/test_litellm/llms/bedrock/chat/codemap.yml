@@ -8,3 +8,4 @@ internals:
   - path: test_streaming_choice_index.py
   - path: test_writer_palmyra.py
   - path: test_converse_transformation_nova_2.py
+  - path: test_bedrock_converse_handler.py

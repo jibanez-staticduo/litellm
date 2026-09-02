@@ -5,3 +5,4 @@ internals:
   - path: credentials.spec.ts
   - path: responsiveHeader.spec.ts
   - path: clearCustomPricing.spec.ts
+  - path: autoRouterTemplateSelect.spec.ts

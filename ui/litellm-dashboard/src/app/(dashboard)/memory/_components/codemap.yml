@@ -9,3 +9,4 @@ internals:
   - path: MemoryDetailDrawer.tsx
   - path: MemoryView.tsx
   - path: MemoryEditModal.tsx
+  - path: MemoryEditModal.integration.test.tsx

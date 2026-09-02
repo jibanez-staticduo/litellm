@@ -6,3 +6,4 @@ internals:
   - path: test_component_image_serves_offline.py
   - path: test_db_schema_migration.py
   - path: test_replica_identity_full.py
+  - path: test_ui_image_serves_offline.py

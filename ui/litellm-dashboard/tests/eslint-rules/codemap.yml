@@ -5,3 +5,5 @@ internals:
   - path: no-complex-jsx-arrow.test.ts
   - path: no-large-inline-object-arg.test.ts
   - path: filename-pascal-case.test.ts
+  - path: no-ad-hoc-z-index.test.ts
+  - path: no-noop-hover-variant.test.ts

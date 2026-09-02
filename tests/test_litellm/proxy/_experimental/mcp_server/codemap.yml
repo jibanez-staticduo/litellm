@@ -52,3 +52,6 @@ internals:
   - path: test_db_credentials.py
   - path: test_utils.py
   - path: test_lazymcp_public_resource.py
+  - path: test_mcp_block_recording.py
+  - path: test_mcp_guardrail_usage_monitor.py
+  - path: test_proxy_api_credentials.py

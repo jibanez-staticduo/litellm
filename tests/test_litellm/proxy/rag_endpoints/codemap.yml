@@ -3,3 +3,4 @@ parent: ../../../../.staticeng/codemap.yml
 internals:
   - path: __init__.py
   - path: test_rag_endpoints.py
+  - path: test_upload_security.py

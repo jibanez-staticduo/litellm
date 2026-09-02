@@ -11,3 +11,4 @@ internals:
   - path: phoenix.py
   - path: levo.py
   - path: utils.py
+  - path: newrelic.py

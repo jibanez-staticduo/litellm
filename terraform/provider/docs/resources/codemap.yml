@@ -9,3 +9,17 @@ internals:
   - path: team_member_add.md
   - path: team_member.md
   - path: team.md
+  - path: guardrail.md
+  - path: jwt_key_mapping.md
+  - path: fallback.md
+  - path: access_group.md
+  - path: key_block.md
+  - path: budget.md
+  - path: tag.md
+  - path: team_block.md
+  - path: project.md
+  - path: search_tool.md
+  - path: user.md
+  - path: unified_access_group.md
+  - path: prompt.md
+  - path: agent.md

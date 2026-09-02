@@ -22,6 +22,8 @@ from litellm.types.llms.openai import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Iterator
+
     from mcp.types import Tool as MCPTool
 
     from litellm.proxy._types import UserAPIKeyAuth
@@ -36,7 +38,9 @@ async def create_mcp_list_tools_events(
     mcp_tools_with_litellm_proxy: Sequence[Mapping[str, object]],
     user_api_key_auth: "UserAPIKeyAuth | None",
     base_item_id: str,
-    pre_processed_mcp_tools: list[Any],
+    pre_processed_mcp_tools: list[  # mutable-ok: framework contract requires mutable request or response containers
+        Any
+    ],  # mutable-ok: framework contract requires mutable request or response containers
     client_ip: str | None = None,
 ) -> list[ResponsesAPIStreamingResponse]:
     """Create MCP discovery events using pre-processed tools from the parent"""
@@ -515,7 +519,9 @@ class MCPEnhancedStreamingIterator(BaseResponsesAPIStreamingIterator):
         if self.base_iterator:
             if hasattr(self.base_iterator, "__anext__"):
                 try:
-                    chunk: Final = await cast(Any, self.base_iterator).__anext__()
+                    chunk: Final[ResponsesAPIStreamingResponse] = await cast(  # cast-ok: hasattr __anext__ checked
+                        "AsyncIterator[ResponsesAPIStreamingResponse]", self.base_iterator
+                    ).__anext__()
 
                     # Capture the response ID from the first event to ensure consistency
                     if self._cached_response_id is None and hasattr(chunk, "response"):
@@ -573,7 +579,9 @@ class MCPEnhancedStreamingIterator(BaseResponsesAPIStreamingIterator):
         if not self.base_iterator or not hasattr(self.base_iterator, "__anext__"):
             raise StopAsyncIteration
 
-        chunk: Final = await cast(Any, self.base_iterator).__anext__()
+        chunk: Final[ResponsesAPIStreamingResponse] = await cast(  # cast-ok: hasattr __anext__ checked above
+            "AsyncIterator[ResponsesAPIStreamingResponse]", self.base_iterator
+        ).__anext__()
 
         if self._cached_response_id is None and hasattr(chunk, "response"):
             new_response: Final[ResponsesAPIResponse | None] = getattr(chunk, "response", None)
@@ -839,7 +847,9 @@ class MCPEnhancedStreamingIterator(BaseResponsesAPIStreamingIterator):
         if not self.is_async:
             try:
                 if self.base_iterator and hasattr(self.base_iterator, "__next__"):
-                    return next(cast(Any, self.base_iterator))
+                    return next(
+                        cast("Iterator[ResponsesAPIStreamingResponse]", self.base_iterator)  # cast-ok: hasattr-checked
+                    )
                 else:
                     raise StopIteration
             except StopIteration:

@@ -28,3 +28,6 @@ internals:
   - path: useDailyActivityRange.ts
   - path: helpers.test.ts
   - path: autoRouterBenchmarks.ts
+  - path: useDailyActivityRange.integration.test.tsx
+  - path: PromptCompressionTab.integration.test.tsx
+  - path: useAutoRouterBenchmarks.test.ts

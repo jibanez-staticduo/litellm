@@ -1,0 +1,9 @@
+npm package-lock-only resolved browserslist 4.28.8
+npm ci pass
+npm audit --audit-level=high: 0 vulnerabilities
+npm audit --omit=dev --audit-level=high: 0 vulnerabilities
+unit: 123 files, 2317 tests passed
+component: 597 files, 6394 tests passed
+integration: 52 files, 512 tests passed
+types: 2 files, 4 tests, no type errors
+format, lint, knip, production build pass

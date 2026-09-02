@@ -36,3 +36,7 @@ internals:
   - path: auth_cache_invalidation_pubsub.py
   - path: sse_keepalive.py
   - path: proxy_rate_limit_error.py
+  - path: healthy_model_filter.py
+  - path: registry_read_through.py
+  - path: model_deprecation.py
+  - path: callback_config_validation.py

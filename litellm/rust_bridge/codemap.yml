@@ -8,3 +8,4 @@ internals:
   - path: loader.py
   - path: timeouts.py
   - path: messages.py
+  - path: chat_completions.py

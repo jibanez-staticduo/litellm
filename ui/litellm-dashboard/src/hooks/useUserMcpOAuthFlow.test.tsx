@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as networking from "@/components/networking";
-import NotificationsManager from "@/components/molecules/notifications_manager";
+import { toast } from "@/lib/toast";
 import { useUserMcpOAuthFlow } from "./useUserMcpOAuthFlow";
 
 vi.mock("@/components/networking", () => ({
@@ -14,8 +14,8 @@ vi.mock("@/components/networking", () => ({
   storeMCPOAuthUserCredential: vi.fn(),
 }));
 
-vi.mock("@/components/molecules/notifications_manager", () => ({
-  default: { success: vi.fn(), error: vi.fn() },
+vi.mock("@/lib/toast", () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
 }));
 
 const popup = {
@@ -92,7 +92,7 @@ describe("useUserMcpOAuthFlow Lovable loopback routing", () => {
     expect(popup.location.replace).toHaveBeenCalledWith("https://auth.example.test/authorize?opaque=1");
     expect(networking.getMCPLoopbackOAuthStatus).toHaveBeenLastCalledWith("user-session", "server-1", "transaction-1");
     expect(result.current.status).toBe("success");
-    expect(NotificationsManager.success).toHaveBeenCalledWith("Connected successfully");
+    expect(toast.success).toHaveBeenCalledWith("Connected successfully");
   }, 5000);
 
   it("keeps every non-Lovable server on the existing browser PKCE flow", async () => {
@@ -133,7 +133,7 @@ describe("useUserMcpOAuthFlow Lovable loopback routing", () => {
 
     expect(result.current.status).toBe("cancelled");
     expect(popup.close).toHaveBeenCalled();
-    expect(NotificationsManager.success).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
   it("reports popup closure and transaction status errors", async () => {

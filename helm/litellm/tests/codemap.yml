@@ -9,3 +9,5 @@ internals:
   - path: migration_job_tests.yaml
   - path: hpa_behavior_tests.yaml
   - path: billing_metrics_tests.yaml
+  - path: database_auth_tests.yaml
+  - path: ingress_extra_paths_tests.yaml

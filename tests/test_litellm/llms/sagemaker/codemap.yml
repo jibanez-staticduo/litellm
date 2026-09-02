@@ -7,3 +7,4 @@ internals:
   - path: test_sagemaker_completion_handler.py
   - path: test_sagemaker_nova_transformation.py
   - path: test_sagemaker_embedding_role_assumption.py
+  - path: test_sagemaker_chat_handler.py

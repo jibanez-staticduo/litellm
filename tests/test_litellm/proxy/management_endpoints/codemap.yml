@@ -42,3 +42,5 @@ internals:
   - path: test_project_org_authz.py
   - path: test_delete_callbacks_endpoint.py
   - path: test_saml_sso.py
+  - path: test_cost_estimate_endpoint.py
+  - path: test_mcp_connector_import.py

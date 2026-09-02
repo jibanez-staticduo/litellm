@@ -22,3 +22,7 @@ internals:
   - path: add_agent_form.tsx
   - path: agent_card_discovery.tsx
   - path: cost_config_fields.tsx
+  - path: agent_info.test.tsx
+  - path: agent_info.integration.test.tsx
+  - path: add_agent_form.integration.test.tsx
+  - path: AgentFormKit.tsx

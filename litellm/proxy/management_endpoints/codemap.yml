@@ -33,3 +33,4 @@ internals:
   - path: gateway_request_endpoints.py
   - path: cache_settings_endpoints.py
   - path: callback_management_endpoints.py
+  - path: mcp_connector_import.py

@@ -6,3 +6,4 @@ internals:
   - path: test_azure_fine_tuning_api.py
   - path: test_azure_speech_audio_transcription.py
   - path: test_azure_cost_calculation.py
+  - path: test_azure_embedding.py

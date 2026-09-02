@@ -10,3 +10,4 @@ internals:
   - path: test_agents_main_and_utils.py
   - path: test_agents_http_handler.py
   - path: test_gemini_interactions_transformation.py
+  - path: test_background_cost_polling.py

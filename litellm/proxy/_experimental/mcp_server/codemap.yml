@@ -31,3 +31,4 @@ internals:
   - path: semantic_tool_filter.py
   - path: toolset_db.py
   - path: lazymcp_public_resource.py
+  - path: proxy_api_credentials.py

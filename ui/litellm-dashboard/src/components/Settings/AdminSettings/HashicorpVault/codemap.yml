@@ -7,3 +7,4 @@ internals:
   - path: HashicorpVault.tsx
   - path: HashicorpVaultEmptyPlaceholder.test.tsx
   - path: HashicorpVaultEmptyPlaceholder.tsx
+  - path: EditHashicorpVaultModal.test.tsx

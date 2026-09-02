@@ -22,3 +22,7 @@ internals:
   - path: provider_discount_table.tsx
   - path: add_provider_form.test.tsx
   - path: use_discount_config.test.ts
+  - path: add_provider_form.integration.test.tsx
+  - path: use_block_unpriced_config.ts
+  - path: cost_tracking_settings.integration.test.tsx
+  - path: use_block_unpriced_config.test.ts

@@ -26,3 +26,7 @@ internals:
   - path: test_timezone_utils.py
   - path: test_cache_codec.py
   - path: test_path_utils.py
+  - path: test_model_deprecation.py
+  - path: test_callback_config_validation.py
+  - path: test_rbac_utils.py
+  - path: test_registry_read_through.py

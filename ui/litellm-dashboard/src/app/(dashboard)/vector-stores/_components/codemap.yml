@@ -26,3 +26,6 @@ internals:
   - path: vector_store_info.tsx
   - path: DocumentsTable.test.tsx
   - path: IndexesTable.tsx
+  - path: vector_store_info.integration.test.tsx
+  - path: VectorStoreForm.integration.test.tsx
+  - path: CreateVectorStore.characterization.test.tsx

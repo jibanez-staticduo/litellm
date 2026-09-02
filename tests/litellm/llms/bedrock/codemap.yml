@@ -1,4 +1,3 @@
 scope: module
 parent: ../../../../.staticeng/codemap.yml
-internals:
-  - path: test_nova_imported_models.py
+internals: []

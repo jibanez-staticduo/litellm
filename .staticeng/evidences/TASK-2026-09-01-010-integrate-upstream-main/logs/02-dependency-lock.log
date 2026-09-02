@@ -1,0 +1,7 @@
+Resolved 453 packages in 2ms
+72:    "RestrictedPython>=8.5,<9.0",
+4348:    { name = "restrictedpython" },
+4561:    { name = "restrictedpython", marker = "extra == 'proxy'", specifier = ">=8.5,<9.0" },
+8267:name = "restrictedpython"
+8268:version = "8.5"
+10539:version = "8.5"

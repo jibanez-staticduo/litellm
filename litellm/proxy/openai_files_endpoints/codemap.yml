@@ -5,3 +5,5 @@ internals:
   - path: common_utils.py
   - path: storage_backend_service.py
   - path: files_endpoints.py
+  - path: batch_guardrails.py
+  - path: batch_file_validation.py

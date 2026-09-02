@@ -34,3 +34,6 @@ internals:
   - path: template_parameter_modal.test.tsx
   - path: scope_validation.test.ts
   - path: impact_popover.tsx
+  - path: TokenSelect.tsx
+  - path: policy_test_panel.test.tsx
+  - path: add_policy_form.test.tsx

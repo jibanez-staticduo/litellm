@@ -17,3 +17,7 @@ internals:
   - path: SearchToolTableColumns.tsx
   - path: CreateSearchTools.tsx
   - path: SearchConnectionTest.test.tsx
+  - path: searchToolPayload.test.ts
+  - path: searchToolPayload.ts
+  - path: CreateSearchTools.integration.test.tsx
+  - path: SearchTools.integration.test.tsx

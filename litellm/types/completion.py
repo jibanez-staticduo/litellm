@@ -204,7 +204,7 @@ class CompletionRequest(BaseModel):
 
 
 @dataclass(frozen=True, slots=True)
-class _CompletionDispatchContext:
+class _CompletionDispatchContext:  # pyright: ignore[reportUnusedClass]  # retained request-boundary schema
     _azure_detection_model: str
     acompletion: bool
     api_base: str | None

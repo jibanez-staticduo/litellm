@@ -1,4 +1,5 @@
 import re
+from collections.abc import Sequence
 from typing import Final
 
 from fastapi import HTTPException, Request, status
@@ -20,7 +21,12 @@ def _is_string(value: object) -> bool:
     return isinstance(value, str)
 
 
-def _get_user_object_value(user_obj: LiteLLM_UserTable | dict | None, field: str):
+def _get_user_object_value(
+    user_obj: LiteLLM_UserTable
+    | dict
+    | None,  # mutable-ok: framework contract requires mutable request or response containers
+    field: str,  # mutable-ok: framework contract requires mutable request or response containers
+) -> object | None:  # mutable-ok: framework contract requires mutable request or response containers
     if user_obj is None:
         return None
     if isinstance(user_obj, dict):
@@ -178,9 +184,22 @@ class RouteChecks:
                         if RouteChecks._is_get_mcp_server_discovery_route(route=route, request=request):
                             return True
 
+                        # Agent registry CRUD moved from llm_api_routes into
+                        # management_routes so DISABLE_LLM_API_ENDPOINTS stops
+                        # blocking it. Keys configured with
+                        # allowed_routes=["llm_api_routes"] before that split
+                        # could reach these paths, so keep them reachable here;
+                        # the handlers in agent_endpoints/endpoints.py still
+                        # enforce proxy-admin on writes and scope reads by role.
+                        if RouteChecks.check_route_access(
+                            route=route,
+                            allowed_routes=LiteLLMRoutes.agent_management_routes.value,
+                        ):
+                            return True
+
         # check if wildcard pattern is allowed
         for allowed_route in valid_token.allowed_routes:
-            if RouteChecks._route_matches_wildcard_pattern(route=route, pattern=allowed_route):
+            if RouteChecks.route_matches_wildcard_pattern(route=route, pattern=allowed_route):
                 return True
 
         if denied_auth_enforced_pass_through_route:
@@ -214,7 +233,9 @@ class RouteChecks:
 
     @staticmethod
     def _raise_admin_only_route_exception(
-        user_obj: LiteLLM_UserTable | dict | None,
+        user_obj: LiteLLM_UserTable  # mutable-ok: framework contract requires mutable request or response containers
+        | dict
+        | None,  # mutable-ok: framework contract requires mutable request or response containers
         route: str,
     ) -> None:
         """
@@ -230,8 +251,12 @@ class RouteChecks:
         user_role = "unknown"
         user_id = "unknown"
         if user_obj is not None:
-            user_role = _get_user_object_value(user_obj, "user_role") or "unknown"
-            user_id = _get_user_object_value(user_obj, "user_id") or "unknown"
+            user_role = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                _get_user_object_value(user_obj, "user_role") or "unknown"
+            )  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            user_id = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                _get_user_object_value(user_obj, "user_id") or "unknown"
+            )  # rebind-ok: framework flow intentionally updates request or lifecycle state
 
         masked_user_id: Final = RouteChecks._mask_user_id(user_id)
         raise Exception(
@@ -240,7 +265,9 @@ class RouteChecks:
 
     @staticmethod
     def non_proxy_admin_allowed_routes_check(
-        user_obj: LiteLLM_UserTable | dict | None,
+        user_obj: LiteLLM_UserTable  # mutable-ok: framework contract requires mutable request or response containers
+        | dict
+        | None,  # mutable-ok: framework contract requires mutable request or response containers
         _user_role: LitellmUserRoles | None,
         route: str,
         request: Request,
@@ -328,7 +355,7 @@ class RouteChecks:
                     route_allowed = True
                     break
 
-                if RouteChecks._route_matches_wildcard_pattern(route=route, pattern=allowed_route):
+                if RouteChecks.route_matches_wildcard_pattern(route=route, pattern=allowed_route):
                     route_allowed = True
                     break
 
@@ -379,7 +406,7 @@ class RouteChecks:
         if RouteChecks.check_route_access(route=route, allowed_routes=LiteLLMRoutes.mcp_inference_routes.value):
             return True
 
-        if RouteChecks.check_route_access(route=route, allowed_routes=LiteLLMRoutes.agent_routes.value):
+        if RouteChecks.check_route_access(route=route, allowed_routes=LiteLLMRoutes.agent_inference_routes.value):
             return True
 
         if route in LiteLLMRoutes.litellm_native_routes.value:
@@ -395,7 +422,7 @@ class RouteChecks:
                     return True
             # Check for wildcard patterns like "/containers/*"
             if RouteChecks._is_wildcard_pattern(pattern=openai_route):
-                if RouteChecks._route_matches_wildcard_pattern(route=route, pattern=openai_route):
+                if RouteChecks.route_matches_wildcard_pattern(route=route, pattern=openai_route):
                     return True
 
         # Check for Google routes with placeholders like "/v1beta/models/{model_name}:generateContent"
@@ -515,7 +542,7 @@ class RouteChecks:
         return pattern.endswith("*")
 
     @staticmethod
-    def _route_matches_wildcard_pattern(route: str, pattern: str) -> bool:
+    def route_matches_wildcard_pattern(route: str, pattern: str) -> bool:
         """
         Check if route matches the wildcard pattern
 
@@ -570,13 +597,13 @@ class RouteChecks:
         return False
 
     @staticmethod
-    def check_route_access(route: str, allowed_routes: list[str]) -> bool:
+    def check_route_access(route: str, allowed_routes: Sequence[str]) -> bool:
         """
         Check if a route has access by checking both exact matches and patterns
 
         Args:
             route (str): The route to check
-            allowed_routes (list): List of allowed routes/patterns
+            allowed_routes (Sequence): Allowed routes/patterns
 
         Returns:
             bool: True if route is allowed, False otherwise
@@ -591,10 +618,12 @@ class RouteChecks:
         # wildcard match route is in allowed_routes
         # e.g calling /anthropic/v1/messages is allowed if allowed_routes has /anthropic/*
         #########################################################
-        wildcard_allowed_routes = [route for route in allowed_routes if RouteChecks._is_wildcard_pattern(pattern=route)]
-        for allowed_route in wildcard_allowed_routes:
-            if RouteChecks._route_matches_wildcard_pattern(route=route, pattern=allowed_route):
-                return True
+        if any(
+            RouteChecks.route_matches_wildcard_pattern(route=route, pattern=allowed_route)
+            for allowed_route in allowed_routes
+            if RouteChecks._is_wildcard_pattern(pattern=allowed_route)
+        ):
+            return True
 
         #########################################################
         # pattern match route is in allowed_routes

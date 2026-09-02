@@ -3,3 +3,4 @@ parent: ../../../../../.staticeng/codemap.yml
 internals:
   - path: __init__.py
   - path: test_vertex_ai_audio_transcription_transformation.py
+  - path: test_vertex_ai_gemini_transcribe_transformation.py

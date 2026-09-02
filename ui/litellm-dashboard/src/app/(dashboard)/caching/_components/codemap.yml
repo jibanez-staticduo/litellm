@@ -6,3 +6,5 @@ internals:
   - path: cache_dashboard.test.tsx
   - path: cache_health.test.tsx
   - path: response_time_indicator.tsx
+  - path: ErrorDrilldown.tsx
+  - path: ErrorDrilldown.test.tsx

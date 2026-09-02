@@ -7,3 +7,9 @@ internals:
   - path: create_key_button.tsx
   - path: utils.ts
   - path: create_key_button.test.tsx
+  - path: regenerateKeyPayload.test.ts
+  - path: createKeyPayload.ts
+  - path: createKeyPayload.test.ts
+  - path: RegenerateKeyModal.integration.test.tsx
+  - path: regenerateKeyPayload.ts
+  - path: create_key_button.integration.test.tsx

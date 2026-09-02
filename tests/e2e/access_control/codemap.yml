@@ -5,3 +5,4 @@ internals:
   - path: conftest.py
   - path: test_access_control_e2e.py
   - path: test_chat_auth_headers_e2e.py
+  - path: test_model_access_group_e2e.py

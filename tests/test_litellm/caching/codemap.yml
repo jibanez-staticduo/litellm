@@ -20,3 +20,4 @@ internals:
   - path: test_valkey_semantic_cache.py
   - path: test_in_memory_cache.py
   - path: test_embedding_router.py
+  - path: test_redis_cluster_node_isolation.py

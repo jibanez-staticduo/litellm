@@ -9,3 +9,9 @@ internals:
   - path: test_charity_engine.py
   - path: test_xiaomi_mimo.py
   - path: test_libertai_provider.py
+  - path: test_abliteration_provider.py
+  - path: test_scx_ai_provider.py
+  - path: test_assemblyai_provider.py
+  - path: test_dynamic_config.py
+  - path: test_cognition_provider.py
+  - path: test_empiriolabs_provider.py

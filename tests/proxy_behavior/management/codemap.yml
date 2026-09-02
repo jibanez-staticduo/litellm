@@ -49,3 +49,4 @@ internals:
   - path: test_scratch_teardown.py
   - path: test_team_update.py
   - path: test_key_aliases.py
+  - path: test_team_member_reset_spend.py

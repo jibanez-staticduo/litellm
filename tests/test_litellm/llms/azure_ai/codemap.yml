@@ -6,3 +6,4 @@ internals:
   - path: test_azure_ai_agents_handler.py
   - path: test_azure_ai_fw_models_metadata.py
   - path: test_azure_ai_kimi_k26_metadata.py
+  - path: test_azure_ai_entra_auth.py

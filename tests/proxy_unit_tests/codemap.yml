@@ -3,7 +3,6 @@ parent: ../../.staticeng/codemap.yml
 internals:
   - path: test_custom_logger_s3_gcs.py
   - path: test_blog_posts_endpoint.py
-  - path: conftest copy.py
   - path: test_zero_cost_model_budget_bypass.py
   - path: test_proxy_server_keys.py
   - path: test_user_api_key_auth.py

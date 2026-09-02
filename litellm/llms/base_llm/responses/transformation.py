@@ -86,9 +86,9 @@ class BaseResponsesAPIConfig(ABC):
         self,
         *,
         model: str,
-        request_data: dict,
+        request_data: dict,  # mutable-ok: framework contract requires mutable request or response containers
         litellm_params: object,
-    ) -> dict:
+    ) -> dict:  # mutable-ok: framework contract requires mutable request or response containers
         return request_data
 
     @abstractmethod

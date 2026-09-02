@@ -3,3 +3,4 @@ parent: ../../../.staticeng/codemap.yml
 internals:
   - path: test_image_generation_extra_headers.py
   - path: test_image_edit_utils.py
+  - path: test_image_edit_extra_params.py

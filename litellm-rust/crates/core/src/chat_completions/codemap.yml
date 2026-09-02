@@ -1,0 +1,13 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: mod.rs
+  - path: tests.rs
+  - path: transformation.rs
+  - path: common_utils.rs
+  - path: handler.rs
+  - path: client.rs
+  - path: conversation.rs
+  - path: response_utils.rs
+  - path: types.rs
+  - path: prepare.rs

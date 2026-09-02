@@ -2,7 +2,6 @@ scope: module
 parent: ../../../../.staticeng/codemap.yml
 internals:
   - path: PluginModeContext.test.tsx
-  - path: AntdGlobalProvider.tsx
   - path: AuthContext.tsx
   - path: ChatShellContext.tsx
   - path: PluginModeContext.tsx

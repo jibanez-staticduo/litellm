@@ -9,3 +9,6 @@ internals:
   - path: conftest.py
   - path: test_openai_moderation_guardrail_e2e.py
   - path: test_team_disable_global_guardrail_e2e.py
+  - path: test_streaming_guardrail_e2e.py
+  - path: test_guardrail_dispatch_e2e.py
+  - path: test_presidio_masking_e2e.py

@@ -3,3 +3,34 @@ parent: ../../../../.staticeng/codemap.yml
 internals:
   - path: vector_store.md
   - path: credential.md
+  - path: guardrail.md
+  - path: fallback.md
+  - path: access_group.md
+  - path: budgets.md
+  - path: mcp_server.md
+  - path: budget.md
+  - path: users.md
+  - path: model.md
+  - path: organization.md
+  - path: tag.md
+  - path: unified_access_groups.md
+  - path: keys.md
+  - path: key.md
+  - path: mcp_servers.md
+  - path: projects.md
+  - path: agents.md
+  - path: models.md
+  - path: prompts.md
+  - path: teams.md
+  - path: tags.md
+  - path: team.md
+  - path: search_tools.md
+  - path: project.md
+  - path: search_tool.md
+  - path: user.md
+  - path: unified_access_group.md
+  - path: guardrails.md
+  - path: prompt.md
+  - path: access_groups.md
+  - path: agent.md
+  - path: organizations.md

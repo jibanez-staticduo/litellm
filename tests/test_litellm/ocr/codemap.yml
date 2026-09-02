@@ -5,3 +5,4 @@ internals:
   - path: test_rust_bridge.py
   - path: test_ocr_file_input.py
   - path: test_ocr_azure_document_intelligence_api_base.py
+  - path: test_ocr_native_format.py

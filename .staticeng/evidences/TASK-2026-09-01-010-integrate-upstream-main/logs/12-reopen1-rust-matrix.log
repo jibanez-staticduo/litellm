@@ -1,0 +1,516 @@
+$ cargo +1.97.1 fmt --check
+$ cargo +1.97.1 clippy --workspace --all-targets --locked -- -D warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.35s
+$ cargo +1.97.1 clippy -p litellm-core --all-targets --features bedrock-auth --locked -- -D warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.20s
+$ cargo +1.97.1 test --workspace --locked
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.36s
+     Running unittests src/lib.rs (target/debug/deps/litellm_ai_gateway-f7d586f104e45f12)
+
+running 43 tests
+test integrations::custom_guardrail::tests::no_guardrails_fast_path_dispatches_nothing ... ok
+test integrations::custom_guardrail::tests::block_decision_short_circuits_later_guardrails_and_provider_work ... ok
+test integrations::custom_guardrail::tests::mask_decision_continues_with_updated_request ... ok
+test integrations::custom_guardrail::tests::run_before_provider_returns_provider_guardrail_error_directly ... ok
+test integrations::custom_guardrail::tests::pre_call_dispatches_to_async_pre_call_hook ... ok
+test integrations::custom_guardrail::tests::block_decision_short_circuits_and_logs_failure ... ok
+test integrations::custom_guardrail::tests::during_call_dispatches_to_async_moderation_hook ... ok
+test io::realtime::tests::realtime_invokes_openai_and_responds ... ignored, hits the live OpenAI realtime API; needs OPENAI_API_KEY
+test integrations::custom_logger::tests::no_callback_fast_path_dispatches_nothing ... ok
+test integrations::custom_logger::tests::with_standard_logging_payload_keeps_top_level_fields_in_sync ... ok
+test integrations::custom_logger::tests::rust_custom_logger_reads_success_payload_for_ocr ... ok
+test integrations::custom_logger::tests::rust_custom_logger_reads_failure_payload_for_non_ocr_call_type ... ok
+test io::realtime::tests::resolve_api_key_prefers_param_then_blank_falls_through ... ok
+test io::realtime_pool::tests::disabled_pool_never_hands_off ... ok
+test io::realtime_pool::tests::pool_miss_returns_none_for_fresh_dial_fallback ... ok
+test io::responses_ws::tests::blank_key_is_not_accepted_without_environment_key ... ok
+test io::responses_ws::tests::explicit_nonblank_key_wins ... ok
+test io::realtime_pool::tests::broken_key_backs_off_instead_of_dialing_every_tick ... ok
+test io::realtime_pool::tests::dead_warm_socket_is_discarded ... ok
+test io::responses_ws::tests::dial_http_status_is_preserved ... ok
+test io::responses_ws::tests::dial_http_500_status_is_preserved ... ok
+test io::realtime_pool::tests::healthy_key_never_enters_backoff_and_clears_after_recovery ... ok
+test audio_transcription::tests::bedrock_request_is_signed_and_contains_audio ... ok
+test ocr::common_utils::tests::blocks_private_and_metadata_ips ... ok
+test ocr::common_utils::tests::convert_document_url_leaves_data_uri_untouched ... ok
+test ocr::tests::auth_header_detection_is_case_insensitive ... ok
+test ocr::tests::ocr_dispatch_supports_migrated_providers ... ok
+test ocr::common_utils::tests::convert_document_url_rejects_loopback_fetch ... ok
+test io::realtime_pool::tests::warm_handoff_relays_buffered_session_created ... ok
+test ocr::tests::string_headers_accepts_string_values ... ok
+test ocr::tests::string_headers_rejects_non_string_values ... ok
+test ocr::tests::truncate_error_body_caps_long_payloads ... ok
+test ocr::tests::truncate_error_body_does_not_split_multibyte_chars ... ok
+test ocr::tests::truncate_error_body_passes_short_strings_through ... ok
+test ocr::tests::ocr_lifecycle_runs_failure_hook_on_provider_error ... ok
+test ocr::tests::ocr_lifecycle_runs_pre_during_and_success_hooks ... ok
+test ocr::tests::ocr_does_not_duplicate_authorization_header_when_header_is_supplied ... ok
+test ocr::tests::document_intelligence_poll_uses_resolved_subscription_key ... ok
+test io::responses_ws::tests::idle_timeout_ends_without_upstream_events ... ok
+test io::responses_ws::tests::forwards_events_sequentially_and_enforces_model ... ok
+test io::realtime_pool::tests::background_replenisher_tops_up_registered_key ... ok
+test io::realtime_pool::tests::closed_upstream_socket_is_detected_dead ... ok
+test ocr::tests::ocr_lifecycle_pre_call_block_skips_provider_socket ... ok
+
+test result: ok. 42 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running unittests src/lib.rs (target/debug/deps/litellm_core-e0922ff498b936f9)
+
+running 200 tests
+test caching::in_memory_cache::tests::default_and_per_set_ttl_are_applied ... ok
+test caching::in_memory_cache::tests::stale_heap_entries_are_skipped ... ok
+test caching::in_memory_cache::tests::max_size_evicts_earliest_expiration ... ok
+test caching::in_memory_cache::tests::ttl_expiry_is_deterministic ... ok
+test caching::in_memory_cache::tests::delete_and_flush_remove_values_and_ttls ... ok
+test caching::in_memory_cache::tests::unexpired_entries_do_not_allow_ttl_override ... ok
+test caching::in_memory_cache::tests::expired_entries_are_evicted_before_live_entries ... ok
+test caching::in_memory_cache::tests::zero_max_size_does_not_cache ... ok
+test call_lifecycle::tests::lifecycle_can_run_any_request_with_embedded_context ... ok
+test call_lifecycle::tests::lifecycle_logs_failure_when_provider_fails ... ok
+test call_lifecycle::tests::lifecycle_runs_hooks_around_provider_call ... ok
+test chat_completions::conversation::tests::does_not_strip_when_the_last_turn_is_a_user_turn ... ok
+test chat_completions::conversation::tests::drops_empty_system_text_the_way_python_skips_empty_system_blocks ... ok
+test chat_completions::conversation::tests::flattens_text_parts_in_order ... ok
+test chat_completions::conversation::tests::rewrites_empty_and_whitespace_only_text_to_the_python_placeholder ... ok
+test chat_completions::response_utils::tests::defaults_an_unmapped_reason_to_stop_like_python ... ok
+test chat_completions::response_utils::tests::folds_cache_tokens_into_prompt_tokens ... ok
+test chat_completions::conversation::tests::right_strips_only_the_final_assistant_turn ... ok
+test chat_completions::conversation::tests::reports_whether_the_conversation_opens_on_a_user_turn ... ok
+test chat_completions::conversation::tests::lifts_system_messages_out_of_the_turn_list ... ok
+test chat_completions::response_utils::tests::reports_raw_input_tokens_when_no_cache_is_involved ... ok
+test chat_completions::response_utils::tests::maps_every_reason_the_route_can_observe ... ok
+test chat_completions::tests::a_forwarded_authorization_header_suppresses_the_resolved_api_key_header ... ok
+test chat_completions::tests::a_bedrock_api_key_is_sent_as_a_bearer_token_instead_of_being_signed ... ok
+test chat_completions::tests::a_bedrock_deployment_bearer_outranks_a_forwarded_authorization ... ok
+test chat_completions::conversation::tests::merges_consecutive_same_role_turns ... ok
+test chat_completions::tests::declines_an_unsupported_request_before_resolving_credentials ... ok
+test chat_completions::tests::rejects_a_model_with_no_resolvable_provider ... ok
+test chat_completions::tests::rejects_an_empty_or_malformed_message_list ... ok
+test chat_completions::tests::an_anthropic_forwarded_oauth_bearer_still_outranks_the_resolved_key ... ok
+test chat_completions::tests::adds_the_auth_and_default_headers ... ok
+test chat_completions::tests::prepares_a_bedrock_call_without_resolving_credentials ... ok
+test chat_completions::tests::an_unrelated_forwarded_authorization_does_not_defer_the_resolved_key ... ok
+test chat_completions::tests::rejects_an_unknown_provider ... ok
+test chat_completions::tests::rejects_non_string_extra_headers ... ok
+test chat_completions::tests::resolves_the_provider_from_the_model_prefix ... ok
+test chat_completions::tests::round_trip::response_errors_collapse_to_one_variant_that_can_only_mean_already_sent ... ok
+test chat_completions::tests::a_forwarded_client_header_does_not_enter_the_bedrock_signature ... ok
+test chat_completions::tests::the_gate_accepts_what_prepare_accepts ... ok
+test chat_completions::tests::strips_an_explicit_provider_prefix_from_the_model ... ok
+test chat_completions::tests::a_forwarded_header_the_signer_computes_declines_to_python ... ok
+test http_utils::tests::bearer_detection_requires_a_non_empty_token ... ok
+test chat_completions::tests::the_deployment_credential_replaces_a_caller_supplied_auth_header ... ok
+test chat_completions::tests::the_gate_agrees_with_prepare_on_every_case_it_accepts ... ok
+test chat_completions::tests::the_gate_declines_without_resolving_credentials_or_calling_out ... ok
+test http_utils::tests::header_lookup_is_case_insensitive ... ok
+test http_utils::tests::truncate_bounds_long_bodies_by_characters ... ok
+test http_utils::tests::truncate_leaves_short_bodies_untouched ... ok
+test http_utils::tests::string_headers_rejects_non_string_values ... ok
+test messages::tests::has_bearer_auth_requires_a_nonempty_bearer_token ... ok
+test messages::tests::has_header_is_case_insensitive ... ok
+test messages::tests::messages_requires_auth_when_no_key_and_no_header ... ok
+test messages::tests::messages_rejects_unsupported_provider ... ok
+test messages::tests::provider_config_resolves_anthropic_and_azure_ai ... ok
+test messages::tests::string_headers_rejects_non_string_values ... ok
+test chat_completions::tests::round_trip::a_connection_that_is_never_established_declines_instead_of_failing ... ok
+test messages::tests::truncate_error_body_caps_long_payloads ... ok
+test providers::anthropic::chat_completions::transformation::tests::a_refusal_returns_the_completion_python_returns ... ok
+test chat_completions::tests::round_trip::a_response_it_cannot_normalize_is_reported_as_already_sent ... ok
+test chat_completions::tests::round_trip::a_tool_use_block_in_the_response_is_also_reported_as_already_sent ... ok
+test chat_completions::tests::round_trip::round_trip_sends_the_translated_body_and_normalizes_the_response ... ok
+test chat_completions::tests::round_trip::an_upstream_error_status_keeps_its_code ... ok
+test providers::anthropic::chat_completions::transformation::tests::accepts_a_plain_text_conversation ... ok
+test providers::anthropic::chat_completions::transformation::tests::accepts_an_explicit_stream_false ... ok
+test providers::anthropic::chat_completions::transformation::tests::builds_the_messages_body_python_builds ... ok
+test providers::anthropic::chat_completions::transformation::tests::declines_a_conversation_that_does_not_open_on_a_user_turn ... ok
+test providers::anthropic::chat_completions::transformation::tests::declines_a_message_whose_content_list_is_empty ... ok
+test messages::tests::messages_maps_provider_error_status_to_http_error ... ok
+test providers::anthropic::chat_completions::transformation::tests::declines_a_response_carrying_a_non_text_block ... ok
+test messages::tests::messages_forwards_entra_id_bearer_without_requiring_api_key ... ok
+test messages::tests::messages_ignores_malformed_authorization_and_uses_api_key ... ok
+test messages::tests::messages_does_not_duplicate_auth_when_x_api_key_supplied ... ok
+test providers::anthropic::chat_completions::transformation::tests::declines_any_param_outside_the_allowlist ... ok
+test providers::anthropic::chat_completions::transformation::tests::declines_streaming_before_anything_else ... ok
+test providers::anthropic::chat_completions::transformation::tests::folds_cache_tokens_into_prompt_tokens_like_python ... ok
+test providers::anthropic::chat_completions::transformation::tests::maps_max_tokens_stop_reason_to_length ... ok
+test providers::anthropic::chat_completions::transformation::tests::declines_top_k_because_python_gates_it_by_model_below_this_point ... ok
+test providers::anthropic::chat_completions::transformation::tests::errors_on_a_response_missing_required_fields ... ok
+test providers::anthropic::chat_completions::transformation::tests::declines_tool_calls_tool_results_and_multimodal_content ... ok
+test providers::anthropic::chat_completions::transformation::tests::merges_consecutive_turns_and_wraps_every_text_in_a_block ... ok
+test providers::anthropic::chat_completions::transformation::tests::normalizes_a_text_response_into_openai_shape ... ok
+test messages::tests::messages_round_trip_builds_azure_request_and_passes_response_through ... ok
+test messages::tests::messages_round_trip_builds_native_anthropic_request ... ok
+test providers::anthropic::chat_completions::transformation::tests::omits_system_when_no_system_message_is_present ... ok
+test providers::anthropic::chat_completions::transformation::tests::passes_every_supported_param_through_untouched ... ok
+test providers::anthropic::chat_completions::transformation::tests::resolves_the_messages_url_and_x_api_key_auth ... ok
+test providers::anthropic::chat_completions::transformation::tests::response_carries_no_id_so_python_keeps_its_chatcmpl_id ... ok
+test providers::anthropic::messages::transformation::tests::api_key_prefers_param_then_env_then_errors ... ok
+test providers::anthropic::messages::transformation::tests::auth_strategy_and_default_headers_match_anthropic ... ok
+test providers::anthropic::chat_completions::transformation::tests::reports_no_content_rather_than_an_empty_string ... ok
+test providers::anthropic::chat_completions::transformation::tests::right_strips_a_trailing_assistant_prefill_like_python ... ok
+test providers::anthropic::messages::transformation::tests::url_appends_messages_suffix_to_custom_base ... ok
+test providers::azure_ai::messages::transformation::tests::accepts_bearer_auth_for_entra_id ... ok
+test providers::azure_ai::messages::transformation::tests::auth_strategy_is_x_api_key ... ok
+test providers::azure_ai::messages::transformation::tests::default_headers_match_python ... ok
+test providers::anthropic::messages::transformation::tests::url_falls_back_to_env_base ... ok
+test providers::azure_ai::messages::transformation::tests::resolve_api_key_prefers_param_then_env ... ok
+test providers::anthropic::messages::transformation::tests::url_defaults_to_public_anthropic_endpoint ... ok
+test providers::anthropic::messages::transformation::tests::url_leaves_complete_messages_endpoint_untouched ... ok
+test providers::azure_ai::messages::transformation::tests::transform_request_folds_system_role_message_into_top_level_system ... ok
+test providers::azure_ai::messages::transformation::tests::transform_request_is_idempotent_and_preserves_string_system ... ok
+test providers::azure_ai::messages::transformation::tests::transform_request_leaves_requests_without_system_role_untouched ... ok
+test providers::azure_ai::messages::transformation::tests::transform_request_rejects_non_object_body ... ok
+test providers::azure_ai::messages::transformation::tests::transform_request_folds_system_role_when_no_top_level_system ... ok
+test providers::azure_ai::messages::transformation::tests::transform_response_passes_through ... ok
+test providers::azure_ai::messages::transformation::tests::url_falls_back_to_env_then_errors_when_absent ... ok
+test providers::azure_ai::messages::transformation::tests::url_appends_anthropic_and_messages_suffix ... ok
+test providers::azure_ai::messages::transformation::tests::url_keeps_existing_anthropic_segment ... ok
+test providers::azure_ai::ocr::transformation::tests::azure_ai_reuses_mistral_body_transform ... ok
+test providers::azure_ai::messages::transformation::tests::transform_request_preserves_all_supported_params ... ok
+test providers::azure_ai::messages::transformation::tests::transform_request_strips_scope_from_system_and_messages ... ok
+test providers::azure_ai::messages::transformation::tests::url_leaves_complete_messages_endpoint_untouched ... ok
+test providers::azure_ai::messages::transformation::tests::url_trims_trailing_slash_and_truncates_after_anthropic ... ok
+test providers::azure_ai::ocr::transformation::tests::document_intelligence_request_uses_base64_source_for_data_uri ... ok
+test providers::bedrock::audio_transcription::tests::invalid_audio_is_rejected ... ok
+test providers::azure_ai::ocr::transformation::tests::document_intelligence_response_normalizes_pages ... ok
+test providers::azure_ai::ocr::transformation::tests::document_intelligence_url_normalizes_zero_based_pages ... ok
+test providers::bedrock::audio_transcription::tests::region_and_url_precedence_match_python ... ok
+test providers::bedrock::audio_transcription::tests::response_concatenates_content_blocks ... ok
+test providers::bedrock::audio_transcription::tests::request_matches_python_shape ... ok
+test providers::bedrock::aws_base::tests::cache_policy_matches_python_flows ... ok
+test providers::bedrock::aws_base::tests::classification_covers_fallthroughs ... ok
+test providers::bedrock::aws_base::tests::live_bedrock_invoke_model_returns_200 ... ignored
+test providers::bedrock::aws_base::tests::cache_round_trip_preserves_credentials ... ok
+test providers::bedrock::aws_base::tests::classification_preserves_python_precedence ... ok
+test providers::bedrock::aws_base::tests::reads_the_region_field_of_a_model_arn_not_the_account_id ... ok
+test providers::bedrock::aws_base::tests::same_role_comparison_matches_partition_account_and_role ... ok
+test providers::bedrock::chat_completions::transformation::tests::a_bearer_token_outranks_sigv4_the_way_python_resolves_it ... ok
+test providers::bedrock::chat_completions::transformation::tests::accepts_a_user_to_user_text_conversation ... ok
+test providers::bedrock::aws_base::tests::a_forwarded_client_header_is_not_folded_into_the_signature ... ok
+test providers::bedrock::chat_completions::transformation::tests::always_emits_inference_config_even_when_empty ... ok
+test providers::bedrock::chat_completions::transformation::tests::builds_the_converse_url_from_the_region_in_the_model_id ... ok
+test providers::bedrock::chat_completions::transformation::tests::accepts_aws_call_configuration_without_serializing_it ... ok
+test providers::bedrock::chat_completions::transformation::tests::builds_the_converse_body_python_builds ... ok
+test providers::bedrock::chat_completions::transformation::tests::declines_a_conversation_that_opens_or_closes_on_an_assistant_turn ... ok
+test providers::bedrock::chat_completions::transformation::tests::declines_a_cache_control_message_so_widening_the_gate_is_a_red_test ... ok
+test providers::bedrock::aws_base::tests::signing_without_session_token_omits_security_header ... ok
+test providers::bedrock::aws_base::tests::signing_matches_botocore_golden_vector ... ok
+test providers::bedrock::chat_completions::transformation::tests::declines_a_message_whose_content_list_is_empty ... ok
+test providers::bedrock::aws_base::tests::static_credentials_do_not_use_network ... ok
+test providers::bedrock::chat_completions::transformation::tests::declines_streaming ... ok
+test providers::bedrock::chat_completions::transformation::tests::declines_top_k_because_python_routes_it_by_base_model ... ok
+test providers::bedrock::chat_completions::transformation::tests::errors_on_a_response_missing_required_fields ... ok
+test providers::bedrock::chat_completions::transformation::tests::declines_tools_and_other_params_outside_the_allowlist ... ok
+test providers::bedrock::chat_completions::transformation::tests::falls_back_to_the_computed_total_when_converse_omits_it ... ok
+test providers::bedrock::chat_completions::transformation::tests::falls_back_to_the_region_env_then_the_default_region ... ok
+test providers::bedrock::chat_completions::transformation::tests::declines_a_response_carrying_a_tool_use_block ... ok
+test providers::bedrock::chat_completions::transformation::tests::declines_blank_text_rather_than_substituting_the_anthropic_placeholder ... ok
+test providers::bedrock::chat_completions::transformation::tests::host_supplied_credentials_outrank_ambient_profile_and_role_state ... ok
+test providers::bedrock::chat_completions::transformation::tests::leaves_a_complete_converse_url_untouched ... ok
+test providers::bedrock::chat_completions::transformation::tests::maps_converse_stop_reasons_python_maps ... ok
+test providers::bedrock::chat_completions::transformation::tests::folds_converse_cache_tokens_into_prompt_tokens ... ok
+test providers::bedrock::chat_completions::transformation::tests::normalizes_a_converse_response_into_openai_shape ... ok
+test providers::bedrock::chat_completions::transformation::tests::prefers_an_explicit_runtime_endpoint_over_the_api_base ... ok
+test providers::bedrock::chat_completions::transformation::tests::reports_an_empty_converse_answer_as_an_empty_string_not_null ... ok
+test providers::bedrock::chat_completions::transformation::tests::places_only_inference_params_in_inference_config ... ok
+test providers::bedrock::chat_completions::transformation::tests::signs_with_sigv4_in_the_resolved_region ... ok
+test providers::bedrock::chat_completions::transformation::tests::reports_the_total_tokens_converse_sent_rather_than_recomputing_them ... ok
+test providers::mistral::ocr::transformation::tests::complete_url_defaults_and_dedupes_v1 ... ok
+test providers::bedrock::chat_completions::transformation::tests::merges_consecutive_user_turns_into_one_message ... ok
+test providers::mistral::ocr::transformation::tests::supported_params_match_python_mistral_ocr_config ... ok
+test providers::mistral::ocr::transformation::tests::transform_ocr_request_builds_mistral_body ... ok
+test providers::mistral::ocr::transformation::tests::transform_ocr_request_rejects_non_object_document ... ok
+test providers::mistral::ocr::transformation::tests::transform_ocr_response_normalizes_mistral_json ... ok
+test providers::mistral::ocr::transformation::tests::resolve_api_key_errors_when_absent ... ok
+test providers::openai::realtime::transformation::tests::complete_url_bare_host_defaults_to_wss ... ok
+test providers::mistral::ocr::transformation::tests::resolve_api_key_prefers_param_then_env ... ok
+test providers::openai::realtime::transformation::tests::complete_url_custom_base ... ok
+test providers::openai::realtime::transformation::tests::complete_url_blank_base_uses_default ... ok
+test providers::openai::realtime::transformation::tests::complete_url_dedupes_trailing_slash ... ok
+test providers::openai::realtime::transformation::tests::complete_url_defaults_to_openai_wss ... ok
+test providers::openai::realtime::transformation::tests::complete_url_percent_encodes_model_space ... ok
+test providers::openai::realtime::transformation::tests::complete_url_preserves_existing_wss_scheme ... ok
+test providers::openai::realtime::transformation::tests::complete_url_swaps_http_to_ws ... ok
+test providers::mistral::ocr::transformation::tests::map_ocr_params_drops_unknown_params ... ok
+test providers::openai::realtime::transformation::tests::transform_realtime_request_passthrough_preserves_event ... ok
+test providers::openai::realtime::transformation::tests::transform_realtime_response_passthrough_preserves_event ... ok
+test providers::openai::responses::transformation::tests::openai_config_is_native_and_enforces_model ... ok
+test providers::vertex_ai::ocr::transformation::tests::vertex_deepseek_request_uses_ocr_endpoint_shape ... ok
+test providers::vertex_ai::ocr::transformation::tests::vertex_mistral_reuses_mistral_body_transform ... ok
+test providers::vertex_ai::ocr::transformation::tests::vertex_deepseek_response_wraps_markdown_content ... ok
+test providers::vertex_ai::ocr::transformation::tests::vertex_mistral_url_uses_project_location_and_model ... ok
+test realtime::types::tests::passthrough_produces_single_element_vec ... ok
+test realtime::types::tests::realtime_event_round_trips_type_and_extra_fields ... ok
+test responses::instrumentation::tests::builds_failure_payload_without_dispatching_callbacks ... ok
+test responses::instrumentation::tests::accumulates_upstream_usage_and_identity ... ok
+test responses::instrumentation::tests::builds_outcome_when_lifecycle_did_not_record_one ... ok
+test responses::types::tests::error_frame_matches_proxy_shape ... ok
+test responses::types::tests::event_type_round_trips_known_and_unknown_values ... ok
+test responses::types::tests::model_reads_flat_and_nested_create_shapes ... ok
+test responses::websocket::tests::enforce_model_overrides_flat_and_nested_values ... ok
+test router::deployment::tests::deserializes_from_model_list_entry ... ok
+test responses::websocket::tests::url_construction_matches_python_defaults_and_query_behavior ... ok
+test responses::instrumentation::tests::lifecycle_records_success_outcome_for_provider_completion ... ok
+test router::strategy::simple_shuffle::tests::empty_candidates_select_none ... ok
+test router::tests::selects_a_matching_deployment ... ok
+test router::strategy::simple_shuffle::tests::picks_from_candidates ... ok
+test router::tests::unknown_model_returns_none ... ok
+test routing_utils::provider::tests::explicit_custom_llm_provider_strips_matching_model_prefix ... ok
+test routing_utils::provider::tests::gets_custom_llm_provider_from_model_prefix ... ok
+
+test result: ok. 199 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/workspace_crate_allowlist.rs (target/debug/deps/workspace_crate_allowlist-340017fd832426c7)
+
+running 2 tests
+test workspace_members_match_allowlist ... ok
+test crates_directory_matches_allowlist ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/_native-b3b3772c5621c507)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/marshal_boundary.rs (target/debug/deps/marshal_boundary-4f35f7127ab943f4)
+
+running 1 test
+test serialization_is_centralized_in_marshal_module ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests litellm_ai_gateway
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests litellm_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+$ cargo +1.97.1 test -p litellm-core --features bedrock-auth --locked
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.20s
+     Running unittests src/lib.rs (target/debug/deps/litellm_core-fabfbe61d84c53c2)
+
+running 200 tests
+test caching::in_memory_cache::tests::default_and_per_set_ttl_are_applied ... ok
+test caching::in_memory_cache::tests::stale_heap_entries_are_skipped ... ok
+test caching::in_memory_cache::tests::expired_entries_are_evicted_before_live_entries ... ok
+test caching::in_memory_cache::tests::delete_and_flush_remove_values_and_ttls ... ok
+test caching::in_memory_cache::tests::unexpired_entries_do_not_allow_ttl_override ... ok
+test caching::in_memory_cache::tests::max_size_evicts_earliest_expiration ... ok
+test caching::in_memory_cache::tests::ttl_expiry_is_deterministic ... ok
+test caching::in_memory_cache::tests::zero_max_size_does_not_cache ... ok
+test chat_completions::conversation::tests::drops_empty_system_text_the_way_python_skips_empty_system_blocks ... ok
+test chat_completions::conversation::tests::flattens_text_parts_in_order ... ok
+test chat_completions::conversation::tests::does_not_strip_when_the_last_turn_is_a_user_turn ... ok
+test chat_completions::conversation::tests::lifts_system_messages_out_of_the_turn_list ... ok
+test call_lifecycle::tests::lifecycle_runs_hooks_around_provider_call ... ok
+test call_lifecycle::tests::lifecycle_can_run_any_request_with_embedded_context ... ok
+test call_lifecycle::tests::lifecycle_logs_failure_when_provider_fails ... ok
+test chat_completions::response_utils::tests::defaults_an_unmapped_reason_to_stop_like_python ... ok
+test chat_completions::response_utils::tests::folds_cache_tokens_into_prompt_tokens ... ok
+test chat_completions::conversation::tests::merges_consecutive_same_role_turns ... ok
+test chat_completions::conversation::tests::right_strips_only_the_final_assistant_turn ... ok
+test chat_completions::response_utils::tests::maps_every_reason_the_route_can_observe ... ok
+test chat_completions::response_utils::tests::reports_raw_input_tokens_when_no_cache_is_involved ... ok
+test chat_completions::conversation::tests::rewrites_empty_and_whitespace_only_text_to_the_python_placeholder ... ok
+test chat_completions::conversation::tests::reports_whether_the_conversation_opens_on_a_user_turn ... ok
+test chat_completions::tests::a_forwarded_authorization_header_suppresses_the_resolved_api_key_header ... ok
+test chat_completions::tests::a_bedrock_api_key_is_sent_as_a_bearer_token_instead_of_being_signed ... ok
+test chat_completions::tests::a_bedrock_deployment_bearer_outranks_a_forwarded_authorization ... ok
+test chat_completions::tests::adds_the_auth_and_default_headers ... ok
+test chat_completions::tests::an_unrelated_forwarded_authorization_does_not_defer_the_resolved_key ... ok
+test chat_completions::tests::an_anthropic_forwarded_oauth_bearer_still_outranks_the_resolved_key ... ok
+test chat_completions::tests::declines_an_unsupported_request_before_resolving_credentials ... ok
+test chat_completions::tests::rejects_a_model_with_no_resolvable_provider ... ok
+test chat_completions::tests::rejects_an_empty_or_malformed_message_list ... ok
+test chat_completions::tests::rejects_an_unknown_provider ... ok
+test chat_completions::tests::rejects_non_string_extra_headers ... ok
+test chat_completions::tests::a_forwarded_header_the_signer_computes_declines_to_python ... ok
+test chat_completions::tests::resolves_the_provider_from_the_model_prefix ... ok
+test chat_completions::tests::prepares_a_bedrock_call_without_resolving_credentials ... ok
+test chat_completions::tests::round_trip::response_errors_collapse_to_one_variant_that_can_only_mean_already_sent ... ok
+test chat_completions::tests::the_gate_accepts_what_prepare_accepts ... ok
+test chat_completions::tests::strips_an_explicit_provider_prefix_from_the_model ... ok
+test chat_completions::tests::the_deployment_credential_replaces_a_caller_supplied_auth_header ... ok
+test chat_completions::tests::the_gate_declines_without_resolving_credentials_or_calling_out ... ok
+test chat_completions::tests::a_forwarded_client_header_does_not_enter_the_bedrock_signature ... ok
+test http_utils::tests::bearer_detection_requires_a_non_empty_token ... ok
+test http_utils::tests::header_lookup_is_case_insensitive ... ok
+test http_utils::tests::string_headers_rejects_non_string_values ... ok
+test chat_completions::tests::the_gate_agrees_with_prepare_on_every_case_it_accepts ... ok
+test http_utils::tests::truncate_bounds_long_bodies_by_characters ... ok
+test http_utils::tests::truncate_leaves_short_bodies_untouched ... ok
+test messages::tests::has_bearer_auth_requires_a_nonempty_bearer_token ... ok
+test messages::tests::has_header_is_case_insensitive ... ok
+test messages::tests::messages_rejects_unsupported_provider ... ok
+test messages::tests::messages_requires_auth_when_no_key_and_no_header ... ok
+test messages::tests::provider_config_resolves_anthropic_and_azure_ai ... ok
+test messages::tests::string_headers_rejects_non_string_values ... ok
+test chat_completions::tests::round_trip::a_connection_that_is_never_established_declines_instead_of_failing ... ok
+test chat_completions::tests::round_trip::a_tool_use_block_in_the_response_is_also_reported_as_already_sent ... ok
+test messages::tests::messages_ignores_malformed_authorization_and_uses_api_key ... ok
+test messages::tests::messages_does_not_duplicate_auth_when_x_api_key_supplied ... ok
+test messages::tests::messages_forwards_entra_id_bearer_without_requiring_api_key ... ok
+test messages::tests::messages_maps_provider_error_status_to_http_error ... ok
+test chat_completions::tests::round_trip::round_trip_sends_the_translated_body_and_normalizes_the_response ... ok
+test chat_completions::tests::round_trip::a_response_it_cannot_normalize_is_reported_as_already_sent ... ok
+test messages::tests::messages_round_trip_builds_native_anthropic_request ... ok
+test messages::tests::messages_round_trip_builds_azure_request_and_passes_response_through ... ok
+test providers::anthropic::chat_completions::transformation::tests::a_refusal_returns_the_completion_python_returns ... ok
+test messages::tests::truncate_error_body_caps_long_payloads ... ok
+test providers::anthropic::chat_completions::transformation::tests::accepts_a_plain_text_conversation ... ok
+test providers::anthropic::chat_completions::transformation::tests::accepts_an_explicit_stream_false ... ok
+test providers::anthropic::chat_completions::transformation::tests::declines_a_conversation_that_does_not_open_on_a_user_turn ... ok
+test providers::anthropic::chat_completions::transformation::tests::declines_a_response_carrying_a_non_text_block ... ok
+test providers::anthropic::chat_completions::transformation::tests::builds_the_messages_body_python_builds ... ok
+test providers::anthropic::chat_completions::transformation::tests::declines_a_message_whose_content_list_is_empty ... ok
+test providers::anthropic::chat_completions::transformation::tests::declines_streaming_before_anything_else ... ok
+test providers::anthropic::chat_completions::transformation::tests::declines_any_param_outside_the_allowlist ... ok
+test providers::anthropic::chat_completions::transformation::tests::declines_top_k_because_python_gates_it_by_model_below_this_point ... ok
+test providers::anthropic::chat_completions::transformation::tests::errors_on_a_response_missing_required_fields ... ok
+test providers::anthropic::chat_completions::transformation::tests::folds_cache_tokens_into_prompt_tokens_like_python ... ok
+test providers::anthropic::chat_completions::transformation::tests::declines_tool_calls_tool_results_and_multimodal_content ... ok
+test providers::anthropic::chat_completions::transformation::tests::maps_max_tokens_stop_reason_to_length ... ok
+test providers::anthropic::chat_completions::transformation::tests::normalizes_a_text_response_into_openai_shape ... ok
+test providers::anthropic::chat_completions::transformation::tests::reports_no_content_rather_than_an_empty_string ... ok
+test providers::anthropic::chat_completions::transformation::tests::omits_system_when_no_system_message_is_present ... ok
+test providers::anthropic::chat_completions::transformation::tests::merges_consecutive_turns_and_wraps_every_text_in_a_block ... ok
+test providers::anthropic::chat_completions::transformation::tests::passes_every_supported_param_through_untouched ... ok
+test providers::anthropic::chat_completions::transformation::tests::resolves_the_messages_url_and_x_api_key_auth ... ok
+test providers::anthropic::messages::transformation::tests::api_key_prefers_param_then_env_then_errors ... ok
+test providers::anthropic::chat_completions::transformation::tests::response_carries_no_id_so_python_keeps_its_chatcmpl_id ... ok
+test providers::anthropic::messages::transformation::tests::auth_strategy_and_default_headers_match_anthropic ... ok
+test providers::anthropic::messages::transformation::tests::url_appends_messages_suffix_to_custom_base ... ok
+test providers::anthropic::chat_completions::transformation::tests::right_strips_a_trailing_assistant_prefill_like_python ... ok
+test providers::anthropic::messages::transformation::tests::url_defaults_to_public_anthropic_endpoint ... ok
+test providers::anthropic::messages::transformation::tests::url_falls_back_to_env_base ... ok
+test providers::anthropic::messages::transformation::tests::url_leaves_complete_messages_endpoint_untouched ... ok
+test providers::azure_ai::messages::transformation::tests::accepts_bearer_auth_for_entra_id ... ok
+test providers::azure_ai::messages::transformation::tests::auth_strategy_is_x_api_key ... ok
+test providers::azure_ai::messages::transformation::tests::default_headers_match_python ... ok
+test providers::azure_ai::messages::transformation::tests::resolve_api_key_prefers_param_then_env ... ok
+test chat_completions::tests::round_trip::an_upstream_error_status_keeps_its_code ... ok
+test providers::azure_ai::messages::transformation::tests::transform_request_rejects_non_object_body ... ok
+test providers::azure_ai::messages::transformation::tests::transform_request_folds_system_role_message_into_top_level_system ... ok
+test providers::azure_ai::messages::transformation::tests::transform_request_is_idempotent_and_preserves_string_system ... ok
+test providers::azure_ai::messages::transformation::tests::transform_request_leaves_requests_without_system_role_untouched ... ok
+test providers::azure_ai::messages::transformation::tests::transform_request_folds_system_role_when_no_top_level_system ... ok
+test providers::azure_ai::messages::transformation::tests::url_keeps_existing_anthropic_segment ... ok
+test providers::azure_ai::messages::transformation::tests::url_appends_anthropic_and_messages_suffix ... ok
+test providers::azure_ai::messages::transformation::tests::url_leaves_complete_messages_endpoint_untouched ... ok
+test providers::azure_ai::messages::transformation::tests::transform_request_preserves_all_supported_params ... ok
+test providers::azure_ai::messages::transformation::tests::transform_request_strips_scope_from_system_and_messages ... ok
+test providers::azure_ai::messages::transformation::tests::url_trims_trailing_slash_and_truncates_after_anthropic ... ok
+test providers::azure_ai::messages::transformation::tests::transform_response_passes_through ... ok
+test providers::azure_ai::ocr::transformation::tests::azure_ai_reuses_mistral_body_transform ... ok
+test providers::azure_ai::ocr::transformation::tests::document_intelligence_request_uses_base64_source_for_data_uri ... ok
+test providers::bedrock::audio_transcription::tests::invalid_audio_is_rejected ... ok
+test providers::azure_ai::messages::transformation::tests::url_falls_back_to_env_then_errors_when_absent ... ok
+test providers::azure_ai::ocr::transformation::tests::document_intelligence_response_normalizes_pages ... ok
+test providers::azure_ai::ocr::transformation::tests::document_intelligence_url_normalizes_zero_based_pages ... ok
+test providers::bedrock::audio_transcription::tests::region_and_url_precedence_match_python ... ok
+test providers::bedrock::audio_transcription::tests::response_concatenates_content_blocks ... ok
+test providers::bedrock::aws_base::tests::cache_policy_matches_python_flows ... ok
+test providers::bedrock::audio_transcription::tests::request_matches_python_shape ... ok
+test providers::bedrock::aws_base::tests::live_bedrock_invoke_model_returns_200 ... ignored
+test providers::bedrock::aws_base::tests::classification_covers_fallthroughs ... ok
+test providers::bedrock::aws_base::tests::cache_round_trip_preserves_credentials ... ok
+test providers::bedrock::aws_base::tests::classification_preserves_python_precedence ... ok
+test providers::bedrock::aws_base::tests::reads_the_region_field_of_a_model_arn_not_the_account_id ... ok
+test providers::bedrock::aws_base::tests::same_role_comparison_matches_partition_account_and_role ... ok
+test providers::bedrock::chat_completions::transformation::tests::a_bearer_token_outranks_sigv4_the_way_python_resolves_it ... ok
+test providers::bedrock::chat_completions::transformation::tests::accepts_a_user_to_user_text_conversation ... ok
+test providers::bedrock::aws_base::tests::a_forwarded_client_header_is_not_folded_into_the_signature ... ok
+test providers::bedrock::chat_completions::transformation::tests::always_emits_inference_config_even_when_empty ... ok
+test providers::bedrock::chat_completions::transformation::tests::accepts_aws_call_configuration_without_serializing_it ... ok
+test providers::bedrock::chat_completions::transformation::tests::builds_the_converse_body_python_builds ... ok
+test providers::bedrock::aws_base::tests::signing_without_session_token_omits_security_header ... ok
+test providers::bedrock::aws_base::tests::signing_matches_botocore_golden_vector ... ok
+test providers::bedrock::chat_completions::transformation::tests::declines_a_conversation_that_opens_or_closes_on_an_assistant_turn ... ok
+test providers::bedrock::chat_completions::transformation::tests::declines_a_message_whose_content_list_is_empty ... ok
+test providers::bedrock::aws_base::tests::static_credentials_do_not_use_network ... ok
+test providers::bedrock::chat_completions::transformation::tests::declines_streaming ... ok
+test providers::bedrock::chat_completions::transformation::tests::declines_top_k_because_python_routes_it_by_base_model ... ok
+test providers::bedrock::chat_completions::transformation::tests::errors_on_a_response_missing_required_fields ... ok
+test providers::bedrock::chat_completions::transformation::tests::declines_a_response_carrying_a_tool_use_block ... ok
+test providers::bedrock::chat_completions::transformation::tests::builds_the_converse_url_from_the_region_in_the_model_id ... ok
+test providers::bedrock::chat_completions::transformation::tests::declines_blank_text_rather_than_substituting_the_anthropic_placeholder ... ok
+test providers::bedrock::chat_completions::transformation::tests::declines_tools_and_other_params_outside_the_allowlist ... ok
+test providers::bedrock::chat_completions::transformation::tests::folds_converse_cache_tokens_into_prompt_tokens ... ok
+test providers::bedrock::chat_completions::transformation::tests::host_supplied_credentials_outrank_ambient_profile_and_role_state ... ok
+test providers::bedrock::chat_completions::transformation::tests::leaves_a_complete_converse_url_untouched ... ok
+test providers::bedrock::chat_completions::transformation::tests::declines_a_cache_control_message_so_widening_the_gate_is_a_red_test ... ok
+test providers::bedrock::chat_completions::transformation::tests::normalizes_a_converse_response_into_openai_shape ... ok
+test providers::bedrock::chat_completions::transformation::tests::falls_back_to_the_region_env_then_the_default_region ... ok
+test providers::bedrock::chat_completions::transformation::tests::maps_converse_stop_reasons_python_maps ... ok
+test providers::bedrock::chat_completions::transformation::tests::places_only_inference_params_in_inference_config ... ok
+test providers::bedrock::chat_completions::transformation::tests::falls_back_to_the_computed_total_when_converse_omits_it ... ok
+test providers::bedrock::chat_completions::transformation::tests::merges_consecutive_user_turns_into_one_message ... ok
+test providers::bedrock::chat_completions::transformation::tests::prefers_an_explicit_runtime_endpoint_over_the_api_base ... ok
+test providers::mistral::ocr::transformation::tests::complete_url_defaults_and_dedupes_v1 ... ok
+test providers::mistral::ocr::transformation::tests::map_ocr_params_drops_unknown_params ... ok
+test providers::mistral::ocr::transformation::tests::resolve_api_key_errors_when_absent ... ok
+test providers::bedrock::chat_completions::transformation::tests::reports_an_empty_converse_answer_as_an_empty_string_not_null ... ok
+test providers::mistral::ocr::transformation::tests::resolve_api_key_prefers_param_then_env ... ok
+test providers::mistral::ocr::transformation::tests::supported_params_match_python_mistral_ocr_config ... ok
+test providers::bedrock::chat_completions::transformation::tests::reports_the_total_tokens_converse_sent_rather_than_recomputing_them ... ok
+test providers::openai::realtime::transformation::tests::complete_url_bare_host_defaults_to_wss ... ok
+test providers::mistral::ocr::transformation::tests::transform_ocr_request_builds_mistral_body ... ok
+test providers::bedrock::chat_completions::transformation::tests::signs_with_sigv4_in_the_resolved_region ... ok
+test providers::openai::realtime::transformation::tests::complete_url_blank_base_uses_default ... ok
+test providers::mistral::ocr::transformation::tests::transform_ocr_request_rejects_non_object_document ... ok
+test providers::openai::realtime::transformation::tests::complete_url_percent_encodes_model_space ... ok
+test providers::mistral::ocr::transformation::tests::transform_ocr_response_normalizes_mistral_json ... ok
+test providers::openai::realtime::transformation::tests::complete_url_preserves_existing_wss_scheme ... ok
+test providers::openai::realtime::transformation::tests::complete_url_custom_base ... ok
+test providers::openai::realtime::transformation::tests::complete_url_swaps_http_to_ws ... ok
+test providers::openai::realtime::transformation::tests::transform_realtime_request_passthrough_preserves_event ... ok
+test providers::openai::realtime::transformation::tests::transform_realtime_response_passthrough_preserves_event ... ok
+test providers::openai::responses::transformation::tests::openai_config_is_native_and_enforces_model ... ok
+test providers::openai::realtime::transformation::tests::complete_url_dedupes_trailing_slash ... ok
+test providers::openai::realtime::transformation::tests::complete_url_defaults_to_openai_wss ... ok
+test providers::vertex_ai::ocr::transformation::tests::vertex_deepseek_request_uses_ocr_endpoint_shape ... ok
+test providers::vertex_ai::ocr::transformation::tests::vertex_deepseek_response_wraps_markdown_content ... ok
+test providers::vertex_ai::ocr::transformation::tests::vertex_mistral_reuses_mistral_body_transform ... ok
+test providers::vertex_ai::ocr::transformation::tests::vertex_mistral_url_uses_project_location_and_model ... ok
+test realtime::types::tests::passthrough_produces_single_element_vec ... ok
+test realtime::types::tests::realtime_event_round_trips_type_and_extra_fields ... ok
+test responses::instrumentation::tests::builds_failure_payload_without_dispatching_callbacks ... ok
+test responses::instrumentation::tests::accumulates_upstream_usage_and_identity ... ok
+test responses::instrumentation::tests::builds_outcome_when_lifecycle_did_not_record_one ... ok
+test responses::types::tests::error_frame_matches_proxy_shape ... ok
+test responses::types::tests::event_type_round_trips_known_and_unknown_values ... ok
+test responses::types::tests::model_reads_flat_and_nested_create_shapes ... ok
+test responses::websocket::tests::enforce_model_overrides_flat_and_nested_values ... ok
+test responses::instrumentation::tests::lifecycle_records_success_outcome_for_provider_completion ... ok
+test router::deployment::tests::deserializes_from_model_list_entry ... ok
+test responses::websocket::tests::url_construction_matches_python_defaults_and_query_behavior ... ok
+test router::strategy::simple_shuffle::tests::empty_candidates_select_none ... ok
+test router::tests::unknown_model_returns_none ... ok
+test router::strategy::simple_shuffle::tests::picks_from_candidates ... ok
+test routing_utils::provider::tests::explicit_custom_llm_provider_strips_matching_model_prefix ... ok
+test router::tests::selects_a_matching_deployment ... ok
+test routing_utils::provider::tests::gets_custom_llm_provider_from_model_prefix ... ok
+
+test result: ok. 199 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/workspace_crate_allowlist.rs (target/debug/deps/workspace_crate_allowlist-9aa7ed3e9996ac1b)
+
+running 2 tests
+test workspace_members_match_allowlist ... ok
+test crates_directory_matches_allowlist ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests litellm_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

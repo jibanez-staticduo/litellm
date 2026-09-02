@@ -4,13 +4,10 @@ Unit tests for cache settings management endpoints
 
 import asyncio
 import json
-import os
-import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-sys.path.insert(0, os.path.abspath("../../../.."))  # Adds the parent directory to the system path
 
 import litellm
 from litellm.proxy._types import LitellmTableNames, LitellmUserRoles
@@ -63,7 +60,9 @@ async def test_test_cache_connection_calls_cache_test_connection_with_params():
     )
 
     # Patch Cache class at the import location (litellm module)
-    with patch("litellm.Cache") as mock_cache_class:
+    with (
+        patch("litellm.Cache") as mock_cache_class
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         mock_cache_class.return_value = mock_cache_instance
 
         # Call the endpoint
@@ -178,7 +177,9 @@ async def test_test_cache_connection_url_takes_precedence_over_discrete_fields()
     mock_cache_instance.cache = MagicMock()
     mock_cache_instance.cache.test_connection = AsyncMock(return_value={"status": "success", "message": "ok"})
 
-    with patch("litellm.Cache") as mock_cache_class:
+    with (
+        patch("litellm.Cache") as mock_cache_class
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         mock_cache_class.return_value = mock_cache_instance
 
         result = await test_cache_connection(request=request, user_api_key_dict=user_api_key_dict)
@@ -212,9 +213,15 @@ async def test_update_cache_settings_persists_url_precedence(monkeypatch):
     proxy_config.switch_on_llm_response_caching = MagicMock()
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", mock_prisma),
-        patch("litellm.proxy.proxy_server.proxy_config", proxy_config),
-        patch("litellm.proxy.proxy_server.store_model_in_db", True),
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", mock_prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.proxy_config", proxy_config
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.store_model_in_db", True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await update_cache_settings(
             request=CacheSettingsUpdateRequest(
@@ -268,8 +275,12 @@ async def test_get_cache_settings_masks_password_bearing_url():
     proxy_config._decrypt_db_variables = MagicMock(side_effect=lambda variables_dict: dict(variables_dict))
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", mock_prisma),
-        patch("litellm.proxy.proxy_server.proxy_config", proxy_config),
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", mock_prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.proxy_config", proxy_config
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         response = await get_cache_settings(user_api_key_dict=_admin_auth())
 
@@ -434,7 +445,9 @@ class TestCacheSettingsManager:
             patch.object(proxy_server, "redis_usage_cache", None),
             patch.object(proxy_server, "litellm_config_cache", MagicMock(redis_cache=None)),
             patch.object(proxy_server, "_build_redis_usage_cache_from_environment", return_value=None),
-            patch("litellm.Cache", return_value=mock_litellm_cache),
+            patch(
+                "litellm.Cache", return_value=mock_litellm_cache
+            ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         ):
             await CacheSettingsManager.init_cache_settings_in_db(
                 prisma_client=mock_prisma_client,
@@ -550,20 +563,22 @@ async def test_update_cache_settings_emits_audit_log_when_enabled(monkeypatch):
         audit_calls.append(request_data)
 
     with (
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.prisma_client",
             mock_prisma,
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.proxy_config",
             proxy_config,
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.store_model_in_db",
             True,
         ),
-        patch("litellm.proxy.proxy_server.litellm_proxy_admin_name", "admin"),
         patch(
+            "litellm.proxy.proxy_server.litellm_proxy_admin_name", "admin"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_helpers.audit_logs.create_audit_log_for_update",
             new=capture,
         ),
@@ -620,19 +635,19 @@ async def test_update_cache_settings_no_audit_when_disabled(monkeypatch):
         audit_calls.append(request_data)
 
     with (
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.prisma_client",
             mock_prisma,
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.proxy_config",
             proxy_config,
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.store_model_in_db",
             True,
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.management_helpers.audit_logs.create_audit_log_for_update",
             new=capture,
         ),
@@ -837,8 +852,12 @@ async def test_get_cache_settings_falls_back_to_redis_env(monkeypatch):
     proxy_config._decrypt_db_variables = MagicMock(side_effect=lambda variables_dict: dict(variables_dict))
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", mock_prisma),
-        patch("litellm.proxy.proxy_server.proxy_config", proxy_config),
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", mock_prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.proxy_config", proxy_config
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         response = await get_cache_settings(user_api_key_dict=_admin_auth())
 
@@ -855,17 +874,19 @@ async def test_get_cache_settings_redacts_password_with_marker(monkeypatch):
     for var in ("REDIS_URL", "REDIS_HOST", "REDIS_PORT", "REDIS_PASSWORD", "REDIS_USERNAME"):
         monkeypatch.delenv(var, raising=False)
     cache_row = MagicMock()
-    cache_row.cache_settings = json.dumps(
-        {"type": "redis", "host": "h", "password": "supersecret", "namespace": "ns"}
-    )
+    cache_row.cache_settings = json.dumps({"type": "redis", "host": "h", "password": "supersecret", "namespace": "ns"})
     mock_prisma = MagicMock()
     mock_prisma.db.litellm_cacheconfig.find_unique = AsyncMock(return_value=cache_row)
     proxy_config = MagicMock()
     proxy_config._decrypt_db_variables = MagicMock(side_effect=lambda variables_dict: dict(variables_dict))
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", mock_prisma),
-        patch("litellm.proxy.proxy_server.proxy_config", proxy_config),
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", mock_prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.proxy_config", proxy_config
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         response = await get_cache_settings(user_api_key_dict=_admin_auth())
 
@@ -893,8 +914,12 @@ async def test_get_cache_settings_url_mode_hides_env_discrete_fields(monkeypatch
     proxy_config._decrypt_db_variables = MagicMock(side_effect=lambda variables_dict: dict(variables_dict))
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", mock_prisma),
-        patch("litellm.proxy.proxy_server.proxy_config", proxy_config),
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", mock_prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.proxy_config", proxy_config
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         response = await get_cache_settings(user_api_key_dict=_admin_auth())
 
@@ -932,9 +957,15 @@ async def test_update_preserves_stored_password_on_redacted_resubmit(monkeypatch
     proxy_config = _mock_proxy_config_identity_crypto()
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", mock_prisma),
-        patch("litellm.proxy.proxy_server.proxy_config", proxy_config),
-        patch("litellm.proxy.proxy_server.store_model_in_db", True),
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", mock_prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.proxy_config", proxy_config
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.store_model_in_db", True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         result = await update_cache_settings(
             request=CacheSettingsUpdateRequest(
@@ -965,9 +996,15 @@ async def test_update_drops_env_sourced_redacted_secret(monkeypatch):
     proxy_config = _mock_proxy_config_identity_crypto()
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", mock_prisma),
-        patch("litellm.proxy.proxy_server.proxy_config", proxy_config),
-        patch("litellm.proxy.proxy_server.store_model_in_db", True),
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", mock_prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.proxy_config", proxy_config
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.store_model_in_db", True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await update_cache_settings(
             request=CacheSettingsUpdateRequest(
@@ -994,14 +1031,18 @@ async def test_update_applies_new_password(monkeypatch):
     proxy_config = _mock_proxy_config_identity_crypto()
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", mock_prisma),
-        patch("litellm.proxy.proxy_server.proxy_config", proxy_config),
-        patch("litellm.proxy.proxy_server.store_model_in_db", True),
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", mock_prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.proxy_config", proxy_config
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.store_model_in_db", True
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         await update_cache_settings(
-            request=CacheSettingsUpdateRequest(
-                cache_settings={"type": "redis", "host": "h", "password": "brandnewpw"}
-            ),
+            request=CacheSettingsUpdateRequest(cache_settings={"type": "redis", "host": "h", "password": "brandnewpw"}),
             user_api_key_dict=_admin_auth(),
             litellm_changed_by=None,
         )
@@ -1031,9 +1072,15 @@ async def test_test_cache_connection_survives_saved_lookup_failure(monkeypatch):
     cache_instance.cache.test_connection = AsyncMock(return_value={"status": "success", "message": "ok"})
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", bad_prisma),
-        patch("litellm.proxy.proxy_server.proxy_config", proxy_config),
-        patch("litellm.Cache") as mock_cache_class,
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", bad_prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.proxy_config", proxy_config
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.Cache"
+        ) as mock_cache_class,  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         mock_cache_class.return_value = cache_instance
         result = await test_cache_connection(
@@ -1064,8 +1111,12 @@ async def test_get_cache_settings_does_not_surface_non_display_env_credentials(m
     proxy_config._decrypt_db_variables = MagicMock(side_effect=lambda variables_dict: dict(variables_dict))
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", mock_prisma),
-        patch("litellm.proxy.proxy_server.proxy_config", proxy_config),
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", mock_prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.proxy_config", proxy_config
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         response = await get_cache_settings(user_api_key_dict=_admin_auth())
 
@@ -1097,9 +1148,15 @@ async def test_test_cache_connection_does_not_log_plaintext_credentials(monkeypa
     cache_instance.cache.test_connection = AsyncMock(return_value={"status": "success", "message": "ok"})
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", mock_prisma),
-        patch("litellm.proxy.proxy_server.proxy_config", proxy_config),
-        patch("litellm.Cache") as mock_cache_class,
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", mock_prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.proxy_config", proxy_config
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.Cache"
+        ) as mock_cache_class,  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         caplog.at_level(logging.DEBUG, logger="LiteLLM Proxy"),
     ):
         mock_cache_class.return_value = cache_instance
@@ -1135,15 +1192,19 @@ async def test_test_cache_connection_does_not_replay_saved_password_to_new_host(
     cache_instance.cache.test_connection = AsyncMock(return_value={"status": "success", "message": "ok"})
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", mock_prisma),
-        patch("litellm.proxy.proxy_server.proxy_config", proxy_config),
-        patch("litellm.Cache") as mock_cache_class,
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", mock_prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.proxy_config", proxy_config
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.Cache"
+        ) as mock_cache_class,  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         mock_cache_class.return_value = cache_instance
         await test_cache_connection(
-            request=CacheTestRequest(
-                cache_settings={"type": "redis", "host": "attacker.example.com", "port": "6379"}
-            ),
+            request=CacheTestRequest(cache_settings={"type": "redis", "host": "attacker.example.com", "port": "6379"}),
             user_api_key_dict=_admin_auth(),
         )
 

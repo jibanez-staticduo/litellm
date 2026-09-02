@@ -2,3 +2,5 @@ scope: module
 parent: ../../../../../../../.staticeng/codemap.yml
 internals:
   - path: PluginSettings.tsx
+  - path: PluginSettings.integration.test.tsx
+  - path: schema.ts

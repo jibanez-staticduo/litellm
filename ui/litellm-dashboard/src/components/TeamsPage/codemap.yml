@@ -4,3 +4,5 @@ internals:
   - path: teamTableColumns.tsx
   - path: TeamsTable.test.tsx
   - path: TeamsTable.tsx
+  - path: teamsCsvExport.test.ts
+  - path: teamsCsvExport.ts

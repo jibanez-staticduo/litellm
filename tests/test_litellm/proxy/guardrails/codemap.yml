@@ -15,3 +15,4 @@ internals:
   - path: test_usage_endpoints.py
   - path: test_mcp_jwt_signer.py
   - path: test_guardrail_registry.py
+  - path: test_usage_tracking.py

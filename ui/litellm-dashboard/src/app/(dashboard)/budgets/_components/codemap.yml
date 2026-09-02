@@ -9,3 +9,7 @@ internals:
   - path: budget_panel.tsx
   - path: budget_modal.tsx
   - path: BudgetTableColumns.tsx
+  - path: budgetPrecision.test.ts
+  - path: edit_budget_modal.integration.test.tsx
+  - path: budget_modal.integration.test.tsx
+  - path: budgetPrecision.ts

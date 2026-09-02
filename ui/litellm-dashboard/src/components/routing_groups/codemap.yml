@@ -10,3 +10,7 @@ internals:
   - path: RoutingGroupsTable.tsx
   - path: strategy.ts
   - path: RoutingGroupsTable.test.tsx
+  - path: RoutingGroupModal.test.tsx
+  - path: routingGroupPayload.test.ts
+  - path: index.integration.test.tsx
+  - path: routingGroupPayload.ts

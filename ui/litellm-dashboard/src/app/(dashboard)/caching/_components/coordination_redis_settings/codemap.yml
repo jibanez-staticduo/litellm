@@ -12,3 +12,4 @@ internals:
   - path: coordinationRedisUtils.test.ts
   - path: index.test.tsx
   - path: CoordinationRedisTypeSelector.tsx
+  - path: index.integration.test.tsx

@@ -1,0 +1,5 @@
+scope: module
+parent: ../../../../../.staticeng/codemap.yml
+internals:
+  - path: foundry_responses_web_search_fixture.json
+  - path: test_bing_grounding_search_transformation.py

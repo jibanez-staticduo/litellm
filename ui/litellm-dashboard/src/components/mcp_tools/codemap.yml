@@ -9,3 +9,4 @@ internals:
   - path: types.tsx
   - path: ByokCredentialModal.tsx
   - path: McpCrudPermissionPanel.tsx
+  - path: MCPToolArgumentsForm.test.tsx

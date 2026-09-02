@@ -49,3 +49,4 @@ internals:
   - path: supabase.py
   - path: Readme.md
   - path: posthog_mock_client.py
+  - path: prometheus_metrics_endpoint.py

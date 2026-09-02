@@ -12,3 +12,8 @@ internals:
   - path: key_info_view.test.tsx
   - path: estimatedOutputTokens.ts
   - path: KeyInfoView.handleKeyUpdate.test.tsx
+  - path: keyEditFormValues.test.ts
+  - path: keyEditFormValues.ts
+  - path: KeyEditViewControls.tsx
+  - path: KeySavingsTab.integration.test.tsx
+  - path: KeySavingsTab.tsx

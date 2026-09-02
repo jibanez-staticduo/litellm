@@ -1,4 +1,3 @@
 scope: module
 parent: ../../../.staticeng/codemap.yml
-modules:
-  - path: helicone/
+modules: []

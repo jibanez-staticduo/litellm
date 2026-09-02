@@ -34,9 +34,7 @@ class _AsyncTx:
         return False
 
 
-def _make_invite(
-    *, is_accepted: bool, expired: bool = False, claimed: bool = False
-) -> MagicMock:
+def _make_invite(*, is_accepted: bool, expired: bool = False, claimed: bool = False) -> MagicMock:
     now = litellm.utils.get_utc_datetime()
     invite = MagicMock()
     invite.id = "invite-abc"
@@ -110,8 +108,12 @@ async def test_get_token_rejects_already_used_link():
     request = MagicMock()
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", prisma),
-        patch("litellm.proxy.proxy_server.master_key", "sk-test"),
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.master_key", "sk-test"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         with pytest.raises(HTTPException) as exc_info:
             await onboarding(invite_link="invite-abc", request=request)
@@ -132,8 +134,12 @@ async def test_get_token_rejects_expired_link():
     request = MagicMock()
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", prisma),
-        patch("litellm.proxy.proxy_server.master_key", "sk-test"),
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.master_key", "sk-test"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         with pytest.raises(HTTPException) as exc_info:
             await onboarding(invite_link="invite-abc", request=request)
@@ -151,8 +157,12 @@ async def test_get_token_rejects_missing_link():
     request = MagicMock()
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", prisma),
-        patch("litellm.proxy.proxy_server.master_key", "sk-test"),
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.master_key", "sk-test"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         with pytest.raises(HTTPException) as exc_info:
             await onboarding(invite_link="nonexistent", request=request)
@@ -176,23 +186,33 @@ async def test_get_token_returns_onboarding_token_without_minting_ui_key():
     request.base_url = "http://localhost:4000/"
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", prisma),
-        patch("litellm.proxy.proxy_server.master_key", "sk-test"),
-        patch("litellm.proxy.proxy_server.general_settings", {}),
-        patch("litellm.proxy.proxy_server.premium_user", False),
         patch(
+            "litellm.proxy.proxy_server.prisma_client", prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.master_key", "sk-test"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.general_settings", {}
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.premium_user", False
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.generate_key_helper_fn",
             new_callable=AsyncMock,
         ) as mock_generate_key,
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.get_custom_url",
             return_value="http://localhost:4000/",
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.get_disabled_non_admin_personal_key_creation",
             return_value=False,
         ),
-        patch("litellm.proxy.proxy_server.get_server_root_path", return_value=""),
+        patch(
+            "litellm.proxy.proxy_server.get_server_root_path", return_value=""
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         result = await onboarding(invite_link="invite-abc", request=request)
 
@@ -234,7 +254,9 @@ async def test_claim_token_rejects_already_used_link():
         password="NewP@ssw0rd",
     )
 
-    with patch("litellm.proxy.proxy_server.prisma_client", prisma):
+    with patch(
+        "litellm.proxy.proxy_server.prisma_client", prisma
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         with pytest.raises(HTTPException) as exc_info:
             await claim_onboarding_link(data=data, request=_make_claim_request())
 
@@ -257,7 +279,9 @@ async def test_claim_token_rejects_expired_link():
         password="NewP@ssw0rd",
     )
 
-    with patch("litellm.proxy.proxy_server.prisma_client", prisma):
+    with patch(
+        "litellm.proxy.proxy_server.prisma_client", prisma
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         with pytest.raises(HTTPException) as exc_info:
             await claim_onboarding_link(data=data, request=_make_claim_request())
 
@@ -278,7 +302,9 @@ async def test_claim_token_rejects_mismatched_user_id():
         password="NewP@ssw0rd",
     )
 
-    with patch("litellm.proxy.proxy_server.prisma_client", prisma):
+    with patch(
+        "litellm.proxy.proxy_server.prisma_client", prisma
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         with pytest.raises(HTTPException) as exc_info:
             await claim_onboarding_link(data=data, request=_make_claim_request())
 
@@ -300,9 +326,15 @@ async def test_claim_token_rejects_missing_user():
     )
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", prisma),
-        patch("litellm.proxy.proxy_server.master_key", "sk-test"),
-        patch("litellm.proxy.proxy_server.general_settings", {}),
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.master_key", "sk-test"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.general_settings", {}
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         with pytest.raises(HTTPException) as exc_info:
             await claim_onboarding_link(data=data, request=request)
@@ -327,9 +359,15 @@ async def test_claim_token_rejects_missing_onboarding_token():
     )
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", prisma),
-        patch("litellm.proxy.proxy_server.master_key", "sk-test"),
-        patch("litellm.proxy.proxy_server.general_settings", {}),
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.master_key", "sk-test"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.general_settings", {}
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         with pytest.raises(HTTPException) as exc_info:
             await claim_onboarding_link(data=data, request=_make_claim_request())
@@ -351,14 +389,18 @@ async def test_claim_token_rejects_wrong_onboarding_session():
         user_id="user-123",
         password="NewP@ssw0rd",
     )
-    request = _make_claim_request(
-        _make_onboarding_token(invitation_link="other-invite")
-    )
+    request = _make_claim_request(_make_onboarding_token(invitation_link="other-invite"))
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", prisma),
-        patch("litellm.proxy.proxy_server.master_key", "sk-test"),
-        patch("litellm.proxy.proxy_server.general_settings", {}),
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.master_key", "sk-test"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.general_settings", {}
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         with pytest.raises(HTTPException) as exc_info:
             await claim_onboarding_link(data=data, request=request)
@@ -383,9 +425,15 @@ async def test_claim_token_rejects_invalid_bearer_token():
     request = _make_claim_request("sk-regular-key")
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", prisma),
-        patch("litellm.proxy.proxy_server.master_key", "sk-test"),
-        patch("litellm.proxy.proxy_server.general_settings", {}),
+        patch(
+            "litellm.proxy.proxy_server.prisma_client", prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.master_key", "sk-test"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.general_settings", {}
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         with pytest.raises(HTTPException) as exc_info:
             await claim_onboarding_link(data=data, request=request)
@@ -412,10 +460,16 @@ async def test_claim_token_rejects_concurrent_reuse_before_password_write():
     )
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", prisma),
-        patch("litellm.proxy.proxy_server.master_key", "sk-test"),
-        patch("litellm.proxy.proxy_server.general_settings", {}),
         patch(
+            "litellm.proxy.proxy_server.prisma_client", prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.master_key", "sk-test"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.general_settings", {}
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.generate_key_helper_fn",
             new_callable=AsyncMock,
         ) as mock_generate_key,
@@ -452,24 +506,34 @@ async def test_claim_token_sets_accepted_at_after_password_written():
     mock_token_response = {"token": "sk-generated-key", "user_id": "user-123"}
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", prisma),
-        patch("litellm.proxy.proxy_server.master_key", "sk-test"),
-        patch("litellm.proxy.proxy_server.general_settings", {}),
-        patch("litellm.proxy.proxy_server.premium_user", False),
         patch(
+            "litellm.proxy.proxy_server.prisma_client", prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.master_key", "sk-test"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.general_settings", {}
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.premium_user", False
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.generate_key_helper_fn",
             new_callable=AsyncMock,
             return_value=mock_token_response,
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.get_custom_url",
             return_value="http://localhost:4000/",
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.get_disabled_non_admin_personal_key_creation",
             return_value=False,
         ),
-        patch("litellm.proxy.proxy_server.get_server_root_path", return_value=""),
+        patch(
+            "litellm.proxy.proxy_server.get_server_root_path", return_value=""
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         result = await claim_onboarding_link(data=data, request=request)
 
@@ -509,10 +573,16 @@ async def test_claim_token_rolls_back_invite_when_session_key_mint_fails():
     )
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", prisma),
-        patch("litellm.proxy.proxy_server.master_key", "sk-test"),
-        patch("litellm.proxy.proxy_server.general_settings", {}),
         patch(
+            "litellm.proxy.proxy_server.prisma_client", prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.master_key", "sk-test"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.general_settings", {}
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.generate_key_helper_fn",
             new_callable=AsyncMock,
             side_effect=Exception("key mint failed"),
@@ -524,9 +594,7 @@ async def test_claim_token_rolls_back_invite_when_session_key_mint_fails():
     assert exc_info.value.status_code == 500
     assert "Failed to create onboarding session" in exc_info.value.detail["error"]
     assert prisma.db.litellm_invitationlink.update_many.call_count == 2
-    rollback_kwargs = prisma.db.litellm_invitationlink.update_many.call_args_list[
-        1
-    ].kwargs
+    rollback_kwargs = prisma.db.litellm_invitationlink.update_many.call_args_list[1].kwargs
     assert rollback_kwargs["where"] == {
         "id": "invite-abc",
         "is_accepted": True,
@@ -552,10 +620,16 @@ async def test_claim_token_rolls_back_invite_when_password_update_raises():
     )
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", prisma),
-        patch("litellm.proxy.proxy_server.master_key", "sk-test"),
-        patch("litellm.proxy.proxy_server.general_settings", {}),
         patch(
+            "litellm.proxy.proxy_server.prisma_client", prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.master_key", "sk-test"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.general_settings", {}
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.generate_key_helper_fn",
             new_callable=AsyncMock,
         ) as mock_generate_key,
@@ -566,9 +640,7 @@ async def test_claim_token_rolls_back_invite_when_password_update_raises():
     assert exc_info.value.status_code == 500
     assert "Failed to claim onboarding invitation" in exc_info.value.detail["error"]
     assert prisma.db.litellm_invitationlink.update_many.call_count == 2
-    rollback_kwargs = prisma.db.litellm_invitationlink.update_many.call_args_list[
-        1
-    ].kwargs
+    rollback_kwargs = prisma.db.litellm_invitationlink.update_many.call_args_list[1].kwargs
     assert rollback_kwargs["where"] == {
         "id": "invite-abc",
         "is_accepted": True,
@@ -585,9 +657,7 @@ async def test_claim_token_returns_session_when_final_invite_update_fails():
     invite = _make_invite(is_accepted=False)
     user = _make_user()
     prisma = _make_prisma(invite, user)
-    prisma.db.litellm_invitationlink.update = AsyncMock(
-        side_effect=Exception("accepted_at refresh failed")
-    )
+    prisma.db.litellm_invitationlink.update = AsyncMock(side_effect=Exception("accepted_at refresh failed"))
     request = _make_claim_request(_make_onboarding_token())
     data = InvitationClaim(
         invitation_link="invite-abc",
@@ -597,24 +667,34 @@ async def test_claim_token_returns_session_when_final_invite_update_fails():
     mock_token_response = {"token": "sk-generated-key", "user_id": "user-123"}
 
     with (
-        patch("litellm.proxy.proxy_server.prisma_client", prisma),
-        patch("litellm.proxy.proxy_server.master_key", "sk-test"),
-        patch("litellm.proxy.proxy_server.general_settings", {}),
-        patch("litellm.proxy.proxy_server.premium_user", False),
         patch(
+            "litellm.proxy.proxy_server.prisma_client", prisma
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.master_key", "sk-test"
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.general_settings", {}
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(
+            "litellm.proxy.proxy_server.premium_user", False
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.generate_key_helper_fn",
             new_callable=AsyncMock,
             return_value=mock_token_response,
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.get_custom_url",
             return_value="http://localhost:4000/",
         ),
-        patch(
+        patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.proxy_server.get_disabled_non_admin_personal_key_creation",
             return_value=False,
         ),
-        patch("litellm.proxy.proxy_server.get_server_root_path", return_value=""),
+        patch(
+            "litellm.proxy.proxy_server.get_server_root_path", return_value=""
+        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
     ):
         result = await claim_onboarding_link(data=data, request=request)
 

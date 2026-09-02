@@ -2,3 +2,4 @@ scope: module
 parent: ../../../../.staticeng/codemap.yml
 internals:
   - path: transformation.py
+  - path: gemini_transcribe_transformation.py

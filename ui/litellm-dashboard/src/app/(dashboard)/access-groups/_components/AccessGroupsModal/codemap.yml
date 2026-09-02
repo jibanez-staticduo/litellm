@@ -3,3 +3,4 @@ parent: ../../../../../../../../.staticeng/codemap.yml
 internals:
   - path: AccessGroupEditModal.tsx
   - path: AccessGroupBaseForm.tsx
+  - path: AccessGroupEditModal.integration.test.tsx

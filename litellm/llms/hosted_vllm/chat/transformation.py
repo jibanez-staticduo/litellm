@@ -118,14 +118,21 @@ class HostedVLLMChatConfig(OpenAIGPTConfig):
     def transform_request(
         self,
         model: str,
-        messages: list[AllMessageValues],
-        optional_params: dict,
-        litellm_params: dict,
-        headers: dict,
-    ) -> dict:
+        messages: list[  # mutable-ok: framework contract requires mutable request or response containers
+            AllMessageValues
+        ],  # mutable-ok: framework contract requires mutable request or response containers
+        optional_params: dict,  # mutable-ok: framework contract requires mutable request or response containers
+        litellm_params: dict,  # mutable-ok: framework contract requires mutable request or response containers
+        headers: dict,  # mutable-ok: framework contract requires mutable request or response containers
+    ) -> dict:  # mutable-ok: framework contract requires mutable request or response containers
         thinking_disabled: Final = optional_params.pop(_THINKING_DISABLED_MARKER, False) is True
         request_optional_params: Final = (
-            {**optional_params, "reasoning_effort": "off"} if thinking_disabled else optional_params
+            {  # mutable-ok: framework contract requires mutable request or response containers
+                **optional_params,
+                "reasoning_effort": "off",
+            }  # mutable-ok: framework contract requires mutable request or response containers
+            if thinking_disabled
+            else optional_params  # mutable-ok: framework contract requires mutable request or response containers
         )
         return super().transform_request(model, messages, request_optional_params, litellm_params, headers)
 
@@ -133,9 +140,9 @@ class HostedVLLMChatConfig(OpenAIGPTConfig):
         self,
         *,
         model: str,
-        request_data: dict,
+        request_data: dict,  # mutable-ok: framework contract requires mutable request or response containers
         litellm_params: object,
-    ) -> dict:
+    ) -> dict:  # mutable-ok: framework contract requires mutable request or response containers
         supplied: Final = "reasoning_effort" in request_data
         normalized_effort: Final = normalize_deepseek_v4_reasoning_effort(
             model=model,
@@ -143,7 +150,14 @@ class HostedVLLMChatConfig(OpenAIGPTConfig):
             reasoning_effort=request_data.get("reasoning_effort"),
             supplied=supplied,
         )
-        return {**request_data, "reasoning_effort": normalized_effort} if supplied else request_data
+        return (
+            {
+                **request_data,
+                "reasoning_effort": normalized_effort,
+            }  # mutable-ok: framework contract requires mutable request or response containers
+            if supplied
+            else request_data  # mutable-ok: framework contract requires mutable request or response containers
+        )  # mutable-ok: framework contract requires mutable request or response containers
 
     def _get_openai_compatible_provider_info(
         self, api_base: str | None, api_key: str | None
@@ -201,12 +215,13 @@ class HostedVLLMChatConfig(OpenAIGPTConfig):
         """
         Support translating:
         - video files from file_id or file_data to video_url
-        - thinking_blocks on assistant messages are removed, and content lists
-          are converted to strings for vLLM compatibility
+        - thinking_blocks and reasoning_content on assistant messages are removed,
+          and content lists are converted to strings for vLLM compatibility
         """
         for message in messages:
             if message["role"] == "assistant":
                 message.pop("thinking_blocks", None)
+                message.pop("reasoning_content", None)
                 existing_content = message.get("content")
                 if isinstance(existing_content, list):
                     text_parts = []

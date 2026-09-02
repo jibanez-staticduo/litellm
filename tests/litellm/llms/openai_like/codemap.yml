@@ -1,6 +1,3 @@
 scope: module
 parent: ../../../../.staticeng/codemap.yml
-internals:
-  - path: test_abliteration_provider.py
-  - path: test_assemblyai_provider.py
-  - path: test_empiriolabs_provider.py
+internals: []

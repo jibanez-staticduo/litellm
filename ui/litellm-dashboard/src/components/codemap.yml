@@ -97,3 +97,10 @@ internals:
   - path: CodeBlock.tsx
   - path: NoRedisWarningBanner.test.tsx
   - path: CreateUserButton.tsx
+  - path: ModelInfoEditForm.tsx
+  - path: add_pass_through.integration.test.tsx
+  - path: MSTeamsSettings.tsx
+  - path: SCIM.test.tsx
+  - path: UIAccessControlForm.integration.test.tsx
+  - path: cloudzero_export_modal.integration.test.tsx
+  - path: pass_through_info.integration.test.tsx

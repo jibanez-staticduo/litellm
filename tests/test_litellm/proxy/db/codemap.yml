@@ -21,3 +21,9 @@ internals:
   - path: test_tool_registry_writer.py
   - path: test_db_spend_update_writer.py
   - path: test_exception_handler_reconnect_retry.py
+  - path: test_spend_counter_reseed.py
+  - path: test_model_access_group_spend.py
+  - path: test_token_auth.py
+  - path: test_shadow_eval_funnel.py
+  - path: test_budget_window_spend_writer.py
+  - path: test_proxy_worker_heartbeat.py

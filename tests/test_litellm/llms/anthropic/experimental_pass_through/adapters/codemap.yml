@@ -8,3 +8,5 @@ internals:
   - path: test_streaming_iterator_tool_args.py
   - path: test_anthropic_experimental_pass_through_adapters_transformation.py
   - path: test_streaming_iterator_empty_choices.py
+  - path: test_handler_prompt_cache_key.py
+  - path: test_handler_reasoning_effort_normalization.py

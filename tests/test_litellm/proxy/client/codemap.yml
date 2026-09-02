@@ -10,3 +10,5 @@ internals:
   - path: test_users.py
   - path: test_chat.py
   - path: test_keys.py
+  - path: test_teams.py
+  - path: conftest.py

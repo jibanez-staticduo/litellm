@@ -2,3 +2,4 @@ scope: module
 parent: ../../../.staticeng/codemap.yml
 internals:
   - path: endpoints.py
+  - path: common_utils.py

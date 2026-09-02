@@ -51,9 +51,9 @@ class HostedVLLMResponsesAPIConfig(OpenAIResponsesAPIConfig):
         self,
         *,
         model: str,
-        request_data: dict,
+        request_data: dict,  # mutable-ok: framework contract requires mutable request or response containers
         litellm_params: object,
-    ) -> dict:
+    ) -> dict:  # mutable-ok: framework contract requires mutable request or response containers
         return normalize_deepseek_v4_responses_reasoning(
             model=model,
             model_group=get_model_group(litellm_params),

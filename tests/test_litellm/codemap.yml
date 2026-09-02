@@ -90,7 +90,6 @@ internals:
   - path: test_compression.py
   - path: test_register_model_custom_pricing.py
   - path: test_eager_tiktoken_load.py
-  - path: test__types.py
   - path: test_router_silent_experiment.py
   - path: test_router_exception_redaction.py
   - path: test_lazy_imports.py
@@ -121,7 +120,6 @@ internals:
   - path: test_rate_limit_error_unification.py
   - path: test_container_router.py
   - path: test_responses_streaming_container_ownership.py
-  - path: test_triage_rollout_heads_up.py
   - path: test_constants.py
   - path: test_claude_fable_5_config.py
   - path: test_redact_string_in_error_paths.py
@@ -130,3 +128,31 @@ internals:
   - path: test_claude_opus_4_8_config.py
   - path: test_utils.py
   - path: test_router_retry_non_retryable_errors.py
+  - path: test_bedrock_batch_pricing.py
+  - path: test_gemini_3_1_flash_lite_image_pricing.py
+  - path: test_bedrock_nemotron_super.py
+  - path: test_assert_ci_coverage.py
+  - path: test_gemini_tts_native_audio_pricing.py
+  - path: test_assert_workflow_dir_hygiene.py
+  - path: test_proxy_auth.py
+  - path: test_non_chat_routes_open_llm_spans.py
+  - path: test_sync_together_ai_models.py
+  - path: test_test_quality_gate.py
+  - path: test_check_test_quality.py
+  - path: test_router_retry_backoff_headers.py
+  - path: test_azure_audio_price_aliases.py
+  - path: test_fireworks_serverless_model_costs.py
+  - path: test_detect_changes.py
+  - path: test_mistral_zai_glm_5_2_model_metadata.py
+  - path: test_daybreak_model_metadata.py
+  - path: test_bedrock_extended_beta_models.py
+  - path: test_select_ui_test_scope.py
+  - path: test_sambanova_model_metadata.py
+  - path: test_stream_chunk_builder_images.py
+  - path: test_check_migrations_no_data_rewrites.py
+  - path: test_conftest.py
+  - path: test_e2e_egress_sentinel.py
+  - path: test_mutation_report.py
+  - path: test_mistral_small_4_0_model_metadata.py
+  - path: test_stream_chunk_builder_citations.py
+  - path: test_together_ai_model_metadata.py

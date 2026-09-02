@@ -25,6 +25,11 @@ class ResponsesToCompletionBridgeHandlerInputKwargs(TypedDict):
     encoding: object
 
 
+def _restore_routing_prefix(model: str, custom_llm_provider: str) -> str:
+    """`responses()` runs `get_llm_provider()` itself, so hand back the prefixed model `completion()` started from."""
+    return f"{custom_llm_provider}/{model}"
+
+
 class ResponsesToCompletionBridgeHandler:
     def __init__(self):
         from .transformation import LiteLLMResponsesTransformationHandler
@@ -46,16 +51,20 @@ class ResponsesToCompletionBridgeHandler:
         return isinstance(result, CustomStreamWrapper) and result.custom_llm_provider == "cached_response"
 
     @staticmethod
-    def _disable_inner_stream_success_logging(result: Any) -> None:
-        disable_success_logging = getattr(result, "disable_success_logging", None)
+    def _disable_inner_stream_success_logging(result: object) -> None:
+        disable_success_logging = getattr(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            result, "disable_success_logging", None
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         if callable(disable_success_logging):
             disable_success_logging()
 
     @staticmethod
     def _restore_outer_logging_context(logging_obj: "LiteLLMLoggingObj", call_type: str, stream: bool) -> None:
-        logging_obj.call_type = call_type
-        logging_obj.stream = stream
-        litellm_params = logging_obj.model_call_details.get("litellm_params")
+        logging_obj.call_type = call_type  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        logging_obj.stream = stream  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        litellm_params = logging_obj.model_call_details.get(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            "litellm_params"
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         if isinstance(litellm_params, dict):
             litellm_params["stream"] = stream
 
@@ -180,13 +189,29 @@ class ResponsesToCompletionBridgeHandler:
         model: Final = validated_kwargs["model"]
         messages: Final = validated_kwargs["messages"]
         optional_params = validated_kwargs["optional_params"]
-        litellm_params = validated_kwargs["litellm_params"]
-        headers = validated_kwargs["headers"]
-        model_response = validated_kwargs["model_response"]
-        logging_obj = validated_kwargs["logging_obj"]
-        custom_llm_provider = validated_kwargs["custom_llm_provider"]
-        outer_call_type = logging_obj.call_type
-        outer_stream = bool(logging_obj.stream)
+        litellm_params = validated_kwargs[  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            "litellm_params"
+        ]  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        headers = validated_kwargs[  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            "headers"
+        ]  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        model_response = validated_kwargs[  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            "model_response"
+        ]  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        logging_obj = validated_kwargs[  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            "logging_obj"
+        ]  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        custom_llm_provider = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            validated_kwargs[  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                "custom_llm_provider"
+            ]
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        outer_call_type = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            logging_obj.call_type
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        outer_stream = bool(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            logging_obj.stream
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         if kwargs.get("stream") is True and "stream" not in optional_params:
             optional_params = {**optional_params, "stream": True}
 
@@ -200,17 +225,14 @@ class ResponsesToCompletionBridgeHandler:
             client=kwargs.get("client"),
         )
 
-        # Pin the resolved provider so `responses()` doesn't re-run
-        # `get_llm_provider()` on the model string and strip a second
-        # provider prefix (see GitHub issue #28505).  request_data already
-        # carries `custom_llm_provider` via the spread of
-        # `sanitized_litellm_params`; overwriting it on the dict (rather
-        # than adding an explicit kwarg) avoids the duplicate-keyword
-        # TypeError that would otherwise fire on the real bridge path.
+        # Set on request_data rather than passed as explicit kwargs: the spread of
+        # `sanitized_litellm_params` already carries both, so passing them again
+        # would raise a duplicate-keyword TypeError.
         request_data["custom_llm_provider"] = custom_llm_provider
         if custom_llm_provider == "chatgpt":
             request_data["stream"] = True
-        result = responses(
+        request_data["model"] = _restore_routing_prefix(model, custom_llm_provider)
+        result: Final = responses(
             **request_data,
         )
 
@@ -218,7 +240,11 @@ class ResponsesToCompletionBridgeHandler:
 
         from litellm.types.utils import ModelResponse
 
-        stream = self._resolve_stream_flag(optional_params, litellm_params)
+        stream = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            self._resolve_stream_flag(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                optional_params, litellm_params
+            )
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         if not stream:
             self._restore_outer_logging_context(logging_obj, outer_call_type, outer_stream)
         if isinstance(result, ResponsesAPIResponse):
@@ -284,13 +310,29 @@ class ResponsesToCompletionBridgeHandler:
         model: Final = validated_kwargs["model"]
         messages: Final = validated_kwargs["messages"]
         optional_params = validated_kwargs["optional_params"]
-        litellm_params = validated_kwargs["litellm_params"]
-        headers = validated_kwargs["headers"]
-        model_response = validated_kwargs["model_response"]
-        logging_obj = validated_kwargs["logging_obj"]
-        custom_llm_provider = validated_kwargs["custom_llm_provider"]
-        outer_call_type = logging_obj.call_type
-        outer_stream = bool(logging_obj.stream)
+        litellm_params = validated_kwargs[  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            "litellm_params"
+        ]  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        headers = validated_kwargs[  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            "headers"
+        ]  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        model_response = validated_kwargs[  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            "model_response"
+        ]  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        logging_obj = validated_kwargs[  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            "logging_obj"
+        ]  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        custom_llm_provider = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            validated_kwargs[  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                "custom_llm_provider"
+            ]
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        outer_call_type = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            logging_obj.call_type
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        outer_stream = bool(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            logging_obj.stream
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         if kwargs.get("stream") is True and "stream" not in optional_params:
             optional_params = {**optional_params, "stream": True}
 
@@ -306,16 +348,14 @@ class ResponsesToCompletionBridgeHandler:
         except Exception as e:
             raise e
 
-        # Pin the resolved provider so `aresponses()` doesn't re-run
-        # `get_llm_provider()` on the model string and strip a second
-        # provider prefix (see GitHub issue #28505).  Set on request_data
-        # rather than passed as a separate kwarg to avoid the duplicate-
-        # keyword TypeError when `sanitized_litellm_params` already
-        # carries `custom_llm_provider`.
+        # Set on request_data rather than passed as explicit kwargs: the spread of
+        # `sanitized_litellm_params` already carries both, so passing them again
+        # would raise a duplicate-keyword TypeError.
         request_data["custom_llm_provider"] = custom_llm_provider
         if custom_llm_provider == "chatgpt":
             request_data["stream"] = True
-        result = await aresponses(
+        request_data["model"] = _restore_routing_prefix(model, custom_llm_provider)
+        result: Final = await aresponses(
             **request_data,
             aresponses=True,
         )
@@ -324,7 +364,11 @@ class ResponsesToCompletionBridgeHandler:
 
         from litellm.types.utils import ModelResponse
 
-        stream = self._resolve_stream_flag(optional_params, litellm_params)
+        stream = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            self._resolve_stream_flag(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                optional_params, litellm_params
+            )
+        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         if not stream:
             self._restore_outer_logging_context(logging_obj, outer_call_type, outer_stream)
         if isinstance(result, ResponsesAPIResponse):

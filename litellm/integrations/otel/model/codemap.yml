@@ -9,3 +9,4 @@ internals:
   - path: utils.py
   - path: payloads.py
   - path: config.py
+  - path: db_endpoint.py

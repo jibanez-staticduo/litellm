@@ -52,3 +52,13 @@ internals:
   - path: test_max_streaming_duration.py
   - path: test_cloud_storage_security.py
   - path: test_get_model_cost_map.py
+  - path: test_json_fragment_accumulator.py
+  - path: test_llm_request_utils.py
+  - path: test_aws_partition.py
+  - path: test_anthropic_dedup_factory.py
+  - path: test_ptu_pricing.py
+  - path: test_private_json.py
+  - path: test_bedrock_converse_dedup_factory.py
+  - path: test_thread_pool_executor.py
+  - path: test_realtime_errors.py
+  - path: test_json_schema_validation.py

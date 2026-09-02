@@ -6,3 +6,4 @@ internals:
   - path: conftest.py
   - path: batch_client.py
   - path: capabilities.py
+  - path: test_managed_files_enforcement_e2e.py

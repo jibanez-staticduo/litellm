@@ -5,3 +5,4 @@ internals:
   - path: tool_call_cost_tracking.py
   - path: tiered_pricing.py
   - path: utils.py
+  - path: guardrail_cost.py

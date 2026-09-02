@@ -5,3 +5,7 @@ internals:
   - path: test_tool_call_cost_tracking.py
   - path: test_llm_cost_calc_utils.py
   - path: test_azure_assistant_cost_tracking.py
+  - path: test_responses_cache_cost_breakdown.py
+  - path: test_usage_object_transformation.py
+  - path: test_openai_cache_write_cost.py
+  - path: test_guardrail_cost.py

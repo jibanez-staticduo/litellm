@@ -39,4 +39,5 @@ internals:
   - path: custom_validate.py
   - path: route_llm_request.py
   - path: _lazy_features.py
+  - path: lazymcp_routes.py
   - path: compliance_checks.py

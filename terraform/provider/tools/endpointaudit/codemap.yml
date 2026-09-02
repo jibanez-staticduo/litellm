@@ -4,3 +4,5 @@ entrypoints:
   - path: main.go
 internals:
   - path: main_test.go
+  - path: coverage_test.go
+  - path: coverage.go
