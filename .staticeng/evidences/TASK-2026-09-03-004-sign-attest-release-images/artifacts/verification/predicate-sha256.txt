@@ -1,0 +1,6 @@
+274f45081b3369c93d670d981b13a4da78a0d623cbe0a1233597b416b1fb1067  .staticeng/evidences/TASK-2026-09-03-004-sign-attest-release-images/artifacts/predicates/builder.cyclonedx.json
+896bc560b946560594bcfe4f8a2633ed13c2ec0dc8481047f1613f9177da7bdd  .staticeng/evidences/TASK-2026-09-03-004-sign-attest-release-images/artifacts/predicates/builder.slsa-provenance-v1.json
+dfa593c6231e1cae1b0a243573766238408693fa0778099768a6eec693d556f2  .staticeng/evidences/TASK-2026-09-03-004-sign-attest-release-images/artifacts/predicates/builder.spdx.json
+1662bdb044ef4f7bd961b47ce049bdc5fbb387c463dadd2a16cd888bab3ad783  .staticeng/evidences/TASK-2026-09-03-004-sign-attest-release-images/artifacts/predicates/final.cyclonedx.json
+d4ce84588fc4616b99d20620a0784d36962041e4b1ac55e0245885e8399e4842  .staticeng/evidences/TASK-2026-09-03-004-sign-attest-release-images/artifacts/predicates/final.slsa-provenance-v1.json
+765bb011c6395d3ab8564164463e8b9e07bf6600781944dbf2f4710a11da2d50  .staticeng/evidences/TASK-2026-09-03-004-sign-attest-release-images/artifacts/predicates/final.spdx.json

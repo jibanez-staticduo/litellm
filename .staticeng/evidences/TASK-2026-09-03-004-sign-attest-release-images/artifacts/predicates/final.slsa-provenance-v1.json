@@ -1,0 +1,63 @@
+{
+  "buildDefinition": {
+    "buildType": "https://staticduo.com/buildtypes/litellm-docker/v1",
+    "externalParameters": {
+      "buildArguments": {},
+      "dockerfile": "Dockerfile",
+      "sourceRevision": "bf58974a935521fa570fa7e280c51a00b2e5b54e",
+      "target": "runtime"
+    },
+    "internalParameters": {
+      "buildkitVersion": "0.32.2",
+      "platform": "linux/amd64"
+    },
+    "resolvedDependencies": [
+      {
+        "digest": {
+          "sha1": "5bb1b3185d25ba851482ee022503178996df3341"
+        },
+        "uri": "git+ssh://git@github.com/jibanez-staticduo/litellm.git@bf58974a935521fa570fa7e280c51a00b2e5b54e"
+      }
+    ]
+  },
+  "runDetails": {
+    "builder": {
+      "id": "https://staticduo.com/builders/litellm-isolated-qualification/v1"
+    },
+    "byproducts": [
+      {
+        "digest": {
+          "sha256": "ad33017b518b66d9dc81ec272b8a91ce1eda935f25b851e8ab7d2e8fa7d0d915"
+        },
+        "name": "qualified-final-config"
+      },
+      {
+        "digest": {
+          "sha256": "765bb011c6395d3ab8564164463e8b9e07bf6600781944dbf2f4710a11da2d50"
+        },
+        "name": "final.spdx.json"
+      },
+      {
+        "digest": {
+          "sha256": "1662bdb044ef4f7bd961b47ce049bdc5fbb387c463dadd2a16cd888bab3ad783"
+        },
+        "name": "final.cyclonedx.json"
+      },
+      {
+        "digest": {
+          "sha256": "86695dc7fba1d2adf2a9e08fb799fb1d0f2d2c812b00f78ff507ab7acbd78933"
+        },
+        "name": "final.grype.json"
+      },
+      {
+        "digest": {
+          "sha256": "c08db01bc870272484da356daf5d05e057cb4aad6c3df6ce7613bd241bf9e3b6"
+        },
+        "name": "grype-db-status.json"
+      }
+    ],
+    "metadata": {
+      "invocationId": "TASK-2026-09-01-011-r6"
+    }
+  }
+}
