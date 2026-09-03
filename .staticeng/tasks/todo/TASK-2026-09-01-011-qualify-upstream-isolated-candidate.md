@@ -3,7 +3,7 @@ id: TASK-2026-09-01-011-qualify-upstream-isolated-candidate
 complexity: complex
 track: implementation
 slice: qa
-status: active
+status: blocked
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-010-integrate-upstream-main
 assigned_to: qa_engineer
