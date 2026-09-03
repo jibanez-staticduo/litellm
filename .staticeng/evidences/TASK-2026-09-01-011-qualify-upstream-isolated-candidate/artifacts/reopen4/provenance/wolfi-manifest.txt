@@ -1,0 +1,12 @@
+Name:      cgr.dev/chainguard/wolfi-base@sha256:57108e597a8cf3bd376b810f1c3539c21942daefa242cb9dddaae30f8aac735d
+MediaType: application/vnd.oci.image.index.v1+json
+Digest:    sha256:57108e597a8cf3bd376b810f1c3539c21942daefa242cb9dddaae30f8aac735d
+
+Manifests:
+  Name:      cgr.dev/chainguard/wolfi-base@sha256:9e7b7ba0080f84a03d95b42b80dd2e03f2d9169163a390230a3a6e53c03361dd
+  MediaType: application/vnd.oci.image.manifest.v1+json
+  Platform:  linux/amd64
+
+  Name:      cgr.dev/chainguard/wolfi-base@sha256:fce2a4534bdae72009371dab1c87d322f255b40daff82b857e98c4a0890b361e
+  MediaType: application/vnd.oci.image.manifest.v1+json
+  Platform:  linux/arm64

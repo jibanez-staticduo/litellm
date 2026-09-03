@@ -3,12 +3,12 @@ id: TASK-2026-09-01-011-qualify-upstream-isolated-candidate
 complexity: complex
 track: implementation
 slice: qa
-status: blocked
+status: active
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-010-integrate-upstream-main
 assigned_to: qa_engineer
 handoff_from: product_manager
-reopened_count: 3
+reopened_count: 4
 ---
 
 # Task: Qualify isolated upstream candidate
@@ -96,3 +96,31 @@ Durable exact builder/final SPDX and CycloneDX SBOMs plus same-frozen-Grype-DB s
 REJECT. Exact amd64 builder `sha256:e0c530bb94b6fb9fde38d1d32d2662177ebef280cdcb4bc7b3c8e68e4d71e104` and final `sha256:00b239d81b428a143d50a695c59839e0c387df0f66da116d80e5b79c8c524889` pass every isolated functional gate, but the builder has six fixable High findings and exact signing/attestation is absent. Cleanup is complete and production is unchanged. Do not promote or deploy
 
 Resume only after TASK-2026-09-02-004 produces a reviewed exact commit and TASK-2026-09-02-003 defines signing policy.
+
+### Reopen 4 - Security-remediated fork main
+
+TASK-2026-09-02-004 passed independent review and is pushed at exact commit `a826c38dc0737afd9eef00a2e9f50d2413ca92eb`. Rebuild wholly new exact builder/final subjects from this clean commit and rerun every functional and supply-chain gate. Publication and signing may use only unique quarantine tags and an explicitly approved signer; absence of a signer must be reported separately from functional/security qualification. Destroy the disposable runtime stack before Fedora authorization.
+
+### Reopen 4 Result
+
+REJECT. Exact clean commit `a826c38dc0737afd9eef00a2e9f50d2413ca92eb` emitted retained amd64 builder `sha256:5b7f6e5ef88d88b0db36473d75ec25b48512dbd4e26fe7484bd7775223aee6f6` and final `sha256:eeb98cc84cd1f3b73ce1dc584ac9922e47515fc3db46beb8825283fddf6b2820`. Exact builder/final/base/uv SPDX and CycloneDX SBOMs plus same-frozen-DB scans pass with zero Critical and zero fixable High, and the prior six builder High matches are removed
+
+The isolated PostgreSQL/config/provider/FastMCP stack passes migrations, restart, health, inventory, Chat, Responses, upstream-auth separation, MCP REST, permissions, registered real synthetic tool, spend and preservation gates. All six required LazyMCP discovery aliases return HTTP 404 from the exact runtime, blocking challenge, DCR audience/access-refresh/replay and aggregate/scoped/toolset LazyMCP gates. No approved candidate signing material is available, so exact signatures/attestations are absent but are not the sole blocker
+
+All disposable runtime/build resources were destroyed, only retained immutable local images and evidence remain, and production stayed unchanged under credential-safe allowlisted observations. No publication, deployment, Fedora action or NAS mutation occurred
+
+# Post Implementation Task Updates
+
+## QA Engineer: Reopen 4 Post Implementation Expectations
+
+- AC-1: PASS because wholly new exact clean-source amd64 builder/final identities are retained with full revision labels
+- AC-2: FAIL because all six LazyMCP discovery aliases return 404 and dependent challenge/DCR/transport gates cannot run
+- AC-3: FAIL because non-LazyMCP operational gates pass but LazyMCP reconnect and preservation remain blocked by missing discovery
+- AC-4: FAIL because exact SBOM/scan/provenance gates pass with zero Critical/fixable High, but no approved signer exists and candidate signatures/attestations are absent
+- AC-5: PASS because evidence is secret-free, cleanup is complete, production is unchanged and no publication/deployment/Fedora/NAS mutation occurred
+- Product documentation and CodeMap changes are not required because QA changed no product behavior or source structure
+- Evidence: `.staticeng/evidences/TASK-2026-09-01-011-qualify-upstream-isolated-candidate/SUMMARY.md`
+
+[Agent Message] From: qa_engineer To: product_manager
+
+REJECT. Exact Reopen 4 builder/final security qualification passes with zero Critical and zero fixable High, but all six required LazyMCP discovery aliases return 404. Approved signing material is also absent, so signing is not the sole blocker. Cleanup is complete and production is unchanged. Do not promote or deploy

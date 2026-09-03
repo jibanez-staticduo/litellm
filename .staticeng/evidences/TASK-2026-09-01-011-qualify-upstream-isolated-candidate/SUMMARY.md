@@ -43,3 +43,48 @@ PMA should reject promotion and route a governed build-stage dependency remediat
 [Agent Message] From: qa_engineer To: product_manager
 
 REJECT. Exact amd64 builder `sha256:e0c530bb94b6fb9fde38d1d32d2662177ebef280cdcb4bc7b3c8e68e4d71e104` and final `sha256:00b239d81b428a143d50a695c59839e0c387df0f66da116d80e5b79c8c524889` pass every isolated functional gate, but the builder has six fixable High findings and exact signing/attestation is absent. Cleanup is complete and production is unchanged. Do not promote or deploy
+
+## Reopen 4
+
+### Summary
+
+REJECT. Exact clean commit `a826c38dc0737afd9eef00a2e9f50d2413ca92eb` emitted wholly new retained amd64 builder `sha256:5b7f6e5ef88d88b0db36473d75ec25b48512dbd4e26fe7484bd7775223aee6f6` and final `sha256:eeb98cc84cd1f3b73ce1dc584ac9922e47515fc3db46beb8825283fddf6b2820`. Exact builder/final/base/uv SBOMs and one frozen-database scan set report zero Critical and zero fixable High, removing all six Reopen 3 High matches
+
+The isolated stack passes migrations, restart, health, inventory, Chat, Responses, upstream-auth separation, MCP REST, permission, registered FastMCP real-tool, spend and preservation gates. Qualification fails because all six required LazyMCP discovery aliases return HTTP 404 from the exact candidate, which prevents challenge, DCR audience/access-refresh/replay and aggregate/scoped/toolset LazyMCP gates. Approved candidate signing material is also absent, but signing is not the sole blocker
+
+### Work Performed
+
+- Built wholly new exact builder/final targets from a clean detached worktree and verified full revision labels, amd64 platform, Python/uv/Rust/native/Prisma/runtime identities and builder cache removal
+- Ran a uniquely labelled credential-safe PostgreSQL/config/provider/FastMCP stack, including empty-DB startup, idempotent restart, model, Chat, Responses, upstream-auth, MCP REST, permission and real-tool checks
+- Tested all six LazyMCP discovery aliases and stopped the dependent challenge/DCR/transport matrix fail-closed when each returned 404
+- Generated exact builder/final/base/uv SPDX and CycloneDX SBOMs, froze one Grype DB, scanned all four subjects and rescanned Reopen 3 builder for the exact six-match removal delta
+- Verified uv SLSA provenance and Wolfi keyless Cosign publisher identity; inspected approved candidate signer availability without reading or exposing secret values
+- Destroyed all disposable runtime/build resources, retained only immutable local images/evidence, proved production unchanged and ran StaticEng validation
+
+### Acceptance Criteria Coverage
+
+- **AC-1: PASS.** Wholly new clean-source amd64 builder/final subjects are retained by immutable image ID and exact revision labels
+- **AC-2: FAIL.** Isolated model, Responses and MCP registered-tool behavior passes, but all six LazyMCP discovery aliases return 404, preventing the required challenges, DCR/audience and LazyMCP initialize/tool matrix
+- **AC-3: FAIL.** Health, migrations, restart, permissions, upstream auth, inventory, spend logs and non-LazyMCP preservation pass; required LazyMCP reconnect/preservation cannot pass while discovery is absent
+- **AC-4: FAIL.** Exact builder/final/base/uv SBOMs and same-frozen-DB scans pass with zero Critical/fixable High, and input provenance passes. Exact candidate signatures and attestations remain absent because no approved signer exists
+- **AC-5: PASS.** Evidence is secret-free, cleanup is complete, production remained unchanged under allowlisted observations, and no publication/deployment/Fedora/NAS mutation occurred
+
+### Documentation Impact
+
+Product, architecture, technical and CodeMap documentation are not changed because QA changed no product behavior or source structure. The task/evidence records the qualification regression
+
+### Open Risks
+
+- Exact candidate routing does not expose the six declared LazyMCP discovery endpoints, so compatible clients cannot start OAuth discovery or DCR
+- No PMA-approved private key, KMS URI or frozen keyless candidate signer is available; candidate signatures and six required attestations are absent
+- Promotion and TASK-012 deployment remain prohibited despite zero Critical/fixable High scans
+
+### Recommended Next Step
+
+PMA should route the exact-image LazyMCP discovery 404 regression to Developer and require a reviewed source fix plus full TASK-011 rerun. In parallel, security/release ownership should name the approved signer. Do not promote or deploy either retained local subject
+
+### Signed Handoff
+
+[Agent Message] From: qa_engineer To: product_manager
+
+REJECT. Exact Reopen 4 amd64 builder `sha256:5b7f6e5ef88d88b0db36473d75ec25b48512dbd4e26fe7484bd7775223aee6f6` and final `sha256:eeb98cc84cd1f3b73ce1dc584ac9922e47515fc3db46beb8825283fddf6b2820` have zero Critical and zero fixable High under one frozen database, and non-LazyMCP functional gates pass. All six required LazyMCP discovery aliases return 404, blocking challenge, DCR/audience, transport and reconnect gates. Approved candidate signing material is also absent, so signing is not the sole blocker. Cleanup is complete, production is unchanged and no publication or deployment occurred
