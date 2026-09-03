@@ -2,6 +2,8 @@
 
 | Date | Task ID | SCR ID | Commit | Summary |
 | :--- | :--- | :--- | :--- | :--- |
+| 2026-09-03 | TASK-2026-09-02-002-fix-coherent-wolfi-closure | SCR-2026-09-01-001-upstream-main-integration | pending-commit | Restored both coherent Wolfi glibc 2.44 defaults and passed exact amd64 build, ABI, native runtime, production-preservation, cleanup, and independent review gates. |
+| 2026-09-03 | TASK-2026-09-02-001-design-coherent-wolfi-closure | SCR-2026-09-01-001-upstream-main-integration | pending-commit | Reconfirmed the exact two-default Wolfi glibc 2.44 correction, amd64 identities, mutable APK boundary, tests, and rollback. |
 | 2026-09-02 | TASK-2026-09-01-014-find-isolated-docker-runner | SCR-2026-09-01-001-upstream-main-integration | pending-commit | Inventoried authorized runner options and returned a precise blocker because every reachable third host is ARM rather than the required AMD64. |
 | 2026-09-02 | TASK-2026-09-01-013-review-upstream-integration | SCR-2026-09-01-001-upstream-main-integration | pending-commit | Independently reviewed three repair cycles and approved the exact upstream integration after preservation, source, Rust, UI, migration, security, static, and cold-start discovery gates passed. |
 | 2026-09-02 | TASK-2026-09-01-010-integrate-upstream-main | SCR-2026-09-01-001-upstream-main-integration | pending-commit | Integrated frozen upstream main while preserving fork behavior, closing all conflict, source, dependency, migration, LazyMCP discovery, and documentation gates without push or deployment. |

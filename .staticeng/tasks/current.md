@@ -12,7 +12,6 @@
 - TASK-2026-09-01-008-design-upstream-main-integration
 
 ## Todo
-- TASK-2026-09-01-011-qualify-upstream-isolated-candidate
 - TASK-2026-09-01-012-release-upstream-main-fedora
 - TASK-2026-07-14-003-trigger-nas-account2-reauth
 - TASK-2026-08-26-003-remove-unused-litellm-reasoning-policy
