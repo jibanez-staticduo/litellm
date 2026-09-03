@@ -11,6 +11,9 @@
 - TASK-2026-09-01-007-spec-upstream-main-integration
 - TASK-2026-09-01-008-design-upstream-main-integration
 - TASK-2026-09-01-011-qualify-upstream-isolated-candidate
+- TASK-2026-09-03-002-review-fedora-release-readiness
+- TASK-2026-09-03-003-verify-fedora-schema-upgrade-rollback
+- TASK-2026-09-03-004-sign-attest-release-images
 
 ## Todo
 - TASK-2026-09-01-012-release-upstream-main-fedora
