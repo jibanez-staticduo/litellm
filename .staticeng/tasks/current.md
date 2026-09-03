@@ -12,7 +12,6 @@
 - TASK-2026-09-01-008-design-upstream-main-integration
 - TASK-2026-09-01-011-qualify-upstream-isolated-candidate
 - TASK-2026-09-03-002-review-fedora-release-readiness
-- TASK-2026-09-01-012-release-upstream-main-fedora
 - TASK-2026-09-03-003-verify-fedora-schema-upgrade-rollback
 - TASK-2026-09-03-004-sign-attest-release-images
 
@@ -22,6 +21,7 @@
 - TASK-2026-08-26-004-implement-client-qwen38-modes
 
 ## Blocked
+- TASK-2026-09-01-012-release-upstream-main-fedora — exact candidate rolled back after authorized real-tool timeout and unhealthy transition; investigation and fresh reauthorization required
 - TASK-2026-09-01-003-deploy-lazymcp-oauth-fedora — promotion qualification failed; Tech Lead explicitly rejected deployment
 - TASK-2026-09-01-004-deploy-lazymcp-oauth-nas — blocked by failed qualification and unauthorized Fedora canary
 - TASK-2026-08-15-002-expand-npm-litellm-response-buffers — technical work complete; blocked only by pre-existing repository-wide StaticEng CodeMap validation debt
