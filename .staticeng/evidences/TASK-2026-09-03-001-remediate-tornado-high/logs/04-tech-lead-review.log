@@ -1,0 +1,31 @@
+Tech Lead review: PASS
+Source baseline: 082a2e09dea2063a7239af3aaa06a862a5056f17
+Upstream remediation: 1eea8e283157d3c92be36749b2713607aebc9786
+GitHub advisory: GHSA-mpf4-983q-p7j4, affected <=6.5.7, patched 6.5.8
+PyPI tornado 6.5.8: not yanked, Python >=3.9, lock hashes match
+
+Diff: root pyproject.toml constraint plus generated uv.lock Tornado records only
+Lock package count: 453 before and after
+Only package version change: tornado 6.5.7 -> 6.5.8
+Exact pinned uv 0.11.26 lock check: PASS, 453 packages
+git diff --check: PASS
+
+Developer source evidence: 300 proxy HTTP/SSE/WebSocket tests PASS
+Developer repository check: PASS
+Developer UI format/lint/type/build: PASS
+Developer Rust fmt/clippy/test: PASS, 244 passed and 2 repository live-provider tests ignored
+Developer exact final-image HTTP/SSE/WebSocket/form-limit runtime: PASS
+
+Builder image: sha256:313f117cf6b3334b403d5f77208400d16c2baa6069de7a82e4f4166226a9dd86, amd64, Tornado 6.5.8
+Final image: sha256:9c5e9fdaae73e7c4efadf9ef1c9b19045827912195da8f3505f2313b946af8ab, amd64, Tornado 6.5.8
+Image source revision label: 082a2e09dea2063a7239af3aaa06a862a5056f17
+Artifact checksum manifest: 7/7 verified
+Grype: 0.118.0
+Frozen DB: v6.1.9 built 2026-09-03T06:30:55Z, identical in both scans
+Builder scan: 0 Critical, 0 High, 11 Medium, 1 Low, 4 Unknown
+Final scan: 0 Critical, 0 High, 9 Medium, 1 Low, 2 Unknown
+
+Task-labelled containers/networks/volumes: absent
+Production identity/image/state: unchanged, running/healthy, restart count 0, OOM false
+staticeng_validate: PASS, warnings 0
+Signing/publication/deployment/Fedora/NAS mutation: not performed

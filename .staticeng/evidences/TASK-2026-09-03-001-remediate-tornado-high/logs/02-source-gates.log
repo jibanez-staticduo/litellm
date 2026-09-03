@@ -1,0 +1,28 @@
+Targeted proxy transport regression:
+- 300 tests passed
+- Covered pass-through HTTP, SSE streaming, keepalive, streamed errors, WebSocket forwarding/close/model rewrite, and WebSocket auth
+- Existing suite emitted 41 pre-existing warnings and one post-test logging message; no test failed or skipped
+
+Repository check gate:
+- Ran make check-inner with checksum-pinned uv 0.11.26 and existing origin/litellm_internal_staging baseline
+- Python Ruff, format, strict budget, type-discipline, test-quality, basedpyright, E2E basedpyright, circular-import and import-safety checks: PASS
+- Dashboard Prettier, ESLint/budgets and generated API type sync: PASS
+- Generated lazy OpenAPI and schema files remained byte-identical
+- Overall check: PASS
+
+UI gates:
+- format: PASS
+- lint: PASS with existing warnings and zero errors
+- type tests: 4 passed
+- production build: PASS with existing AVIF optimization warning
+
+Rust gates in exact pinned rust:1.97.1-slim-bookworm image:
+- cargo fmt --check: PASS
+- cargo clippy --workspace --all-targets --locked -- -D warnings: PASS
+- cargo test --workspace --locked: PASS, 244 passed and 2 existing live-provider tests ignored by the repository suite
+
+Direct Tornado runtime checks in exact final image:
+- HTTP JSON request: PASS
+- SSE two-frame streaming: PASS
+- WebSocket connect/send/echo/close: PASS
+- URL-encoded 1001-field default limit raises HTTPInputError: PASS

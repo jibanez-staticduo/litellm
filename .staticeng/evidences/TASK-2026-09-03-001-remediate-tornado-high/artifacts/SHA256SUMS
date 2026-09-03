@@ -1,0 +1,7 @@
+88cb45ebe81338d4a7c6d5b9692294091f0cc3be1842057f2250b8ee46400faf  .staticeng/evidences/TASK-2026-09-03-001-remediate-tornado-high/artifacts/sboms/builder.cyclonedx.json
+42fe668cb4dff8b48dd92d20897aae8436040114465621a7cf89d1f62c847840  .staticeng/evidences/TASK-2026-09-03-001-remediate-tornado-high/artifacts/sboms/builder.spdx.json
+6dae0dd2e315c83bee1ce006019fa137418e21aab6a279ff441f901efb3db647  .staticeng/evidences/TASK-2026-09-03-001-remediate-tornado-high/artifacts/sboms/final.cyclonedx.json
+1e891514052580803d6bb7625f460c771dc6d021e085948965aa68e310c014b4  .staticeng/evidences/TASK-2026-09-03-001-remediate-tornado-high/artifacts/sboms/final.spdx.json
+038b13c96c6ccd94700b9999ffd035f9051340fb2fecd73c2bf3569e1359ba01  .staticeng/evidences/TASK-2026-09-03-001-remediate-tornado-high/artifacts/scans/builder.grype.json
+28bfa765f8279a83e204ca235abc8459743848d1a692a3da7b6c3a452e35cdf7  .staticeng/evidences/TASK-2026-09-03-001-remediate-tornado-high/artifacts/scans/final.grype.json
+8dfb0c6bfef5bbd6b2d64316b71f775e9c47266b9319028ef6df91c6111ad04c  .staticeng/evidences/TASK-2026-09-03-001-remediate-tornado-high/artifacts/scans/grype-db-status.json

@@ -1,0 +1,7 @@
+{
+ "schemaVersion": "v6.1.9",
+ "from": "https://grype.anchore.io/databases/v6/vulnerability-db_v6.1.9_2026-09-03T00:34:04Z_1788417055.tar.zst?checksum=sha256%3A3574269f1e15cc771bd8ea11a31f2e198c5e4cc546ae7d3187919c8f4822cb7a",
+ "built": "2026-09-03T06:30:55Z",
+ "path": "/.cache/grype/db/6/vulnerability.db",
+ "valid": true
+}

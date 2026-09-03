@@ -1,0 +1,29 @@
+Source revision: 082a2e09dea2063a7239af3aaa06a862a5056f17
+Fork origin/main revision: 082a2e09dea2063a7239af3aaa06a862a5056f17
+Upstream main inspected: ed9d29a9b45d433db0c629bee9550f35980f00cb
+Upstream remediation inspected: 1eea8e283157d3c92be36749b2713607aebc9786
+
+GitHub advisory GHSA-mpf4-983q-p7j4 / CVE-2026-82397:
+- Tornado versions through 6.5.7 are affected
+- Tornado 6.5.8 is patched
+- Impact is unauthenticated event-loop denial of service through excessive URL-encoded form fields
+
+PyPI release inspection:
+- tornado 6.5.8 is not yanked and requires Python >=3.9
+- linux/amd64 wheel SHA-256: 547d63f450d570c14fe0e8db2cfb14c9bbd1c2503b4a6612586267955aa47b58
+- sdist SHA-256: 9452e1b208a8bd771e2cb1f2ff564985b9b214bdebbe622793e1799e0a6bd23f
+
+Declaration and lock map:
+- Root pyproject.toml has the sole direct constraint: tornado>=6.5.8
+- uv.lock manifest carries the same constraint
+- aurelio-sdk 0.0.19 and semantic-router 0.1.15 depend transitively on Tornado for Python <3.14
+- uv.lock resolves exactly tornado 6.5.8
+
+Generation and checks:
+- Generated with checksum-pinned uv 0.11.26 extracted from ghcr.io/astral-sh/uv:0.11.26@sha256:3d868e555f8f1dbc324afa005066cd11e1053fc4743b9808ca8025283e65efa5
+- uv lock --check: PASS
+- uv tree --package tornado --depth 3: tornado v6.5.8
+- Frozen proxy development sync: PASS
+- Lock diff changes only the Tornado constraint and Tornado 6.5.7 package artifacts to 6.5.8
+- No unrelated package version changed
+- git diff --check: PASS

@@ -1,0 +1,38 @@
+Build inputs:
+- Source revision label: 082a2e09dea2063a7239af3aaa06a862a5056f17
+- Platform: linux/amd64
+- BuildKit: 0.13.1
+- Dockerfile SHA-256: 6add9603c86fd595c77b30b35ac3e0caacd9bb16828ac9b18ca189b538cae20b
+- pyproject.toml SHA-256: aec8efa2370e3dda65d7b8d5bb7383784ac83a732443b99e4a6eefc574b9b53f
+- uv.lock SHA-256: b81071cfae206e31ed13569b07acf13e4424a901ee584d0e157d9129337bdcf3
+
+Exact retained local images:
+- Builder: sha256:313f117cf6b3334b403d5f77208400d16c2baa6069de7a82e4f4166226a9dd86
+- Final: sha256:9c5e9fdaae73e7c4efadf9ef1c9b19045827912195da8f3505f2313b946af8ab
+- Both are amd64 and carry exact revision and task labels
+- Builder Tornado: 6.5.8
+- Final Tornado: 6.5.8
+- Final native bridge, uvloop, Prisma and LiteLLM imports: PASS
+
+SBOM and scan tools:
+- Syft 1.51.1 image digest: sha256:95fe0835e5bebc6f8b1f8acef68d47d63d594ef4c0f25c097ff853b23cbac74c
+- Grype 0.118.0 image digest: sha256:8a93fc48da96bd6ec5981279d099b69de11541dc68fdf222fb9161f8ff284af7
+- Frozen DB schema: v6.1.9
+- Frozen DB built: 2026-09-03T06:30:55Z
+- Frozen DB valid: true
+- Builder SPDX and CycloneDX include Tornado 6.5.8
+- Final SPDX and CycloneDX include Tornado 6.5.8
+
+Scan counts:
+- Builder: 0 Critical, 0 High, 11 Medium, 1 Low, 4 Unknown; 0 fixable High
+- Final: 0 Critical, 0 High, 9 Medium, 1 Low, 2 Unknown; 0 fixable High
+- No ignore, VEX or path exclusion was used
+- Artifact SHA-256 manifest verifies all four SBOMs, both scans and DB status
+
+Cleanup and invariants:
+- Removed task Buildx builder/cache, scanner database volumes, scanner images and temporary clean build context
+- Zero task-labelled containers, networks or volumes remain
+- Only the two authorized exact local builder/final images remain
+- Production allowlisted pre/post values are identical: container 7bfb357accc8663e7229ecf8e2df471b9d656625106c216f48ca109de1eb2dba, image ID sha256:0a221cc57c07ae89e5a0223488351ff85ac30053771b22b43a94b3aa5361ae42, running/healthy, restart count 0, OOM false
+- No registry publication, signature, attestation, commit, push, deployment, Fedora mutation or NAS mutation occurred
+- staticeng_validate: PASS, zero warnings
