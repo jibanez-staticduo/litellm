@@ -1,0 +1,7 @@
+18dd9cc704d09e1c50a859a8ebc9b327a7bded56dc8a1c5451ed794d89cfeb47  .staticeng/evidences/TASK-2026-09-01-011-qualify-upstream-isolated-candidate/artifacts/reopen5/sboms/builder.cyclonedx.json
+09b4bbfeb7cc2fcf00fcdb22718db06b6aa7dda74acdf477880e6cbcf055d631  .staticeng/evidences/TASK-2026-09-01-011-qualify-upstream-isolated-candidate/artifacts/reopen5/sboms/builder.spdx.json
+a2de5cf8f1277470b3cf584eaf94d57b0ce1576f43ba3c8fe9e62481ed2ad118  .staticeng/evidences/TASK-2026-09-01-011-qualify-upstream-isolated-candidate/artifacts/reopen5/sboms/final.cyclonedx.json
+15ef27b79dcdbce265e233e1ee2a59d23f5071c0ee3ff80ef6625ce335080fae  .staticeng/evidences/TASK-2026-09-01-011-qualify-upstream-isolated-candidate/artifacts/reopen5/sboms/final.spdx.json
+07e6ae6a21d46912a5b48f2952f64d024defecd606cd3b2489daacbb39cbc550  .staticeng/evidences/TASK-2026-09-01-011-qualify-upstream-isolated-candidate/artifacts/reopen5/scans/builder.grype.json
+1f0c7b394b9b417bc13e107e35f09c5206a0e497541584eff135a72fbf70c1cf  .staticeng/evidences/TASK-2026-09-01-011-qualify-upstream-isolated-candidate/artifacts/reopen5/scans/final.grype.json
+5e2affddaaec16b266d0984a7ef3986a7d4559991ed8f78ee845493ca00c5024  .staticeng/evidences/TASK-2026-09-01-011-qualify-upstream-isolated-candidate/artifacts/reopen5/scans/grype-db-status.json

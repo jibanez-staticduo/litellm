@@ -88,3 +88,48 @@ PMA should route the exact-image LazyMCP discovery 404 regression to Developer a
 [Agent Message] From: qa_engineer To: product_manager
 
 REJECT. Exact Reopen 4 amd64 builder `sha256:5b7f6e5ef88d88b0db36473d75ec25b48512dbd4e26fe7484bd7775223aee6f6` and final `sha256:eeb98cc84cd1f3b73ce1dc584ac9922e47515fc3db46beb8825283fddf6b2820` have zero Critical and zero fixable High under one frozen database, and non-LazyMCP functional gates pass. All six required LazyMCP discovery aliases return 404, blocking challenge, DCR/audience, transport and reconnect gates. Approved candidate signing material is also absent, so signing is not the sole blocker. Cleanup is complete, production is unchanged and no publication or deployment occurred
+
+## Reopen 5
+
+### Summary
+
+REJECT. Exact clean commit `3ad43aa9c9eb4c14ed2fedbac734dd0775925dca` emitted wholly new retained amd64 builder `sha256:04bba4403ac7de87108c539e5e14982e55e3cecbf39b36a6794025cee23de5ad` and final `sha256:836d98e7ace653505888d47826ca47e8075a0e64d559c9c61dce5e6298103f0f`. The credential-safe isolated full functional matrix passes with `PROXY_BASE_URL=https://candidate.invalid`, and the packaged negative unset/HTTP cases pass 4/4
+
+Exact builder/final SPDX and CycloneDX SBOMs were generated and both subjects were scanned with one current frozen Grype 0.118.0 database. Both scans have zero Critical but each reports one fixable High, `GHSA-mpf4-983q-p7j4` in Tornado 6.5.7, fixed in 6.5.8. Policy therefore rejects the candidate. Signing is separately absent because no approved signer or publication was authorized
+
+### Work Performed
+
+- Built exact detached clean source as amd64 builder and runtime targets with exact full revision and task labels
+- Passed packaged discovery negative unset/HTTP behavior and positive six-alias metadata/OpenAPI behavior
+- Passed empty-DB 161 migrations, readiness/liveness, restart, model inventory, Chat and Responses non-stream/stream, upstream-auth separation, MCP REST, permissions, aggregate/scoped/toolset challenges, DCR access/refresh/replay/audience isolation, initialize/list/call, candidate-bound real FastMCP tool execution, 120 reconnect requests, spend and preservation
+- Generated exact builder/final SPDX and CycloneDX SBOMs and scanned both against frozen Grype DB schema 6.1.9 built `2026-09-03T06:30:55Z`
+- Reverified committed Wolfi and uv immutable pins/provenance evidence and exact source labels
+- Destroyed all task runtime/build containers, network, volumes, builder/cache, worktree, downloaded tools and temporary artifacts; retained only the two immutable images
+
+### Acceptance Criteria Coverage
+
+- **AC-1: PASS.** New retained amd64 builder/final identities carry exact clean source revision and task labels
+- **AC-2: PASS.** Isolated model, Responses, MCP and complete LazyMCP alias/challenge/DCR/audience/transport/real-tool behavior pass
+- **AC-3: PASS.** Health, 161 migrations, restart, permissions, upstream auth, inventory, logs, reconnect, spend and preservation pass
+- **AC-4: FAIL.** Exact SBOMs and one-current-frozen-DB scans were produced, but builder and final each contain one fixable High Tornado finding. Candidate signatures and attestations are separately absent
+- **AC-5: PASS.** Evidence is secret-free, cleanup is complete, production remains unchanged, and no publication, signing, deployment, Fedora action or NAS mutation occurred
+
+### Documentation Impact
+
+Product documentation and CodeMap updates are not required because QA changed no product behavior or source structure
+
+### Open Risks
+
+- Builder and final contain fixable High `GHSA-mpf4-983q-p7j4` in Tornado 6.5.7; fixed version is 6.5.8
+- Exact retained images remain unsigned and unattested because no approved signing identity or registry publication was authorized
+- Promotion and TASK-012 deployment remain prohibited
+
+### Recommended Next Step
+
+PMA should reject promotion and route the Tornado dependency remediation through a reviewed source/lock commit, then require wholly new builder/final subjects and a complete affected qualification rerun. Resolve candidate signing as a separate release gate
+
+### Signed Handoff
+
+[Agent Message] From: qa_engineer To: product_manager
+
+REJECT. Exact Reopen 5 amd64 builder `sha256:04bba4403ac7de87108c539e5e14982e55e3cecbf39b36a6794025cee23de5ad` and final `sha256:836d98e7ace653505888d47826ca47e8075a0e64d559c9c61dce5e6298103f0f` pass the complete isolated functional matrix, but both contain fixable High `GHSA-mpf4-983q-p7j4` in Tornado 6.5.7. Signing is separately absent. Cleanup is complete and production is unchanged. Do not promote or deploy

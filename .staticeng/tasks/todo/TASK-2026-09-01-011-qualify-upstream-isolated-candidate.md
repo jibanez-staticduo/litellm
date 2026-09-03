@@ -8,7 +8,7 @@ scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-010-integrate-upstream-main
 assigned_to: qa_engineer
 handoff_from: product_manager
-reopened_count: 4
+reopened_count: 5
 ---
 
 # Task: Qualify isolated upstream candidate
@@ -109,6 +109,10 @@ The isolated PostgreSQL/config/provider/FastMCP stack passes migrations, restart
 
 All disposable runtime/build resources were destroyed, only retained immutable local images and evidence remain, and production stayed unchanged under credential-safe allowlisted observations. No publication, deployment, Fedora action or NAS mutation occurred
 
+### Reopen 5 - Final source and harness commit
+
+TASK-2026-09-02-006 passed independent review and is pushed at exact fork-main commit `3ad43aa9c9eb4c14ed2fedbac734dd0775925dca`. Build wholly new exact builder/final subjects and rerun the complete corrected qualification. Start the runtime with explicit `PROXY_BASE_URL=https://candidate.invalid`; retain negative unset/HTTP fail-closed packaged tests. All disposable runtime/build resources must be destroyed before handoff. Candidate signing remains a separate final gate.
+
 # Post Implementation Task Updates
 
 ## QA Engineer: Reopen 4 Post Implementation Expectations
@@ -132,3 +136,23 @@ TASK-2026-09-02-005 proved the Reopen 4 image has all six registered routes and 
 Before the positive run, prove the same immutable image returns generic HTTP 404 `{"detail":"Not Found"}` for all six aliases both with `PROXY_BASE_URL` unset and with `PROXY_BASE_URL=http://candidate.invalid` from a non-loopback peer. For the corrected positive run, require HTTP 200 and exact metadata for all six aliases: aggregate resources use `https://candidate.invalid/lazymcp`, scoped resources use `https://candidate.invalid/lazymcp/team-a`, toolset resources use `https://candidate.invalid/toolset/tools-a/lazymcp`, and every document uses `authorization_servers: ["https://candidate.invalid/mcp"]`. Require OpenAPI to contain all six templates without treating schema presence as runtime success
 
 Rerun the complete prior functional contract against the corrected positive instance, including exact aggregate/scoped/toolset challenges, DCR code/access/refresh/replay and audience isolation, LazyMCP initialize/list/call, registered real synthetic tool behavior, reconnect with zero discovery 404s, readiness, `/mcp`, MCP REST, permissions, model/Responses behavior, logs, restart and preservation. Evidence must record the exact image ID before and after, the complete environment-name allowlist with values redacted except the reserved public base, request/response status and exact public metadata/challenges, production allowlisted pre/post invariants, and zero remaining task-labelled containers/networks/volumes. Do not read production configuration or credentials. Signing/attestation remains a separate blocker. No publication, deployment, Fedora action or NAS mutation is authorized
+
+### Reopen 5 Result
+
+REJECT. Exact clean commit `3ad43aa9c9eb4c14ed2fedbac734dd0775925dca` emitted retained amd64 builder `sha256:04bba4403ac7de87108c539e5e14982e55e3cecbf39b36a6794025cee23de5ad` and final `sha256:836d98e7ace653505888d47826ca47e8075a0e64d559c9c61dce5e6298103f0f`. The complete credential-safe isolated functional matrix passes, including packaged unset/HTTP fail-closed cases and positive HTTPS discovery, exact challenges, DCR audience/access-refresh/replay, aggregate/scoped/toolset initialize/list/call, real registered FastMCP tool, reconnect, migrations, restart, health, models, Chat, Responses, MCP REST, permissions, upstream auth, logs, spend and preservation
+
+Exact builder/final SPDX and CycloneDX SBOMs were generated and scanned against one current frozen Grype 0.118.0 database. Both scans report zero Critical but one fixable High: Tornado 6.5.7 `GHSA-mpf4-983q-p7j4`, fixed in 6.5.8. Signing remains separately absent because no approved signer or publication was authorized. Every disposable runtime/build object, cache, tool and worktree was destroyed; only immutable builder/final images remain. Production stayed unchanged under credential-safe allowlisted observations. Do not promote or deploy
+
+## QA Engineer: Reopen 5 Post Implementation Expectations
+
+- AC-1: PASS because exact clean source emitted new retained amd64 builder/final identities with full revision labels
+- AC-2: PASS because isolated model, Responses, MCP and full LazyMCP protocol/real-tool gates pass
+- AC-3: PASS because migrations, health, restart, permissions, upstream auth, inventory, logs, reconnect, spend and preservation pass
+- AC-4: FAIL because exact builder/final each contain one fixable High Tornado finding; signatures/attestations are separately absent
+- AC-5: PASS because evidence is secret-free, cleanup is complete, production is unchanged and no publication/signing/deployment/Fedora/NAS mutation occurred
+- Product documentation and CodeMap changes are not required because QA changed no product behavior or source structure
+- Evidence: `.staticeng/evidences/TASK-2026-09-01-011-qualify-upstream-isolated-candidate/SUMMARY.md`
+
+[Agent Message] From: qa_engineer To: product_manager
+
+REJECT. Exact Reopen 5 builder `sha256:04bba4403ac7de87108c539e5e14982e55e3cecbf39b36a6794025cee23de5ad` and final `sha256:836d98e7ace653505888d47826ca47e8075a0e64d559c9c61dce5e6298103f0f` pass the full isolated functional matrix, but both contain fixable High `GHSA-mpf4-983q-p7j4` in Tornado 6.5.7. Signing is separately absent. Cleanup is complete and production is unchanged. Do not promote or deploy

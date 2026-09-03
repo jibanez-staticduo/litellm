@@ -18,7 +18,7 @@
 - TASK-2026-08-26-004-implement-client-qwen38-modes
 
 ## Blocked
-- TASK-2026-09-01-011-qualify-upstream-isolated-candidate — corrected harness and integration fixes are source-approved; new-candidate qualification and approved signer remain pending
+- TASK-2026-09-01-011-qualify-upstream-isolated-candidate — Reopen 5 functionally passes but exact builder/final each contain fixable High Tornado 6.5.7 GHSA-mpf4-983q-p7j4; signing also remains pending
 - TASK-2026-09-01-003-deploy-lazymcp-oauth-fedora — promotion qualification failed; Tech Lead explicitly rejected deployment
 - TASK-2026-09-01-004-deploy-lazymcp-oauth-nas — blocked by failed qualification and unauthorized Fedora canary
 - TASK-2026-08-15-002-expand-npm-litellm-response-buffers — technical work complete; blocked only by pre-existing repository-wide StaticEng CodeMap validation debt
