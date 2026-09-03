@@ -1,0 +1,26 @@
+Name:      ghcr.io/astral-sh/uv:0.11.26@sha256:3d868e555f8f1dbc324afa005066cd11e1053fc4743b9808ca8025283e65efa5
+MediaType: application/vnd.oci.image.index.v1+json
+Digest:    sha256:3d868e555f8f1dbc324afa005066cd11e1053fc4743b9808ca8025283e65efa5
+
+Manifests:
+  Name:        ghcr.io/astral-sh/uv:0.11.26@sha256:663211e7509e89ff2172cc3ca098afb4ac63028dd065d2b047e4251127a7d47a
+  MediaType:   application/vnd.oci.image.manifest.v1+json
+  Platform:    linux/amd64
+
+  Name:        ghcr.io/astral-sh/uv:0.11.26@sha256:9fffbee04831a23880e13ef451dc1d3d0969bd0ab7f62c39e57d375bd3e04657
+  MediaType:   application/vnd.oci.image.manifest.v1+json
+  Platform:    unknown/unknown
+  Annotations:
+    vnd.docker.reference.digest: sha256:663211e7509e89ff2172cc3ca098afb4ac63028dd065d2b047e4251127a7d47a
+    vnd.docker.reference.type:   attestation-manifest
+
+  Name:        ghcr.io/astral-sh/uv:0.11.26@sha256:0c5ad5d5fefaa496b053f5d8dbdff7b04824808948c9fb18fb7bfeadc8c8aa89
+  MediaType:   application/vnd.oci.image.manifest.v1+json
+  Platform:    linux/arm64
+
+  Name:        ghcr.io/astral-sh/uv:0.11.26@sha256:66a8d47d4b860085f53dd989337007ee4da9844a5461f770dc2c38961023559a
+  MediaType:   application/vnd.oci.image.manifest.v1+json
+  Platform:    unknown/unknown
+  Annotations:
+    vnd.docker.reference.digest: sha256:0c5ad5d5fefaa496b053f5d8dbdff7b04824808948c9fb18fb7bfeadc8c8aa89
+    vnd.docker.reference.type:   attestation-manifest

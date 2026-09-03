@@ -3,12 +3,12 @@ id: TASK-2026-09-01-011-qualify-upstream-isolated-candidate
 complexity: complex
 track: implementation
 slice: qa
-status: blocked
+status: active
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-010-integrate-upstream-main
 assigned_to: qa_engineer
 handoff_from: product_manager
-reopened_count: 5
+reopened_count: 6
 ---
 
 # Task: Qualify isolated upstream candidate
@@ -113,6 +113,10 @@ All disposable runtime/build resources were destroyed, only retained immutable l
 
 TASK-2026-09-02-006 passed independent review and is pushed at exact fork-main commit `3ad43aa9c9eb4c14ed2fedbac734dd0775925dca`. Build wholly new exact builder/final subjects and rerun the complete corrected qualification. Start the runtime with explicit `PROXY_BASE_URL=https://candidate.invalid`; retain negative unset/HTTP fail-closed packaged tests. All disposable runtime/build resources must be destroyed before handoff. Candidate signing remains a separate final gate.
 
+### Reopen 6 - Tornado-remediated final candidate
+
+TASK-2026-09-03-001 passed independent review and is pushed at exact fork-main commit `bf58974a935521fa570fa7e280c51a00b2e5b54e`. Build wholly new exact builder/final subjects and rerun the complete corrected functional and supply-chain matrix. Require zero Critical and zero High in both exact subjects under one current frozen scanner database. Destroy every disposable test container, network, volume, builder, cache, worktree and synthetic credential before Fedora authorization; retain only immutable release images and durable secret-free evidence. Signing/publication remains a separate final release gate.
+
 # Post Implementation Task Updates
 
 ## QA Engineer: Reopen 4 Post Implementation Expectations
@@ -156,3 +160,23 @@ Exact builder/final SPDX and CycloneDX SBOMs were generated and scanned against 
 [Agent Message] From: qa_engineer To: product_manager
 
 REJECT. Exact Reopen 5 builder `sha256:04bba4403ac7de87108c539e5e14982e55e3cecbf39b36a6794025cee23de5ad` and final `sha256:836d98e7ace653505888d47826ca47e8075a0e64d559c9c61dce5e6298103f0f` pass the full isolated functional matrix, but both contain fixable High `GHSA-mpf4-983q-p7j4` in Tornado 6.5.7. Signing is separately absent. Cleanup is complete and production is unchanged. Do not promote or deploy
+
+### Reopen 6 Result
+
+PASS. Exact clean commit `bf58974a935521fa570fa7e280c51a00b2e5b54e` emitted retained amd64 builder `sha256:eb673f1c4f02a3c0e9cf93d2b73703308664276aea50ea6a57c759956a3788ac` and final `sha256:ad33017b518b66d9dc81ec272b8a91ce1eda935f25b851e8ab7d2e8fa7d0d915`. The complete credential-safe isolated functional matrix and negative trust cases pass. Exact base/uv/builder/final SPDX and CycloneDX SBOMs plus one frozen Grype 0.118.0 database scan set show zero Critical and zero High in both retained release subjects
+
+All disposable runtime/build resources, scanner tools/database, worktree and synthetic credentials were destroyed. Only exact immutable builder/final images and durable secret-free evidence remain. Production stayed unchanged under credential-safe allowlisted observations. Signing, publication, deployment, Fedora and NAS remained untouched as required
+
+## QA Engineer: Reopen 6 Post Implementation Expectations
+
+- AC-1: PASS because exact clean source emitted new retained amd64 builder/final identities with full revision labels
+- AC-2: PASS because isolated model, Responses, MCP and LazyMCP alias/challenge/DCR/audience/transport/registered-tool gates pass
+- AC-3: PASS because migrations, health, restart, permissions, upstream auth, inventory, logs, reconnect, spend and preservation pass
+- AC-4: PASS for the authorized Reopen 6 scope because exact base/uv/builder/final SBOMs, frozen-database scans, labels and input provenance pass with zero Critical and zero High in builder/final; signing and publication were explicitly excluded
+- AC-5: PASS because evidence is secret-free, cleanup is complete, production is unchanged and no signing/publication/deployment/Fedora/NAS mutation occurred
+- Product documentation and CodeMap changes are not required because QA changed no product behavior or source structure
+- Evidence: `.staticeng/evidences/TASK-2026-09-01-011-qualify-upstream-isolated-candidate/SUMMARY.md`
+
+[Agent Message] From: qa_engineer To: product_manager
+
+PASS. Exact Reopen 6 amd64 builder `sha256:eb673f1c4f02a3c0e9cf93d2b73703308664276aea50ea6a57c759956a3788ac` and final `sha256:ad33017b518b66d9dc81ec272b8a91ce1eda935f25b851e8ab7d2e8fa7d0d915` pass the credential-safe isolated functional matrix and have zero Critical and zero High under one frozen Grype database. Cleanup is complete, production is unchanged, and no signing, publication or deployment occurred

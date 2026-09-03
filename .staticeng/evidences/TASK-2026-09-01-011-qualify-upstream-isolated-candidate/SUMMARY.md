@@ -133,3 +133,45 @@ PMA should reject promotion and route the Tornado dependency remediation through
 [Agent Message] From: qa_engineer To: product_manager
 
 REJECT. Exact Reopen 5 amd64 builder `sha256:04bba4403ac7de87108c539e5e14982e55e3cecbf39b36a6794025cee23de5ad` and final `sha256:836d98e7ace653505888d47826ca47e8075a0e64d559c9c61dce5e6298103f0f` pass the complete isolated functional matrix, but both contain fixable High `GHSA-mpf4-983q-p7j4` in Tornado 6.5.7. Signing is separately absent. Cleanup is complete and production is unchanged. Do not promote or deploy
+
+## Reopen 6
+
+### Summary
+
+PASS. Exact clean commit `bf58974a935521fa570fa7e280c51a00b2e5b54e` emitted wholly new retained amd64 builder `sha256:eb673f1c4f02a3c0e9cf93d2b73703308664276aea50ea6a57c759956a3788ac` and final `sha256:ad33017b518b66d9dc81ec272b8a91ce1eda935f25b851e8ab7d2e8fa7d0d915`. The credential-safe isolated functional matrix and negative trust cases pass. Exact base/uv/builder/final SBOMs and one frozen Grype database scan set show zero Critical and zero High in both retained release subjects
+
+### Work Performed
+
+- Built exact detached clean source as amd64 builder and runtime targets with full revision and task labels
+- Passed empty-DB migrations, idempotent restart, health, inventory, Chat, Responses, upstream-auth separation, MCP REST, permissions, exact aliases/challenges, DCR access-refresh-replay/audience isolation, LazyMCP calls, registered real FastMCP tool execution, reconnect, spend and preservation
+- Passed packaged unset/HTTP fail-closed discovery and explicit trusted HTTPS metadata/OpenAPI tests
+- Generated exact base/uv/builder/final SPDX and CycloneDX SBOMs and scanned all subjects against frozen Grype DB schema 6.1.9 built `2026-09-03T06:30:55Z`
+- Verified exact source labels and retained Wolfi/uv provenance evidence
+- Destroyed all disposable runtime/build resources, scanner tooling/database, worktree and synthetic secrets; retained only exact immutable builder/final images and durable evidence
+
+### Acceptance Criteria Coverage
+
+- **AC-1: PASS.** New retained amd64 builder/final identities carry the exact clean source revision and task labels
+- **AC-2: PASS.** Isolated model, Responses, MCP and LazyMCP alias/challenge/DCR/audience/transport/registered-tool behavior pass
+- **AC-3: PASS.** Migrations, health, restart, permissions, upstream auth, inventory, logs, reconnect, spend and preservation pass
+- **AC-4: PASS FOR AUTHORIZED SCOPE.** Exact base/uv/builder/final SBOMs, one-current-frozen-DB scans, labels and input provenance pass. Builder and final have zero Critical and zero High. Signing/attestation was explicitly excluded from Reopen 6 and was not attempted
+- **AC-5: PASS.** Evidence is secret-free, cleanup is complete, production is unchanged and no signing, publication, deployment, Fedora action or NAS mutation occurred
+
+### Documentation Impact
+
+Product documentation and CodeMap updates are not required because QA changed no product behavior or source structure
+
+### Open Risks
+
+- Exact retained images are local immutable Docker image IDs rather than published registry digests
+- Signing, publication and deployment require separate explicit authorization and release ownership
+
+### Recommended Next Step
+
+PMA may accept Reopen 6 functional and security qualification and route the exact identities to the next governed release decision. Do not sign, publish or deploy without separate authorization
+
+### Signed Handoff
+
+[Agent Message] From: qa_engineer To: product_manager
+
+PASS. Exact Reopen 6 amd64 builder `sha256:eb673f1c4f02a3c0e9cf93d2b73703308664276aea50ea6a57c759956a3788ac` and final `sha256:ad33017b518b66d9dc81ec272b8a91ce1eda935f25b851e8ab7d2e8fa7d0d915` pass the credential-safe isolated functional matrix and have zero Critical and zero High under one frozen Grype database. Cleanup is complete, production is unchanged, and no signing, publication or deployment occurred
