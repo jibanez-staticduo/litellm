@@ -1,0 +1,15 @@
+uv image index: sha256:3d868e555f8f1dbc324afa005066cd11e1053fc4743b9808ca8025283e65efa5
+uv linux/amd64 child: sha256:663211e7509e89ff2172cc3ca098afb4ac63028dd065d2b047e4251127a7d47a
+uv version: 0.11.26
+uv OCI revision: 396ef7ce44e343095f3a5a5e8bc4b0b670ed0f5b
+GitHub OCI attestation verification owner: astral-sh
+GitHub OCI attestation verification exit: 0
+
+Candidate source file diff after rollback: clean
+Application Cargo diff: clean
+Task Buildx builder after cleanup: absent
+Task image after cleanup: absent
+Pulled uv 0.11.26 input after cleanup: absent
+staticeng_validate: PASS, all source directories indexed, hierarchy validated, warnings 0
+
+No builder or final candidate image was emitted. No Grype database was downloaded and no scan was run against nonexistent subjects

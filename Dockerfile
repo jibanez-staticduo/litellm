@@ -5,7 +5,7 @@ ARG LITELLM_BUILD_IMAGE=cgr.dev/chainguard/wolfi-base@sha256:57108e597a8cf3bd376
 
 # Runtime image
 ARG LITELLM_RUNTIME_IMAGE=cgr.dev/chainguard/wolfi-base@sha256:57108e597a8cf3bd376b810f1c3539c21942daefa242cb9dddaae30f8aac735d
-ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.11.7@sha256:240fb85ab0f263ef12f492d8476aa3a2e4e1e333f7d67fbdd923d00a506a516a
+ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.11.26@sha256:3d868e555f8f1dbc324afa005066cd11e1053fc4743b9808ca8025283e65efa5
 ARG RUST_TOOLCHAIN_IMAGE=docker.io/library/rust:1.97.1-slim-bookworm@sha256:2775a09d208ff0d7c1f50490c45b62db929e87ba1dcbc3f2132ac71a704bcdd3
 # Pinned by digest like the other base images; bump explicitly on Node upgrades.
 ARG UI_BUILD_IMAGE=node:24.19-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43
@@ -84,6 +84,23 @@ COPY pyproject.toml uv.lock ./
 COPY enterprise/pyproject.toml enterprise/
 COPY litellm-proxy-extras/pyproject.toml litellm-proxy-extras/
 
+RUN case "$TARGETARCH" in \
+        amd64) \
+            expected_ml_dtypes_wheel=ml_dtypes-0.5.4-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl; \
+            expected_ml_dtypes_hash=533ce891ba774eabf607172254f2e7260ba5f57bdd64030c9a4fcfbd99815d0d \
+            ;; \
+        arm64) \
+            expected_ml_dtypes_wheel=ml_dtypes-0.5.4-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl; \
+            expected_ml_dtypes_hash=ce756d3a10d0c4067172804c9cc276ba9cc0ff47af9078ad439b075d1abdc29b \
+            ;; \
+        *) exit 1 ;; \
+    esac && \
+    grep -Fq "$expected_ml_dtypes_wheel" uv.lock && \
+    grep -Fq "hash = \"sha256:${expected_ml_dtypes_hash}\"" uv.lock
+
+RUN uv --version | grep -Eq '^uv 0\.11\.26 ' && \
+    uvx --version | grep -Eq '^uvx 0\.11\.26 '
+
 # Install third-party dependencies (cached unless pyproject.toml/uv.lock change)
 RUN uv sync --frozen --no-install-project --no-install-workspace --no-default-groups --no-editable \
     --extra proxy \
@@ -117,6 +134,8 @@ RUN uv sync --frozen --no-default-groups --no-editable \
 RUN HOME=/opt/prisma XDG_CACHE_HOME=/opt/prisma/.cache PRISMA_BINARY_CACHE_DIR=/opt/prisma/binaries \
     npm_config_cache=/root/.npm \
     prisma generate --schema=./schema.prisma
+
+RUN uv cache clean && test ! -d /root/.cache/uv/archive-v0 && test ! -d /root/.cache/uv/sdists-v9
 
 RUN sed -i 's/\r$//' docker/entrypoint.sh && chmod +x docker/entrypoint.sh && \
     sed -i 's/\r$//' docker/prod_entrypoint.sh && chmod +x docker/prod_entrypoint.sh

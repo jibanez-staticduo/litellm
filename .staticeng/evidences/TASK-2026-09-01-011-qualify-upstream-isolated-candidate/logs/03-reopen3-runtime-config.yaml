@@ -1,0 +1,20 @@
+model_list:
+  - model_name: synthetic-openai
+    litellm_params:
+      model: openai/my-fake-model
+      api_key: os.environ/SYNTHETIC_UPSTREAM_AUTH
+      api_base: http://upstream:8190/v1
+
+mcp_servers:
+  synthetic_math:
+    transport: http
+    url: http://mcp:8765/mcp
+    allow_all_keys: false
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  store_model_in_db: true
+  database_connection_pool_limit: 5
+
+litellm_settings:
+  drop_params: true

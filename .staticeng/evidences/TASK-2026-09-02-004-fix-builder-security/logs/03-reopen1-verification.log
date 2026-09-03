@@ -1,0 +1,65 @@
+Source: 165a94ecfbf21d7ff4626815ac6b298ac34e2adb
+Clean detached build context: used, then removed
+
+uv CLI: 0.11.26, official release checksum verified
+uv OCI index: sha256:3d868e555f8f1dbc324afa005066cd11e1053fc4743b9808ca8025283e65efa5
+uv linux/amd64 child: sha256:663211e7509e89ff2172cc3ca098afb4ac63028dd065d2b047e4251127a7d47a
+uv OCI source revision: 396ef7ce44e343095f3a5a5e8bc4b0b670ed0f5b
+
+ml-dtypes wheel: ml_dtypes-0.5.4-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+wheel SHA-256: 533ce891ba774eabf607172254f2e7260ba5f57bdd64030c9a4fcfbd99815d0d
+metadata SHA-256: 51b5729b48ce71736748bbf43d4f355485f42b44977d6016717bbd6b11b7dfc0
+PyPI PEP 740 publisher: GitHub jax-ml/ml_dtypes wheels.yml release
+PyPI attestation subject and SHA-256: exact match
+
+uv lock --check: PASS
+uv tree: ml-dtypes 0.5.4 <- redisvl 0.4.1 <- litellm extra-proxy
+CI setup-uv callers pinned to 0.11.26: 19
+CI setup-uv callers remaining at 0.10.9: 0
+Rejected build-constraint-dependencies: absent
+Application Cargo diff: empty
+
+Redis and Valkey semantic-cache unit suites: 82 passed
+Real Redis Stack sync store/check/TTL/filter/isolation: PASS
+Real Redis Stack async store/check/filter: PASS
+Real Redis Stack reconnect and persistence: PASS
+bfloat16 0.4.1 bytes: 00000080803f80bf2c3249407f7f7fff807f80ffc07f
+bfloat16 0.5.4 bytes: 00000080803f80bf2c3249407f7f7fff807f80ffc07f
+bfloat16 bytes SHA-256: 3c062bd83d10a9d8cd70e8e4356b524b7bb50164935d2cbfba2cf9c2b7ddbe24
+Existing Redis bfloat16 bytes round-trip: PASS
+
+UI format check: PASS
+UI lint: PASS
+UI type tests: 4 passed
+UI unit tests: 2317 passed
+UI knip: PASS
+UI production build: PASS
+Rust workspace tests: 244 passed, 2 existing live-API tests ignored
+make check bootstrap under uv 0.11.26: PASS
+make check lint phase: BLOCKED before lint because origin has no litellm_internal_staging ref for the required merge-base calculation
+
+Exact clean builder image ID: sha256:c4221442096bb76e0d4fd1d07812b5067dc5ec0fb646123d32fde28188f708c5
+Exact clean final image ID: sha256:5f62c6a682457c9858e3015890f3a806bbcff05d4d2c582e176e5bf84d66dfe4
+Platform: linux/amd64
+Python: 3.13.15
+Builder uv/uvx: 0.11.26
+Builder and final ml-dtypes: 0.5.4
+Builder and final RedisVL: 0.4.1
+Builder and final NumPy: 2.4.4, unchanged
+Final native bridge import: PASS
+Final Prisma import/engines: PASS
+Final normal proxy liveliness: PASS
+Builder uv archive/sdist cache after build: absent
+
+Syft: 1.51.1, official checksum verified
+Grype: 0.118.0, official checksum verified
+Grype DB schema: 6.1.9
+Grype DB built: 2026-09-02T06:35:12Z
+Grype DB status: valid
+Exact builder: 0 Critical, 0 High, 9 Medium, 2 Low
+Exact final: 0 Critical, 0 High, 9 Medium, 2 Low
+Exact uv input: 0 findings
+Builder SBOM: ml-dtypes 0.5.4; quinn-proto 0.11.15 twice; rustls-webpki 0.103.13 twice; no setuptools 68.1.2
+
+Disposable containers, network, Buildx builder/cache, candidate images, detached worktree, downloaded tools, local wheel, and frozen Grype database: removed
+Registry publication, signing, commit, push, deployment, Fedora mutation, and NAS mutation: not performed

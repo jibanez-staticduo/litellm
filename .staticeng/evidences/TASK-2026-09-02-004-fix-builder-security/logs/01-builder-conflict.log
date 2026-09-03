@@ -1,0 +1,14 @@
+Command: docker buildx build --builder task004-builder --platform linux/amd64 --target builder --tag task004-builder:165a94ec-working --load --progress=plain .
+Exit: 1
+
+Dockerfile:88 first uv sync --frozen
+
+Failed to download and build ml-dtypes==0.4.1
+Failed to resolve requirements from build-system.requires
+No solution found when resolving: numpy~=2.0, setuptools~=68.1.0
+Because you require setuptools>=68.1.0,<68.2.dev0 and setuptools>=78.1.1,
+we can conclude that your requirements are unsatisfiable
+
+Dependency chain: litellm[extra-proxy] 1.100.0 -> redisvl 0.4.1 -> ml-dtypes 0.4.1
+
+The build stopped before a builder image was emitted. The final target was not attempted

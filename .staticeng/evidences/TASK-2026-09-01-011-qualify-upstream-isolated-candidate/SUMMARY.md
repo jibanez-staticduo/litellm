@@ -1,45 +1,45 @@
-# TASK-2026-09-01-011 Reopen 2 Evidence Summary
+# TASK-2026-09-01-011 Reopen 3 Evidence Summary
 
 ## Summary
 
-REJECT. The exact clean commit `9374aae27c93d509a12f167c6bb1f83815ed3db1` does not build with its committed Dockerfile defaults. The exact `linux/amd64` builder stopped at the first frozen `uv sync` because the rolling Wolfi repository supplied Python `3.13.15-r4`, whose `math` extension requires `GLIBC_2.44`, while the commit's immutable Wolfi base supplies glibc 2.43. No exact builder image or final candidate was emitted, so the governing stop condition blocks runtime, SBOM, scan, signature, attestation, and promotion gates
+REJECT. Exact clean commit `165a94ecfbf21d7ff4626815ac6b298ac34e2adb` now emits and retains exact `linux/amd64` builder `sha256:e0c530bb94b6fb9fde38d1d32d2662177ebef280cdcb4bc7b3c8e68e4d71e104` and final `sha256:00b239d81b428a143d50a695c59839e0c387df0f66da116d80e5b79c8c524889`. The isolated synthetic PostgreSQL/config/model/MCP stack passed behavioral gates, including a candidate-bound registered real synthetic tool. Promotion remains fail-closed because the exact builder has six fixable High scan matches and no approved exact builder/final signature or attestation exists
 
-Production was queried only with the two Reopen 2 allowlisted formats. Its identity, image, running/healthy state, restart count, and OOM state were identical before and after cleanup. No production Compose, environment, configuration, mounts, credentials, data, or Docker `.Config` were read, and no production object was changed
+All disposable containers, network, volume, task builder/cache, worktree, downloaded tooling, vulnerability database and temporary artifacts were destroyed. The exact immutable images and durable repository evidence were retained as authorized. Production identity and health remained byte-for-byte unchanged under only the two credential-safe allowlisted observations
 
 ## Work Performed
 
-- Verified a clean detached `/tmp/opencode` worktree at the exact requested commit, its approved merge parent `0573332425de92ad8f17f6eb3196fce0d3ce7f22`, and an empty tracked/untracked diff
-- Created a uniquely named Docker-container BuildKit builder and attempted the exact committed `linux/amd64` `builder` target with source-revision and task labels
-- Observed exact package selection and failure: `python-3.13-base 3.13.15-r4` on the committed Wolfi base cannot import `math` because `GLIBC_2.44` is unavailable
-- Confirmed causality with a disposable non-candidate probe that changed only the build-base argument to the previously reviewed glibc 2.44 Wolfi digest; the builder target completed, proving the committed default base is the discriminating input. The probe image was not treated as the candidate and was deleted
-- Removed both BuildKit builders, their containers and caches, the diagnostic builder image, the pulled PostgreSQL image, temporary metadata, and both detached worktrees. No task-labelled container, network, volume, image, builder, or worktree remains
-- Recorded the secret-free command/result ledger in `logs/02-reopen2-build-reject-cleanup.md`
-- Ran `staticeng_validate`; all source directories and hierarchy checks passed with zero warnings
+- Built the exact detached clean source twice as explicit builder/final targets and verified source/ancestry, labels, amd64 architecture, Python 3.13.15, glibc 2.44, Rust 1.97.1, native imports, Prisma and normal entrypoint
+- Started an isolated labelled stack with empty PostgreSQL, test-owned config, one authenticated synthetic OpenAI-compatible upstream and one FastMCP upstream; used no production data, config, network, mounts or credentials
+- Passed empty-DB migrations, idempotent restart, readiness/liveness, exact model inventory, Chat Completions and Responses non-stream/stream/usage/logging, upstream-auth isolation, MCP REST and permissions
+- Passed all six LazyMCP discovery aliases, exact aggregate/scoped/toolset challenges, DCR code/access/refresh/replay and cross-audience isolation, three initialize/list shapes, aggregate/toolset real upstream tool calls, and 360/360 reconnect discovery probes
+- Generated and retained exact builder/final SPDX and CycloneDX SBOMs plus same-frozen-Grype-DB machine-readable scans under `artifacts/`; verified Wolfi provenance, and documented unavailable/unverified external and candidate signing dispositions
+- Destroyed every disposable object and cache; retained only immutable images/evidence; proved production unchanged and ran StaticEng validation
 
 ## Acceptance Criteria Coverage
 
-- **AC-1: FAIL.** Source commit and ancestry are exact and clean, but its committed build inputs cannot emit the exact builder or final image, so no immutable candidate identities can be retained
-- **AC-2: UNVERIFIED.** No isolated PostgreSQL/config/catalog stack, model request, Responses request, MCP/LazyMCP flow, DCR flow, audience test, initialize, or registered-tool test ran after the mandatory build gate failed
-- **AC-3: UNVERIFIED.** No candidate exists for health, migration, permission, upstream-auth, inventory, reconnect, log, or preservation gates
-- **AC-4: UNVERIFIED.** No exact builder or final subject exists for SBOMs, same-database scans, signatures, attestations, provenance verification, or Critical/High disposition
-- **AC-5: PASS FOR SAFETY AND REJECTION EVIDENCE.** Production remained identical and healthy under allowlisted observation, all disposable resources were destroyed, no secret-bearing production source was read, and this rejection packet is secret-free. No push, publication, deployment, mutable tag, Fedora action, or NAS production mutation occurred
+- **AC-1: PASS.** Exact clean source and ancestry are recorded; exact amd64 builder/final images are retained by immutable image ID and full revision label
+- **AC-2: PASS.** Isolated PostgreSQL, config, synthetic provider and registered FastMCP state exercised model, Responses, MCP, six discovery aliases, challenges, DCR/audience/replay, initialize and authorized real synthetic tool behavior
+- **AC-3: PASS.** Health, 161 migrations plus idempotent restart, permissions, upstream credential separation, exact inventory, successful spend rows, clean logs, reconnect and preservation gates passed
+- **AC-4: FAIL.** Durable exact builder/final SBOM and same-database scans exist, and final has zero High/Critical, but builder has six fixable High matches. Exact builder/final signature/attestation is also absent because no approved signing identity exists and publication is unauthorized
+- **AC-5: PASS FOR SAFETY AND EVIDENCE.** Evidence is synthetic and secret-free; cleanup is complete; no mutable tag, publication, push, deployment, Fedora action or NAS production mutation occurred; production stayed unchanged
 
 ## Documentation Impact
 
-Product, architecture, technical, test, and CodeMap documentation are not changed because no product/source behavior or source structure changed. The integration preservation records should be corrected in the follow-up because they claim the adopted upstream Wolfi base preserves a build contract that this exact build disproves
+Product, architecture, technical and CodeMap documentation are not changed because qualification changed no product behavior or source structure. This task/evidence update records the operational outcome
 
 ## Open Risks
 
-- The integration merge changed both root Dockerfile Wolfi defaults from the previously reviewed coherent glibc 2.44 digest to an immutable glibc 2.43 base while retaining Python `3.13.15-r4` from a rolling repository
-- The current build is not reproducible as a coherent package closure because digest-pinned base files are combined with mutable rolling APK indexes
-- All candidate runtime and supply-chain qualifications remain absent; TASK-012 promotion and deployment must remain blocked
+- Exact builder contains six fixable High matches in setuptools, quinn-proto and rustls-webpki, violating the governing zero-fixable-High release policy
+- Exact builder/final images are local immutable Docker identities, not registry digests, and have no approved signature or attestation
+- uv has OCI provenance but no Cosign signature; Rust and Node official images expose no Cosign signatures under the tested policy
+- Promotion and TASK-012 deployment remain prohibited despite complete functional qualification
 
 ## Recommended Next Step
 
-PMA should reopen the source integration or route an approved packaging correction. Restore a reviewed coherent immutable Wolfi/package closure, create a new exact source commit, then rerun TASK-011 from the beginning. Do not override the base only during release construction because that would produce a candidate from uncommitted build inputs
+PMA should reject promotion and route a governed build-stage dependency remediation for the six fixable High findings. Establish an approved signing identity and candidate publication/attestation procedure, produce a new exact commit and builder/final subjects, then rerun TASK-011 supply-chain and affected runtime gates from the beginning
 
 ## Signed Handoff
 
 [Agent Message] From: qa_engineer To: product_manager
 
-REJECT. Exact commit `9374aae27c93d509a12f167c6bb1f83815ed3db1` fails its exact builder target because Python `3.13.15-r4` requires `GLIBC_2.44` but the committed Wolfi base supplies glibc 2.43. No exact builder/final image exists, so behavioral and supply-chain gates are fail-closed. Every disposable resource was destroyed, and production identity and health remained unchanged under only the allowlisted observations
+REJECT. Exact amd64 builder `sha256:e0c530bb94b6fb9fde38d1d32d2662177ebef280cdcb4bc7b3c8e68e4d71e104` and final `sha256:00b239d81b428a143d50a695c59839e0c387df0f66da116d80e5b79c8c524889` pass every isolated functional gate, but the builder has six fixable High findings and exact signing/attestation is absent. Cleanup is complete and production is unchanged. Do not promote or deploy

@@ -89,7 +89,7 @@ jobs:
         timeout-minutes: 3
         uses: ./.github/actions/setup-uv-with-retries
         with:
-          version: "0.10.9"
+          version: "0.11.26"
 
       - name: Cache uv dependencies
         if: steps.changes.outputs.decision != 'skip'

@@ -3,12 +3,12 @@ id: TASK-2026-09-01-011-qualify-upstream-isolated-candidate
 complexity: complex
 track: implementation
 slice: qa
-status: todo
+status: blocked
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-010-integrate-upstream-main
 assigned_to: qa_engineer
 handoff_from: product_manager
-reopened_count: 2
+reopened_count: 3
 ---
 
 # Task: Qualify isolated upstream candidate
@@ -71,16 +71,28 @@ REJECT. Exact commit `9374aae27c93d509a12f167c6bb1f83815ed3db1` cannot emit its 
 
 ### Reopen 3 Pending - Reviewed Wolfi correction
 
-TASK-2026-09-02-002 passed independent Tech Lead review and restores both coherent glibc 2.44 Wolfi defaults. This task returns to `todo` pending PMA activation against the exact pushed correction commit. Prior Reopen 2 rejection remains historical evidence and does not qualify the corrected source. Publication, promotion, deployment, Fedora/NAS mutation, and arm64 remain unauthorized
+TASK-2026-09-02-002 passed independent Tech Lead review and restores both coherent glibc 2.44 Wolfi defaults. PMA activates qualification against exact pushed fork-main commit `165a94ecfbf21d7ff4626815ac6b298ac34e2adb`. Rebuild from a clean detached worktree and rerun every behavioral and supply-chain gate from the beginning. Prior Reopen 2 rejection remains historical evidence and does not qualify the corrected source. Publication, promotion, deployment, Fedora/NAS mutation, and arm64 remain unauthorized
+
+### Reopen 3 Result
+
+REJECT. Exact clean commit `165a94ecfbf21d7ff4626815ac6b298ac34e2adb` emitted retained amd64 builder `sha256:e0c530bb94b6fb9fde38d1d32d2662177ebef280cdcb4bc7b3c8e68e4d71e104` and final `sha256:00b239d81b428a143d50a695c59839e0c387df0f66da116d80e5b79c8c524889`. A uniquely labelled isolated PostgreSQL/config/provider/FastMCP stack passed all required functional gates, including exact six-alias discovery, aggregate/scoped/toolset challenges, DCR access/refresh/replay isolation, reconnect, permissions, upstream-auth separation and candidate-bound registered real synthetic tool execution
+
+Durable exact builder/final SPDX and CycloneDX SBOMs plus same-frozen-Grype-DB scans were retained. The final has zero High/Critical, but the builder has six fixable High matches in setuptools, quinn-proto and rustls-webpki. No approved signing identity was available, so exact builder/final signatures and attestations are absent. All disposable containers, network, volume, task builder/cache, worktree, tools, vulnerability DB and temporary artifacts were destroyed; only immutable images/evidence remain. Production stayed unchanged under only the allowlisted observations
 
 # Post Implementation Task Updates
 
 ## QA Engineer: Post Implementation Expectations
 
-- AC-1: FAIL because the exact clean source build fails before emitting the mandatory exact builder or final image
-- AC-2: UNVERIFIED because the mandatory build gate stopped before an isolated runtime stack could be created
-- AC-3: UNVERIFIED because no exact candidate exists for runtime qualification
-- AC-4: UNVERIFIED because no exact builder or final image exists for SBOM, scan, signing, attestation, provenance, or vulnerability disposition
-- AC-5: PASS for safety and rejection evidence because production remained unchanged and healthy under only allowlisted observations, all disposable resources were destroyed, and evidence is secret-free
+- AC-1: PASS because exact clean source emitted retained immutable amd64 builder and final identities bound to the full source revision
+- AC-2: PASS because the isolated synthetic stack exercised the full model, Responses, MCP and LazyMCP protocol contract, including candidate-bound real tool execution
+- AC-3: PASS because health, migrations, restart, permissions, upstream auth, inventory, logs, reconnect and preservation gates passed
+- AC-4: FAIL because the exact builder has six fixable High findings and exact builder/final signing and attestation remain absent
+- AC-5: PASS because production remained unchanged under only allowlisted observations, all disposable resources and caches were destroyed, evidence is secret-free, and no push/publication/deployment/Fedora/NAS mutation occurred
 - Product documentation is not required because no product behavior or source structure changed
 - Evidence: `.staticeng/evidences/TASK-2026-09-01-011-qualify-upstream-isolated-candidate/SUMMARY.md`
+
+[Agent Message] From: qa_engineer To: product_manager
+
+REJECT. Exact amd64 builder `sha256:e0c530bb94b6fb9fde38d1d32d2662177ebef280cdcb4bc7b3c8e68e4d71e104` and final `sha256:00b239d81b428a143d50a695c59839e0c387df0f66da116d80e5b79c8c524889` pass every isolated functional gate, but the builder has six fixable High findings and exact signing/attestation is absent. Cleanup is complete and production is unchanged. Do not promote or deploy
+
+Resume only after TASK-2026-09-02-004 produces a reviewed exact commit and TASK-2026-09-02-003 defines signing policy.

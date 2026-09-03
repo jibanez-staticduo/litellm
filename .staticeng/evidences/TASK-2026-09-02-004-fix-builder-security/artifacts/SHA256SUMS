@@ -1,0 +1,9 @@
+dfdf1c39798d255603c86da94dbe028acd89d9e33cc49171f11851ec01e75e1b  .staticeng/evidences/TASK-2026-09-02-004-fix-builder-security/artifacts/sboms/builder.cyclonedx.json
+c22d1dc629ab6425c2d3fc7cda58bc756da905bc6ff298b24c5fc2207519e693  .staticeng/evidences/TASK-2026-09-02-004-fix-builder-security/artifacts/sboms/builder.spdx.json
+8503a1c44bb0c5bf572a2146e2cfffcb8336aa3d376d0ef576f8ed420f25ba7c  .staticeng/evidences/TASK-2026-09-02-004-fix-builder-security/artifacts/sboms/final.cyclonedx.json
+95ae2182a3a2fa62a2da2b5c92b654f253969992c54dd9c2992aa0e32391ce12  .staticeng/evidences/TASK-2026-09-02-004-fix-builder-security/artifacts/sboms/final.spdx.json
+af992e31801788d00b4b4dfd5dce1067c8cf41275b1f0497aa22867819d164e9  .staticeng/evidences/TASK-2026-09-02-004-fix-builder-security/artifacts/sboms/uv.cyclonedx.json
+46695faf658b08b8578fa300c2356ba5252f17f3fe51c15d376441406de4b936  .staticeng/evidences/TASK-2026-09-02-004-fix-builder-security/artifacts/sboms/uv.spdx.json
+237b1f62dff490573e21856f7b982dfa6fa0e4bc36f74bc1dfef9358eb09cb78  .staticeng/evidences/TASK-2026-09-02-004-fix-builder-security/artifacts/scans/builder.grype.json
+34d32194d7e03263618ce19f8b90d7c8bbbce56005e4792662ad8cbe3351eecc  .staticeng/evidences/TASK-2026-09-02-004-fix-builder-security/artifacts/scans/final.grype.json
+e8d4b22d236c4f189df008228097de31429e1d622f68559448a820a665e5a8de  .staticeng/evidences/TASK-2026-09-02-004-fix-builder-security/artifacts/scans/uv.grype.json

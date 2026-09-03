@@ -1,0 +1,30 @@
+Tech Lead review: PASS
+Source baseline: 165a94ecfbf21d7ff4626815ac6b298ac34e2adb
+Upstream litellm_internal_staging: 3cac5e5cd4c12a782e0afe96218aaff986ef3f60
+Review uv: 0.11.26 from approved OCI digest
+
+Exact upstream-base make check: PASS
+uv lock --check: PASS
+git diff --check: PASS
+Redis/Valkey semantic-cache suites: 82 passed
+staticeng_validate: PASS, warnings 0
+
+CI setup-uv-with-retries callers: 19
+CI callers pinned to 0.11.26: 19
+CI callers remaining on 0.10.9: 0
+Application Cargo diff: empty
+
+PyPI wheel SHA-256: 533ce891ba774eabf607172254f2e7260ba5f57bdd64030c9a4fcfbd99815d0d
+PyPI metadata SHA-256: 51b5729b48ce71736748bbf43d4f355485f42b44977d6016717bbd6b11b7dfc0
+PEP 740 publisher: GitHub jax-ml/ml_dtypes wheels.yml release
+PEP 740 subject and SHA-256: exact match
+
+Artifact checksum manifest: 9/9 verified
+Grype DB for uv/builder/final: schema v6.1.9, built 2026-09-02T06:35:12Z
+Builder: 0 Critical, 0 High, 9 Medium, 2 Low
+Final: 0 Critical, 0 High, 9 Medium, 2 Low
+uv: 0 findings
+
+Task-labelled containers/networks/volumes/images: absent
+Non-default task Buildx builder: absent
+Publication/signing/deployment/Fedora/NAS mutation: not performed
