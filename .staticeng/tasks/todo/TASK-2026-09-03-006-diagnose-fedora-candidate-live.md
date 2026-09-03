@@ -3,7 +3,7 @@ id: TASK-2026-09-03-006-diagnose-fedora-candidate-live
 complexity: complex
 track: implementation
 slice: qa
-status: active
+status: blocked
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-012-release-upstream-main-fedora
 assigned_to: tech_lead
@@ -32,3 +32,47 @@ Deploy the exact signed candidate during the authorized maintenance window, repr
 [Agent Message] From: product_manager To: tech_lead
 
 The SCR maintenance amendment and TASK-007 diagnostic runbook are complete. Read them fully. Prior kernel evidence proves the candidate reached about 100.3 GiB anonymous RSS and was globally OOM-killed. Create a new fresh backup/isolated restore and exact rollback unit. Arm the one-second memory/health watcher and automatic rollback thresholds before selector mutation. Deploy the exact signed candidate, reproduce exactly one `defend_memory-find` call with concurrency one and 75-second client deadline, and capture bounded cgroup/process/health/DB/Redis/LazyMCP/upstream defend evidence without payloads or secrets. Roll back immediately at thresholds, data/security risk, or insufficient control. If root cause requires code/config correction, stop after rollback and return an exact governed implementation recommendation; do not patch production ad hoc. Leave Fedora healthy and NAS untouched.
+
+# Post Implementation Task Updates
+
+## Tech Lead: Post Implementation Expectations
+
+### Summary
+
+REJECT candidate and PASS rollback. Fresh backup/isolated restore, identity/signature/attestation, rollback, and watchdog gates passed. The exact candidate deployed and remained healthy with bounded memory, but the required request was not sent because Fedora had no protected exact-audience DCR bearer. The client harness failed closed and automatic rollback restored the exact prior digest
+
+### Work Performed
+
+- Created the fresh owner-only database backup/checksum/list and verified it through an isolated exact-image restore
+- Armed independent memory, health, and dependency samplers before changing the selector
+- Deployed only the exact signed candidate by changing `LITELLM_IMAGE` and recreating only `litellm --no-deps`
+- Rejected use of a legacy API key as a substitute for the required exact-audience bearer
+- Automatically rolled back without sending the candidate request and verified exact rollback health, protected state, dependencies, migrations, MCP initialize, and real tool behavior
+
+### Acceptance Criteria Coverage
+
+- **AC-1: PASS.** Every fresh pre-deployment safety and identity gate passed
+- **AC-2: FAIL.** Observability was active, but no authorized candidate request was sent
+- **AC-3: PARTIAL.** Historical global OOM is candidate-process resource exhaustion; exact allocation phase remains unknown
+- **AC-4: PASS.** No ad-hoc production correction occurred
+- **AC-5: FAIL.** Candidate real-tool, full final gates, and soak did not run
+- **AC-6: PASS.** Exact rollback passed and NAS remained untouched
+- **AC-7: PASS FOR FAILED OUTCOME.** Evidence and workflow records are complete and secret-free
+
+### Documentation Impact
+
+No steady-state product, architecture, technical, or CodeMap documentation is required because no runtime behavior or maintained source changed
+
+### Open Risks
+
+The candidate remains blocked. The exact allocation site is unproven, and any retry still requires the same automatic watchdog because Fedora Compose has no cgroup memory ceiling
+
+### Recommended Next Step
+
+PMA should create an exact-audience credential-preparation task using the existing DCR flow, then reopen this task for one fresh protected retry. Do not patch production or touch NAS
+
+### Signed Handoff
+
+[Agent Message] From: tech_lead To: product_manager
+
+REJECT CANDIDATE; VERIFIED ROLLBACK PASS. Preflight and protected deployment controls passed, but the required exact-audience bearer was unavailable, so no candidate tool request was sent. Automatic rollback restored the exact prior digest, and Fedora passes health, migrations, protected-state, dependency, MCP initialize, and real-tool verification. NAS was untouched. Route a governed exact-audience credential-preparation task before reopening TASK-006
