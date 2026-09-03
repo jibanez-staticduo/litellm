@@ -1,0 +1,39 @@
+Reopen 2 verification
+
+Packaged and workflow tests:
+- LITELLM_IMAGE=sha256:eeb98cc84cd1f3b73ce1dc584ac9922e47515fc3db46beb8825283fddf6b2820 /usr/bin/python3 -m pytest tests/proxy_migration_tests/test_image_lazymcp_discovery.py tests/proxy_migration_tests/test_image_lazymcp_workflow.py -q
+- PASS: 5 passed in 77.67s
+- Each of the six discovery aliases uses a freshly constructed FastAPI app in its source cold-start test
+
+Complete mapped source/component suite:
+- discovery resource, discoverable endpoints, lazy OpenAPI, component allowlists, proxy server and streaming helper test files
+- PASS: 832 passed in 209.92s
+
+Mapped challenge/DCR/transport/toolset suite:
+- gateway DCR, MCP auth, toolset scope and MCP server test files
+- PASS: 734 passed in 250.69s
+
+Generated contracts:
+- Exact uv 0.11.26 regenerated the lazy snapshot
+- Dashboard schema generation completed with the exact uv-backed Python environment
+- Final generated snapshot and schema.d.ts have zero diff
+- Snapshot preservation tests require /mcp, Anthropic passthrough, access-group and callback routes while proving the runtime app route identities/unique IDs remain unchanged
+
+Exact staged gate:
+- Every intended task path was staged so generated-file checks compared against the proposed commit
+- PATH selected exact uv 0.11.26
+- make check: PASS
+- Whole-tree Ruff, changed formatting, strict/type-discipline/test-quality/basedpyright budgets, E2E basedpyright, circular imports, import safety and OpenAPI/type synchronization all pass
+- Staging was removed after verification; no commit was created
+
+Focused lint/type/static:
+- Focused Ruff and format: PASS
+- Dependency-free image/workflow focused basedpyright: 0 errors
+- staticeng_validate: PASS, zero warnings
+- git diff --check: PASS
+
+Cleanup:
+- Zero lazymcp-image task containers or networks
+- Temporary uv PATH shim removed
+- One repository worktree
+- No push, signing, deployment, Fedora or NAS action

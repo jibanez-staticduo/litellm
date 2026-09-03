@@ -1,0 +1,15 @@
+Command:
+LITELLM_IMAGE=sha256:eeb98cc84cd1f3b73ce1dc584ac9922e47515fc3db46beb8825283fddf6b2820 .venv/bin/python -m pytest tests/proxy_migration_tests/test_image_lazymcp_discovery.py -vv
+
+Result:
+4 passed in 76.81s
+
+Covered:
+- Unset PROXY_BASE_URL from a non-loopback container peer: generic JSON 404 for all six aliases
+- PROXY_BASE_URL=http://candidate.invalid from a non-loopback container peer: generic JSON 404 for all six aliases
+- PROXY_BASE_URL=https://candidate.invalid: exact HTTP 200 JSON metadata for all six aliases
+- Packaged /openapi.json: all six discovery templates present
+
+Cleanup:
+- Each test instance removed its disposable container and internal network in fixture teardown
+- Follow-up task-name-filtered Docker inventory returned no container or network

@@ -2,6 +2,8 @@
 
 | Date | Task ID | SCR ID | Commit | Summary |
 | :--- | :--- | :--- | :--- | :--- |
+| 2026-09-03 | TASK-2026-09-02-006-fix-image-discovery-routing | SCR-2026-09-01-001-upstream-main-integration | pending-commit | Added packaged trusted-origin coverage and closed lazy routing, Responses, component, generated-contract, CI, CodeMap and pre-commit regressions through five review cycles. |
+| 2026-09-03 | TASK-2026-09-02-005-investigate-image-discovery-404 | SCR-2026-09-01-001-upstream-main-integration | pending-commit | Proved the retained image 404s were intentional fail-closed origin handling caused by the qualification harness omitting the trusted public base. |
 | 2026-09-03 | TASK-2026-09-02-002-fix-coherent-wolfi-closure | SCR-2026-09-01-001-upstream-main-integration | pending-commit | Restored both coherent Wolfi glibc 2.44 defaults and passed exact amd64 build, ABI, native runtime, production-preservation, cleanup, and independent review gates. |
 | 2026-09-03 | TASK-2026-09-02-001-design-coherent-wolfi-closure | SCR-2026-09-01-001-upstream-main-integration | pending-commit | Reconfirmed the exact two-default Wolfi glibc 2.44 correction, amd64 identities, mutable APK boundary, tests, and rollback. |
 | 2026-09-02 | TASK-2026-09-01-014-find-isolated-docker-runner | SCR-2026-09-01-001-upstream-main-integration | pending-commit | Inventoried authorized runner options and returned a precise blocker because every reachable third host is ARM rather than the required AMD64. |

@@ -1,0 +1,49 @@
+Reopen 1 verification
+
+Packaged runtime, unchanged retained image:
+- LITELLM_IMAGE=sha256:eeb98cc84cd1f3b73ce1dc584ac9922e47515fc3db46beb8825283fddf6b2820 /usr/bin/python3 -m pytest tests/proxy_migration_tests/test_image_lazymcp_discovery.py -q
+- PASS: 4 passed in 79.20s using clean host Python without Pydantic
+
+Complete mapped routing, discovery, component and streaming suite:
+- tests/test_litellm/proxy/_experimental/mcp_server/test_lazymcp_public_resource.py
+- tests/test_litellm/proxy/_experimental/mcp_server/test_discoverable_endpoints.py
+- tests/test_litellm/proxy/test_lazy_openapi_snapshot.py
+- tests/test_litellm/proxy/test_component_allowlists.py
+- tests/test_litellm/proxy/test_proxy_server.py
+- tests/test_litellm/proxy/proxy_server/test_streaming_helpers.py
+- PASS: 829 passed in 200.98s
+
+Mapped transport, challenge, DCR/audience and toolset suite:
+- tests/test_litellm/proxy/_experimental/mcp_server/test_gateway_dcr_flow.py
+- tests/test_litellm/proxy/_experimental/mcp_server/auth/test_user_api_key_auth_mcp.py
+- tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_toolset_scope.py
+- tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py
+- PASS: 734 passed in 251.97s
+
+Exact uv and generated contracts:
+- /tmp/opencode/uv-0.11.26 --version: uv 0.11.26
+- /tmp/opencode/uv-0.11.26 lock --check: PASS, 453 packages resolved
+- lazy OpenAPI snapshot regenerated with uv 0.11.26
+- dashboard schema.d.ts regenerated with the project virtual environment; no schema.d.ts diff
+- exact pinned uv 0.11.26 make check: PASS after staging the intended task paths so generated-file checks compared against the proposed commit
+
+Static gates inside make check:
+- whole-tree source and test Ruff: PASS
+- changed-file Ruff format: PASS
+- strict Ruff budget: PASS
+- type-discipline budget: PASS
+- test-quality budget: PASS
+- basedpyright budget: PASS
+- E2E basedpyright: PASS
+- circular imports and import safety: PASS
+- generated OpenAPI/types sync: PASS
+
+StaticEng and cleanup:
+- staticeng_validate: PASS, zero warnings
+- git diff --check: PASS
+- task-labelled container and network inventory: zero
+- one repository worktree remains
+- no commit, push, signing, deployment, Fedora or NAS action occurred
+
+Correction to earlier evidence:
+The host `uv` executable is old local uv 0.10.9 and cannot parse the current package-scoped override syntax. Exact pinned uv 0.11.26 parses the metadata, checks the lock and passes make check. This is local old-tool drift, not a pyproject defect

@@ -130,6 +130,8 @@ GATEWAY_EXACT_PATHS: frozenset[str] = frozenset(
         "/authorize/complete",
         "/callback",
         "/register",
+        "/revoke",
+        "/introspect",
     }
 )
 

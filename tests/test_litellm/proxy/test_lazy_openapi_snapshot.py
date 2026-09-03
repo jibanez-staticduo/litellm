@@ -2,6 +2,8 @@ import json
 import sys
 from types import ModuleType, SimpleNamespace
 
+from fastapi import FastAPI
+
 from litellm.proxy._lazy_features import LazyFeature
 from litellm.proxy._lazy_openapi_snapshot import SnapshotResult, _normalize_operation_ids, main
 
@@ -26,17 +28,36 @@ def test_lazymcp_transport_fragment_excludes_discovery_routes():
     assert next(feature.name for feature in LAZY_FEATURES if feature.matches("/lazymcp")) == "lazymcp_routes"
 
 
+def test_generate_snapshot_does_not_register_lazy_routes_on_runtime_app():
+    from litellm.proxy._lazy_openapi_snapshot import generate_snapshot
+    from litellm.proxy.proxy_server import app
+
+    before = tuple((id(route), getattr(route, "unique_id", None)) for route in app.routes)
+
+    generate_snapshot()
+
+    assert tuple((id(route), getattr(route, "unique_id", None)) for route in app.routes) == before
+
+
+def test_generate_snapshot_preserves_overlapping_runtime_routes():
+    from litellm.proxy._lazy_openapi_snapshot import generate_snapshot
+
+    fragments = generate_snapshot().fragments
+    preserved_paths = set().union(*(fragment["paths"] for fragment in fragments.values()))
+
+    assert {
+        "/mcp",
+        "/anthropic/{endpoint}",
+        "/access_group/new",
+        "/callback",
+    } <= preserved_paths
+
+
 def test_generate_snapshot_uses_shared_operation_id_reservations(monkeypatch):
     from litellm.proxy import _lazy_openapi_snapshot
 
     route_a = SimpleNamespace(path="/feature-a/items")
     route_b = SimpleNamespace(path="/feature-b/items")
-    fake_app = SimpleNamespace(
-        title="LiteLLM test",
-        version="0.0.0",
-        routes=[route_a, route_b],
-    )
-
     fake_feature_a_module = ModuleType("fake_feature_a")
     fake_feature_b_module = ModuleType("fake_feature_b")
     monkeypatch.setitem(sys.modules, "fake_feature_a", fake_feature_a_module)
@@ -48,13 +69,13 @@ def test_generate_snapshot_uses_shared_operation_id_reservations(monkeypatch):
             name="feature-a",
             module_path="fake_feature_a",
             path_prefixes=("/feature-a",),
-            register_fn=lambda app, module: None,
+            register_fn=lambda app, module: app.routes.append(route_a),
         ),
         LazyFeature(
             name="feature-b",
             module_path="fake_feature_b",
             path_prefixes=("/feature-b",),
-            register_fn=lambda app, module: None,
+            register_fn=lambda app, module: app.routes.append(route_b),
         ),
     ]
     monkeypatch.setitem(sys.modules, "litellm.proxy._lazy_features", fake_lazy_features_module)
@@ -77,7 +98,7 @@ def test_generate_snapshot_uses_shared_operation_id_reservations(monkeypatch):
         return schema
 
     fake_proxy_server_module = ModuleType("litellm.proxy.proxy_server")
-    fake_proxy_server_module.app = fake_app
+    fake_proxy_server_module.app = FastAPI()
     fake_proxy_server_module.ensure_unique_openapi_operation_ids = fake_ensure_unique_openapi_operation_ids
     monkeypatch.setitem(sys.modules, "litellm.proxy.proxy_server", fake_proxy_server_module)
     monkeypatch.setattr("fastapi.openapi.utils.get_openapi", fake_get_openapi)
@@ -96,8 +117,6 @@ def test_generate_snapshot_registers_transitively_imported_modules(monkeypatch):
     mount and its fragment silently vanishes from the snapshot. Fragment
     collection must also honor path_suffixes, not just prefixes."""
     from litellm.proxy import _lazy_openapi_snapshot
-
-    fake_app = SimpleNamespace(title="LiteLLM test", version="0.0.0", routes=[])
 
     fake_module = ModuleType("fake_transitive_feature")
     monkeypatch.setitem(sys.modules, "fake_transitive_feature", fake_module)
@@ -122,7 +141,7 @@ def test_generate_snapshot_registers_transitively_imported_modules(monkeypatch):
         return {"paths": {route.path: {"get": {"operationId": f"op{i}_get"}} for i, route in enumerate(routes)}}
 
     fake_proxy_server_module = ModuleType("litellm.proxy.proxy_server")
-    fake_proxy_server_module.app = fake_app
+    fake_proxy_server_module.app = FastAPI()
     fake_proxy_server_module.ensure_unique_openapi_operation_ids = lambda schema, reserved_operation_ids: schema
     monkeypatch.setitem(sys.modules, "litellm.proxy.proxy_server", fake_proxy_server_module)
     monkeypatch.setattr("fastapi.openapi.utils.get_openapi", fake_get_openapi)
@@ -170,8 +189,6 @@ def test_normalize_operation_ids_preserves_custom_ids():
 def test_generate_snapshot_reports_features_whose_import_fails(monkeypatch):
     from litellm.proxy import _lazy_openapi_snapshot
 
-    fake_app = SimpleNamespace(title="LiteLLM test", version="0.0.0", routes=[])
-
     fake_module = ModuleType("fake_importable_feature")
     monkeypatch.setitem(sys.modules, "fake_importable_feature", fake_module)
 
@@ -198,7 +215,7 @@ def test_generate_snapshot_reports_features_whose_import_fails(monkeypatch):
         return {"paths": {route.path: {"get": {"operationId": "importable_get"}} for route in routes}}
 
     fake_proxy_server_module = ModuleType("litellm.proxy.proxy_server")
-    fake_proxy_server_module.app = fake_app
+    fake_proxy_server_module.app = FastAPI()
     fake_proxy_server_module.ensure_unique_openapi_operation_ids = lambda schema, reserved_operation_ids: schema
     monkeypatch.setitem(sys.modules, "litellm.proxy.proxy_server", fake_proxy_server_module)
     monkeypatch.setattr("fastapi.openapi.utils.get_openapi", fake_get_openapi)

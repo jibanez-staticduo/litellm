@@ -1,0 +1,18 @@
+Command:
+.venv/bin/python -m pytest tests/test_litellm/proxy/_experimental/mcp_server/test_lazymcp_public_resource.py tests/test_litellm/proxy/test_lazy_openapi_snapshot.py -q
+
+Result:
+24 passed, 1 existing Starlette TestClient deprecation warning
+
+Mapped broad command:
+.venv/bin/python -m pytest tests/test_litellm/proxy/_experimental/mcp_server/test_lazymcp_public_resource.py tests/test_litellm/proxy/test_lazy_openapi_snapshot.py tests/test_litellm/proxy/test_component_allowlists.py tests/test_litellm/proxy/test_proxy_server.py -q
+
+Result:
+411 passed, 4 failed, 25 warnings
+
+The four failures reproduce independently and are outside this test-only task:
+- two existing Responses streaming assertions in test_proxy_server.py
+- existing missing component allowlist coverage for /introspect and /revoke
+- existing eager import of discoverable_endpoints while it remains registered as a lazy feature
+
+No application source or routing/trust behavior was changed to absorb those unrelated failures

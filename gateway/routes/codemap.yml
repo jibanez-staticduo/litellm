@@ -1,5 +1,5 @@
 scope: module
-parent: ../../.staticeng/codemap.yml
+parent: ../codemap.yml
 internals:
   - path: __init__.py
   - path: allowlist.py

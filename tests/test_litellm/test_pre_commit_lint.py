@@ -130,6 +130,39 @@ def _run(repo: Path, bin_dir: Path, extra_env: dict[str, str]) -> subprocess.Com
     )
 
 
+def test_alternate_index_is_explicitly_rejected_without_switching(tmp_path: Path) -> None:
+    repo, bin_dir = _sandbox(tmp_path)
+    _commit_all(repo, "base")
+    alternate_index = tmp_path / "alternate-index"
+    alternate_env = {"GIT_INDEX_FILE": str(alternate_index)}
+    subprocess.run(
+        ["git", "read-tree", "HEAD"],
+        cwd=repo,
+        env={**os.environ, **alternate_env},
+        check=True,
+    )
+    (repo / "litellm" / "foo.py").write_text("x = 2\n")
+    subprocess.run(
+        ["git", "add", "litellm/foo.py"],
+        cwd=repo,
+        env={**os.environ, **alternate_env},
+        check=True,
+    )
+
+    assert subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=repo, check=False).returncode == 0
+    proc = _run(repo, bin_dir, alternate_env)
+
+    assert proc.returncode == 2
+    assert "alternate GIT_INDEX_FILE is unsupported" in proc.stderr
+    assert "linting Python" not in proc.stdout
+    assert subprocess.run(
+        ["git", "diff", "--cached", "--quiet", "--", "litellm/foo.py"],
+        cwd=repo,
+        env={**os.environ, **alternate_env},
+        check=False,
+    ).returncode == 1
+
+
 def _commit_all(repo: Path, message: str) -> None:
     subprocess.run(["git", "add", "."], cwd=repo, check=True)
     subprocess.run(
@@ -459,6 +492,58 @@ def test_hook_symlink_install_still_resolves_the_slot_lock_helper(tmp_path: Path
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert (lock_dir / "slot-0.lock").exists()
+
+
+def test_linked_worktree_hook_accepts_its_absolute_canonical_index(tmp_path: Path) -> None:
+    repo, bin_dir = _sandbox(tmp_path)
+    _commit_all(repo, "base")
+    linked = tmp_path / "linked"
+    subprocess.run(["git", "worktree", "add", "--detach", str(linked), "HEAD"], cwd=repo, check=True)
+    try:
+        hooks = linked / ".githooks"
+        hooks.mkdir()
+        index_marker = tmp_path / "linked-index"
+        hook = hooks / "pre-commit"
+        _write_executable(
+            hook,
+            "#!/bin/sh\n"
+            'export GIT_INDEX_FILE="$(git rev-parse --path-format=absolute --git-path index)"\n'
+            f'printf "%s" "$GIT_INDEX_FILE" > "{index_marker}"\n'
+            f'exec "{SCRIPT}"\n',
+        )
+        (linked / "litellm" / "foo.py").write_text("x = 2\n")
+        subprocess.run(["git", "add", "litellm/foo.py"], cwd=linked, check=True)
+        proc = subprocess.run(
+            [
+                "git",
+                "-c",
+                "core.hooksPath=.githooks",
+                "-c",
+                "user.email=t@t",
+                "-c",
+                "user.name=t",
+                "commit",
+                "-qm",
+                "linked hook",
+            ],
+            cwd=linked,
+            capture_output=True,
+            text=True,
+            env=_env(linked, bin_dir, {}),
+            timeout=120,
+        )
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        expected_index = subprocess.run(
+            ["git", "rev-parse", "--path-format=absolute", "--git-path", "index"],
+            cwd=linked,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        assert index_marker.read_text() == expected_index
+        assert "/worktrees/" in expected_index
+    finally:
+        subprocess.run(["git", "worktree", "remove", "--force", str(linked)], cwd=repo, check=True)
 
 
 def test_failing_run_ends_with_a_fail_verdict(tmp_path: Path) -> None:

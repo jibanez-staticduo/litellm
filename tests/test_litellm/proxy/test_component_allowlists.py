@@ -221,6 +221,8 @@ def test_gateway_keeps_new_data_plane_routes_off_backend():
         "/authorize/complete",
         "/callback",
         "/register",
+        "/revoke",
+        "/introspect",
     ):
         assert path in _component_paths(
             (APIRoute(path, _lazymcp_test_endpoint),),

@@ -4,7 +4,8 @@
 # `make pre-commit`) before `git commit`, or after committing (e.g. a merge
 # commit) to predict CI for the branch. It picks the files in scope and runs
 # only the matching gating CI checks, so a clean run means a green CI lint:
-#   - anything staged -> scope is the staged files; changed-but-unstaged files
+#   - anything staged -> scope is the staged files in the repository index;
+#     changed-but-unstaged files
 #     whose checks were skipped are called out
 #   - nothing staged  -> scope is the working tree's diff against the merge base
 #     with origin/litellm_internal_staging, untracked files included
@@ -23,6 +24,17 @@
 # `ln -s ../../scripts/pre_commit_lint.sh .git/hooks/pre-commit`.
 
 set -eu
+
+if [ -n "${GIT_INDEX_FILE:-}" ]; then
+    canonical_index=$(env -u GIT_INDEX_FILE git rev-parse --path-format=absolute --git-path index)
+    provided_index=$(python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$GIT_INDEX_FILE")
+    if [ "$provided_index" != "$canonical_index" ]; then
+        echo "check: alternate GIT_INDEX_FILE is unsupported; refusing to switch indexes silently." >&2
+        echo "  Stage the intended paths in the repository index, then rerun make check." >&2
+        echo "check: FAIL"
+        exit 2
+    fi
+fi
 
 # Queue for one of the machine-wide heavy-work slots (see scripts/gate_slot_lock.py)
 # before anything else, so N parallel `make check` runs across worktrees execute two
@@ -165,7 +177,7 @@ EOF
         # Whole-folder lint budgets, exactly as the frontend-lint job runs them: the
         # counts are not diff-scoped, so a local pass here means the budget step will
         # pass in CI too.
-        report=$(mktemp)
+        report=$(mktemp "$check_tmp_dir/dashboard-report.XXXXXX")
         npx eslint . -f json -o "$report" || true
         node scripts/check-lint-budgets.mjs "$report" eslint-budgets.json || rc=1
         rm -f "$report"
@@ -174,6 +186,12 @@ EOF
 }
 
 status=0
+check_tmp_dir=$(mktemp -d)
+
+cleanup_temp_files() {
+    rm -rf -- "$check_tmp_dir"
+}
+trap cleanup_temp_files EXIT
 
 bootstrap_hint() {
     echo "  This checkout looks unprovisioned (fresh worktree or clone)." >&2
@@ -196,17 +214,20 @@ python_checks() {
 }
 
 on_interrupt() {
-    trap - INT TERM
-    rm -f "${python_log:-}" "${dash_log:-}" "${gen_log:-}"
+    trap - INT TERM EXIT
     for job_pid in ${python_pid:-} ${dash_pid:-} ${gen_pid:-}; do
         kill -- "-$job_pid" 2>/dev/null || true
     done
+    for job_pid in ${python_pid:-} ${dash_pid:-} ${gen_pid:-}; do
+        wait "$job_pid" 2>/dev/null || true
+    done
+    cleanup_temp_files
     exit 130
 }
 trap on_interrupt INT TERM
 
 if [ -n "$litellm_py_files" ]; then
-    python_log=$(mktemp)
+    python_log="$check_tmp_dir/python.log"
     set -m
     python_checks > "$python_log" 2>&1 &
     python_pid=$!
@@ -235,7 +256,7 @@ dashboard_checks() {
 }
 
 if [ -n "$ui_prettier_changed" ] || [ -n "$ui_eslint_changed" ]; then
-    dash_log=$(mktemp)
+    dash_log="$check_tmp_dir/dashboard.log"
     set -m
     dashboard_checks > "$dash_log" 2>&1 &
     dash_pid=$!
@@ -280,7 +301,7 @@ genapi_checks() {
 }
 
 if [ -n "$spec_files" ]; then
-    gen_log=$(mktemp)
+    gen_log="$check_tmp_dir/genapi.log"
     set -m
     genapi_checks > "$gen_log" 2>&1 &
     gen_pid=$!

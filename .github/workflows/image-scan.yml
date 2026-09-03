@@ -18,6 +18,13 @@ on:
       - backend/main.py
       - docker/component_entrypoint.sh
       - docker/entrypoint.sh
+      - gateway/routes/allowlist.py
+      - litellm/proxy/proxy_server.py
+      - litellm/proxy/_lazy_features.py
+      - litellm/proxy/_lazy_openapi_snapshot.py
+      - litellm/proxy/_lazy_openapi_snapshot.json
+      - litellm/proxy/lazymcp_routes.py
+      - litellm/proxy/_experimental/mcp_server/**
       - litellm/proxy/prisma_migration.py
       - litellm-proxy-extras/**
       - tests/proxy_migration_tests/**
@@ -125,6 +132,11 @@ jobs:
         run: |
           python -m pip install "pytest==9.0.3"
           python -m pytest tests/proxy_migration_tests/test_offline_image_migration.py -v
+
+      - name: Verify packaged LazyMCP discovery origin trust
+        env:
+          LITELLM_IMAGE: litellm-runtime-scan:${{ github.sha }}
+        run: python -m pytest tests/proxy_migration_tests/test_image_lazymcp_discovery.py -v
 
   migrations-image:
     name: migrations-image

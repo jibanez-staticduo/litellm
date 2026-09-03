@@ -1,0 +1,39 @@
+Reopen 5 verification
+
+Deterministic interrupt cleanup:
+- All task logs and dashboard report files now live under one per-run temporary directory
+- EXIT cleanup removes that directory for normal and failed runs
+- INT/TERM cleanup disables duplicate traps, terminates each background process group, waits for each child to finish, removes the complete run directory, then exits 130
+- The existing strong test remains unchanged: it requires the background make PID to be gone and TMPDIR to be empty
+
+Index resolution and linked worktrees:
+- Canonical index is resolved with `env -u GIT_INDEX_FILE git rev-parse --path-format=absolute --git-path index`
+- Caller index is normalized independently and compared to Git's canonical result
+- Noncanonical alternate indexes remain explicit exit-2 failures
+- Added linked-worktree hook regression that exports the linked worktree's absolute canonical index, commits through the hook, and proves the index path contains `/worktrees/`
+
+Pre-commit suite:
+- Initial focused run: 27 passed
+- Five complete consecutive repeats: 27 passed each
+- Existing interrupt cleanup test remained strict and passed every complete repeat
+
+Exact staged gate:
+- Exactly intended paths staged in canonical index
+- Exact uv 0.11.26 `make check`: PASS on three complete canonical staged runs, including the final post-cooldown rerun
+- Whole-tree source/test Ruff, scoped formatting, strict/type-discipline/test-quality/basedpyright budgets, import safety and generated snapshot/schema sync pass
+- Snapshot/schema show zero post-generation drift
+- Canonical index reset after verification; no commit created
+
+Regression gates:
+- Full mapped source/component suite: 834 passed in 212.70s
+- Packaged retained image/workflow suite: 5 passed in 75.87s
+- Final post-cooldown reruns: mapped source/component 834 passed in 212.70s; packaged retained image/workflow 5 passed in 75.87s
+- Reopen 3 MCP 734 suite and repeated mapped/keepalive evidence remain current
+
+Static and cleanup:
+- staticeng_validate: PASS, zero warnings
+- git diff --check: PASS
+- Zero task-labelled containers/networks
+- No linked test worktree remains; one repository worktree
+- No temporary alternate index
+- No commit, push, signing, deployment, Fedora or NAS action

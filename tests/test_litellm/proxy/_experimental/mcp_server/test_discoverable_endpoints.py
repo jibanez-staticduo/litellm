@@ -10344,12 +10344,19 @@ def test_introspect_route_requires_virtual_key_auth_and_is_advertised():
     ),
 )
 def test_lazymcp_protected_resource_routes_work_from_cold_proxy_start(monkeypatch, path, resource):
+    from fastapi import FastAPI
     from fastapi.testclient import TestClient
 
-    from litellm.proxy import proxy_server
+    from litellm.proxy._lazy_features import attach_lazy_features
 
-    cold_app = proxy_server.app
+    cold_app = FastAPI()
+    attach_lazy_features(cold_app)
     loaded_before = set(cold_app.state.lazy_loaded)
+    discovery_route_paths_before = tuple(
+        getattr(route, "path", "")
+        for route in cold_app.routes
+        if "oauth-protected-resource" in getattr(route, "path", "")
+    )
     monkeypatch.setenv("PROXY_BASE_URL", "https://gateway.example")
 
     response = TestClient(cold_app, base_url="https://gateway.example").get(path)
@@ -10359,6 +10366,14 @@ def test_lazymcp_protected_resource_routes_work_from_cold_proxy_start(monkeypatc
         "resource": resource,
         "authorization_servers": ["https://gateway.example/mcp"],
     }
+    discovery_route_paths_after = tuple(
+        getattr(route, "path", "")
+        for route in cold_app.routes
+        if "oauth-protected-resource" in getattr(route, "path", "")
+    )
+    assert loaded_before == set()
+    assert discovery_route_paths_before == ()
+    assert len(discovery_route_paths_after) == len(set(discovery_route_paths_after))
     assert cold_app.state.lazy_loaded <= (
         loaded_before | {"litellm.proxy._experimental.mcp_server.discoverable_endpoints"}
     )

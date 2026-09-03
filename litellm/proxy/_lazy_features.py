@@ -12,7 +12,7 @@ import re
 from collections.abc import Callable
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, Protocol, cast  # noqa: TID251  # typed lazy-module boundary requires narrowing
 
 from starlette.types import Receive, Scope, Send
 
@@ -20,6 +20,10 @@ from litellm._logging import verbose_proxy_logger
 
 if TYPE_CHECKING:
     from fastapi import APIRouter, FastAPI
+
+
+class _RouterModule(Protocol):
+    router: "APIRouter"
 
 
 def _include_router(attr_name: str = "router") -> Callable[["FastAPI", object], None]:
@@ -30,15 +34,22 @@ def _include_router(attr_name: str = "router") -> Callable[["FastAPI", object], 
 
 
 def _include_discoverable_router(app: "FastAPI", module: object) -> None:
-    router: Final = module.router
-    discovery_routes: Final = tuple(
-        route for route in router.routes if "oauth-protected-resource" in getattr(route, "path", "")
+    from fastapi import APIRouter
+
+    router: Final = cast(  # cast-ok: lazy import returns an object before protocol narrowing
+        _RouterModule, module
+    ).router
+    ordered_routes: Final = tuple(
+        sorted(
+            router.routes,
+            key=lambda route: "oauth-protected-resource" not in getattr(route, "path", ""),
+        )
     )
-    other_routes: Final = tuple(
-        route for route in router.routes if "oauth-protected-resource" not in getattr(route, "path", "")
+    app.include_router(
+        APIRouter(  # pyright: ignore[reportArgumentType]  # FastAPI stubs require list although runtime accepts Sequence
+            routes=ordered_routes  # mutable-ok: immutable copy prevents shared-router mutation
+        )
     )
-    router.routes[:] = (*discovery_routes, *other_routes)
-    app.include_router(router)
 
 
 def _mount_app(prefix: str, attr_name: str = "app") -> Callable[["FastAPI", object], None]:

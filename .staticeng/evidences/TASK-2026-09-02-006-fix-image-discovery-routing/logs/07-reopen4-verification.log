@@ -1,0 +1,34 @@
+Reopen 4 verification
+
+Alternate-index policy:
+- `pre_commit_lint.sh` no longer silently switches to the repository index
+- A caller-provided index whose resolved path differs from `.git/index` is rejected explicitly with exit 2 before bootstrap, scoping or checks
+- Git's own commit-hook `GIT_INDEX_FILE` pointing to `.git/index` remains supported
+
+Mutation-sensitive sandbox coverage:
+- Sandbox creates a fresh alternate index from HEAD
+- Only alternate index stages `litellm/foo.py`; repository index remains clean
+- Gate exits 2 with explicit unsupported-alternate-index message and never reports Python lint execution
+- Alternate index still contains the staged Python change after rejection
+- Complete pre_commit_lint suite: 26 passed
+- One interrupt cleanup case failed once due a transient leftover temp file and passed immediately in isolation; complete suite rerun passed 26/26
+
+Generated comparison:
+- Exact intended paths were staged in the repository index, including regenerated snapshot and schema
+- Exact uv 0.11.26 `make check`: PASS
+- Lazy OpenAPI snapshot and dashboard schema regeneration produced zero diff
+- A fresh true alternate index was separately tested and deterministically rejected with exit 2, rather than switched or falsely reported green
+
+Retained Reopen 3 verification remains current:
+- Full mapped source suite passed twice at 834/834
+- MCP mapped suite passed 734/734
+- Packaged/workflow suite passed 5/5
+- Deterministic keepalive matrix passed five consecutive runs
+
+Static and cleanup:
+- Whole-tree lint/type/test-quality/generated gates pass inside exact uv `make check`
+- staticeng_validate: PASS, zero warnings
+- git diff --check: PASS
+- Temporary alternate index removed and normal index reset
+- Zero task-labelled containers/networks; one worktree
+- No commit, push, signing, deployment, Fedora or NAS action

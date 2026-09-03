@@ -1,9 +1,13 @@
 scope: module
 parent: ../../.staticeng/codemap.yml
 internals:
+  - path: test_image_lazymcp_discovery.py
+  - path: test_image_lazymcp_workflow.py
   - path: test_prisma_toolchain.py
   - path: test_offline_image_migration.py
   - path: test_component_image_serves_offline.py
   - path: test_db_schema_migration.py
   - path: test_replica_identity_full.py
   - path: test_ui_image_serves_offline.py
+commands:
+  packaged_lazymcp_discovery: LITELLM_IMAGE=litellm:local python -m pytest tests/proxy_migration_tests/test_image_lazymcp_discovery.py -v

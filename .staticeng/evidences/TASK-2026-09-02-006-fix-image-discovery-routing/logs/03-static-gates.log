@@ -1,0 +1,19 @@
+Commands and results:
+
+- .venv/bin/ruff format --check tests/proxy_migration_tests/test_image_lazymcp_discovery.py
+  - PASS: 1 file already formatted
+- .venv/bin/ruff check tests/proxy_migration_tests/test_image_lazymcp_discovery.py
+  - PASS: All checks passed
+- .venv/bin/basedpyright tests/proxy_migration_tests/test_image_lazymcp_discovery.py
+  - PASS: 0 errors, 0 warnings, 0 notes
+- git diff --check
+  - PASS
+- staticeng_validate
+  - PASS: All source directories indexed. Hierarchy validated. Warnings: 0
+
+Superseded tooling note:
+The initial run used local host uv 0.10.9, which predates the repository's package-scoped override syntax. Reopen 1 reran lock, lint, type and `make check` with exact pinned uv 0.11.26 successfully. The repository metadata is valid; this was local old-tool drift
+
+Cleanup inventory:
+- docker ps -a --filter name=lazymcp-image-: zero results
+- docker network ls --filter name=lazymcp-image-: zero results

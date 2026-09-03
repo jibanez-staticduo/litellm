@@ -3773,6 +3773,95 @@ async def test_async_data_generator_responses_serializes_http_exception_after_st
     }
 
 
+@pytest.mark.parametrize("call_type", ("responses", "aresponses"))
+@pytest.mark.asyncio
+async def test_async_data_generator_responses_preserves_provider_error_code_and_string_id(call_type):
+    from litellm.proxy._types import UserAPIKeyAuth
+    from litellm.proxy.proxy_server import async_data_generator
+    from litellm.proxy.utils import ProxyLogging
+
+    class ProviderError(Exception):
+        code = "provider_overloaded"
+
+    async def failing_stream():
+        raise ProviderError("provider is overloaded")
+        yield
+
+    mock_proxy_logging_obj = MagicMock(spec=ProxyLogging)
+    mock_proxy_logging_obj.needs_iterator_wrap.return_value = False
+    mock_proxy_logging_obj.needs_per_chunk_streaming_hook.return_value = False
+    mock_proxy_logging_obj.post_call_failure_hook = AsyncMock()
+    logging_obj = MagicMock()
+    logging_obj.call_type = call_type
+    logging_obj.litellm_call_id = "resp_provider_string"
+
+    with patch(
+        "litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        frames = [
+            frame
+            async for frame in async_data_generator(
+                failing_stream(),
+                MagicMock(spec=UserAPIKeyAuth),
+                {
+                    "model": "gpt-test",
+                    "litellm_logging_obj": logging_obj,
+                    "litellm_call_id": "resp_request_string",
+                },
+            )
+        ]
+
+    payload = json.loads(frames[-1].split("data: ", 1)[1])
+    assert payload["response"]["id"] == "resp_provider_string"
+    assert payload["response"]["error"] == {
+        "code": "provider_overloaded",
+        "message": "provider is overloaded",
+    }
+
+
+@pytest.mark.parametrize("call_type", ("responses", "aresponses"))
+@pytest.mark.asyncio
+async def test_async_data_generator_responses_ignores_non_string_ids_and_empty_provider_code(call_type):
+    from litellm.proxy._types import UserAPIKeyAuth
+    from litellm.proxy.proxy_server import async_data_generator
+    from litellm.proxy.utils import ProxyLogging
+
+    class EmptyCodeError(Exception):
+        code = ""
+
+    async def failing_stream():
+        raise EmptyCodeError("provider failed")
+        yield
+
+    mock_proxy_logging_obj = MagicMock(spec=ProxyLogging)
+    mock_proxy_logging_obj.needs_iterator_wrap.return_value = False
+    mock_proxy_logging_obj.needs_per_chunk_streaming_hook.return_value = False
+    mock_proxy_logging_obj.post_call_failure_hook = AsyncMock()
+    logging_obj = MagicMock()
+    logging_obj.call_type = call_type
+    logging_obj.litellm_call_id = 123
+
+    with patch(
+        "litellm.proxy.proxy_server.proxy_logging_obj", mock_proxy_logging_obj
+    ):  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+        frames = [
+            frame
+            async for frame in async_data_generator(
+                failing_stream(),
+                MagicMock(spec=UserAPIKeyAuth),
+                {
+                    "model": "gpt-test",
+                    "litellm_logging_obj": logging_obj,
+                    "litellm_call_id": {"not": "a string"},
+                },
+            )
+        ]
+
+    payload = json.loads(frames[-1].split("data: ", 1)[1])
+    assert payload["response"]["id"] == "resp_failed"
+    assert payload["response"]["error"]["code"] == "api_error"
+
+
 def _has_nested_none_values(obj, path="root"):
     """
     Recursively check if an object contains nested None values.

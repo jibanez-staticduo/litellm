@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -24,8 +25,8 @@ from fastapi import Response
 from fastapi.responses import StreamingResponse
 
 import litellm
-from litellm.constants import RETURN_RAW_MODEL_NAME_METADATA_KEY
 import litellm.proxy.proxy_server as ps
+from litellm.constants import RETURN_RAW_MODEL_NAME_METADATA_KEY
 from litellm.proxy._types import UserAPIKeyAuth
 from litellm.proxy.proxy_server import (
     _apply_streaming_chunk_hooks,
@@ -872,6 +873,27 @@ async def test_async_data_generator_mid_stream_exception_yields_error_payload(
     assert any(isinstance(item, str) and item.startswith('data: {"error":') for item in out)
 
 
+@pytest.mark.asyncio
+async def test_async_data_generator_chat_stream_does_not_emit_responses_failure(monkeypatch):
+    _patch_logging_flags(monkeypatch)
+
+    async def _noop_failure(*args, **kwargs):
+        return None
+
+    monkeypatch.setattr(ps.proxy_logging_obj, "post_call_failure_hook", _noop_failure)
+    logging_obj = SimpleNamespace(call_type="acompletion")
+    out = []
+    async for line in async_data_generator(
+        response=_async_iter_raises(RuntimeError("chat stream failed")),
+        user_api_key_dict=_user_auth(),
+        request_data={"litellm_logging_obj": logging_obj},
+    ):
+        out.append(line)
+
+    assert any(isinstance(item, str) and item.startswith('data: {"error":') for item in out)
+    assert all("response.failed" not in item for item in out if isinstance(item, str))
+
+
 # ---------------------------------------------------------------------------
 # select_data_generator
 # ---------------------------------------------------------------------------
@@ -940,26 +962,32 @@ async def test_iter_with_keepalive_hot_path_no_task_wrapping():
 
 
 @pytest.mark.asyncio
-async def test_iter_with_keepalive_emits_sentinel_when_stream_stalls():
-    """With a short keepalive interval and a stalled upstream, _STREAM_KEEPALIVE
-    sentinels appear before the delayed chunk arrives. The resolver returns a
-    constant interval, since this test pins the timing mechanics, not
-    re-resolution."""
-    import asyncio
+async def test_iter_with_keepalive_emits_sentinel_when_stream_stalls(monkeypatch):
+    """Timeout results emit heartbeats without relying on scheduler timing."""
 
-    async def _slow_stream():
+    async def _stream():
         yield _simple_chunk(content="first")
-        await asyncio.sleep(0.3)
         yield _simple_chunk(content="second")
 
+    real_wait = asyncio.wait
+    waits = 0
+
+    async def _controlled_wait(fs, *, timeout):
+        nonlocal waits
+        waits += 1
+        if waits <= 2:
+            return set(), set(fs)
+        return await real_wait(fs)
+
+    monkeypatch.setattr(ps.asyncio, "wait", _controlled_wait)
     items = []
-    async for item in _iter_with_keepalive(_slow_stream(), lambda _: 0.05, keepalive_seconds=0.05):
+    async for item in _iter_with_keepalive(_stream(), lambda _: 1.0, keepalive_seconds=1.0):
         items.append(item)
 
     sentinels = [i for i in items if i is ps._STREAM_KEEPALIVE]
     real_chunks = [i for i in items if i is not ps._STREAM_KEEPALIVE]
 
-    assert len(sentinels) >= 2, f"expected >= 2 sentinels during 0.3s stall; got {len(sentinels)}"
+    assert len(sentinels) == 2
     assert len(real_chunks) == 2
     assert real_chunks[0].choices[0].delta.content == "first"
     assert real_chunks[1].choices[0].delta.content == "second"
@@ -984,17 +1012,14 @@ async def test_iter_with_keepalive_cancel_on_early_close():
 
 
 @pytest.mark.asyncio
-async def test_iter_with_keepalive_disables_after_fallback_lowers_interval():
+async def test_iter_with_keepalive_disables_after_fallback_lowers_interval(monkeypatch):
     """Greptile P1: a mid-stream router fallback can hand off to a deployment
     with a different (or disabled) keepalive policy partway through the same
     stream. The interval must be re-resolved against each chunk's own identity,
     not the one picked before iteration started, or heartbeats keep using the
     pre-fallback deployment's policy for the rest of the stream."""
-    import asyncio
-
-    async def _slow_stream():
+    async def _stream():
         yield _simple_chunk(content="first")
-        await asyncio.sleep(0.3)
         yield _simple_chunk(content="second")
 
     def _resolver(item):
@@ -1002,8 +1027,18 @@ async def test_iter_with_keepalive_disables_after_fallback_lowers_interval():
         # wrapper; every chunk after that resolves as if a fallback disabled it.
         return 0.0 if item.choices[0].delta.content == "first" else 999.0
 
+    real_wait = asyncio.wait
+    waits = 0
+
+    async def _only_initial_wait(fs, *, timeout):
+        nonlocal waits
+        waits += 1
+        assert waits <= 2, "disabled fallback must use direct iteration after the first chunk"
+        return await real_wait(fs)
+
+    monkeypatch.setattr(ps.asyncio, "wait", _only_initial_wait)
     items = []
-    async for item in _iter_with_keepalive(_slow_stream(), _resolver, keepalive_seconds=0.05):
+    async for item in _iter_with_keepalive(_stream(), _resolver, keepalive_seconds=1.0):
         items.append(item)
 
     sentinels = [i for i in items if i is ps._STREAM_KEEPALIVE]
@@ -1016,71 +1051,85 @@ async def test_iter_with_keepalive_disables_after_fallback_lowers_interval():
 
 
 @pytest.mark.asyncio
-async def test_iter_with_keepalive_enables_after_fallback_raises_interval():
+async def test_iter_with_keepalive_enables_after_fallback_raises_interval(monkeypatch):
     """Symmetric case: a mid-stream fallback to a deployment with a *shorter*
     keepalive interval must take effect immediately, not stay pinned to the
     longer interval the stream started with. The interval used to wait for a
     chunk is resolved from the *previous* chunk (the only one seen so far when
     that wait begins), so the stall has to follow the fallback chunk rather
     than precede it: waiting for "third" is where the shorter interval bites."""
-    import asyncio
-
-    async def _slow_stream():
+    async def _stream():
         yield _simple_chunk(content="first")
         yield _simple_chunk(content="second")
-        await asyncio.sleep(0.3)
         yield _simple_chunk(content="third")
 
     def _resolver(item):
         # "first" resolves under an interval too long to fire before "second"
         # arrives; "second" (the fallback chunk) resolves as if the fallback
         # deployment enabled a much shorter interval for everything after it.
-        return 999.0 if item.choices[0].delta.content == "first" else 0.05
+        return 0.0 if item.choices[0].delta.content == "first" else 1.0
 
+    real_wait = asyncio.wait
+    waits = 0
+
+    async def _controlled_wait(fs, *, timeout):
+        nonlocal waits
+        if timeout == 999.0:
+            return await real_wait(fs)
+        waits += 1
+        if waits <= 2:
+            return set(), set(fs)
+        return await real_wait(fs)
+
+    monkeypatch.setattr(ps.asyncio, "wait", _controlled_wait)
     items = []
-    async for item in _iter_with_keepalive(_slow_stream(), _resolver, keepalive_seconds=999.0):
+    async for item in _iter_with_keepalive(_stream(), _resolver, keepalive_seconds=999.0):
         items.append(item)
 
     sentinels = [i for i in items if i is ps._STREAM_KEEPALIVE]
     real_chunks = [i for i in items if i is not ps._STREAM_KEEPALIVE]
 
-    assert len(sentinels) >= 2, (
-        f"expected >= 2 sentinels once the resolver enables a short interval; got {len(sentinels)}"
-    )
+    assert len(sentinels) == 2
     assert len(real_chunks) == 3
 
 
 @pytest.mark.asyncio
-async def test_iter_with_keepalive_activates_from_a_fully_disabled_start():
+async def test_iter_with_keepalive_activates_from_a_fully_disabled_start(monkeypatch):
     """Greptile P1: a stream can start on a deployment with keepalive off
     (keepalive_seconds passed in as 0, not merely a long interval) and fall back
     mid-stream to one that enables it. The 0-second start must not be treated as
     a one-time decision to skip heartbeats for the rest of the stream: no task
     is created while inactive, but every chunk still re-resolves so the fallback
     chunk can switch the stream into task-wrapped mode."""
-    import asyncio
-
-    async def _slow_stream():
+    async def _stream():
         yield _simple_chunk(content="first")
         yield _simple_chunk(content="second")
-        await asyncio.sleep(0.3)
         yield _simple_chunk(content="third")
 
     def _resolver(item):
         # "first" resolves to stay off; "second" (the fallback chunk) resolves
         # as if the fallback deployment newly enabled a short interval.
-        return 0.0 if item.choices[0].delta.content == "first" else 0.05
+        return 0.0 if item.choices[0].delta.content == "first" else 1.0
 
+    real_wait = asyncio.wait
+    waits = 0
+
+    async def _controlled_wait(fs, *, timeout):
+        nonlocal waits
+        waits += 1
+        if waits <= 2:
+            return set(), set(fs)
+        return await real_wait(fs)
+
+    monkeypatch.setattr(ps.asyncio, "wait", _controlled_wait)
     items = []
-    async for item in _iter_with_keepalive(_slow_stream(), _resolver, keepalive_seconds=0):
+    async for item in _iter_with_keepalive(_stream(), _resolver, keepalive_seconds=0):
         items.append(item)
 
     sentinels = [i for i in items if i is ps._STREAM_KEEPALIVE]
     real_chunks = [i for i in items if i is not ps._STREAM_KEEPALIVE]
 
-    assert len(sentinels) >= 2, (
-        f"expected >= 2 sentinels once the resolver activates from a disabled start; got {len(sentinels)}"
-    )
+    assert len(sentinels) == 2
     assert len(real_chunks) == 3
 
 

@@ -14,6 +14,7 @@ import json
 import re
 import sys
 from collections.abc import Callable, Mapping
+from copy import copy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
@@ -143,10 +144,13 @@ def _feature_fragment(app: "FastAPI", feat: "LazyFeature", used_operation_ids: s
     }
 
 
-def generate_snapshot() -> SnapshotResult:
-    from litellm.proxy._lazy_features import LAZY_FEATURES
-    from litellm.proxy.proxy_server import app
+def generate_snapshot(runtime_app: "FastAPI | None" = None) -> SnapshotResult:
+    from fastapi import FastAPI
 
+    from litellm.proxy._lazy_features import LAZY_FEATURES
+
+    selected_runtime_app: Final = _runtime_app() if runtime_app is None else runtime_app
+    app: Final = FastAPI(routes=tuple(copy(route) for route in selected_runtime_app.routes))
     skipped: Final = tuple(name for feat in LAZY_FEATURES if (name := _register_feature(app, feat)) is not None)
     used_operation_ids: Final[set[str]] = set()
     fragments: Final = {
@@ -155,6 +159,12 @@ def generate_snapshot() -> SnapshotResult:
         if (fragment := _feature_fragment(app, feat, used_operation_ids)) is not None
     }
     return SnapshotResult(fragments=fragments, skipped=skipped)
+
+
+def _runtime_app() -> "FastAPI":
+    from litellm.proxy.proxy_server import app
+
+    return app
 
 
 def main(snapshot_file: Path = SNAPSHOT_FILE, generate: Callable[[], SnapshotResult] = generate_snapshot) -> int:

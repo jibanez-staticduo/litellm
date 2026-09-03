@@ -683,6 +683,9 @@ from litellm.types.llms.openai import (
     ChatCompletionSystemMessage,
     ChatCompletionToolParam,
     HttpxBinaryResponseContent,
+    ResponseFailedEvent,
+    ResponsesAPIResponse,
+    ResponsesAPIStreamEvents,
 )
 from litellm.types.proxy.control_plane_endpoints import WorkerRegistryEntry
 from litellm.types.proxy.management_endpoints.model_management_endpoints import (
@@ -8363,6 +8366,42 @@ def _format_streaming_sse_chunk(chunk: str | bytes) -> str | bytes:
     return f"data: {chunk}\n\n"
 
 
+def _responses_stream_failed_event(error: Exception, request_data: Mapping[str, object]) -> str:
+    status_code: Final = getattr(error, "status_code", 500)
+    provider_error_code: Final = getattr(error, "code", None)
+    error_code: Final = (
+        provider_error_code
+        if isinstance(provider_error_code, str) and provider_error_code
+        else "invalid_prompt"
+        if status_code == 400
+        else "api_error"
+    )
+    logging_obj: Final = request_data.get("litellm_logging_obj")
+    model: Final = request_data.get("model")
+    logging_call_id: Final = getattr(logging_obj, "litellm_call_id", None)
+    request_call_id: Final = request_data.get("litellm_call_id")
+    response_id: Final = (
+        logging_call_id
+        if isinstance(logging_call_id, str) and logging_call_id
+        else request_call_id
+        if isinstance(request_call_id, str) and request_call_id
+        else "resp_failed"
+    )
+    event: Final = ResponseFailedEvent(
+        type=ResponsesAPIStreamEvents.RESPONSE_FAILED,
+        response=ResponsesAPIResponse(
+            id=response_id,
+            created_at=int(time.time()),
+            status="failed",
+            model=model if isinstance(model, str) else None,
+            object="response",
+            output=[],
+            error={"code": error_code, "message": str(error)},
+        ),
+    )
+    return f"event: response.failed\ndata: {event.model_dump_json(exclude_none=True)}\n\n"
+
+
 _SSE_FRAME_DELIMITERS: Final = ("\r\n\r\n", "\n\n", "\r\r")
 _MAX_RAW_SSE_BUFFER_CHARS: Final = 8 * 1024 * 1024
 
@@ -8776,6 +8815,8 @@ async def async_data_generator(
         raise
     except Exception as e:
         verbose_proxy_logger.exception("litellm.proxy.proxy_server.async_data_generator(): Exception occured - %s", e)
+        logging_obj: Final = request_data.get("litellm_logging_obj")
+        is_responses_stream: Final = getattr(logging_obj, "call_type", None) in {"responses", "aresponses"}
         await proxy_logging_obj.post_call_failure_hook(
             user_api_key_dict=user_api_key_dict,
             original_exception=e,
@@ -8786,6 +8827,10 @@ async def async_data_generator(
             e,
         )
 
+        if is_responses_stream:
+            stream_completed = True  # rebind-ok: terminal event makes generator cleanup a completed stream
+            yield _responses_stream_failed_event(e, request_data)
+            return
         if isinstance(e, HTTPException):
             raise e
         elif isinstance(e, StreamingCallbackError):
@@ -17976,12 +18021,6 @@ app.include_router(enterprise_router)
 app.include_router(ui_discovery_endpoints_router)
 # Eager: /models/{name}:method overlaps with the OpenAI /models endpoint.
 app.include_router(google_router)
-
-from litellm.proxy._experimental.mcp_server.discoverable_endpoints import (
-    router as mcp_discoverable_endpoints_router,
-)
-
-app.include_router(mcp_discoverable_endpoints_router)
 
 attach_lazy_features(app)
 app.add_middleware(

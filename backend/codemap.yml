@@ -2,4 +2,7 @@ scope: module
 parent: ../.staticeng/codemap.yml
 entrypoints:
   - path: main.py
-internals: []
+internals:
+  []
+modules:
+  - path: routes
