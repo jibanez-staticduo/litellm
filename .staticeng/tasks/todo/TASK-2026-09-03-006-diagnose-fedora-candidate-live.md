@@ -3,12 +3,12 @@ id: TASK-2026-09-03-006-diagnose-fedora-candidate-live
 complexity: complex
 track: implementation
 slice: qa
-status: blocked
+status: active
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-012-release-upstream-main-fedora
 assigned_to: tech_lead
 handoff_from: product_manager
-reopened_count: 2
+reopened_count: 3
 ---
 
 # Task: Diagnose Fedora candidate live
@@ -86,6 +86,10 @@ TASK-009 resolves the circular prerequisite: the rollback image cannot mint a ca
 ### Reopen 2 - Browserless authorized-principal bootstrap
 
 The user confirms no Agent Jake/browser automation is available and explicitly authorizes the Fedora maintenance investigation. TASK-010 proves the candidate supports a browserless normal `/login` session followed by public S256 PKCE DCR and deliberate consent. PMA authorizes use of one existing username/password Fedora UI principal only if it is already configured and currently authorized for `defend_memory`; secrets must be consumed from owner-only local files or inherited descriptors without printing, copying to evidence, or entering command arguments. PMA explicitly approves the single exact-resource `/authorize/complete` consent POST. Keep the watchdog armed across login, DCR, audience tests, one diagnostic call, and cleanup. Enforce T+7, destroy all cookie/token/code/verifier/client artifacts, and capture TASK-011's nested-call counters: at most one embedding, three reranks, zero nested LazyMCP, and complete cancellation drain within 15 seconds. If no qualifying principal exists or any bound is exceeded, roll back without substitution or a second request.
+
+### Reopen 3 - Temporary least-privilege diagnostic principal
+
+TASK-012 amends the SCR and authorizes exactly one temporary `internal_user_viewer` because no eligible existing principal exists. Before any creation, prove supported create/grant/remove/delete APIs and arm an independent cleanup worker. Capture baseline non-secret user/key/membership/grant counts and existing `defend_memory` toolset membership. Create high-entropy credentials owner-only outside repository/Syncthing, block model access, grant only exact existing `defend_memory`, and create no team/org/global/admin membership. Then follow TASK-010 PKCE and TASK-011 instrumentation exactly. On every exit: revoke refresh/client material where supported, destroy access/cookie/verifier/code/password artifacts, remove exact grant, delete principal and any key/session/membership, and prove baseline restoration through supported APIs. Any cleanup mismatch is a critical stop requiring candidate rollback and explicit incident evidence.
 
 ### Reopen 2 Result
 
