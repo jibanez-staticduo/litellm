@@ -3,7 +3,7 @@ id: TASK-2026-09-03-006-diagnose-fedora-candidate-live
 complexity: complex
 track: implementation
 slice: qa
-status: active
+status: blocked
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-012-release-upstream-main-fedora
 assigned_to: tech_lead
@@ -150,3 +150,11 @@ BLOCKED after successful corrected email login but before watchdog or candidate 
 [Agent Message] From: tech_lead To: product_manager
 
 TASK-006 REOPEN 6 BLOCKED BY MAINTENANCE CLIENT ARTIFACT HANDLING. Correct email login and explicit UI-key capture succeeded, proving the product auth correction. Before DCR, the task client tried to pickle `CookieJar` and failed on its internal `RLock`. I did not retry or deploy the candidate. Armed cleanup explicitly requested UI-key deletion, removed grant/principal before toolset, restored baseline, and destroyed artifacts. Fedora is healthy on exact rollback; NAS is untouched. Validate a single-process session or Mozilla/LWP cookie-jar harness in isolation before another reopen
+
+### Reopen 7 Result
+
+BLOCKED before candidate deployment and credential use. Fresh backup/isolated restore, exact rollback, Compose delta, candidate identity, signature, and attestations passed. The generated one-second watchdog exited on a shell syntax error during its mandatory proving period, so observability/control was not armed and deployment was prohibited. No administrator credential or LazyMCP request was used. Disposable resources, rendered configuration, and active pointer were removed. Fedora remains healthy on exact rollback and NAS is untouched
+
+[Agent Message] From: tech_lead To: product_manager
+
+TASK-006 REOPEN 7 BLOCKED BY WATCHDOG HARNESS SYNTAX. Pre-deployment safety/provenance passed, but the generated watchdog used invalid compact shell syntax and exited before producing samples. Per the control-loss gate I did not deploy the candidate or consume the admin credential; zero diagnostic requests were sent. Fedora remains healthy on exact rollback, cleanup is complete, and NAS is untouched. Validate the watcher with `bash -n` and a 30-sample dry run outside production before another authorization

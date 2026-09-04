@@ -101,3 +101,9 @@ The explicit stop gate triggered before watchdog activation or candidate deploym
 Reopen 6 proved the corrected email login path: fresh safety/provenance gates, exact temporary toolset, strict two-step principal transaction, least-privilege read-back, email login, and UI-key capture all passed. The task-local client then failed before DCR while trying to pickle Python's lock-bearing `CookieJar`
 
 Cleanup explicitly requested UI-key deletion before grant/principal deletion, removed the toolset last, restored baseline counts, and destroyed all artifacts. The candidate was never deployed and no diagnostic request was sent. Fedora remained healthy on exact rollback; NAS was untouched. See `logs/06-reopen6-client-artifact-blocker.md`
+
+## Reopen 7 Outcome
+
+Reopen 7 passed fresh backup/isolated restore, rollback, exact candidate identity, signature, and attestations, then stopped before deployment because the generated one-second watchdog failed shell syntax during its mandatory proving period. No administrator credential was consumed and no LazyMCP request was sent
+
+All disposable resources and rendered temporary configuration were removed, the active pointer was cleared, Fedora remained healthy on exact rollback, and NAS was untouched. See `logs/07-reopen7-watchdog-syntax-blocker.md`
