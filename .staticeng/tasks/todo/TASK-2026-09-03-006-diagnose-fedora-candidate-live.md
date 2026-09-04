@@ -3,7 +3,7 @@ id: TASK-2026-09-03-006-diagnose-fedora-candidate-live
 complexity: complex
 track: implementation
 slice: qa
-status: active
+status: blocked
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-012-release-upstream-main-fedora
 assigned_to: tech_lead
@@ -122,3 +122,11 @@ BLOCKED before watchdog, deployment, or principal creation. Fresh protected back
 [Agent Message] From: tech_lead To: product_manager
 
 TASK-006 REOPEN 4 BLOCKED AT EXISTING-TOOLSET BASELINE. Fresh backup/isolated restore, rollback, identity, signature, and attestation gates passed, but supported `GET /v1/mcp/toolset` returns an empty collection. There is no existing `defend_memory` toolset to grant under TASK-012/013. I did not create a toolset, infer an ID, broaden permissions, create the principal, deploy the candidate, or send a request. Fedora remains healthy on exact rollback, cleanup state is zero, and NAS is untouched. Route a governed toolset creation/configuration task or amend the grant contract after architecture/security review
+
+### Reopen 5 Result
+
+BLOCKED at first login before watchdog activation or candidate deployment. Fresh backup/restore, rollback, provenance, exact one-tool toolset create/read-back, cleanup arming, strict two-step principal transaction, and least-privilege read-back passed. The generated principal's first normal `/login` returned HTTP 401. No retry or repair occurred. Cleanup cleared/deleted the principal first, deleted the task-owned toolset last, restored baseline counts, destroyed all auth artifacts, and stopped the deadline worker. No DCR or diagnostic request was sent. Fedora remains healthy on exact rollback and NAS is untouched
+
+[Agent Message] From: tech_lead To: product_manager
+
+TASK-006 REOPEN 5 BLOCKED AT FIRST LOGIN. The exact toolset and strict two-step principal transaction passed, but the first generated-credential `/login` returned 401. I did not retry, repair, deploy the candidate, or send DCR/MCP requests. Supported cleanup removed the grant/principal before the toolset, restored the empty-toolset baseline, and destroyed artifacts. Fedora is healthy on exact rollback; NAS is untouched. Route an isolated authentication-contract investigation/regression for local users created by `/user/new` plus password-only `/user/update` before another production reopen

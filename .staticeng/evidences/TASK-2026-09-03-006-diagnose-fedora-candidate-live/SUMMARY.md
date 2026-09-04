@@ -89,3 +89,9 @@ Fedora remained healthy on the exact rollback digest. No watchdog or rollback wa
 Reopen 4 completed fresh backup/isolated restore, rollback-unit, candidate identity, signature, and attestation preparation, then stopped at the mandatory existing-toolset baseline. Supported admin `GET /v1/mcp/toolset` returned HTTP 200 with zero toolsets, so the required existing `defend_memory` toolset ID and membership digest could not be resolved
 
 No principal was created and no watchdog/candidate/auth/request phase started. All disposable restore resources and rendered temporary configuration were removed, the active pointer was cleared, Fedora remained healthy on exact rollback, and NAS remained untouched. See `logs/04-reopen4-toolset-read-blocker.md`
+
+## Reopen 5 Outcome
+
+Reopen 5 passed fresh backup/isolated restore, rollback, exact candidate provenance, exact temporary one-tool toolset create/read-back, independent cleanup arming, and the strict `/user/new` then immediate password-only `/user/update` transaction. Least-privilege read-back passed, but the first required `/login` returned HTTP 401
+
+The explicit stop gate triggered before watchdog activation or candidate deployment. Supported cleanup cleared/deleted the principal before deleting the toolset and restored the zero-toolset baseline. No DCR, consent, audience, or diagnostic request occurred; all task auth artifacts were destroyed; Fedora remained healthy on exact rollback; NAS was untouched. See `logs/05-reopen5-login-blocker.md`
