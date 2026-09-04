@@ -2,6 +2,7 @@
 
 | Date | Task ID | SCR ID | Commit | Summary |
 | :--- | :--- | :--- | :--- | :--- |
+| 2026-09-05 | TASK-2026-09-04-004-classify-private-tool-output | SCR-2026-09-01-001-upstream-main-integration | pending-commit | Classified unretained private local tool output as non-external, banned broad inspection, deferred rotation, and authorized one fresh fixed-format direct probe. |
 | 2026-09-04 | TASK-2026-09-04-002-fix-fedora-watchdog-harness | SCR-2026-09-01-001-upstream-main-integration | pending-commit | Restored and independently approved the complete fail-closed Fedora watchdog, exact rollback, bounded collection, one-second cadence, and non-mutating 31-sample proof. |
 | 2026-09-04 | TASK-2026-09-04-001-authorize-direct-functional-probe | SCR-2026-09-01-001-upstream-main-integration | pending-commit | Authorized one direct administrator-authenticated candidate LazyMCP diagnostic request, replacing temporary auth bootstrap while preserving exact watchdog, rollback, deadline, soak, and NAS controls. |
 | 2026-09-04 | TASK-2026-09-03-023-amend-functional-first-maintenance | SCR-2026-09-01-001-upstream-main-integration | pending-commit | Prioritized final disposable and Fedora functional validation, retained five immediate safety stops and exact operational safeguards, and deferred other non-runtime hardening findings to final reporting. |

@@ -8,7 +8,7 @@ scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-012-release-upstream-main-fedora
 assigned_to: tech_lead
 handoff_from: product_manager
-reopened_count: 7
+reopened_count: 8
 ---
 
 # Task: Diagnose Fedora candidate live
@@ -182,3 +182,13 @@ STOPPED before backup completion, watcher activation, candidate deployment, or d
 [Agent Message] From: tech_lead To: product_manager
 
 TASK-003 PASS, COMMIT `c29aa24e2af283337281908ca9a7df4a786839f5`, NON-FORCE PUSHED. I immediately resumed TASK-006, but stopped pre-deployment when a raw container inspection exposed sensitive runtime environment values to the private agent tool channel. Per the mandatory secret stop gate, I did not continue, use the diagnostic credential, deploy the candidate, or send a request. Empty attempt artifacts were removed; Fedora is healthy on the exact rollback digest and NAS is untouched. Rotate affected runtime credentials through a governed incident path before any new authorization
+
+### Reopen 8 - Private local output classification and fresh direct probe
+
+TASK-2026-09-04-004 classifies the prior output as private local tool output only because it was not repeated, persisted, committed, entered into evidence, or externally disclosed. Rotation is deferred to the final security recommendations and is not a functional blocker. PMA authorizes exactly one fresh direct probe because the prior attempt stopped before candidate deployment, administrator credential use, or request transmission
+
+Every Docker read in preflight, watchdog, polling, and final verification must use only the SCR's fixed allowlisted container listing, container identity/health, or image identity format against an exact approved subject. Raw/default inspection, whole-object fields, runtime environment or private configuration reads, and broad output piped through filters are prohibited. All Reopen 7 direct-probe controls remain mandatory. Actual secret logging, retained persistence, message repetition, external disclosure, data risk, uncontrolled OOM, observability or rollback-control loss, exact-subject drift, or NAS isolation failure requires immediate stop or exact rollback
+
+[Agent Message] From: business_analyst To: product_manager
+
+TASK-006 REOPEN 8 AUTHORIZED FOR ONE FRESH DIRECT PROBE. The prior private local tool output was not retained or externally disclosed, so credential rotation is deferred to the final security recommendations and does not block functionality. Before execution, make every Docker read use only the SCR's fixed allowlisted identity/health projections. Do not run broad inspection or read runtime environment/private configuration values. Keep every prior exact-identity, backup, watchdog, OOM, one-request, 75-second, no-retry, full-gate, soak, deadline, rollback, and NAS control. Actual persistence/disclosure or any retained safety trigger stops or rolls back immediately
