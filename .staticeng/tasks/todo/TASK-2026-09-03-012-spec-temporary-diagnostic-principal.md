@@ -3,7 +3,7 @@ id: TASK-2026-09-03-012-spec-temporary-diagnostic-principal
 complexity: standard
 track: spec
 slice: foundation
-status: active
+status: done
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-03-006-diagnose-fedora-candidate-live
 assigned_to: business_analyst

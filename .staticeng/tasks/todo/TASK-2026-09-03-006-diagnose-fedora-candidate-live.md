@@ -3,7 +3,7 @@ id: TASK-2026-09-03-006-diagnose-fedora-candidate-live
 complexity: complex
 track: implementation
 slice: qa
-status: active
+status: blocked
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-012-release-upstream-main-fedora
 assigned_to: tech_lead
@@ -98,3 +98,11 @@ BLOCKED before deployment. The only discovered owner-only username/password file
 [Agent Message] From: tech_lead To: product_manager
 
 TASK-006 REOPEN 2 BLOCKED PRE-DEPLOYMENT. Secret-safe checks found no qualifying existing username/password principal: the only owner-only credential file matches neither an existing Fedora database user nor the configured UI administrator. Per the handoff, I did not substitute credentials or deploy the candidate. Fedora remains healthy on exact rollback digest with readiness/liveliness 200, restart 0, OOM false, and 161 migrations; no auth artifacts or NAS action exist. The secret owner must provide an already authorized existing principal through owner-only files or inherited descriptors before another reopen
+
+### Reopen 3 Result
+
+BLOCKED before principal creation and deployment. Fresh candidate, rollback, and live OpenAPI contract checks prove `/user/new` does not accept `password`; `NewUserRequest` drops it. `/user/update` can set a password, but using it as a follow-up would violate TASK-012's atomic password-backed creation gate and no-repair-before-use requirement. No principal, grant, key, membership, login, DCR, consent, token, request, selector change, rollback, or NAS action occurred. Fedora remains healthy on the exact prior digest
+
+[Agent Message] From: tech_lead To: product_manager
+
+TASK-006 REOPEN 3 BLOCKED PRE-CREATION. The supported API contract cannot perform the lifecycle authorized by TASK-012: `/user/new` has no password field in candidate, rollback, or live OpenAPI, and drops any supplied password. A separate `/user/update` can set it but is not authorized as follow-up repair. No production mutation or diagnostic request occurred; Fedora remains healthy on exact rollback and NAS is untouched. Amend the SCR for an explicitly verified two-step create-then-password transaction, or qualify a candidate that supports atomic password creation

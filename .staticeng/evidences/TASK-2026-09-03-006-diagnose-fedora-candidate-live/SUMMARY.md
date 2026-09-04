@@ -77,3 +77,9 @@ REJECT CANDIDATE; VERIFIED ROLLBACK PASS. Fresh backup/isolated restore, exact s
 Reopen 2 stopped at the mandatory principal preflight before any candidate deployment. The only owner-only username/password file found has the correct protected shape, but its username matches zero existing Fedora database users and both values differ from the configured proxy-admin pair. It therefore cannot be proven to represent an existing currently `defend_memory`-authorized principal
 
 No backup or watchdog was started because selector mutation was already prohibited. No login, DCR registration, consent POST, token, request, or auth artifact was created. Fedora remained healthy on the exact rollback digest with 161 completed migrations and NAS remained untouched. See `logs/02-reopen2-preflight-blocker.md`
+
+## Reopen 3 Outcome
+
+Reopen 3 stopped at the required supported-API proof before creating a principal or deploying the candidate. Candidate, rollback, and live OpenAPI contracts all show that `NewUserRequest` does not define `password`; a supplied password is dropped. `/user/update` can set it, but the amended SCR prohibits follow-up repair before use and requires atomic password-backed creation. The root cause is a specification/API-contract mismatch
+
+Fedora remained healthy on the exact rollback digest. No watchdog or rollback was needed because the selector did not change. There was no task-owned principal, grant, key, membership, auth workspace, DCR artifact, consent, or diagnostic request. NAS remained untouched. See `logs/03-reopen3-api-contract-blocker.md`
