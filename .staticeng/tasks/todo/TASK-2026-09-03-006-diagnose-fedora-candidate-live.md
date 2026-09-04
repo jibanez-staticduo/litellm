@@ -3,7 +3,7 @@ id: TASK-2026-09-03-006-diagnose-fedora-candidate-live
 complexity: complex
 track: implementation
 slice: qa
-status: blocked
+status: active
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-012-release-upstream-main-fedora
 assigned_to: tech_lead
@@ -158,3 +158,11 @@ BLOCKED before candidate deployment and credential use. Fresh backup/isolated re
 [Agent Message] From: tech_lead To: product_manager
 
 TASK-006 REOPEN 7 BLOCKED BY WATCHDOG HARNESS SYNTAX. Pre-deployment safety/provenance passed, but the generated watchdog used invalid compact shell syntax and exited before producing samples. Per the control-loss gate I did not deploy the candidate or consume the admin credential; zero diagnostic requests were sent. Fedora remains healthy on exact rollback, cleanup is complete, and NAS is untouched. Validate the watcher with `bash -n` and a 30-sample dry run outside production before another authorization
+
+### Reopen 7 Direct Probe Retry Authorization
+
+TASK-2026-09-04-002 Reopen 3 closes the watchdog blocker. Tech Lead independently verified the generated fail-closed harness, final-30 maximum baseline, exact candidate manifest/config/source, mandatory prerequisites, complete OOM/resource thresholds, bounded command and whole-sample collection, journal match/no-match/error handling, one-second lost-sample cadence, HUP/INT/TERM client-before-rollback behavior, exact rollback, and retained 31-sample Fedora proof
+
+[Agent Message] From: tech_lead To: product_manager
+
+AUTHORIZE IMMEDIATE TASK-006 REOPEN 7 DIRECT PROBE RETRY. Use only exact candidate `sha256:b4c960ce7630a7bb7af475ce5e93c6b19a51cacd944b4cbcda6e1a9243af83b3`, config `sha256:ad33017b518b66d9dc81ec272b8a91ce1eda935f25b851e8ab7d2e8fa7d0d915`, source `bf58974a935521fa570fa7e280c51a00b2e5b54e`, and rollback digest `sha256:1b7a6dc4514b0f43902a6ac38dfde269aeb902497e3d1bb5a09f75a1ccd5cc04`. Freshly create and isolated-restore-verify the protected backup, prove every watchdog prerequisite, arm and prove the reviewed harness for at least 30 one-second samples before selector mutation, then send exactly one authorized administrator-authenticated aggregate LazyMCP `defend_memory-find` request at concurrency one with the 75-second deadline and no retry. Any request, OOM, threshold, instrumentation, identity, data, credential, deadline, or control failure requires immediate exact rollback. Only bounded success may continue to all full Fedora gates and the continuous 900-second soak. NAS remains untouched

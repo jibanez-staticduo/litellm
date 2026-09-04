@@ -16,6 +16,7 @@
 - TASK-2026-09-03-004-sign-attest-release-images
 - TASK-2026-09-03-005-spec-fedora-maintenance-investigation
 - TASK-2026-09-03-016-investigate-internal-user-login
+- TASK-2026-09-03-006-diagnose-fedora-candidate-live
 
 ## Todo
 - TASK-2026-07-14-003-trigger-nas-account2-reauth
@@ -23,7 +24,6 @@
 - TASK-2026-08-26-004-implement-client-qwen38-modes
 
 ## Blocked
-- TASK-2026-09-03-006-diagnose-fedora-candidate-live — Reopen 7 stopped before deployment when the generated watchdog failed syntax during its proving period
 - TASK-2026-09-03-018-fix-dcr-maintenance-client — blocked/deferred experimental source checkpoint; functional DCR qualification failed, zero resources restored, no retry authorized
 - TASK-2026-09-03-008-prepare-fedora-dcr-credential — healthy rollback image lacks exact toolset DCR discovery and transport routes; no bearer could be minted or audience-tested
 - TASK-2026-09-01-012-release-upstream-main-fedora — exact candidate rolled back after authorized real-tool timeout and unhealthy transition; investigation and fresh reauthorization required
