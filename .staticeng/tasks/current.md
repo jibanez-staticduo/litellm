@@ -15,6 +15,7 @@
 - TASK-2026-09-03-003-verify-fedora-schema-upgrade-rollback
 - TASK-2026-09-03-004-sign-attest-release-images
 - TASK-2026-09-03-005-spec-fedora-maintenance-investigation
+- TASK-2026-09-03-012-spec-temporary-diagnostic-principal
 
 ## Todo
 - TASK-2026-07-14-003-trigger-nas-account2-reauth
