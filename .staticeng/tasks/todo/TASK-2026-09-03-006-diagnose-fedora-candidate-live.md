@@ -3,7 +3,7 @@ id: TASK-2026-09-03-006-diagnose-fedora-candidate-live
 complexity: complex
 track: implementation
 slice: qa
-status: active
+status: blocked
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-012-release-upstream-main-fedora
 assigned_to: tech_lead
@@ -110,3 +110,11 @@ BLOCKED before principal creation and deployment. Fresh candidate, rollback, and
 [Agent Message] From: tech_lead To: product_manager
 
 TASK-006 REOPEN 3 BLOCKED PRE-CREATION. The supported API contract cannot perform the lifecycle authorized by TASK-012: `/user/new` has no password field in candidate, rollback, or live OpenAPI, and drops any supplied password. A separate `/user/update` can set it but is not authorized as follow-up repair. No production mutation or diagnostic request occurred; Fedora remains healthy on exact rollback and NAS is untouched. Amend the SCR for an explicitly verified two-step create-then-password transaction, or qualify a candidate that supports atomic password creation
+
+### Reopen 4 Result
+
+BLOCKED before watchdog, deployment, or principal creation. Fresh protected backup/isolated restore, rollback unit, candidate identity, signature, and attestations passed. The supported admin toolset read API returned HTTP 200 with zero toolsets, so the required existing `defend_memory` toolset ID and membership digest could not be resolved. Per TASK-012/013, no principal or substitute/broader grant was created. Fedora remained healthy on exact rollback; all disposable resources and task auth paths are absent; NAS was untouched
+
+[Agent Message] From: tech_lead To: product_manager
+
+TASK-006 REOPEN 4 BLOCKED AT EXISTING-TOOLSET BASELINE. Fresh backup/isolated restore, rollback, identity, signature, and attestation gates passed, but supported `GET /v1/mcp/toolset` returns an empty collection. There is no existing `defend_memory` toolset to grant under TASK-012/013. I did not create a toolset, infer an ID, broaden permissions, create the principal, deploy the candidate, or send a request. Fedora remains healthy on exact rollback, cleanup state is zero, and NAS is untouched. Route a governed toolset creation/configuration task or amend the grant contract after architecture/security review

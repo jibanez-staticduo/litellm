@@ -83,3 +83,9 @@ No backup or watchdog was started because selector mutation was already prohibit
 Reopen 3 stopped at the required supported-API proof before creating a principal or deploying the candidate. Candidate, rollback, and live OpenAPI contracts all show that `NewUserRequest` does not define `password`; a supplied password is dropped. `/user/update` can set it, but the amended SCR prohibits follow-up repair before use and requires atomic password-backed creation. The root cause is a specification/API-contract mismatch
 
 Fedora remained healthy on the exact rollback digest. No watchdog or rollback was needed because the selector did not change. There was no task-owned principal, grant, key, membership, auth workspace, DCR artifact, consent, or diagnostic request. NAS remained untouched. See `logs/03-reopen3-api-contract-blocker.md`
+
+## Reopen 4 Outcome
+
+Reopen 4 completed fresh backup/isolated restore, rollback-unit, candidate identity, signature, and attestation preparation, then stopped at the mandatory existing-toolset baseline. Supported admin `GET /v1/mcp/toolset` returned HTTP 200 with zero toolsets, so the required existing `defend_memory` toolset ID and membership digest could not be resolved
+
+No principal was created and no watchdog/candidate/auth/request phase started. All disposable restore resources and rendered temporary configuration were removed, the active pointer was cleared, Fedora remained healthy on exact rollback, and NAS remained untouched. See `logs/04-reopen4-toolset-read-blocker.md`
