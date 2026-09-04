@@ -8,7 +8,7 @@ scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-012-release-upstream-main-fedora
 assigned_to: tech_lead
 handoff_from: product_manager
-reopened_count: 1
+reopened_count: 2
 ---
 
 # Task: Diagnose Fedora candidate live
@@ -82,3 +82,7 @@ REJECT CANDIDATE; VERIFIED ROLLBACK PASS. Preflight and protected deployment con
 ### Reopen 1 - Candidate-live DCR bootstrap
 
 TASK-009 resolves the circular prerequisite: the rollback image cannot mint a candidate-only token, so deploy under the already armed watcher, complete S256 PKCE on the candidate with the existing authorized principal, enforce the T+7-minute cutoff, prove exact and cross-audience behavior, immediately execute one bounded real-tool request, destroy all credential artifacts, and continue diagnosis or rollback. Create a fresh backup/restore and rollback unit again. Follow TASK-009 exactly; no credential substitution or ad-hoc patch.
+
+### Reopen 2 - Browserless authorized-principal bootstrap
+
+The user confirms no Agent Jake/browser automation is available and explicitly authorizes the Fedora maintenance investigation. TASK-010 proves the candidate supports a browserless normal `/login` session followed by public S256 PKCE DCR and deliberate consent. PMA authorizes use of one existing username/password Fedora UI principal only if it is already configured and currently authorized for `defend_memory`; secrets must be consumed from owner-only local files or inherited descriptors without printing, copying to evidence, or entering command arguments. PMA explicitly approves the single exact-resource `/authorize/complete` consent POST. Keep the watchdog armed across login, DCR, audience tests, one diagnostic call, and cleanup. Enforce T+7, destroy all cookie/token/code/verifier/client artifacts, and capture TASK-011's nested-call counters: at most one embedding, three reranks, zero nested LazyMCP, and complete cancellation drain within 15 seconds. If no qualifying principal exists or any bound is exceeded, roll back without substitution or a second request.

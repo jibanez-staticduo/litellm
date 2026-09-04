@@ -16,6 +16,7 @@
 - TASK-2026-09-03-004-sign-attest-release-images
 - TASK-2026-09-03-005-spec-fedora-maintenance-investigation
 - TASK-2026-09-03-006-diagnose-fedora-candidate-live
+- TASK-2026-09-03-011-investigate-reentrant-memory-path
 
 ## Todo
 - TASK-2026-07-14-003-trigger-nas-account2-reauth
