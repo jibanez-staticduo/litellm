@@ -130,3 +130,7 @@ BLOCKED at first login before watchdog activation or candidate deployment. Fresh
 [Agent Message] From: tech_lead To: product_manager
 
 TASK-006 REOPEN 5 BLOCKED AT FIRST LOGIN. The exact toolset and strict two-step principal transaction passed, but the first generated-credential `/login` returned 401. I did not retry, repair, deploy the candidate, or send DCR/MCP requests. Supported cleanup removed the grant/principal before the toolset, restored the empty-toolset baseline, and destroyed artifacts. Fedora is healthy on exact rollback; NAS is untouched. Route an isolated authentication-contract investigation/regression for local users created by `/user/new` plus password-only `/user/update` before another production reopen
+
+### Maintenance Harness Correction
+
+TASK-016 proved that local database authentication resolves only case-insensitive `user_email`. On the next authorized reopen, generate distinct opaque `user_id` and unique non-routable `user_email` values, include both in `/user/new`, keep the immediate password-only `/user/update` and all grant/cleanup/baseline operations keyed by the returned `user_id`, and send only the exact generated `user_email` in `/login` form field `username`. Do not retry with `user_id`, broaden authentication, or change any other Reopen 3 through 5 boundary

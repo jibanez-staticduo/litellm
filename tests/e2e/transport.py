@@ -17,6 +17,7 @@ from e2e_http import (
     URL,
     AuthHeaders,
     BinaryStream,
+    FormPostResponse,
     ProbeResult,
     Result,
     StreamingResponse,
@@ -33,6 +34,15 @@ class Transport(Protocol):
         response_type: type[R],
         timeout: float | None = None,
     ) -> Result[R]: ...
+
+    def post_form(
+        self,
+        path: str,
+        *,
+        headers: BaseModel,
+        form: BaseModel,
+        timeout: float | None = None,
+    ) -> FormPostResponse: ...
 
     def stream(
         self, path: str, *, headers: BaseModel, json: BaseModel
@@ -142,6 +152,21 @@ class HttpTransport:
             headers=headers,
             json=json,
             response_type=response_type,
+            timeout=self.request_timeout if timeout is None else timeout,
+        )
+
+    def post_form(
+        self,
+        path: str,
+        *,
+        headers: BaseModel,
+        form: BaseModel,
+        timeout: float | None = None,
+    ) -> FormPostResponse:
+        return e2e_http.post_form(
+            self._url(path),
+            headers=headers,
+            form=form,
             timeout=self.request_timeout if timeout is None else timeout,
         )
 
@@ -353,6 +378,18 @@ class SplitTransport:
     ) -> Result[R]:
         return self._route(path).post(
             path, headers=headers, json=json, response_type=response_type, timeout=timeout
+        )
+
+    def post_form(
+        self,
+        path: str,
+        *,
+        headers: BaseModel,
+        form: BaseModel,
+        timeout: float | None = None,
+    ) -> FormPostResponse:
+        return self._route(path).post_form(
+            path, headers=headers, form=form, timeout=timeout
         )
 
     def get[R: BaseModel](

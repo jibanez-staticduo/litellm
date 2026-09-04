@@ -15,8 +15,8 @@ from collections.abc import Callable
 
 import pytest
 
-from e2e_config import UI_PASSWORD, UI_USERNAME, unique_marker
-from e2e_http import StreamingResponse, Success
+from e2e_config import AUTH_CACHE_TTL_SECONDS, UI_PASSWORD, UI_USERNAME, unique_marker
+from e2e_http import StreamingResponse, Success, UnauthorizedError, UnknownApiError
 from lifecycle import ResourceManager
 from management_client import (
     DASHBOARD_SESSION_TEAM_ID,
@@ -50,6 +50,26 @@ def _poll[T](client: ManagementClient, attempt: Callable[[], T | None], failure:
             return found
         time.sleep(client.proxy.poll_interval)
     pytest.fail(failure)
+
+
+def _poll_session_key_auth_denial(
+    client: ManagementClient, session_key: str, user_id: str
+) -> float:
+    started = time.monotonic()
+    deadline = started + AUTH_CACHE_TTL_SECONDS + 10
+    while time.monotonic() < deadline:
+        result = client.user_list_status(user_id, caller_key=session_key)
+        if isinstance(result, UnauthorizedError):
+            elapsed = time.monotonic() - started
+            print(f"deleted UI session key denied after {elapsed:.2f}s")
+            return elapsed
+        assert isinstance(result, UnknownApiError)
+        assert result.status_code == 403
+        time.sleep(min(client.proxy.poll_interval, 1.0))
+    pytest.fail(
+        "the exact deleted UI session key remained authenticated beyond the "
+        f"{AUTH_CACHE_TTL_SECONDS:.0f}s auth-cache TTL plus 10s margin"
+    )
 
 
 def _generate_key(client: ManagementClient, resources: ResourceManager, body: KeyGenerateBody) -> str:
@@ -535,6 +555,99 @@ class TestUserRoutes:
                 lambda user_id=user_id: (True if user_id in client.user_list_ids(user_id) else None),
                 f"/user/list never listed the created user {user_id} in the admin inventory",
             )
+
+    @pytest.mark.covers("mgmt.user.login.lifecycle")
+    def test_local_viewer_login_lifecycle_uses_email_and_restores_baseline(
+        self, client: ManagementClient, resources: ResourceManager
+    ) -> None:
+        marker = unique_marker()
+        requested_user_id = f"e2e-login-{marker}"
+        email = f"e2e-login-{marker}@example.invalid"
+        password = f"e2e-login-password-{unique_marker()}"
+        baseline_count = client.user_count(requested_user_id)
+        assert baseline_count == 0
+
+        returned_user_id = _create_user(
+            client,
+            resources,
+            UserNewBody(
+                user_id=requested_user_id,
+                user_email=email,
+                user_role="internal_user_viewer",
+                models=["no-default-models"],
+                auto_create_key=False,
+                send_invite_email=False,
+            ),
+        )
+        assert returned_user_id == requested_user_id
+
+        before_update = client.user_info(returned_user_id)
+        assert before_update.user_info.user_role == "internal_user_viewer"
+        assert before_update.user_info.models == ["no-default-models"]
+        assert before_update.keys == []
+        assert before_update.teams == []
+
+        client.update_user(UserUpdateBody(user_id=returned_user_id, password=password))
+
+        after_update = client.user_info(returned_user_id)
+        assert after_update.user_info.user_email == email
+        assert after_update.user_info.user_role == before_update.user_info.user_role
+        assert after_update.user_info.models == before_update.user_info.models
+        assert after_update.keys == before_update.keys
+        assert after_update.teams == before_update.teams
+
+        assert client.form_login(returned_user_id, password).status_code == 401
+        assert client.form_login(email, f"wrong-{password}").status_code == 401
+
+        session = client.form_login_session(email, password)
+        assert session.claims.user_id == returned_user_id
+        assert session.claims.user_role == "internal_user_viewer"
+        assert session.claims.login_method == "username_password"
+        assert isinstance(client.key_info_status(session.session_key), Success)
+
+        forbidden = client.user_list_status(
+            requested_user_id, caller_key=session.session_key
+        )
+        assert isinstance(forbidden, UnknownApiError)
+        assert forbidden.status_code == 403
+        assert isinstance(
+            client.user_info_status(
+                requested_user_id, caller_key=session.session_key
+            ),
+            Success,
+        )
+
+        client.delete_user_strict(returned_user_id)
+
+        _ = _poll(
+            client,
+            lambda: True if client.user_count(returned_user_id) == baseline_count else None,
+            "the disposable login user was not removed before the deadline",
+        )
+        _ = _poll(
+            client,
+            lambda: (
+                True
+                if isinstance(
+                    client.key_info_status(session.session_key), UnknownApiError
+                )
+                else None
+            ),
+            "the exact generated UI session key remained in /key/info after user deletion",
+        )
+        key_after_delete = client.key_info_status(session.session_key)
+        assert isinstance(key_after_delete, UnknownApiError)
+        assert key_after_delete.status_code == 404
+        user_after_delete = client.user_info_status(
+            requested_user_id, caller_key=session.session_key
+        )
+        assert isinstance(user_after_delete, UnknownApiError)
+        assert user_after_delete.status_code == 404
+        auth_cache_expiry_seconds = _poll_session_key_auth_denial(
+            client, session.session_key, requested_user_id
+        )
+        assert auth_cache_expiry_seconds <= AUTH_CACHE_TTL_SECONDS + 10
+        assert client.form_login(email, password).status_code == 401
 
 
 class TestOrganizationRoutes:

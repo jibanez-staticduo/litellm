@@ -1,0 +1,31 @@
+TASK-017 source and static verification
+date: 2026-09-04
+
+PASS: `.venv/bin/pytest tests/test_litellm/proxy/auth/test_login_utils.py -q`
+result: 17 passed
+
+PASS: `.venv/bin/pytest tests/test_litellm/proxy/proxy_server/test_routes_login_sso.py -q`
+result: 20 passed
+
+PASS: `.venv/bin/pytest tests/test_litellm/proxy/management_endpoints/test_internal_user_endpoints.py -q`
+result: 102 passed
+
+PASS: `.venv/bin/pytest -o addopts='' tests/e2e/coverage_registry/test_collector.py tests/e2e/test_e2e_http.py -q`
+result: 27 passed
+
+PASS: `PYTHONPATH=tests/e2e .venv/bin/python -m coverage_registry.collector --strict --fail-on-collection-errors`
+result: 403/545 covered; 76/78 Management/UI; no orphan marker or collection error
+
+PASS: `.venv/bin/python tests/code_coverage_tests/check_e2e_no_raw_requests.py`
+result: raw HTTP client gate passed; requests remains confined to `e2e_http.py`
+
+PASS: `.venv/bin/ruff check --config ruff-tests.toml` on all five changed e2e Python files
+result: all checks passed
+
+PASS: `.venv/bin/basedpyright tests/e2e`
+result: 0 errors, 0 warnings, 0 notes
+
+PASS: `staticeng_validate`
+result: all source directories indexed; hierarchy validated; 0 warnings
+
+Existing test-suite warnings were limited to dependency deprecations and short fixture JWT keys in pre-existing tests. The final live TASK-017 regression used a sufficiently long synthetic master key and emitted no warning

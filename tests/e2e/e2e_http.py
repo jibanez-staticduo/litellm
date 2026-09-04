@@ -125,6 +125,12 @@ class ProbeResult(BaseModel):
         return 200 <= self.status_code < 500 and self.status_code != 404
 
 
+class FormPostResponse(BaseModel):
+    status_code: int
+    token_cookie: str | None = None
+    location: str | None = None
+
+
 class StreamingResponse(BaseModel):
     """Raw outcome for calls whose body is provider-native or streamed: status, the
     x-litellm-call-id header, the x-litellm-response-cost header (StandardLogging
@@ -328,6 +334,30 @@ def post[R: BaseModel](
     except requests.RequestException as exc:
         return NetworkError(message=str(exc))
     return _classify(resp, response_type)
+
+
+def post_form(
+    url: URL,
+    *,
+    headers: BaseModel,
+    form: BaseModel,
+    timeout: float = 30.0,
+) -> FormPostResponse:
+    try:
+        with requests.post(
+            str(url),
+            headers=_headers(headers),
+            data=form.model_dump(by_alias=True, exclude_none=True),
+            allow_redirects=False,
+            timeout=timeout,
+        ) as resp:
+            return FormPostResponse(
+                status_code=resp.status_code,
+                token_cookie=resp.cookies.get("token"),
+                location=_hdr(resp, "location"),
+            )
+    except requests.RequestException:
+        return FormPostResponse(status_code=-1)
 
 
 def get[R: BaseModel](

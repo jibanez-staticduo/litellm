@@ -1,0 +1,20 @@
+TASK-017 Tech Lead Reopen 1 review
+date: 2026-09-04
+verdict: REJECT
+
+PASS: no changed runtime path under litellm
+PASS: exact generated session key exists before deletion
+PASS: retained viewer key receives HTTP 403 on proxy-admin-only /user/list
+PASS: master-authenticated /key/info returns HTTP 404 for the exact key after deletion
+PASS: retained evidence reports zero matching user and session-key database rows and restored disposable baseline
+PASS: 139 mapped auth, login, and internal-user tests
+PASS: 27 e2e harness and coverage-registry tests
+PASS: strict coverage collection, 403/545 overall and 76/78 Management/UI, with no orphan marker or collection error
+PASS: raw HTTP confinement
+PASS: Ruff on all five changed e2e Python files
+PASS: basedpyright tests/e2e, 0 errors, 0 warnings, 0 notes
+PASS: StaticEng validation, 0 warnings
+
+FAIL AC-2: retained-key /user/info returns HTTP 404 after deletion. The endpoint can return that handler-level response only after bearer authentication and self-access authorization pass, so the cached deleted key remains usable. No post-expiry 401/403 admission denial is asserted
+
+No commit, push, image build, signing, publication, deployment, Fedora access, or NAS access occurred

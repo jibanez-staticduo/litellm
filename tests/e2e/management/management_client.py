@@ -15,6 +15,7 @@ from e2e_config import MASTER_KEY
 from proxy_client import ProxyClient
 from e2e_http import (
     AuthHeaders,
+    FormPostResponse,
     NetworkError,
     NoBody,
     ProbeResult,
@@ -37,6 +38,8 @@ from models import (
     KeyDeleteBody,
     KeyGenerateBody,
     KeyGenerateResponse,
+    KeyInfoParams,
+    KeyInfoResponse,
     KeyListParams,
     KeyListResponse,
     KeyRegenerateBody,
@@ -238,6 +241,28 @@ class ManagementClient:
             redirect_url=response.redirect_url,
         )
 
+    def form_login(self, username: str, password: str) -> FormPostResponse:
+        return self.proxy.transport.post_form(
+            "/login",
+            headers=AuthHeaders(),
+            form=UiLoginBody(username=username, password=password),
+        )
+
+    def form_login_session(self, username: str, password: str) -> DashboardSession:
+        response = self.form_login(username, password)
+        assert response.status_code == 303, (
+            f"/login returned {response.status_code}, expected 303"
+        )
+        token = response.token_cookie
+        assert token is not None, "/login returned 303 without the UI token cookie"
+        decoded: object = jwt.decode(token, self.master_key, algorithms=["HS256"])
+        claims = UiSessionClaims.model_validate(decoded)
+        return DashboardSession(
+            session_key=claims.key,
+            claims=claims,
+            redirect_url=response.location or "",
+        )
+
     def create_team(self, body: TeamNewBody) -> str:
         team_id = unwrap(
             self.proxy.transport.post(
@@ -426,23 +451,51 @@ class ManagementClient:
 
     def user_info(self, user_id: str) -> UserInfoResponse:
         return unwrap(
-            self.proxy.transport.get(
-                "/user/info",
-                headers=self.proxy.transport.master,
-                params=UserInfoParams(user_id=user_id),
-                response_type=UserInfoResponse,
-            )
+            self.user_info_status(user_id=user_id)
+        )
+
+    def user_info_status(
+        self, user_id: str, *, caller_key: str | None = None
+    ) -> Result[UserInfoResponse]:
+        headers = (
+            self.proxy.transport.master
+            if caller_key is None
+            else self.proxy.transport.bearer(caller_key)
+        )
+        return self.proxy.transport.get(
+            "/user/info",
+            headers=headers,
+            params=UserInfoParams(user_id=user_id),
+            response_type=UserInfoResponse,
         )
 
     def user_count(self, user_id: str) -> int:
         return unwrap(
-            self.proxy.transport.get(
-                "/user/list",
-                headers=self.proxy.transport.master,
-                params=UserListParams(user_ids=user_id),
-                response_type=UserListResponse,
-            )
+            self.user_list_status(user_id=user_id)
         ).total
+
+    def user_list_status(
+        self, user_id: str, *, caller_key: str | None = None
+    ) -> Result[UserListResponse]:
+        headers = (
+            self.proxy.transport.master
+            if caller_key is None
+            else self.proxy.transport.bearer(caller_key)
+        )
+        return self.proxy.transport.get(
+            "/user/list",
+            headers=headers,
+            params=UserListParams(user_ids=user_id),
+            response_type=UserListResponse,
+        )
+
+    def key_info_status(self, key: str) -> Result[KeyInfoResponse]:
+        return self.proxy.transport.get(
+            "/key/info",
+            headers=self.proxy.transport.master,
+            params=KeyInfoParams(key=key),
+            response_type=KeyInfoResponse,
+        )
 
     def user_list_ids(self, user_id: str) -> tuple[str, ...]:
         listing = unwrap(

@@ -1,0 +1,41 @@
+TASK-017 Reopen 2 cache-expiry verification
+date: 2026-09-04
+
+Documented cache contract
+- `litellm/proxy/proxy_server.py` defines `UserAPIKeyCacheTTLEnum.in_memory_cache_ttl = 60`
+- `user_api_key_cache` initializes with that 60-second default
+- `general_settings.user_api_key_cache_ttl` overrides both in-memory and Redis TTLs when configured
+- `IdentityStore` reads the hashed bearer from `user_api_key_cache` before the database
+- `_cache_key_object` writes through `_cache_management_object`, which uses `get_management_object_ttl`
+- The disposable config sets no `user_api_key_cache_ttl` and no Redis auth cache, so effective authorization-cache TTL is 60 seconds
+
+Focused live disposable lifecycle
+- Fresh labelled disposable PostgreSQL started on an ephemeral loopback port
+- All 161 migrations applied
+- Local source proxy reached liveliness HTTP 200
+- Command: `.venv/bin/pytest tests/e2e/management/test_management_e2e.py::TestUserRoutes::test_local_viewer_login_lifecycle_uses_email_and_restores_baseline --reruns 0 -v -s --tb=short -rA`
+- Result: 1 passed in 61.07s
+- Before delete: exact retained key present; self-info succeeds; forbidden proxy-admin-only `/user/list` returns 403
+- Immediately after delete: master-authenticated exact-key `/key/info` returns 404; retained-key self-info returns handler-level 404, correctly proving cache admission rather than auth denial
+- Harmless retained-key `/user/list` was polled at no more than once per second and remained 403 only while cached
+- True authentication denial occurred as HTTP 401 after 60.50 seconds
+- Bound passed: 60-second documented TTL plus 10-second margin
+- Final direct disposable database checks returned zero matching task users and zero matching task session keys
+
+Mapped and static gates
+- PASS: login utility tests, 17 passed
+- PASS: proxy login-route tests, 20 passed
+- PASS: internal-user management tests, 102 passed
+- PASS: e2e harness and coverage-registry tests, 27 passed
+- PASS: strict coverage collection, 403/545 overall and 76/78 Management/UI, no orphan marker or collection error
+- PASS: e2e raw-HTTP confinement
+- PASS: Ruff on all changed e2e Python files
+- PASS: basedpyright tests/e2e, 0 errors, 0 warnings, 0 notes
+- PASS: StaticEng validation, 0 warnings
+
+Cleanup and boundaries
+- PASS: proxy stopped
+- PASS: labelled disposable PostgreSQL removed
+- PASS: labelled resource inventory empty
+- PASS: temporary migration, proxy, and PID files absent
+- PASS: no runtime auth change, commit, push, image build, signing, publication, deployment, Fedora access, or NAS access

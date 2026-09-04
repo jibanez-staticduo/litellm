@@ -1014,6 +1014,9 @@ class UserNewBody(BaseModel):
     user_email: str
     user_role: UserRole
     user_id: str | None = None
+    models: list[str] = []
+    auto_create_key: bool = True
+    send_invite_email: bool | None = None
 
 
 class UserNewResponse(BaseModel):
@@ -1022,7 +1025,8 @@ class UserNewResponse(BaseModel):
 
 class UserUpdateBody(BaseModel):
     user_id: str
-    user_role: UserRole
+    user_role: UserRole | None = None
+    password: str | None = None
 
 
 class UserInfoParams(BaseModel):
@@ -1033,11 +1037,14 @@ class UserData(BaseModel):
     user_id: str | None = None
     user_email: str | None = None
     user_role: str | None = None
+    models: list[str] = []
 
 
 class UserInfoResponse(BaseModel):
     user_id: str
     user_info: UserData
+    keys: list[KeyInfo] = []
+    teams: list[TeamData] = []
 
 
 class UserDeleteBody(BaseModel):

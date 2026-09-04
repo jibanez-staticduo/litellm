@@ -1,0 +1,35 @@
+TASK-017 Reopen 1 verification
+date: 2026-09-04
+
+Focused live disposable lifecycle
+- Fresh labelled disposable PostgreSQL started on an ephemeral loopback port and all 161 migrations were applied
+- The final run used the migrated disposable schema after a database restart
+- Local source proxy reached liveliness HTTP 200
+- Final command: `.venv/bin/pytest tests/e2e/management/test_management_e2e.py::TestUserRoutes::test_local_viewer_login_lifecycle_uses_email_and_restores_baseline --reruns 0 -v --tb=short -rA`
+- Final result: 1 passed in 0.53s
+- Before delete: exact retained generated session key present in `/key/info`; own `/user/info` succeeds; proxy-admin-only `/user/list` returns 403
+- After delete: exact retained generated session key absent from `/key/info` with 404; same key cannot resolve deleted user through `/user/info`; email/password login returns 401
+- Final direct disposable database checks: zero matching task users and zero matching task session keys
+
+Mapped and static gates
+- PASS: login utility tests, 17 passed
+- PASS: proxy login-route tests, 20 passed
+- PASS: internal-user management tests, 102 passed
+- PASS: e2e harness and coverage-registry tests, 27 passed
+- PASS: strict coverage collection, 403/545 overall and 76/78 Management/UI, no orphan marker or collection error
+- PASS: e2e raw-HTTP confinement
+- PASS: Ruff on all changed e2e Python files
+- PASS: basedpyright tests/e2e, 0 errors, 0 warnings, 0 notes
+- PASS: StaticEng validation, 0 warnings
+
+Cleanup
+- PASS: proxy stopped
+- PASS: labelled disposable PostgreSQL removed
+- PASS: labelled resource inventory empty
+- PASS: temporary migration, proxy, and PID files absent
+- PASS: no runtime auth change, commit, push, image build, signing, publication, deployment, Fedora access, or NAS access
+
+Exploratory failed assertion
+- An intermediate attempt required the deleted key to return 401 immediately on `/user/list`
+- The route continued returning the same least-privilege 403 until cache expiry even though `/key/info` returned 404 and the database key row was absent
+- Final proof uses authoritative key absence plus inability to resolve the deleted user, and does not weaken the pre-delete forbidden-operation assertion

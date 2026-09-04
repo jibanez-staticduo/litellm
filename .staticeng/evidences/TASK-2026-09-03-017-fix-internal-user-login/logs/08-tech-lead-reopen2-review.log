@@ -1,0 +1,26 @@
+TASK-017 Tech Lead Reopen 2 review
+date: 2026-09-04
+verdict: PASS
+
+PASS: no changed runtime path under litellm
+PASS: source default UserAPIKeyCacheTTLEnum.in_memory_cache_ttl is 60 seconds
+PASS: user_api_key_cache initializes with that default and general_settings.user_api_key_cache_ttl is the explicit override path
+PASS: the exact disposable no-Redis runtime had no override and demonstrated true HTTP 401 at 60.50 seconds
+PASS: exact session key exists before deletion
+PASS: retained viewer key receives HTTP 403 on proxy-admin-only /user/list
+PASS: retained-key /user/info HTTP 404 after deletion is correctly classified as cached admission and missing-user handler behavior
+PASS: master-authenticated /key/info and direct database checks prove immediate exact-key and user storage absence
+PASS: harmless retained-key polling is bounded to 60-second TTL plus 10-second margin and no more than once per second
+PASS: final exact retained-key result is true authentication HTTP 401
+PASS: user/key baseline restoration and disposable cleanup are recorded
+PASS: 139 mapped auth, login, and internal-user tests
+PASS: 27 e2e harness and coverage-registry tests
+PASS: strict coverage collection, 403/545 overall and 76/78 Management/UI, with no orphan marker or collection error
+PASS: raw HTTP confinement
+PASS: Ruff on all six changed e2e Python files
+PASS: basedpyright tests/e2e, 0 errors, 0 warnings, 0 notes
+PASS: StaticEng validation, 0 warnings
+
+Maintenance compatibility: the SCR already requires supported deletion of any separately addressable UI session key and immediate destruction of client-held auth artifacts. Production cleanup must keep that requirement. The 60-second cache-expiry result is bounded fallback qualification and does not authorize retaining, polling, or reusing the credential during maintenance
+
+No image build, signing, publication, deployment, Fedora access, or NAS access occurred

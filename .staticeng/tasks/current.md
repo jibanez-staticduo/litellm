@@ -18,7 +18,6 @@
 - TASK-2026-09-03-016-investigate-internal-user-login
 
 ## Todo
-- TASK-2026-09-03-017-fix-internal-user-login
 - TASK-2026-07-14-003-trigger-nas-account2-reauth
 - TASK-2026-08-26-003-remove-unused-litellm-reasoning-policy
 - TASK-2026-08-26-004-implement-client-qwen38-modes

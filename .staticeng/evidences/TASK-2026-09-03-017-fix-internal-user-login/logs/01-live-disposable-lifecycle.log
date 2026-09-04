@@ -1,0 +1,21 @@
+TASK-017 live disposable lifecycle verification
+date: 2026-09-04
+scope: local labelled disposable PostgreSQL plus local source proxy only
+
+First attempt: FAIL CLOSED
+- Fresh empty disposable database was started
+- Proxy became live before schema migrations existed
+- Baseline `/user/list` returned HTTP 500 because `LiteLLM_UserTable` was absent
+- No user was created
+- Proxy and database were removed before retry
+
+Final clean attempt: PASS
+- Fresh labelled disposable PostgreSQL was started on an ephemeral loopback port
+- V2 resolver applied all 161 repository migrations successfully
+- Local source proxy reached `/health/liveliness` HTTP 200
+- Command: `.venv/bin/pytest tests/e2e/management/test_management_e2e.py::TestUserRoutes::test_local_viewer_login_lifecycle_uses_email_and_restores_baseline --reruns 0 -v --tb=short -rA`
+- Result: 1 passed in 0.52s
+- Assertions covered generated distinct email and opaque ID, `/user/new`, returned-ID equality, password-only `/user/update`, unchanged viewer role/denied models/no teams/no pre-login keys, ID login 401, wrong-password login 401, email login 303, returned identity/role/login method, `/user/delete`, restored baseline, and deleted-credential 401
+- Direct final disposable-DB cleanup check returned 0 matching task users and 0 matching task keys
+
+No generated credential value, cookie, key, token, database URL, or response body is retained in evidence
