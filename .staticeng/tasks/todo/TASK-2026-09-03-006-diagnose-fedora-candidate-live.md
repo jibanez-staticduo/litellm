@@ -3,12 +3,12 @@ id: TASK-2026-09-03-006-diagnose-fedora-candidate-live
 complexity: complex
 track: implementation
 slice: qa
-status: blocked
+status: active
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-012-release-upstream-main-fedora
 assigned_to: tech_lead
 handoff_from: product_manager
-reopened_count: 0
+reopened_count: 1
 ---
 
 # Task: Diagnose Fedora candidate live
@@ -76,3 +76,9 @@ PMA should create an exact-audience credential-preparation task using the existi
 [Agent Message] From: tech_lead To: product_manager
 
 REJECT CANDIDATE; VERIFIED ROLLBACK PASS. Preflight and protected deployment controls passed, but the required exact-audience bearer was unavailable, so no candidate tool request was sent. Automatic rollback restored the exact prior digest, and Fedora passes health, migrations, protected-state, dependency, MCP initialize, and real-tool verification. NAS was untouched. Route a governed exact-audience credential-preparation task before reopening TASK-006
+
+## Reopen History
+
+### Reopen 1 - Candidate-live DCR bootstrap
+
+TASK-009 resolves the circular prerequisite: the rollback image cannot mint a candidate-only token, so deploy under the already armed watcher, complete S256 PKCE on the candidate with the existing authorized principal, enforce the T+7-minute cutoff, prove exact and cross-audience behavior, immediately execute one bounded real-tool request, destroy all credential artifacts, and continue diagnosis or rollback. Create a fresh backup/restore and rollback unit again. Follow TASK-009 exactly; no credential substitution or ad-hoc patch.
