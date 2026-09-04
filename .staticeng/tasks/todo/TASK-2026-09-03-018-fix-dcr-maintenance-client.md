@@ -3,7 +3,7 @@ id: TASK-2026-09-03-018-fix-dcr-maintenance-client
 complexity: tiny
 track: implementation
 slice: qa
-status: active
+status: blocked
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-03-006-diagnose-fedora-candidate-live
 assigned_to: developer
@@ -20,10 +20,10 @@ Replace unsupported `CookieJar` pickling with a one-process in-memory HTTP sessi
 ## Acceptance Criteria
 
 - [x] AC-1: One process retains cookies in memory from login through register/authorize/complete/token/audience checks without serializing `CookieJar`.
-- [ ] AC-2: Secrets and cookies never enter arguments, stdout/stderr, files, repository evidence, or process listings.
+- [x] AC-2: Secrets and cookies never enter arguments, stdout/stderr, files, repository evidence, or process listings.
 - [ ] AC-3: Disposable exact-candidate test completes email login, S256 DCR, exact audience, cross-audience rejection, explicit key/token/client cleanup, and principal/toolset cleanup.
 - [ ] AC-4: Failure paths and deadline cleanup destroy all resources; no production or runtime source changes.
-- [ ] AC-5: Tech Lead reviews and commits the maintained harness/evidence if applicable before another Fedora attempt.
+- [x] AC-5: Tech Lead reviews and commits the maintained harness/evidence if applicable before another Fedora attempt.
 
 ## Handoff
 
@@ -1192,3 +1192,41 @@ Developer should reopen again. Require an explicit Docker context/socket and exp
 [Agent Message] From: tech_lead To: product_manager
 
 TASK-018 REOPEN 6 REJECT. Exact Defend field pins pass, but the runner does not enforce the standalone daemon, internal networking, run-unique ownership, collision-safe volume cleanup, or lifecycle-visible signal cancellation. The ambient daemon identified as NAS, so I stopped before creation; one read-only identity/image check occurred and no NAS mutation occurred. No commit/push; TASK-006 remains unauthorized
+
+## Tech Lead Experimental Source Checkpoint
+
+### Summary
+
+BLOCKED/DEFERRED. The harness-only implementation is accepted as an experimental source checkpoint, not as functional qualification. Source safeguards and 143 tests pass, but the authorized disposable run failed before producing DCR/audience evidence and automatic cleanup retained one volume that Tech Lead subsequently removed exactly. No additional disposable run is authorized
+
+### Work Performed
+
+Inspected the final harness-only diff, reviewed the complete task/evidence history, scanned source and evidence for credential signatures, reran focused tests, type/lint/format/raw-client/static validation, and confirmed zero TASK-018 resources plus unchanged healthy NAS production. Prepared the maintained client, runner, config, documentation, CodeMaps, task, and evidence as a blocked experimental checkpoint to clear the shared worktree
+
+### Acceptance Criteria Coverage
+
+- **AC-1: PASS.** One-process in-memory CookieJar behavior is implemented and test-covered
+- **AC-2: PASS.** No committed secret or cookie value was found; status evidence and subprocess boundaries remain sanitized
+- **AC-3: FAIL/DEFERRED.** The concrete disposable run did not prove full DCR or exact-audience behavior
+- **AC-4: FAIL/DEFERRED.** Source failure cleanup is covered, but the concrete run needed exact Tech Lead removal of one owned volume; final resource state is zero and production remained invariant
+- **AC-5: PASS.** Tech Lead accepted and committed the harness strictly as a blocked/experimental source checkpoint
+
+### Documentation Impact
+
+Maintenance README, e2e suite guidance, CodeMaps, task, and evidence describe the maintained experimental harness and its blocked functional status. No product/runtime architecture behavior changed
+
+### Open Risks
+
+The harness is not functionally approved and must not be represented as successful DCR qualification. TASK-022 is consumed, no retry is authorized, and TASK-006 proceeds only through its separately approved direct functional-administrator path. Deferred non-runtime hardening observations remain in the review history
+
+### Recommended Next Step
+
+Keep TASK-018 blocked/deferred. PMA may consume the now-clean shared worktree for TASK-006 under its current independent authorization and watchdog; this checkpoint does not authorize another disposable run or attest DCR success
+
+### Signed Handoff
+
+[Agent Message] From: tech_lead To: product_manager
+
+TASK-018 BLOCKED EXPERIMENTAL CHECKPOINT ACCEPTED FOR COMMIT. Harness source and static verification pass with no committed secrets; functional DCR/audience qualification remains failed/deferred, zero task resources are confirmed, production remained invariant, and no disposable retry is authorized. TASK-006 may use the cleared worktree only under its separate direct-probe authorization
+
+Checkpoint source commit: `43e437c100`. Registry/evidence closure is committed separately so the source commit remains the stable harness checkpoint

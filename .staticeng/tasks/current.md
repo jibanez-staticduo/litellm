@@ -25,7 +25,6 @@
 
 ## Blocked
 - TASK-2026-09-03-018-fix-dcr-maintenance-client — blocked/deferred experimental source checkpoint; functional DCR qualification failed, zero resources restored, no retry authorized
-- TASK-2026-09-03-006-diagnose-fedora-candidate-live — Reopen 6 proved email login but stopped before DCR when the task client could not serialize CookieJar; cleanup restored baseline
 - TASK-2026-09-03-008-prepare-fedora-dcr-credential — healthy rollback image lacks exact toolset DCR discovery and transport routes; no bearer could be minted or audience-tested
 - TASK-2026-09-01-012-release-upstream-main-fedora — exact candidate rolled back after authorized real-tool timeout and unhealthy transition; investigation and fresh reauthorization required
 - TASK-2026-09-01-003-deploy-lazymcp-oauth-fedora — promotion qualification failed; Tech Lead explicitly rejected deployment
