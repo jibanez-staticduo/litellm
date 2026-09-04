@@ -3,12 +3,12 @@ id: TASK-2026-09-03-006-diagnose-fedora-candidate-live
 complexity: complex
 track: implementation
 slice: qa
-status: blocked
+status: active
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-012-release-upstream-main-fedora
 assigned_to: tech_lead
 handoff_from: product_manager
-reopened_count: 6
+reopened_count: 7
 ---
 
 # Task: Diagnose Fedora candidate live
@@ -102,6 +102,10 @@ TASK-014 and TASK-015 authorize one task-owned temporary toolset through support
 ### Reopen 6 - Correct email login and explicit key cleanup
 
 TASK-016/017 prove the supported lifecycle: create unique `user_email` plus opaque `user_id`, set password by returned ID, and submit the email in `/login`'s `username` field. Preserve ID for management/cleanup only. After use, explicitly delete the separately addressable UI key before deleting the principal, destroy all client-held cookie/token/code/verifier/password artifacts immediately, and never retain/poll/reuse the credential in maintenance. Verify storage absence and baseline restoration; the observed 60-second cache expiry is fallback evidence only, not permission to delay cleanup. All prior toolset, watchdog, one-call, rollback and deadline constraints remain mandatory.
+
+### Reopen 7 - Direct functional administrator probe
+
+TASK-2026-09-04-001 authorizes exactly one aggregate LazyMCP `defend_memory-find` request using the existing Fedora administrator API credential only in diagnostic-client process memory from its owner-only source. For this attempt only, do not create temporary toolset, principal, grant, login, or DCR artifacts. Fresh backup/isolated restore, exact rollback, signed candidate identity, one-second watchdog, memory thresholds, at most one embedding and three reranks, zero nested LazyMCP, 15-second drain, concurrency one, 75-second deadline, no retry/fallback/second request, and four-hour/NAS boundaries remain mandatory. Any non-success triggers immediate exact rollback. A bounded success proceeds directly to all full Fedora gates and the continuous 900-second soak.
 
 ### Reopen 2 Result
 
