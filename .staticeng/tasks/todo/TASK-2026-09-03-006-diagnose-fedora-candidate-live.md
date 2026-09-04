@@ -3,12 +3,12 @@ id: TASK-2026-09-03-006-diagnose-fedora-candidate-live
 complexity: complex
 track: implementation
 slice: qa
-status: blocked
+status: active
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-012-release-upstream-main-fedora
 assigned_to: tech_lead
 handoff_from: product_manager
-reopened_count: 3
+reopened_count: 4
 ---
 
 # Task: Diagnose Fedora candidate live
@@ -90,6 +90,10 @@ The user confirms no Agent Jake/browser automation is available and explicitly a
 ### Reopen 3 - Temporary least-privilege diagnostic principal
 
 TASK-012 amends the SCR and authorizes exactly one temporary `internal_user_viewer` because no eligible existing principal exists. Before any creation, prove supported create/grant/remove/delete APIs and arm an independent cleanup worker. Capture baseline non-secret user/key/membership/grant counts and existing `defend_memory` toolset membership. Create high-entropy credentials owner-only outside repository/Syncthing, block model access, grant only exact existing `defend_memory`, and create no team/org/global/admin membership. Then follow TASK-010 PKCE and TASK-011 instrumentation exactly. On every exit: revoke refresh/client material where supported, destroy access/cookie/verifier/code/password artifacts, remove exact grant, delete principal and any key/session/membership, and prove baseline restoration through supported APIs. Any cleanup mismatch is a critical stop requiring candidate rollback and explicit incident evidence.
+
+### Reopen 4 - Two-step supported principal transaction
+
+TASK-013 authorizes the exact supported sequence required by the live API: arm cleanup first; `/user/new` creates only the least-privilege non-login principal; the immediately following request is `/user/update` setting only the generated password; then verify unchanged least-privilege state and first login. No intervening request, grant, key, membership, login, or DCR action is allowed. Any update or verification failure deletes the principal, proves baseline restoration, and stops before candidate use. All Reopen 3 DCR, watchdog, one-call, cleanup, rollback, four-hour and NAS boundaries remain unchanged.
 
 ### Reopen 2 Result
 
