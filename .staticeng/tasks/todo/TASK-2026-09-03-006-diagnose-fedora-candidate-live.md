@@ -166,3 +166,11 @@ TASK-2026-09-04-002 Reopen 3 closes the watchdog blocker. Tech Lead independentl
 [Agent Message] From: tech_lead To: product_manager
 
 AUTHORIZE IMMEDIATE TASK-006 REOPEN 7 DIRECT PROBE RETRY. Use only exact candidate `sha256:b4c960ce7630a7bb7af475ce5e93c6b19a51cacd944b4cbcda6e1a9243af83b3`, config `sha256:ad33017b518b66d9dc81ec272b8a91ce1eda935f25b851e8ab7d2e8fa7d0d915`, source `bf58974a935521fa570fa7e280c51a00b2e5b54e`, and rollback digest `sha256:1b7a6dc4514b0f43902a6ac38dfde269aeb902497e3d1bb5a09f75a1ccd5cc04`. Freshly create and isolated-restore-verify the protected backup, prove every watchdog prerequisite, arm and prove the reviewed harness for at least 30 one-second samples before selector mutation, then send exactly one authorized administrator-authenticated aggregate LazyMCP `defend_memory-find` request at concurrency one with the 75-second deadline and no retry. Any request, OOM, threshold, instrumentation, identity, data, credential, deadline, or control failure requires immediate exact rollback. Only bounded success may continue to all full Fedora gates and the continuous 900-second soak. NAS remains untouched
+
+### Reopen 7 Direct Probe Retry Result
+
+BLOCKED before candidate deployment and credential use. Fresh backup/isolated restore, rollback, exact identity, signature, and attestations passed. The reviewed watcher generator and `bash -n` passed, but the 31-sample proof was wired to the production rollback action. Proof completion executed rollback and removed the active pointer, so the next step stopped without selector mutation. Zero administrator credential use and zero diagnostic requests occurred. Fedora remains healthy on exact rollback; NAS is untouched
+
+[Agent Message] From: tech_lead To: product_manager
+
+TASK-006 REOPEN 7 DIRECT PROBE RETRY BLOCKED BY PROOF-MODE WIRING. The reviewed watcher generated and parsed successfully, but its 31-sample pre-deployment proof used the production rollback action, which completed and removed the active pointer. I stopped before candidate deployment or credential use; zero requests were sent. Fedora is healthy on exact rollback and NAS is untouched. The harness needs the dedicated proof wrapper/no-op proof rollback used by TASK-002 tests before another production authorization
