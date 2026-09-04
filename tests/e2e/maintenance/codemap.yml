@@ -1,0 +1,12 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+internals:
+  - path: __init__.py
+  - path: dcr_maintenance_client.py
+  - path: disposable_candidate_config.yaml
+  - path: candidate_secret_wrapper.py
+  - path: disposable_runner.py
+  - path: README.md
+  - path: synthetic_mcp_server.py
+  - path: test_dcr_maintenance_client.py
+  - path: test_disposable_runner.py

@@ -5,7 +5,9 @@ anywhere; a small allowlist grandfathers the files that legitimately make raw ca
 (the transport itself, the root conftest liveness probe, the claude_code version
 resolver's constant registry URL fetch, and the mcp OAuth client, whose httpx
 client is the object the official mcp SDK's streamable_http_client requires and so
-cannot go through the sync requests transport). Referenced by tests/e2e/CLAUDE.md."""
+cannot go through the sync requests transport). The maintenance DCR client is also
+allowlisted because its core invariant is one live cookie session through the complete
+login and OAuth lifecycle. Referenced by tests/e2e/CLAUDE.md."""
 
 from __future__ import annotations
 
@@ -22,6 +24,8 @@ ALLOWED_RAW_CLIENT_FILES = {
     "conftest.py": ("requests",),
     "claude_code/pr_gate_version_resolver.py": ("urllib.request",),
     "mcp/oauth_chat_client.py": ("httpx",),
+    "maintenance/dcr_maintenance_client.py": ("httpx",),
+    "maintenance/disposable_runner.py": ("httpx",),
 }
 
 EXCEPTION_ONLY_NAMES = frozenset({"RequestException", "ConnectionError", "Timeout", "HTTPError"})

@@ -1,0 +1,18 @@
+mcp_servers:
+  defend_memory:
+    server_id: 54a0ad17239e9f184882cf47e3ac277c
+    server_name: defend_memory
+    transport: http
+    url: http://defend-upstream:8000/mcp
+    auth_type: none
+    allowed_tools: []
+    disallowed_tools: []
+    mcp_access_groups:
+      - defend_memory
+    allow_all_keys: false
+    available_on_public_internet: false
+    approval_status: active
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  store_model_in_db: true

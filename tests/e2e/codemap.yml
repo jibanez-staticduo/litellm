@@ -22,3 +22,6 @@ internals:
   - path: test_provider_edge.py
   - path: test_fixture_mode.py
   - path: fixture_mode.py
+modules:
+  - path: maintenance
+    summary: Governed one-process maintenance clients and harness-only lifecycle verification.
