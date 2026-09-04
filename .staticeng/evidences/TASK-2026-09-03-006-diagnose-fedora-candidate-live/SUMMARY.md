@@ -95,3 +95,9 @@ No principal was created and no watchdog/candidate/auth/request phase started. A
 Reopen 5 passed fresh backup/isolated restore, rollback, exact candidate provenance, exact temporary one-tool toolset create/read-back, independent cleanup arming, and the strict `/user/new` then immediate password-only `/user/update` transaction. Least-privilege read-back passed, but the first required `/login` returned HTTP 401
 
 The explicit stop gate triggered before watchdog activation or candidate deployment. Supported cleanup cleared/deleted the principal before deleting the toolset and restored the zero-toolset baseline. No DCR, consent, audience, or diagnostic request occurred; all task auth artifacts were destroyed; Fedora remained healthy on exact rollback; NAS was untouched. See `logs/05-reopen5-login-blocker.md`
+
+## Reopen 6 Outcome
+
+Reopen 6 proved the corrected email login path: fresh safety/provenance gates, exact temporary toolset, strict two-step principal transaction, least-privilege read-back, email login, and UI-key capture all passed. The task-local client then failed before DCR while trying to pickle Python's lock-bearing `CookieJar`
+
+Cleanup explicitly requested UI-key deletion before grant/principal deletion, removed the toolset last, restored baseline counts, and destroyed all artifacts. The candidate was never deployed and no diagnostic request was sent. Fedora remained healthy on exact rollback; NAS was untouched. See `logs/06-reopen6-client-artifact-blocker.md`

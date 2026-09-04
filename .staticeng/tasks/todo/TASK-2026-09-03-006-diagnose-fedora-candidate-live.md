@@ -3,7 +3,7 @@ id: TASK-2026-09-03-006-diagnose-fedora-candidate-live
 complexity: complex
 track: implementation
 slice: qa
-status: active
+status: blocked
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-012-release-upstream-main-fedora
 assigned_to: tech_lead
@@ -138,3 +138,11 @@ TASK-006 REOPEN 5 BLOCKED AT FIRST LOGIN. The exact toolset and strict two-step 
 ### Maintenance Harness Correction
 
 TASK-016 proved that local database authentication resolves only case-insensitive `user_email`. On the next authorized reopen, generate distinct opaque `user_id` and unique non-routable `user_email` values, include both in `/user/new`, keep the immediate password-only `/user/update` and all grant/cleanup/baseline operations keyed by the returned `user_id`, and send only the exact generated `user_email` in `/login` form field `username`. Do not retry with `user_id`, broaden authentication, or change any other Reopen 3 through 5 boundary
+
+### Reopen 6 Result
+
+BLOCKED after successful corrected email login but before watchdog or candidate deployment. Fresh backup/restore, rollback, provenance, exact one-tool toolset, strict principal transaction, least-privilege read-back, email login, and UI-key capture passed. The task-local client failed when it attempted to pickle Python's lock-bearing `CookieJar`. No retry, DCR, consent, token, audience test, or diagnostic request occurred. Cleanup explicitly requested UI-key deletion, then cleared/deleted the principal and deleted the toolset last; counts returned to zero and all artifacts were destroyed. Fedora remains healthy on exact rollback; NAS is untouched
+
+[Agent Message] From: tech_lead To: product_manager
+
+TASK-006 REOPEN 6 BLOCKED BY MAINTENANCE CLIENT ARTIFACT HANDLING. Correct email login and explicit UI-key capture succeeded, proving the product auth correction. Before DCR, the task client tried to pickle `CookieJar` and failed on its internal `RLock`. I did not retry or deploy the candidate. Armed cleanup explicitly requested UI-key deletion, removed grant/principal before toolset, restored baseline, and destroyed artifacts. Fedora is healthy on exact rollback; NAS is untouched. Validate a single-process session or Mozilla/LWP cookie-jar harness in isolation before another reopen
