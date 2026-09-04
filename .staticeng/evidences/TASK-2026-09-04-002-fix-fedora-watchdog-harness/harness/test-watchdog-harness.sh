@@ -391,6 +391,94 @@ unset ROLLBACK_RC
 grep -qx 'reason=pids' "$A/safe/trigger"
 printf 'rollback_failure=pass\n'
 
+PRODUCTION_ROOT="$W/production"
+PRODUCTION_ATTEMPT="$W/production-attempt"
+PROOF_ROOT="$W/proof"
+mkdir -p "$PRODUCTION_ROOT/releases" "$PRODUCTION_ATTEMPT/raw" "$PRODUCTION_ATTEMPT/safe" "$PROOF_ROOT/attempt/raw" "$PROOF_ROOT/attempt/safe"
+PRODUCTION_POINTER="$PRODUCTION_ROOT/releases/TASK-2026-09-03-006.active"
+printf '%s\n' "$PRODUCTION_ATTEMPT" >"$PRODUCTION_POINTER"
+printf 'production-selector\n' >"$PRODUCTION_ROOT/.env"
+printf 'production-recreate\n' >"$PRODUCTION_ATTEMPT/raw/rollback.log"
+printf 'production-control\n' >"$PRODUCTION_ATTEMPT/safe/control-state"
+PRODUCTION_STATE_BEFORE=$(sha256sum "$PRODUCTION_POINTER" "$PRODUCTION_ROOT/.env" "$PRODUCTION_ATTEMPT/raw/rollback.log" "$PRODUCTION_ATTEMPT/safe/control-state")
+
+PROOF_ATTEMPT="$PROOF_ROOT/attempt"
+printf 'expected-dependencies\n' >"$PROOF_ATTEMPT/safe/dependencies.digest"
+printf 'placeholder  file\n' >"$PROOF_ATTEMPT/safe/protected-baseline.sha256"
+printf 'pass\n' >"$PROOF_ATTEMPT/safe/control-state"
+printf '999999999\n' >"$PROOF_ATTEMPT/safe/maintenance-deadline-monotonic"
+printf 'armed\n' >"$PROOF_ATTEMPT/safe/rollback-confidence"
+printf '2026-09-04T00:00:00Z\n' >"$PROOF_ATTEMPT/safe/watchdog-start-wall"
+
+MOCK="$W/mock" SCENARIO=healthy CANDIDATE="$CANDIDATE" CANDIDATE_RUNTIME="$CANDIDATE_RUNTIME" CONFIG="$CONFIG" SOURCE="$SOURCE" \
+    WATCHDOG_ROOT="$PRODUCTION_ROOT" WATCHDOG_PROOF_COLLECTOR="$W/mock/collector.sh" WATCHDOG_SAMPLE_SECONDS=0.001 WATCHDOG_SAMPLE_TIMEOUT=0.10 \
+    "$G/run-watchdog-proof.sh" "$PROOF_ROOT" >"$W/proof.out"
+PRODUCTION_STATE_AFTER=$(sha256sum "$PRODUCTION_POINTER" "$PRODUCTION_ROOT/.env" "$PRODUCTION_ATTEMPT/raw/rollback.log" "$PRODUCTION_ATTEMPT/safe/control-state")
+[ "$PRODUCTION_STATE_BEFORE" = "$PRODUCTION_STATE_AFTER" ]
+[ "$(cat "$PROOF_ROOT/TASK-2026-09-03-006.proof.active")" = "$PROOF_ATTEMPT" ]
+[ "$(awk 'END{print NR-1}' "$PROOF_ATTEMPT/raw/watchdog.tsv")" -eq 31 ]
+[ ! -e "$PROOF_ATTEMPT/safe/proof-rollback-invoked" ]
+[ ! -e "$PROOF_ATTEMPT/raw/proof-rollback.log" ]
+[ ! -e "$PRODUCTION_ATTEMPT/safe/trigger" ]
+grep -qx 'proof_samples=31' "$W/proof.out"
+printf 'proof_31_samples=pass\nproof_owned_pointer_log_control=pass\nproof_no_cross_state_mutation=pass\n'
+
+reset_run
+set +e
+MOCK="$W/mock" SCENARIO=failure_jq CANDIDATE="$CANDIDATE" CANDIDATE_RUNTIME="$CANDIDATE_RUNTIME" CONFIG="$CONFIG" SOURCE="$SOURCE" \
+    WATCHDOG_ROOT="$PRODUCTION_ROOT" WATCHDOG_PROOF_COLLECTOR="$W/mock/collector.sh" WATCHDOG_SAMPLE_SECONDS=0.001 WATCHDOG_SAMPLE_TIMEOUT=0.10 \
+    "$G/run-watchdog-proof.sh" "$PROOF_ROOT" >"$W/proof-trip.out" 2>&1
+proof_trip_status=$?
+set -e
+[ "$proof_trip_status" -eq 1 ]
+grep -qx 'proof_rollback_invoked' "$PROOF_ATTEMPT/raw/proof-rollback.log"
+[ "$PRODUCTION_STATE_BEFORE" = "$(sha256sum "$PRODUCTION_POINTER" "$PRODUCTION_ROOT/.env" "$PRODUCTION_ATTEMPT/raw/rollback.log" "$PRODUCTION_ATTEMPT/safe/control-state")" ]
+printf 'proof_failure_noop_rollback=pass\nproof_failure_no_cross_state_mutation=pass\n'
+
+rm -f "$PROOF_ROOT/TASK-2026-09-03-006.proof.active"
+ln -s "$PRODUCTION_POINTER" "$PROOF_ROOT/TASK-2026-09-03-006.proof.active"
+set +e
+WATCHDOG_ROOT="$PRODUCTION_ROOT" "$G/run-watchdog-proof.sh" "$PROOF_ROOT" >"$W/linked-pointer.out" 2>&1
+linked_pointer_status=$?
+set -e
+[ "$linked_pointer_status" -eq 66 ]
+rm "$PROOF_ROOT/TASK-2026-09-03-006.proof.active"
+printf 'proof_rejects_production_pointer_link=pass\n'
+
+mv "$PROOF_ATTEMPT/safe/control-state" "$PROOF_ATTEMPT/safe/control-state.saved"
+ln -s "$PRODUCTION_ATTEMPT/safe/control-state" "$PROOF_ATTEMPT/safe/control-state"
+set +e
+WATCHDOG_ROOT="$PRODUCTION_ROOT" "$G/run-watchdog-proof.sh" "$PROOF_ROOT" >"$W/linked-control.out" 2>&1
+linked_control_status=$?
+set -e
+[ "$linked_control_status" -eq 66 ]
+rm "$PROOF_ATTEMPT/safe/control-state"
+mv "$PROOF_ATTEMPT/safe/control-state.saved" "$PROOF_ATTEMPT/safe/control-state"
+printf 'proof_rejects_production_control_link=pass\n'
+
+mv "$PROOF_ATTEMPT/raw" "$PROOF_ATTEMPT/raw.saved"
+ln -s "$PRODUCTION_ATTEMPT/raw" "$PROOF_ATTEMPT/raw"
+set +e
+WATCHDOG_ROOT="$PRODUCTION_ROOT" "$G/run-watchdog-proof.sh" "$PROOF_ROOT" >"$W/linked-log.out" 2>&1
+linked_log_status=$?
+set -e
+[ "$linked_log_status" -eq 66 ]
+rm "$PROOF_ATTEMPT/raw"
+mv "$PROOF_ATTEMPT/raw.saved" "$PROOF_ATTEMPT/raw"
+[ "$PRODUCTION_STATE_BEFORE" = "$(sha256sum "$PRODUCTION_POINTER" "$PRODUCTION_ROOT/.env" "$PRODUCTION_ATTEMPT/raw/rollback.log" "$PRODUCTION_ATTEMPT/safe/control-state")" ]
+printf 'proof_rejects_production_log_link=pass\n'
+
+set +e
+WATCHDOG_ROOT="$PRODUCTION_ROOT" "$G/run-watchdog-proof.sh" "$PRODUCTION_ROOT/proof" >"$W/unsafe-proof.out" 2>&1
+unsafe_proof_status=$?
+set -e
+[ "$unsafe_proof_status" -eq 65 ]
+printf 'proof_rejects_production_root=pass\n'
+
 grep -Fq 'docker compose --env-file .env -f docker-compose.yaml up -d --no-deps litellm' "$G/rollback.sh"
 grep -Fq 'sha256:1b7a6dc4514b0f43902a6ac38dfde269aeb902497e3d1bb5a09f75a1ccd5cc04' "$G/rollback.sh"
-printf 'exact_rollback=pass\ntests=pass\n'
+# shellcheck disable=SC2016
+grep -Fq 'ROLLBACK=${WATCHDOG_ROLLBACK:-$A/rollback/rollback.sh}' "$G/watchdog.sh"
+# shellcheck disable=SC2016
+grep -Fq 'ROLLBACK="$SCRIPT_DIRECTORY/proof-rollback.sh"' "$G/run-watchdog-proof.sh"
+printf 'exact_rollback=pass\nreal_watcher_exact_rollback=pass\nproof_real_rollback_separation=pass\ntests=pass\n'

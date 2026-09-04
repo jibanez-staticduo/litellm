@@ -28,6 +28,15 @@ docker compose --env-file .env -f docker-compose.yaml up -d --no-deps litellm >>
 touch "$A/safe/rollback-complete"
 SH
 
+cat >"$output_directory/proof-rollback.sh" <<'SH'
+#!/bin/bash
+set -euo pipefail
+: "${WATCHDOG_ATTEMPT:?proof attempt is required}"
+printf 'proof_rollback_invoked\n' >>"$WATCHDOG_ATTEMPT/raw/proof-rollback.log"
+touch "$WATCHDOG_ATTEMPT/safe/proof-rollback-invoked"
+exit 0
+SH
+
 cat >"$output_directory/collect-watchdog-sample.sh" <<'SH'
 #!/bin/bash
 set -euo pipefail
@@ -368,8 +377,64 @@ while :; do
 done
 SH
 
-chmod 0700 "$output_directory/rollback.sh" "$output_directory/collect-watchdog-sample.sh" "$output_directory/watchdog.sh"
+cat >"$output_directory/run-watchdog-proof.sh" <<'SH'
+#!/bin/bash
+set -euo pipefail
+
+if [ "$#" -ne 1 ]; then
+    printf 'usage: %s PROOF_DIRECTORY\n' "$0" >&2
+    exit 64
+fi
+
+R=${WATCHDOG_ROOT:-/home/staticduo/docker/litellm}
+SCRIPT_DIRECTORY=$(cd "$(dirname "$0")" && pwd)
+PROOF_ROOT=$(readlink -f "$1")
+A="$PROOF_ROOT/attempt"
+ACTIVE_POINTER="$PROOF_ROOT/TASK-2026-09-03-006.proof.active"
+L="$A/raw/watchdog.tsv"
+COLLECTOR=${WATCHDOG_PROOF_COLLECTOR:-$SCRIPT_DIRECTORY/collect-watchdog-sample.sh}
+ROLLBACK="$SCRIPT_DIRECTORY/proof-rollback.sh"
+
+case "$PROOF_ROOT/" in
+    "$R/"*) printf 'proof directory must be outside production root\n' >&2; exit 65 ;;
+esac
+[ -d "$A/raw" ] && [ -d "$A/safe" ] || { printf 'proof state directories are missing\n' >&2; exit 66; }
+[ ! -L "$A/raw" ] && [ ! -L "$A/safe" ] || { printf 'proof state directories must not be symlinks\n' >&2; exit 66; }
+for prerequisite in protected-baseline.sha256 control-state maintenance-deadline-monotonic rollback-confidence dependencies.digest watchdog-start-wall; do
+    path="$A/safe/$prerequisite"
+    [ -s "$path" ] && [ ! -L "$path" ] || { printf 'proof control is missing or linked: %s\n' "$prerequisite" >&2; exit 66; }
+done
+[ -x "$COLLECTOR" ] && [ -x "$ROLLBACK" ] || { printf 'proof executable is missing\n' >&2; exit 66; }
+[ ! -L "$ACTIVE_POINTER" ] || { printf 'proof pointer must not be a symlink\n' >&2; exit 66; }
+
+umask 077
+pointer_temporary="$ACTIVE_POINTER.$$"
+printf '%s\n' "$A" >"$pointer_temporary"
+mv "$pointer_temporary" "$ACTIVE_POINTER"
+rm -f "$A/safe/trigger" "$A/safe/proof-rollback-invoked" "$A/raw/proof-rollback.log" "$L"
+
+set +e
+WATCHDOG_ATTEMPT="$(cat "$ACTIVE_POINTER")" \
+WATCHDOG_COLLECTOR="$COLLECTOR" \
+WATCHDOG_ROLLBACK="$ROLLBACK" \
+WATCHDOG_LOG="$L" \
+WATCHDOG_PROOF_ROLLBACK=1 \
+WATCHDOG_PROOF_SAMPLE_LIMIT=31 \
+"$SCRIPT_DIRECTORY/watchdog.sh"
+watchdog_status=$?
+set -e
+
+[ "$watchdog_status" -eq 0 ] || exit "$watchdog_status"
+[ ! -e "$A/safe/trigger" ] && [ ! -e "$A/safe/proof-rollback-invoked" ] || exit 1
+[ -f "$L" ] || exit 1
+samples=$(awk 'END{print NR-1}' "$L")
+[ "$samples" -eq 31 ] || exit 1
+printf 'proof_samples=%s\nproof_pointer=%s\nproof_log=%s\nproof_rollback=noop\n' "$samples" "$ACTIVE_POINTER" "$L"
+SH
+
+chmod 0700 "$output_directory/rollback.sh" "$output_directory/proof-rollback.sh" \
+    "$output_directory/collect-watchdog-sample.sh" "$output_directory/watchdog.sh" "$output_directory/run-watchdog-proof.sh"
 for generated_script in "$output_directory"/*.sh; do
     bash -n "$generated_script"
 done
-printf 'generated_scripts=3\nbash_n=pass\n'
+printf 'generated_scripts=5\nbash_n=pass\n'

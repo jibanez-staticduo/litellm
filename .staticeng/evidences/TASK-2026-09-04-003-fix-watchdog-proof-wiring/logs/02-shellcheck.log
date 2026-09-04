@@ -1,0 +1,2 @@
+$ shellcheck harness/generate-watchdog-harness.sh harness/test-watchdog-harness.sh
+PASS
