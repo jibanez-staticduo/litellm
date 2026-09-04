@@ -22,6 +22,7 @@
 - TASK-2026-08-26-004-implement-client-qwen38-modes
 
 ## Blocked
+- TASK-2026-09-03-008-prepare-fedora-dcr-credential — healthy rollback image lacks exact toolset DCR discovery and transport routes; no bearer could be minted or audience-tested
 - TASK-2026-09-03-006-diagnose-fedora-candidate-live — exact candidate rolled back safely; required exact-audience DCR bearer was unavailable, so no diagnostic tool request was sent
 - TASK-2026-09-01-012-release-upstream-main-fedora — exact candidate rolled back after authorized real-tool timeout and unhealthy transition; investigation and fresh reauthorization required
 - TASK-2026-09-01-003-deploy-lazymcp-oauth-fedora — promotion qualification failed; Tech Lead explicitly rejected deployment
