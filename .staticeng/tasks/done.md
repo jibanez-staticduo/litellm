@@ -2,6 +2,7 @@
 
 | Date | Task ID | SCR ID | Commit | Summary |
 | :--- | :--- | :--- | :--- | :--- |
+| 2026-09-04 | TASK-2026-09-04-001-authorize-direct-functional-probe | SCR-2026-09-01-001-upstream-main-integration | pending-commit | Authorized one direct administrator-authenticated candidate LazyMCP diagnostic request, replacing temporary auth bootstrap while preserving exact watchdog, rollback, deadline, soak, and NAS controls. |
 | 2026-09-04 | TASK-2026-09-03-023-amend-functional-first-maintenance | SCR-2026-09-01-001-upstream-main-integration | pending-commit | Prioritized final disposable and Fedora functional validation, retained five immediate safety stops and exact operational safeguards, and deferred other non-runtime hardening findings to final reporting. |
 | 2026-09-04 | TASK-2026-09-03-022-reauthorize-disposable-run | SCR-2026-09-01-001-upstream-main-integration | pending-commit | Authorized exactly one final disposable invocation after Tech Lead canonical RepoDigest approval, preserving exact dependency identities and all isolation controls with every outcome consuming authorization and no retry. |
 | 2026-09-04 | TASK-2026-09-03-021-investigate-redis-image-availability | SCR-2026-09-01-001-upstream-main-integration | pending-commit | Proved the frozen Redis 7.4.11 linux/amd64 child remains available and traced preflight failure to non-canonical local RepoDigest comparison. |

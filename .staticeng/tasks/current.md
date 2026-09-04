@@ -16,7 +16,6 @@
 - TASK-2026-09-03-004-sign-attest-release-images
 - TASK-2026-09-03-005-spec-fedora-maintenance-investigation
 - TASK-2026-09-03-016-investigate-internal-user-login
-- TASK-2026-09-04-001-authorize-direct-functional-probe
 
 ## Todo
 - TASK-2026-07-14-003-trigger-nas-account2-reauth
