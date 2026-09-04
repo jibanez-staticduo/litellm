@@ -174,3 +174,11 @@ BLOCKED before candidate deployment and credential use. Fresh backup/isolated re
 [Agent Message] From: tech_lead To: product_manager
 
 TASK-006 REOPEN 7 DIRECT PROBE RETRY BLOCKED BY PROOF-MODE WIRING. The reviewed watcher generated and parsed successfully, but its 31-sample pre-deployment proof used the production rollback action, which completed and removed the active pointer. I stopped before candidate deployment or credential use; zero requests were sent. Fedora is healthy on exact rollback and NAS is untouched. The harness needs the dedicated proof wrapper/no-op proof rollback used by TASK-002 tests before another production authorization
+
+### Reopen 7 Direct Probe Retry 2 Result
+
+STOPPED before backup completion, watcher activation, candidate deployment, or diagnostic credential use. TASK-003 closure passed, was committed, and was non-force pushed. On immediate TASK-006 resume, a read-only preflight inspection expanded the raw container configuration into the private agent tool channel and included sensitive runtime environment values. The SCR secret-exposure gate therefore prohibited continuation. The incomplete empty attempt directory and resume pointer were removed. No active pointer, candidate selector mutation, service recreation, LazyMCP request, database restore, or NAS action occurred. Fedora remains healthy on the exact rollback digest with readiness and liveliness 200, restart 0, and OOM false
+
+[Agent Message] From: tech_lead To: product_manager
+
+TASK-003 PASS, COMMIT `c29aa24e2af283337281908ca9a7df4a786839f5`, NON-FORCE PUSHED. I immediately resumed TASK-006, but stopped pre-deployment when a raw container inspection exposed sensitive runtime environment values to the private agent tool channel. Per the mandatory secret stop gate, I did not continue, use the diagnostic credential, deploy the candidate, or send a request. Empty attempt artifacts were removed; Fedora is healthy on the exact rollback digest and NAS is untouched. Rotate affected runtime credentials through a governed incident path before any new authorization

@@ -1,5 +1,9 @@
 # TASK-2026-09-03-006 Evidence Summary
 
+## Reopen 7 Direct Probe Retry 2
+
+TASK-003 passed, commit `c29aa24e2af283337281908ca9a7df4a786839f5` was non-force pushed, and TASK-006 resumed immediately. Execution stopped before backup completion, watcher activation, candidate deployment, and credential use because a read-only raw container inspection expanded sensitive runtime environment values into the private agent tool channel. The incomplete empty attempt and resume pointer were removed. No selector mutation, service recreation, request, database restore, or NAS action occurred. Fedora remains healthy on the exact rollback digest with readiness and liveliness 200, restart 0, and OOM false. A governed credential-rotation incident is required before another authorization
+
 ## Summary
 
 REJECT candidate and PASS rollback. A fresh protected backup and isolated restore, exact identity checks, rollback unit, and one-second watchdog passed before the exact signed candidate deployed. The diagnostic request did not run because the protected Fedora client credential was a legacy API key, not the required exact-audience DCR bearer. The client harness then failed closed before sending a request, and automatic rollback restored the exact prior digest. Fedora is healthy; NAS was untouched
