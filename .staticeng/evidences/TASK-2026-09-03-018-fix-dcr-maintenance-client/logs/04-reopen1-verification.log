@@ -1,0 +1,28 @@
+TASK-018 Reopen 1 verification
+date: 2026-09-04
+
+Focused harness behavior
+- PASS: 29 maintenance harness tests; 43 including shared transport tests
+- PASS: success lifecycle and status-only evidence
+- PASS: UI-key ownership/read-back, no-delete on wrong owner, post-delete 404, and zero task-key prerequisite
+- PASS: grant-clear read-back, principal absence, exact token rejection, pre-toolset restoration, toolset-last delete, and post-delete 404
+- PASS: login, authorize, token, and exact-audience failure restoration
+- PASS: authorize and complete immediate deadline barriers plus deadline final restoration reads
+- PASS: key, grant, principal, toolset-delete, and retained-resource cleanup failures block toolset deletion and escalate
+- PASS: non-task user baseline drift blocks toolset deletion
+- PASS: unexpected DCR client-secret value is absent from the sanitized exception
+- PASS: concrete disposable Docker running-image and mounted-config inspector, config mismatch, image mismatch, and exact-resource builder
+
+Commands and static gates
+- PASS: `PYTHONPATH=tests/e2e .venv/bin/pytest tests/e2e/maintenance/test_dcr_maintenance_client.py tests/e2e/test_e2e_http.py -q`
+- PASS: `PATH=<pinned-uv-0.11.26>:/usr/bin:/bin make lint-e2e-basedpyright`, 0 errors, 0 warnings, 0 notes
+- PASS: focused Ruff check and format check
+- PASS: e2e raw-HTTP confinement
+- PASS: `git diff --check`
+- PASS: `staticeng_validate`, 0 warnings
+
+Boundaries
+- runtime source changed: no
+- production/Fedora/NAS access or mutation: no
+- retained candidate container started: no
+- commit or push: no

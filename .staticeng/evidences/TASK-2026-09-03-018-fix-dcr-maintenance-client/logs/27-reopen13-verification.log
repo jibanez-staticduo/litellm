@@ -1,0 +1,32 @@
+TASK-018 Reopen 13 source verification
+date: 2026-09-04
+
+Canonical repository identity
+- PASS: docker.io/library/redis, library/redis, redis normalize to docker.io/library/redis
+- PASS: index.docker.io and registry-1.docker.io aliases normalize only as Docker Hub
+- PASS: PostgreSQL docker.io/library, library, and bare spellings pass full dependency preflight
+- PASS: complete 64-character lowercase sha256 remains exact
+- PASS: OCI config ID, Linux OS, amd64 architecture, and exact version checks unchanged
+
+Hostile mutations
+- PASS: foreign registry rejected
+- PASS: wrong Docker Hub namespace rejected
+- PASS: wrong digest rejected
+- PASS: redisx and postgresql near names rejected
+- PASS: malformed/noncanonical digest rejected
+- PASS: every failure occurs before task resource creation and leaves zero resources
+
+Commands and static gates
+- PASS: maintenance runner/client and shared transport tests
+- Result: 143 passed, including 129 maintenance runner/client tests
+- PASS: repository-wide e2e basedpyright, 0 errors, 0 warnings, 0 notes
+- PASS: focused Ruff and format
+- PASS: e2e raw-HTTP confinement
+- PASS: git diff whitespace
+- PASS: StaticEng validation, 0 warnings
+
+Boundaries
+- concrete lifecycle: not run by explicit instruction
+- runtime product source changed: no
+- commit or push: no
+- deploy, Fedora, or production mutation: no

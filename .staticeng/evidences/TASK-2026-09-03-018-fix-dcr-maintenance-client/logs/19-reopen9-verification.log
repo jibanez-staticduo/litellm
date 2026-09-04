@@ -1,0 +1,34 @@
+TASK-018 Reopen 9 source verification
+date: 2026-09-04
+
+Immutable dependencies
+- PASS: PostgreSQL manifest sha256:075f7ba66bc9b3ce7d6b8b635208ff61cd7cf1a67d71ec530eec5d7ae0cbe571
+- PASS: PostgreSQL config sha256:75f5a96988cdf694a215073c3e9c001b706b371e2f94df3967f2efdec2787f6b and version 16.15
+- PASS: Redis manifest sha256:1db42ccef14898aa29bae778452d567534b59c107129cbc1163fb552de184d3c
+- PASS: Redis config sha256:5509c0097c6064aa8a3b1df58f1d950e67090fffa6678ae8f3f1dc2385f12deb and version 7.4.11
+- PASS: explicit pull --platform linux/amd64 before first task resource
+- PASS: exact RepoDigest/config/OS/architecture/version verification
+- PASS: every container create uses --pull never and linux/amd64
+- PASS: no mutable dependency tags, fallback, retag, image remove, or prune
+
+Failure cleanup
+- PASS: PostgreSQL or Redis missing-image pull failure creates zero task resources
+- PASS: partial network/volume/container setup failure enters automatic reverse cleanup
+- PASS: every created name and retained ID must be absent
+- PASS: complete task/owner/run label queries remain zero
+- PASS: cleanup failure combines with primary setup failure without masking unresolved state
+
+Commands and static gates
+- PASS: maintenance runner/client and shared transport tests
+- Result: 113 passed, including 99 maintenance runner/client tests
+- PASS: repository-wide e2e basedpyright, 0 errors, 0 warnings, 0 notes
+- PASS: focused Ruff and format
+- PASS: e2e raw-HTTP confinement
+- PASS: git diff whitespace
+- PASS: StaticEng validation, 0 warnings
+
+Boundaries
+- TASK-020 replacement run: not consumed; pending Tech Lead source approval
+- runtime product source changed: no
+- commit or push: no
+- deploy, Fedora, or production mutation: no

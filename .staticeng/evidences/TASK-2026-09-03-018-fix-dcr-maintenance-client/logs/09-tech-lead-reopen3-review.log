@@ -1,0 +1,31 @@
+TASK-018 Tech Lead Reopen 3 review
+date: 2026-09-04
+outcome: REJECT
+
+PASS: maintenance and shared transport tests
+result: 65 passed
+
+PASS: focused basedpyright
+result: 0 errors, 0 warnings, 0 notes
+
+PASS: Ruff check and format check
+PASS: raw HTTP confinement
+PASS: diff whitespace
+PASS: StaticEng validation
+
+PASS: per-user relation-bearing /v2/user/info association reads
+PASS: deterministic user_id ascending pagination requests and cardinality/order checks
+PASS: exact nullable server_name, canonical access groups, approval state, and upstream tool digest
+PASS: prior fail-closed cleanup, restoration, UI-key ownership, client-secret redaction, deadlines, and image/config inspector
+
+BLOCK: no supported post-create toolset collection and returned-ID read-back before grant
+BLOCK: no pre-create assertion that the candidate server/tool member exists in the exact upstream catalog
+BLOCK: no principal-scoped exact one-tool resolution before DCR/use
+BLOCK: tool metadata permits omitted server_name/alias instead of requiring the exact mapping
+BLOCK: no hostile /v2/user/info user-ID or team disagreement mutation tests
+
+runtime source changed: no
+disposable stack action: no
+Fedora action: no
+NAS action: no
+commit or push: no

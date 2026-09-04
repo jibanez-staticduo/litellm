@@ -1,0 +1,40 @@
+TASK-018 Tech Lead Reopen 6 review
+date: 2026-09-04
+outcome: REJECT
+
+PASS: maintenance, runner, and shared transport tests
+result: 98 passed
+
+PASS: focused basedpyright
+result: 0 errors, 0 warnings, 0 notes
+
+PASS: Ruff check and format check
+PASS: raw HTTP confinement
+PASS: diff whitespace
+PASS: StaticEng validation
+PASS: complete exact Defend authorization fields and mutation tests
+PASS: concrete image/config inspector wiring
+PASS: exact-name reverse cleanup and no prune commands
+
+BLOCK: Docker context/host and expected standalone daemon identity are not explicit or verified
+BLOCK: ambient default Unix-socket daemon identifies as nas
+BLOCK: bridge network lacks --internal and permits outbound connectivity
+BLOCK: resource labels are static, not unique to the run
+BLOCK: docker volume create can adopt an existing same-name volume and cleanup deletes without ownership inspection
+BLOCK: SIGINT/SIGTERM only set a flag; DcrMaintenanceClient does not observe it during the real HTTP lifecycle
+BLOCK: tests do not deliver a signal during DisposableRunner.run or the lifecycle
+
+daemon preflight:
+- docker context: default
+- endpoint: local Unix socket
+- daemon name: nas
+- exact candidate image ID matched expected retained config ID
+- postgres dependency image absent; no pull attempted
+
+exact disposable execution: not run; stopped before resource creation
+container/network/volume mutation: none
+Fedora mutation: none
+NAS mutation: none
+NAS read-only access: daemon identity and local image inspection only
+deployment action: none
+commit or push: no

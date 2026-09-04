@@ -1,0 +1,31 @@
+TASK-018 Reopen 4 verification
+date: 2026-09-04
+
+Forward transaction gates
+- PASS: candidate member must exist exactly once in complete server/tool catalog
+- PASS: candidate server and tool metadata require matching non-null server ID, name, and alias
+- PASS: missing member/metadata and mismatched identity stop before toolset creation
+- PASS: post-create stable toolset re-list proves exactly one task name and returned ID
+- PASS: supported GET returned toolset ID proves exact description and one-member server/tool membership
+- PASS: every non-task toolset and complete server/tool catalog remain equal to baseline before principal creation
+- PASS: baseline and late name collision plus returned-ID membership drift stop before principal creation
+- PASS: logged-in principal-context toolset list resolves exactly one intended tool with exact metadata before DCR registration
+- PASS: empty, extra, and wrong principal tool results stop before `/register`
+
+Hostile relation coverage
+- PASS: `/v2/user/info` user-ID disagreement from `/user/list` fails closed
+- PASS: `/v2/user/info` team disagreement from `/user/list` fails closed
+
+Commands and static gates
+- PASS: maintenance plus shared transport tests
+- Result: 76 passed, including 62 maintenance harness tests
+- PASS: repository-wide e2e basedpyright, 0 errors, 0 warnings, 0 notes
+- PASS: focused Ruff check and format check
+- PASS: e2e raw-HTTP confinement
+- PASS: git diff whitespace check
+- PASS: StaticEng validation, 0 warnings
+
+Boundaries
+- runtime source changed: no
+- commit or push: no
+- build, deploy, production, Fedora, or NAS access/mutation: no

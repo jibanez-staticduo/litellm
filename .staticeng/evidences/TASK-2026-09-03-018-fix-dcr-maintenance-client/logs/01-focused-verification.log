@@ -1,0 +1,20 @@
+TASK-018 focused verification
+date: 2026-09-04
+
+PASS: `PYTHONPATH=tests/e2e .venv/bin/pytest tests/e2e/maintenance/test_dcr_maintenance_client.py tests/e2e/test_e2e_http.py -q`
+result: 24 passed
+
+PASS: `.venv/bin/basedpyright tests/e2e/maintenance/dcr_maintenance_client.py tests/e2e/maintenance/test_dcr_maintenance_client.py`
+result: 0 errors, 0 warnings, 0 notes
+
+PASS: `PATH=<pinned-uv-0.11.26>:/usr/bin:/bin make lint-e2e-basedpyright`
+result: 202 packages checked; prisma generation already current; repository-wide tests/e2e basedpyright 0 errors, 0 warnings, 0 notes
+
+PASS: Ruff check and format check on both maintenance Python files
+PASS: `.venv/bin/python tests/code_coverage_tests/check_e2e_no_raw_requests.py`
+result: tests/e2e raw HTTP client check passed
+PASS: `git diff --check`
+PASS: `staticeng_validate`
+result: all source directories indexed; hierarchy validated; 0 warnings
+
+Host-tool note: host uv 0.10.9 cannot parse the repository dependency override metadata at `pyproject.toml:298`; retained pinned uv 0.11.26 is required and passed the target

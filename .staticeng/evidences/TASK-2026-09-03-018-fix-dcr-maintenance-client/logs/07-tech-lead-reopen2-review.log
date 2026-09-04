@@ -1,0 +1,33 @@
+TASK-018 Tech Lead Reopen 2 review
+date: 2026-09-04
+outcome: REJECT
+
+PASS: focused maintenance and shared transport tests
+result: 59 passed
+
+PASS: focused basedpyright
+result: 0 errors, 0 warnings, 0 notes
+
+PASS: Ruff check and format check
+PASS: raw HTTP confinement
+PASS: diff whitespace
+PASS: StaticEng validation
+
+PASS: fail-closed cleanup and toolset preservation
+PASS: final restoration execution on tested failures and deadlines
+PASS: UI-key ownership and absence
+PASS: client_secret value-safe refusal
+PASS: authorize and authorize-complete deadline barriers
+PASS: concrete image and mounted-config inspector
+PASS: synthetic pagination cardinality, sequence, duplicate, reorder, missing, and mutation checks
+PASS: unpaginated toolset, server, and per-server tool repeated-read stability
+PASS: per-server upstream tool count and membership digest
+
+BLOCK: real GET /user/list query does not include object_permission, so actual mcp_toolsets associations are unavailable to the projection
+BLOCK: pagination requests omit sort_by=user_id and sort_order=asc while requiring user-ID order; real endpoint defaults to created_at desc
+BLOCK: server projection omits mcp_access_groups and approval_status and collapses missing server_name to alias
+
+runtime source changed: no
+Fedora action: no
+NAS action: no
+commit or push: no

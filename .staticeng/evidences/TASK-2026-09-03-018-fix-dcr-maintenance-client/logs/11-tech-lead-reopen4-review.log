@@ -1,0 +1,34 @@
+TASK-018 Tech Lead Reopen 4 review
+date: 2026-09-04
+outcome: REJECT
+
+PASS: maintenance and shared transport tests
+result: 76 passed
+
+PASS: focused basedpyright
+result: 0 errors, 0 warnings, 0 notes
+
+PASS: Ruff check and format check
+PASS: raw HTTP confinement
+PASS: diff whitespace
+PASS: StaticEng validation
+
+PASS: catalog member existence and strict tool metadata relation
+PASS: post-create stable list and returned-ID reads
+PASS: principal-context exact one-tool resolution before DCR
+PASS: hostile /v2/user/info ID and team disagreement tests
+PASS: prior cleanup, restoration, UI-key ownership, client-secret redaction, deadlines, pagination, and image/config inspector
+
+BLOCK: catalog preflight does not pin expected server name, alias, HTTP transport, no-auth state, or active approval state
+BLOCK: state.toolset_id is assigned after post-create verification, so late collision leaves the proven task row without a DELETE
+BLOCK: post-create gate does not re-prove task user/key absence or unchanged non-task user associations
+
+direct reproduction:
+- membership drift: toolset_exists=true, delete_sent=false
+- late name collision: toolset_exists=true, delete_sent=false
+
+exact disposable execution: not run because source review failed
+runtime source changed: no
+Fedora action: no
+NAS action: no
+commit or push: no

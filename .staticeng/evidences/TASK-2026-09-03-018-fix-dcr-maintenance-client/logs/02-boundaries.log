@@ -1,0 +1,20 @@
+TASK-018 boundary proof
+date: 2026-09-04
+
+runtime source changed: no
+production request or mutation: no
+candidate container started: no
+Fedora access or mutation: no
+NAS access or mutation: no
+database or external service started: no
+secret or cookie file created: no
+CookieJar serialized: no
+stdout/stderr emitted by client: no
+commit or push: no
+
+Maintained harness scope:
+- one in-process httpx client and in-memory CookieJar
+- injected exact-image identity inspection before session creation
+- synthetic toolset and principal only
+- status-only evidence projection
+- unconditional cleanup on success, four failure phases, and deadline expiry

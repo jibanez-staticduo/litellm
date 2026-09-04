@@ -1,0 +1,43 @@
+TASK-018 Tech Lead Reopen 13 bounded review and TASK-022 execution
+date: 2026-09-04
+outcome: REJECT
+
+bounded source review:
+- canonical Docker Hub official repository aliases: PASS
+- exact complete manifest digest comparison: PASS
+- foreign registry, wrong namespace/repository, near-name, malformed digest, changed digest: REJECTED
+- exact config ID, linux/amd64, version checks: PASS
+- focused repository/dependency tests: 17 passed
+- full maintenance/runner/shared tests: 143 passed
+- StaticEng validation: PASS, zero warnings
+
+single authorized run output:
+{"cleanup_complete":false,"status":"failed"}
+
+functional result:
+- full real DCR lifecycle status: not produced
+- exact audience success: not produced
+- retry: none; TASK-022 authorization consumed
+
+automatic cleanup result:
+- retained resource: one PostgreSQL volume
+- exact name: task018-ee7eb4a065e7522c563902851a36724e-postgres
+- task label: TASK-2026-09-03-018-fix-dcr-maintenance-client
+- owner label: disposable-dcr-validation
+- run label: ee7eb4a065e7522c563902851a36724e
+
+Tech Lead exact cleanup:
+- removed only the exact label/name-proven retained volume
+- final task/owner-labelled containers: zero
+- final task/owner-labelled networks: zero
+- final task/owner-labelled volumes: zero
+- final task018 secret tmpfs paths: zero
+
+NAS production invariant:
+- exactly one Compose-labelled litellm container
+- healthy, running, restart count 0
+- container ID, image ID, config hash unchanged
+- no production stop/restart/recreate/attachment/mutation
+
+Fedora/deployment action: none
+commit or push: no

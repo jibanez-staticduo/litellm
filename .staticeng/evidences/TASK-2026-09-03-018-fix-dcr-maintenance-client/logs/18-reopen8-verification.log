@@ -1,0 +1,36 @@
+TASK-018 Reopen 8 source verification
+date: 2026-09-04
+
+Production invariant
+- PASS: mount projection uses Type, Source, Destination, and RW for bind and named-volume entries
+- PASS: no Mount.Name assumption and no content access
+- PASS: exactly one Compose-labelled production LiteLLM required
+- PASS: zero/multiple production rows reject without fallback
+
+Bounded cancellation
+- PASS: every Docker executor call receives a positive hard timeout
+- PASS: timeout is capped by remaining lifecycle or cleanup deadline
+- PASS: hung subprocess raises sanitized timeout and enters cleanup
+- PASS: independent active-lifecycle Timer sets shared cancellation Event
+- PASS: real DcrMaintenanceClient cancellation is observed between phases and supported restoration checks execute
+
+Object closure
+- PASS: every created object name and ID retained through final closure
+- PASS: post-delete name and exact ID both must return not-found
+- PASS: retained ID mutation fails before complete-label zero proof
+- PASS: complete task/owner/run label queries remain final closure gate
+
+Commands and static gates
+- PASS: maintenance runner/client and shared transport tests
+- Result: 109 passed, including 95 maintenance runner/client tests
+- PASS: repository-wide e2e basedpyright, 0 errors, 0 warnings, 0 notes
+- PASS: focused Ruff and format
+- PASS: e2e raw-HTTP confinement
+- PASS: git diff whitespace
+- PASS: StaticEng validation, 0 warnings
+
+Boundaries
+- authorized concrete run: pending Tech Lead source approval/execution
+- runtime product source changed: no
+- commit or push: no
+- deploy, Fedora, or production mutation: no

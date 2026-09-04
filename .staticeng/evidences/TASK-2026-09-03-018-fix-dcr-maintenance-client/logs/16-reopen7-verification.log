@@ -1,0 +1,41 @@
+TASK-018 Reopen 7 source verification
+date: 2026-09-04
+
+TASK-019 daemon and ownership
+- PASS: context default, endpoint unix:///var/run/docker.sock, daemon nas, ID 8d5cc9c3-ebfb-43e7-b6ff-bb2112a49b4f required before creation
+- PASS: every daemon operation explicitly uses --host unix:///var/run/docker.sock
+- PASS: ambient DOCKER_HOST/DOCKER_CONTEXT prohibited
+- PASS: 128-bit random run ID and exact task/owner/run labels on every object
+- PASS: pre-create name collision rejection
+- PASS: exact name/object-ID/all-label ownership inspection before every delete
+- PASS: unowned object retained; no unowned delete, prune, bulk cleanup, or image removal
+
+Topology and cancellation
+- PASS: network created with --internal
+- PASS: all disposable containers require only current-run network
+- PASS: only candidate has a Docker-assigned 127.0.0.1 port
+- PASS: no production mounts/networks/config/DB/socket attachment
+- PASS: shared Event reaches active DCR lifecycle on SIGINT/SIGTERM/deadline
+- PASS: runner wait/create phases stop forward work on cancellation
+- PASS: cleanup remains independently enabled and bounded after cancellation
+
+Production preservation and closure
+- PASS: allowlisted production container ID/image/running/config-digest/mount/network/port/restart projection captured before and after
+- PASS: invariant drift rejects after cleanup without repair
+- PASS: every current-run object ID removed or unresolved ownership escalated
+- PASS: zero complete task/owner/run label matches for containers/networks/volumes
+
+Commands and static gates
+- PASS: maintenance runner/client and shared transport tests
+- Result: 102 passed, including 88 maintenance runner/client tests
+- PASS: repository-wide e2e basedpyright, 0 errors, 0 warnings, 0 notes
+- PASS: focused Ruff and format
+- PASS: e2e raw-HTTP confinement
+- PASS: git diff whitespace
+- PASS: StaticEng validation, 0 warnings
+
+Boundaries
+- concrete authorized run: pending Tech Lead source approval/execution
+- runtime product source changed: no
+- commit or push: no
+- deploy, Fedora, or production mutation: no

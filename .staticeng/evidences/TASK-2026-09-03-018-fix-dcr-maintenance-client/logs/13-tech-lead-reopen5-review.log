@@ -1,0 +1,34 @@
+TASK-018 Tech Lead Reopen 5 review
+date: 2026-09-04
+outcome: REJECT
+
+PASS: maintenance and shared transport tests
+result: 88 passed
+
+PASS: focused basedpyright
+result: 0 errors, 0 warnings, 0 notes
+
+PASS: Ruff check and format check
+PASS: raw HTTP confinement
+PASS: diff whitespace
+PASS: StaticEng validation
+
+PASS: immediate returned-ID arming
+PASS: supported returned-ID ownership classification before delete
+PASS: late collision preserved while proven task row is deleted
+PASS: canonical approved one-member digest
+PASS: pre-principal user/key/association/toolset/server recapture
+PASS: direct leak and mutation tests
+PASS: prior cleanup, restoration, UI-key ownership, redaction, deadlines, pagination, principal one-tool resolution, and concrete inspector unit boundaries
+
+BLOCK: exact approved server identity omits mcp_access_groups, allow_all_keys, available_on_public_internet, and disallowed_tools checks/mutations
+BLOCK: no maintained executable disposable topology/runner starts the candidate, synthetic upstream, PostgreSQL, and Redis
+BLOCK: disposable config cannot pin the required UUID/approval state by itself
+BLOCK: concrete inspector tests stub Docker commands; lifecycle still runs only against SyntheticStack
+
+exact disposable execution: not run; fail-closed before mutation because executable topology and exact expected runtime identity inputs are absent
+runtime source changed: no
+Fedora action: no
+NAS action: no
+deployment action: no
+commit or push: no

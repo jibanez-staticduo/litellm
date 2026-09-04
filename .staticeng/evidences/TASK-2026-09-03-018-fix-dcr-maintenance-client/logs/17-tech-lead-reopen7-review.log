@@ -1,0 +1,34 @@
+TASK-018 Tech Lead Reopen 7 review
+date: 2026-09-04
+outcome: REJECT
+
+PASS: maintenance, runner, and shared transport tests
+result: 102 passed
+PASS: focused basedpyright, 0 errors, 0 warnings, 0 notes
+PASS: Ruff, format, raw HTTP confinement, diff whitespace, StaticEng validation
+PASS: explicit daemon identity and ambient rejection
+PASS: unique labels, collision preflight, ownership-before-delete
+PASS: internal network, loopback-only candidate, synthetic reviewed attachments, no socket mount
+PASS: full exact Defend authorization and prior DCR safeguards
+
+resume safety preflight:
+- task/owner-labelled containers: zero
+- task/owner-labelled networks: zero
+- task/owner-labelled volumes: zero
+- task018-name containers: zero
+- production Compose-labelled LiteLLM rows: exactly one, healthy
+- daemon context/socket/name/immutable ID: exact match
+- retained candidate image ID: exact match
+
+BLOCK: production mount template uses .Name and errors on actual bind mounts
+BLOCK: subprocess Docker commands have no timeout, so cleanup is not bounded
+BLOCK: no active deadline worker sets cancellation during lifecycle
+BLOCK: signal test injects fake lifecycle rather than real DcrMaintenanceClient cancellation
+BLOCK: cleanup clears retained resource IDs without proving every object ID absent
+BLOCK: production discovery falls back to hard-coded name on zero/multiple labelled rows
+
+authorized disposable execution: not consumed; stopped before pull/resource creation
+container/network/volume mutation: none
+NAS production mutation: none
+Fedora/deployment action: none
+commit or push: no

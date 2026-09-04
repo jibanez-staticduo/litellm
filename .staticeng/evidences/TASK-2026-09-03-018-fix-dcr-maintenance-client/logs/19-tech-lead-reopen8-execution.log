@@ -1,0 +1,37 @@
+TASK-018 Tech Lead Reopen 8 source review and authorized execution
+date: 2026-09-04
+outcome: REJECT
+
+source/static verification:
+- maintenance, runner, shared transport tests: 109 passed
+- basedpyright: 0 errors, 0 warnings, 0 notes
+- Ruff, format, raw HTTP confinement, diff whitespace: PASS
+- StaticEng validation: PASS, 0 warnings
+- real bind/volume projection, exact-one production discovery, hard Docker timeouts, active deadline timer, real-client cancellation test, retained name/ID absence, labels, ownership, topology, complete Defend identity, baselines, DCR safeguards: PASS
+
+authorized run output:
+{"cleanup_complete":false,"status":"failed"}
+
+failure class:
+- concrete HTTP lifecycle not reached
+- postgres:16-alpine absent on authorized daemon
+- runner has no authorized image pull or immutable dependency identity preflight
+- exact current-run PostgreSQL volume remained after automatic cleanup
+
+exact manual closure:
+- retained volume name matched current 128-bit namespace
+- task label matched TASK-2026-09-03-018-fix-dcr-maintenance-client
+- owner label matched disposable-dcr-validation
+- run label matched current run ID
+- no current-run container or network remained
+- removed only the exact proven task-owned volume
+- final complete task/owner label queries: zero containers, networks, volumes
+
+NAS production invariant after closure:
+- exactly one Compose-labelled litellm container
+- healthy, running, restart count 0
+- container ID, image ID, config hash unchanged from pre-run read-only projection
+- production was not stopped, restarted, recreated, attached, or mutated
+
+Fedora/deployment action: none
+commit or push: no

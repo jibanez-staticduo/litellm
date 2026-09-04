@@ -1,0 +1,34 @@
+TASK-018 Reopen 11 source verification
+date: 2026-09-04
+
+Atomic secret creation
+- PASS: umask 077 enforced and prior umask restored
+- PASS: directory created directly mode 0700
+- PASS: files created with O_WRONLY|O_CREAT|O_EXCL|O_CLOEXEC and final mode 0400
+- PASS: no Path.write_text/open/chmod hardening window
+- PASS: complete write loop, fsync, close
+- PASS: mkdir/open/write/fsync/close failure rollback closes descriptors and removes partial paths/directory
+- PASS: hostile umask 000 still yields exact 0700/0400
+- PASS: injected mid-write failure leaves zero files/directories/descriptors
+
+Candidate wrapper contract
+- PASS: exact postgres_password, master_key, salt_key paths and order
+- PASS: DATABASE_URL constructed only inside candidate runtime
+- PASS: master/salt environment values set only inside candidate runtime
+- PASS: final execvp file and argv exact and secret-free
+- PASS: stdout/stderr empty
+
+Commands and static gates
+- PASS: maintenance runner/client and shared transport tests
+- Result: 121 passed, including 107 maintenance runner/client tests
+- PASS: repository-wide e2e basedpyright, 0 errors, 0 warnings, 0 notes
+- PASS: focused Ruff and format
+- PASS: e2e raw-HTTP confinement
+- PASS: git diff whitespace
+- PASS: StaticEng validation, 0 warnings
+
+Boundaries
+- TASK-020 replacement run: not consumed; pending Tech Lead source approval
+- runtime product source changed: no
+- commit or push: no
+- deploy, Fedora, or production mutation: no

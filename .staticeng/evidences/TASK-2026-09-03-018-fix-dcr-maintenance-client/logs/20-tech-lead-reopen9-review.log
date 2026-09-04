@@ -1,0 +1,28 @@
+TASK-018 Tech Lead Reopen 9 review
+date: 2026-09-04
+outcome: REJECT
+
+PASS: maintenance, runner, and shared transport tests
+result: 113 passed
+PASS: focused basedpyright, 0 errors, 0 warnings, 0 notes
+PASS: Ruff, format, raw HTTP confinement, diff whitespace, StaticEng validation
+PASS: exact PostgreSQL/Redis manifest refs, config IDs, linux/amd64, and version checks
+PASS: dependency pulls precede task resources
+PASS: all container creates use --pull never
+PASS: no mutable tags, fallback, retag, image remove, or prune
+PASS: ordinary create-return failure automatic cleanup tests
+PASS: earlier daemon/topology/ownership/server-baseline/DCR safeguards
+
+BLOCK: generated POSTGRES_PASSWORD, LITELLM_MASTER_KEY, LITELLM_SALT_KEY, and DATABASE_URL enter runner and Docker subprocess environment
+BLOCK: resource is appended to _owned/_created only after ownership verification
+BLOCK: create success plus inspect failure/timeout/wrong labels can leave an untracked resource
+BLOCK: no tests cover create-success/ownership-verification failure and retained cleanup semantics
+
+preflight:
+- task/owner-labelled containers, networks, volumes: zero
+- production Compose-labelled LiteLLM: exactly one, healthy, unchanged identity/config/restart count
+
+TASK-020 replacement execution: not consumed; stopped before pulls/resource creation
+Docker image pull: none
+NAS production/Fedora/deployment mutation: none
+commit or push: no

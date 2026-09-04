@@ -1,0 +1,35 @@
+TASK-018 Reopen 2 verification
+date: 2026-09-04
+
+Baseline and completeness coverage
+- PASS: canonical non-task user projections include sorted teams, key count, and actual sorted unique mcp_toolsets values
+- PASS: safe MCP server projection includes ID, stable name/alias, URL, transport, auth type, access/public flags, allowed/disallowed tools
+- PASS: each server binds its complete admin upstream tool response to server ID/name and stores exact tool count plus canonical SHA-256 membership digest
+- PASS: paginated users enforce page sequence, page size, total, total_pages, assembled cardinality, unique IDs, and canonical cross-page order
+- PASS: unpaginated toolset/server/per-server-tool collections enforce unique canonical rows and repeated cardinality/digest stability
+
+Mutation coverage
+- PASS: true 102-user/two-page canonical assembly
+- PASS: missing boundary row detected
+- PASS: duplicate boundary row detected
+- PASS: reordered boundary rows detected
+- PASS: changed boundary association detected during restoration
+- PASS: non-task user-to-toolset association drift detected
+- PASS: MCP server safe-field drift detected
+- PASS: upstream tool membership drift detected
+- PASS: unpaginated toolset/server/tool duplicate, reorder, identity mismatch, and unstable repeated-read mutations detected
+- PASS: every restoration drift blocks toolset deletion
+
+Commands and static gates
+- PASS: `PYTHONPATH=tests/e2e .venv/bin/pytest tests/e2e/maintenance/test_dcr_maintenance_client.py tests/e2e/test_e2e_http.py -q`
+- Result: 59 passed, including 45 maintenance harness tests
+- PASS: `PATH=<pinned-uv-0.11.26>:/usr/bin:/bin make lint-e2e-basedpyright`, 0 errors, 0 warnings, 0 notes
+- PASS: focused Ruff check and format check
+- PASS: e2e raw-HTTP confinement
+- PASS: `git diff --check`
+- PASS: `staticeng_validate`, 0 warnings
+
+Boundaries
+- runtime source changed: no
+- commit or push: no
+- build, deploy, production, Fedora, or NAS access/mutation: no

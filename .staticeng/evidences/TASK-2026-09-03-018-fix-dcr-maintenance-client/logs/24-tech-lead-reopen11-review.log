@@ -1,0 +1,29 @@
+TASK-018 Tech Lead Reopen 11 review
+date: 2026-09-04
+outcome: REJECT
+
+PASS: maintenance, runner, and shared transport tests
+result: 121 passed
+PASS: focused basedpyright, 0 errors, 0 warnings, 0 notes
+PASS: Ruff, format, raw HTTP confinement, diff whitespace, StaticEng validation
+PASS: umask 077 save/restore and hostile-umask owner-only result
+PASS: O_WRONLY|O_CREAT|O_EXCL|O_CLOEXEC mode-0400 creation
+PASS: looping write, fsync, ordinary close implementation
+PASS: injected mid-write rollback and descriptor closure
+PASS: direct wrapper exact reads, internal environment, exact exec, no output
+PASS: all prior immutable dependency, topology, ownership, cancellation, production, DCR, and restoration safeguards
+
+BLOCK: no mkdir failure test
+BLOCK: no open failure test
+BLOCK: no fsync failure test
+BLOCK: no close failure test before or after underlying close
+BLOCK: repeated close failure is swallowed during rollback and can leave an unresolved descriptor
+
+preflight:
+- task/owner-labelled containers, networks, volumes: zero
+- production Compose-labelled LiteLLM: exactly one, healthy, unchanged identity/config/restart count
+
+TASK-020 replacement execution: not consumed; stopped before pulls/resource creation
+Docker image pull: none
+NAS production/Fedora/deployment mutation: none
+commit or push: no

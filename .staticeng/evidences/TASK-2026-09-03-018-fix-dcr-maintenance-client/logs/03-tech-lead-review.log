@@ -1,0 +1,26 @@
+TASK-018 Tech Lead review
+date: 2026-09-04
+outcome: REJECT
+
+PASS: focused harness and shared transport tests
+result: 24 passed
+
+PASS: focused basedpyright
+result: 0 errors, 0 warnings, 0 notes
+
+PASS: Ruff check and format check
+PASS: raw HTTP confinement
+PASS: diff whitespace
+PASS: StaticEng validation
+
+BLOCK: cleanup attempts toolset deletion after grant or principal cleanup failure
+BLOCK: failure exits do not execute supported-API baseline restoration proof
+BLOCK: UI-key deletion lacks task ownership and post-delete absence proof
+BLOCK: unexpected DCR client-secret refusal can expose the returned value in a validation exception
+BLOCK: authorize and authorize-complete forward actions omit deadline checks
+BLOCK: exact-image refusal has no concrete disposable image/config integration test
+
+runtime source changed: no
+Fedora action: no
+NAS action: no
+commit or push: no

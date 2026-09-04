@@ -1,0 +1,38 @@
+TASK-018 Tech Lead Reopen 12 source review and TASK-020 replacement preflight
+date: 2026-09-04
+outcome: REJECT
+
+source/static verification:
+- maintenance, runner, shared transport tests: 128 passed
+- basedpyright: 0 errors, 0 warnings, 0 notes
+- Ruff, format, raw HTTP confinement, diff whitespace: PASS
+- StaticEng validation: PASS, 0 warnings
+- explicit fd ownership, fstat/EBADF settlement, bounded retry, unresolved blocking: PASS
+- mkdir/open/write/fsync/close-before/close-after/prior-success matrix: PASS
+- umask/path/wrapper/immutable dependency and prior DCR/runner safeguards: PASS
+
+replacement command output:
+{"cleanup_complete":false,"status":"failed"}
+
+failure boundary:
+- exact dependency preparation failed at Redis acquisition/preflight
+- concrete task resources created: zero
+- candidate and HTTP lifecycle started: no
+- retry attempted: no
+
+allowed image cache state:
+- exact approved PostgreSQL manifest/config/linux-amd64 identity present
+- exact approved Redis reference absent
+- no image removal, retag, prune, or fallback
+
+closure:
+- task/owner-labelled containers: zero
+- task/owner-labelled networks: zero
+- task/owner-labelled volumes: zero
+- task018 secret tmpfs paths: zero
+- production Compose-labelled LiteLLM: exactly one, healthy, running, restart count 0
+- production identity/config unchanged from preflight
+
+TASK-020 first-resource consumption boundary crossed: no
+NAS production/Fedora/deployment mutation: none
+commit or push: no

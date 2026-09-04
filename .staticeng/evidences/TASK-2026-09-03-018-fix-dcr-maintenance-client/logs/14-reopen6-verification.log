@@ -1,0 +1,38 @@
+TASK-018 Reopen 6 source verification
+date: 2026-09-04
+
+Exact identity
+- PASS: mcp_access_groups exactly [defend_memory]
+- PASS: allow_all_keys=false
+- PASS: available_on_public_internet=false
+- PASS: disallowed_tools=[]
+- PASS: independent mutations for access groups, allow-all, public flag, and disallowed tools stop before create
+- PASS: prior UUID/name/alias/HTTP/no-auth/active/empty-allowed-tools/find/digest pins remain covered
+
+Disposable runner topology
+- PASS: unique random task prefix and static task label on every container/network/volume
+- PASS: exactly four containers: PostgreSQL, Redis, synthetic MCP, exact candidate
+- PASS: only candidate publishes a host port and only as Docker-assigned 127.0.0.1::4000
+- PASS: synthetic upstream exposes deterministic find only
+- PASS: exact candidate ref/config ID constants and concrete running-image/mounted-config inspector wiring
+- PASS: full real HttpxMaintenanceSession lifecycle invocation through exact_candidate_from_disposable
+- PASS: generated synthetic in-memory credentials; Docker arguments contain environment names, not values
+- PASS: only maintained config/script read-only mounts; no production mounts, credentials, network, or Docker socket
+- PASS: reverse exact container cleanup then exact volume/network cleanup; no prune/broad removal
+- PASS: setup failure, interrupt, deadline-ready checks, and cleanup-action failure behavior tested
+- PASS: success/failure stdout schemas are status-only and secret-free
+
+Commands and static gates
+- PASS: maintenance harness/runner and shared transport tests
+- Result: 98 passed, including 84 maintenance/runner tests
+- PASS: repository-wide e2e basedpyright, 0 errors, 0 warnings, 0 notes
+- PASS: focused Ruff and format
+- PASS: e2e raw-HTTP confinement
+- PASS: git diff whitespace
+- PASS: StaticEng validation, 0 warnings
+
+Boundaries
+- concrete disposable execution: ready for Tech Lead after source review
+- runtime source changed: no
+- commit or push: no
+- build, deploy, production, Fedora, or NAS access/mutation: no

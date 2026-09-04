@@ -1,0 +1,30 @@
+TASK-018 Reopen 3 verification
+date: 2026-09-04
+
+Supported API shape
+- PASS: `/user/list` response model has no object_permission relation
+- PASS: every assembled user is resolved through `/v2/user/info`, which includes object_permission
+- PASS: a false object_permission value injected into `/user/list` is ignored
+- PASS: user list and relation-bearing info must agree on user ID and teams
+- PASS: every filtered and unfiltered `/user/list` request carries sort_by=user_id and sort_order=asc
+
+Server projection
+- PASS: exact nullable server_name is preserved without alias fallback
+- PASS: null-to-alias-value mutation is detected
+- PASS: canonical sorted unique mcp_access_groups is captured and drift detected
+- PASS: exact nullable approval_status is captured and drift detected
+- PASS: prior safe server config and per-server upstream tool cardinality/digest remain covered
+
+Commands and static gates
+- PASS: maintenance plus shared transport tests
+- Result: 65 passed, including 51 maintenance harness tests
+- PASS: repository-wide e2e basedpyright, 0 errors, 0 warnings, 0 notes
+- PASS: focused Ruff check and format check
+- PASS: e2e raw-HTTP confinement
+- PASS: git diff whitespace check
+- PASS: StaticEng validation, 0 warnings
+
+Boundaries
+- runtime source changed: no
+- commit or push: no
+- build, deploy, production, Fedora, or NAS access/mutation: no

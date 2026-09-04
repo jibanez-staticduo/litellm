@@ -1,0 +1,31 @@
+TASK-018 Tech Lead Reopen 1 review
+date: 2026-09-04
+outcome: REJECT
+
+PASS: focused maintenance and shared transport tests
+result: 43 passed
+
+PASS: focused basedpyright
+result: 0 errors, 0 warnings, 0 notes
+
+PASS: Ruff check and format check
+PASS: raw HTTP confinement
+PASS: diff whitespace
+PASS: StaticEng validation
+
+PASS: fail-closed cleanup ordering preserves toolset after key, grant, or principal cleanup failure
+PASS: post-creation functional/deadline exits execute final restoration checks
+PASS: UI-key ownership read-back and post-delete absence checks
+PASS: unexpected client_secret refusal does not render the value
+PASS: immediate authorize and authorize-complete deadline barriers
+PASS: concrete running image and mounted config inspector
+
+BLOCK: baseline user projection omits actual non-task user-to-toolset association values
+BLOCK: MCP server projection omits server name, upstream tool membership/digest, and other governed safe fields
+BLOCK: no multi-page test proves complete user pagination or detects missing, duplicate, or changed page rows
+BLOCK: unpaginated toolset/server collection calls have no explicit completeness proof
+
+runtime source changed: no
+Fedora action: no
+NAS action: no
+commit or push: no

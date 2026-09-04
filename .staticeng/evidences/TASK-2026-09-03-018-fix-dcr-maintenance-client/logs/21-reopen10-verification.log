@@ -1,0 +1,34 @@
+TASK-018 Reopen 10 source verification
+date: 2026-09-04
+
+Secret confinement
+- PASS: generic runner/Docker subprocess environment contains PATH only
+- PASS: hard guard rejects POSTGRES_PASSWORD, DATABASE_URL, LITELLM_MASTER_KEY, LITELLM_SALT_KEY
+- PASS: unique /dev/shm secret directory mode 0700; secret files mode 0400
+- PASS: PostgreSQL password file mounted read-only only to PostgreSQL
+- PASS: candidate secret directory and reviewed wrapper mounted read-only only to candidate
+- PASS: DATABASE_URL constructed inside candidate wrapper, never runner/subprocess env or arguments
+- PASS: credentials absent from args/output/evidence/process list and tmpfs/in-memory artifacts destroyed
+
+Provisional ownership
+- PASS: create response name/ID retained before first ownership inspect
+- PASS: inspection timeout and nonzero failure receive bounded re-inspection
+- PASS: ownership-proven provisional object enters automatic reverse cleanup
+- PASS: wrong name, wrong ID, and wrong labels never authorize deletion
+- PASS: exact unresolved provisional object remains represented and closure escalates
+- PASS: tests cover create-success inspect timeout/failure/wrong-name/wrong-ID/wrong-label outcomes
+
+Commands and static gates
+- PASS: maintenance runner/client and shared transport tests
+- Result: 118 passed, including 104 maintenance runner/client tests
+- PASS: repository-wide e2e basedpyright, 0 errors, 0 warnings, 0 notes
+- PASS: focused Ruff and format
+- PASS: e2e raw-HTTP confinement
+- PASS: git diff whitespace
+- PASS: StaticEng validation, 0 warnings
+
+Boundaries
+- TASK-020 replacement run: not consumed; pending Tech Lead source approval
+- runtime product source changed: no
+- commit or push: no
+- deploy, Fedora, or production mutation: no

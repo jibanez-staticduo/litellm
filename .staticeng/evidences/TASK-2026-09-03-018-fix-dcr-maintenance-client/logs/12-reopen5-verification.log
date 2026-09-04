@@ -1,0 +1,36 @@
+TASK-018 Reopen 5 verification
+date: 2026-09-04
+
+Exact identity
+- PASS: candidate member pinned to 54a0ad17239e9f184882cf47e3ac277c/find and canonical SHA-256 e08d6ac35d8ceea4eaaaaccce855a9df910684f3f54cff9cce26797dd33ae6cd
+- PASS: catalog requires server_name=defend_memory, alias=defend_memory, transport=http, auth_type=none, approval_status=active, and allowed_tools=[]
+- PASS: server ID/name/alias/transport/auth/approval/allowlist mutations stop before create
+
+Ownership and cleanup
+- PASS: returned toolset ID armed immediately after successful POST
+- PASS: ownership requires exact returned ID/name/description/member in stable list after collision-free preflight
+- PASS: returned-ID GET and full post-create checks occur after ownership arming
+- PASS: direct membership drift deletes proven task row before principal
+- PASS: late name collision deletes proven task row, preserves collision row, and never sends DELETE for collision ID
+- PASS: cleanup never deletes an unproven returned-ID row
+
+Pre-principal baseline
+- PASS: task user absence re-proven
+- PASS: task key absence re-proven
+- PASS: every non-task user toolset association and canonical user digest re-proven
+- PASS: non-task toolsets and complete server/tool catalog re-proven
+- PASS: identity/user/key/association mutations block principal creation or preserve unresolved state fail-closed
+
+Commands and static gates
+- PASS: maintenance plus shared transport tests
+- Result: 88 passed, including 74 maintenance harness tests
+- PASS: repository-wide e2e basedpyright, 0 errors, 0 warnings, 0 notes
+- PASS: focused Ruff and format
+- PASS: e2e raw-HTTP confinement
+- PASS: git diff whitespace
+- PASS: StaticEng validation, 0 warnings
+
+Boundaries
+- runtime source changed: no
+- commit or push: no
+- build, deploy, production, Fedora, or NAS access/mutation: no

@@ -1,0 +1,37 @@
+TASK-018 Reopen 12 source verification
+date: 2026-09-04
+
+Descriptor settlement
+- PASS: descriptor tracked immediately after successful O_EXCL open
+- PASS: bounded close retry
+- PASS: independent fstat/EBADF proof of closed state
+- PASS: close-after-underlying-close classified closed while preserving operation error
+- PASS: close-before-underlying-close retries and settles
+- PASS: repeated close failure retains exact unresolved descriptor and fails closed
+- PASS: unresolved descriptor set blocks subsequent secret creation
+- PASS: no unresolved descriptor is suppressed or discarded
+
+Deterministic fault matrix
+- PASS: mkdir failure restores umask and leaves no directory
+- PASS: open failure restores umask and removes directory
+- PASS: mid-write failure closes descriptor and removes partial path/directory
+- PASS: fsync failure closes descriptor and removes partial path/directory
+- PASS: close-before-OS-close failure retries, proves closure, restores umask, removes paths
+- PASS: close-after-OS-close failure proves EBADF closure, restores umask, removes paths
+- PASS: close failure after prior file success removes both prior and current paths and directory
+- PASS: repeated unresolvable close restores umask and removes paths while retaining fd ownership state
+
+Commands and static gates
+- PASS: maintenance runner/client and shared transport tests
+- Result: 128 passed, including 114 maintenance runner/client tests
+- PASS: repository-wide e2e basedpyright, 0 errors, 0 warnings, 0 notes
+- PASS: focused Ruff and format
+- PASS: e2e raw-HTTP confinement
+- PASS: git diff whitespace
+- PASS: StaticEng validation, 0 warnings
+
+Boundaries
+- TASK-020 replacement run: not consumed; pending Tech Lead source approval
+- runtime product source changed: no
+- commit or push: no
+- deploy, Fedora, or production mutation: no

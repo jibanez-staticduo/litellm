@@ -1,0 +1,29 @@
+TASK-018 Tech Lead Reopen 10 review
+date: 2026-09-04
+outcome: REJECT
+
+PASS: maintenance, runner, and shared transport tests
+result: 118 passed
+PASS: focused basedpyright, 0 errors, 0 warnings, 0 notes
+PASS: Ruff, format, raw HTTP confinement, diff whitespace, StaticEng validation
+PASS: PATH-only guarded subprocess environment
+PASS: exact read-only secret/config/wrapper mounts and internal candidate DB/key construction
+PASS: secret values absent from command arguments/evidence
+PASS: immediate provisional name/ID tracking before ownership inspect
+PASS: bounded transient reinspection and proven-owned cleanup
+PASS: wrong name/ID/labels preserve and escalate without delete
+PASS: immutable dependency and all prior runner/DCR safeguards
+
+BLOCK: Path.write_text creates each secret with default mode before chmod 0400
+BLOCK: runner does not enforce umask 077 during secret creation
+BLOCK: no hostile-umask or mid-write/chmod partial rollback tests
+BLOCK: no direct candidate wrapper contract test
+
+preflight:
+- task/owner-labelled containers, networks, volumes: zero
+- production Compose-labelled LiteLLM: exactly one, healthy, unchanged identity/config/restart count
+
+TASK-020 replacement execution: not consumed; stopped before pulls/resource creation
+Docker image pull: none
+NAS production/Fedora/deployment mutation: none
+commit or push: no
