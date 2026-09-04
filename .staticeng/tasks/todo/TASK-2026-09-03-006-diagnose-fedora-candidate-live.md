@@ -3,12 +3,12 @@ id: TASK-2026-09-03-006-diagnose-fedora-candidate-live
 complexity: complex
 track: implementation
 slice: qa
-status: blocked
+status: active
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-012-release-upstream-main-fedora
 assigned_to: tech_lead
 handoff_from: product_manager
-reopened_count: 5
+reopened_count: 6
 ---
 
 # Task: Diagnose Fedora candidate live
@@ -98,6 +98,10 @@ TASK-013 authorizes the exact supported sequence required by the live API: arm c
 ### Reopen 5 - Temporary one-tool Defend toolset
 
 TASK-014 and TASK-015 authorize one task-owned temporary toolset through supported APIs containing exactly `{"server_id":"54a0ad17239e9f184882cf47e3ac277c","tool_name":"find"}` with canonical SHA-256 `e08d6ac35d8ceea4eaaaaccce855a9df910684f3f54cff9cce26797dd33ae6cd`. Reject name collisions, extra members, updates, reuse, ambiguity, or broader grants. Create and exact-read-back the toolset before granting the temporary principal. On every exit, destroy tokens/sessions, remove the principal grant, delete the principal and related objects, then delete the toolset by returned ID and prove all baseline counts/digests restored. All prior backup, watchdog, DCR, one-call, memory-counter, rollback, deadline, secret and NAS boundaries remain mandatory.
+
+### Reopen 6 - Correct email login and explicit key cleanup
+
+TASK-016/017 prove the supported lifecycle: create unique `user_email` plus opaque `user_id`, set password by returned ID, and submit the email in `/login`'s `username` field. Preserve ID for management/cleanup only. After use, explicitly delete the separately addressable UI key before deleting the principal, destroy all client-held cookie/token/code/verifier/password artifacts immediately, and never retain/poll/reuse the credential in maintenance. Verify storage absence and baseline restoration; the observed 60-second cache expiry is fallback evidence only, not permission to delay cleanup. All prior toolset, watchdog, one-call, rollback and deadline constraints remain mandatory.
 
 ### Reopen 2 Result
 
