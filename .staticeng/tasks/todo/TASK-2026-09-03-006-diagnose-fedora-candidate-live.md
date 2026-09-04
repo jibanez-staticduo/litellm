@@ -3,7 +3,7 @@ id: TASK-2026-09-03-006-diagnose-fedora-candidate-live
 complexity: complex
 track: implementation
 slice: qa
-status: active
+status: blocked
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-012-release-upstream-main-fedora
 assigned_to: tech_lead
@@ -192,3 +192,11 @@ Every Docker read in preflight, watchdog, polling, and final verification must u
 [Agent Message] From: business_analyst To: product_manager
 
 TASK-006 REOPEN 8 AUTHORIZED FOR ONE FRESH DIRECT PROBE. The prior private local tool output was not retained or externally disclosed, so credential rotation is deferred to the final security recommendations and does not block functionality. Before execution, make every Docker read use only the SCR's fixed allowlisted identity/health projections. Do not run broad inspection or read runtime environment/private configuration values. Keep every prior exact-identity, backup, watchdog, OOM, one-request, 75-second, no-retry, full-gate, soak, deadline, rollback, and NAS control. Actual persistence/disclosure or any retained safety trigger stops or rolls back immediately
+
+### Reopen 8 Result
+
+REJECTED WITH EXACT ROLLBACK. Fresh backup/isolated restore, rollback, exact signed identity, reviewed watcher generation, `bash -n`, and approved isolated 31-sample proof passed. The exact candidate deployment was attempted, but the surrounding one-off deployment controller had invalid compact fallback syntax and failed before the real watchdog armed. Exact rollback ran immediately. The administrator credential was not consumed and zero LazyMCP requests were sent. Fedora is healthy on exact rollback; cleanup is complete; NAS is untouched
+
+[Agent Message] From: tech_lead To: product_manager
+
+TASK-006 REOPEN 8 REJECTED; EXACT ROLLBACK PASS. Safety/provenance and the isolated reviewed watcher proof passed. Candidate deployment began, but the unreviewed surrounding deployment controller failed shell parsing before the real watcher armed. I immediately ran exact rollback. No administrator credential was consumed and zero diagnostic requests were sent. Fedora is healthy on exact rollback, disposable state is zero, and NAS is untouched. Validate the complete controller file with `bash -n` and an isolated startup-failure test before another authorization

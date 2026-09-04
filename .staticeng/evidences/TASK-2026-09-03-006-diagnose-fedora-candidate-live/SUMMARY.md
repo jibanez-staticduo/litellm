@@ -113,3 +113,9 @@ Reopen 7 passed fresh backup/isolated restore, rollback, exact candidate identit
 All disposable resources and rendered temporary configuration were removed, the active pointer was cleared, Fedora remained healthy on exact rollback, and NAS was untouched. See `logs/07-reopen7-watchdog-syntax-blocker.md`
 
 The subsequently authorized retry used the reviewed TASK-002 generator and passed `bash -n`, fresh backup/restore, rollback, identity, and provenance. Its 31-sample proof ran with the production rollback action, which completed and removed the active pointer before deployment. The operation failed closed with zero credential use and zero requests; Fedora stayed healthy on exact rollback. This proof-mode contract mismatch is appended to the same Reopen 7 evidence
+
+## Reopen 8 Outcome
+
+Reopen 8 passed fresh backup/restore, rollback, exact provenance, the reviewed watcher scripts, and the approved isolated 31-sample proof. Candidate deployment was attempted, but the surrounding deployment controller contained another invalid compact fallback branch and failed parsing before the real watchdog could arm. Exact rollback completed immediately
+
+The administrator credential was never consumed and no LazyMCP request was sent. Fedora is healthy on exact rollback with no disposable resources or active pointer; NAS was untouched. See `logs/08-reopen8-controller-syntax-rollback.md`
