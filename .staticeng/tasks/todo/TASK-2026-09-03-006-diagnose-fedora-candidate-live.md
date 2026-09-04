@@ -3,7 +3,7 @@ id: TASK-2026-09-03-006-diagnose-fedora-candidate-live
 complexity: complex
 track: implementation
 slice: qa
-status: active
+status: blocked
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-012-release-upstream-main-fedora
 assigned_to: tech_lead
@@ -86,3 +86,11 @@ TASK-009 resolves the circular prerequisite: the rollback image cannot mint a ca
 ### Reopen 2 - Browserless authorized-principal bootstrap
 
 The user confirms no Agent Jake/browser automation is available and explicitly authorizes the Fedora maintenance investigation. TASK-010 proves the candidate supports a browserless normal `/login` session followed by public S256 PKCE DCR and deliberate consent. PMA authorizes use of one existing username/password Fedora UI principal only if it is already configured and currently authorized for `defend_memory`; secrets must be consumed from owner-only local files or inherited descriptors without printing, copying to evidence, or entering command arguments. PMA explicitly approves the single exact-resource `/authorize/complete` consent POST. Keep the watchdog armed across login, DCR, audience tests, one diagnostic call, and cleanup. Enforce T+7, destroy all cookie/token/code/verifier/client artifacts, and capture TASK-011's nested-call counters: at most one embedding, three reranks, zero nested LazyMCP, and complete cancellation drain within 15 seconds. If no qualifying principal exists or any bound is exceeded, roll back without substitution or a second request.
+
+### Reopen 2 Result
+
+BLOCKED before deployment. The only discovered owner-only username/password file has a valid protected shape but matches zero existing Fedora database users and does not match the configured proxy-admin pair. No qualifying existing `defend_memory`-authorized principal can be proven, so PMA's explicit stop condition applies. No backup, watchdog, selector mutation, login, DCR, consent, token, diagnostic request, rollback, or NAS action occurred. Fedora remains healthy on the exact prior digest with 161 completed migrations
+
+[Agent Message] From: tech_lead To: product_manager
+
+TASK-006 REOPEN 2 BLOCKED PRE-DEPLOYMENT. Secret-safe checks found no qualifying existing username/password principal: the only owner-only credential file matches neither an existing Fedora database user nor the configured UI administrator. Per the handoff, I did not substitute credentials or deploy the candidate. Fedora remains healthy on exact rollback digest with readiness/liveliness 200, restart 0, OOM false, and 161 migrations; no auth artifacts or NAS action exist. The secret owner must provide an already authorized existing principal through owner-only files or inherited descriptors before another reopen

@@ -3,7 +3,7 @@ id: TASK-2026-09-03-011-investigate-reentrant-memory-path
 complexity: complex
 track: investigation
 slice: logic
-status: active
+status: done
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-03-006-diagnose-fedora-candidate-live
 assigned_to: technical_architect

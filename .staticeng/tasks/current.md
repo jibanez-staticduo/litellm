@@ -15,8 +15,6 @@
 - TASK-2026-09-03-003-verify-fedora-schema-upgrade-rollback
 - TASK-2026-09-03-004-sign-attest-release-images
 - TASK-2026-09-03-005-spec-fedora-maintenance-investigation
-- TASK-2026-09-03-006-diagnose-fedora-candidate-live
-- TASK-2026-09-03-011-investigate-reentrant-memory-path
 
 ## Todo
 - TASK-2026-07-14-003-trigger-nas-account2-reauth
@@ -24,6 +22,7 @@
 - TASK-2026-08-26-004-implement-client-qwen38-modes
 
 ## Blocked
+- TASK-2026-09-03-006-diagnose-fedora-candidate-live — Reopen 2 stopped before deployment because no existing username/password principal could be proven currently defend_memory-authorized
 - TASK-2026-09-03-008-prepare-fedora-dcr-credential — healthy rollback image lacks exact toolset DCR discovery and transport routes; no bearer could be minted or audience-tested
 - TASK-2026-09-01-012-release-upstream-main-fedora — exact candidate rolled back after authorized real-tool timeout and unhealthy transition; investigation and fresh reauthorization required
 - TASK-2026-09-01-003-deploy-lazymcp-oauth-fedora — promotion qualification failed; Tech Lead explicitly rejected deployment

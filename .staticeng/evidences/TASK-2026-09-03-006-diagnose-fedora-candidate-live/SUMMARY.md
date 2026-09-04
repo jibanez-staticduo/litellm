@@ -71,3 +71,9 @@ PMA should keep the candidate blocked, create the narrow exact-audience credenti
 [Agent Message] From: tech_lead To: product_manager
 
 REJECT CANDIDATE; VERIFIED ROLLBACK PASS. Fresh backup/isolated restore, exact signature and attestation checks, rollback unit, and one-second watchdog passed before exact candidate deployment. Candidate startup remained healthy and bounded at about 1.48 GiB, but the required request was not sent because Fedora had only a legacy API key, not the exact-audience DCR bearer mandated by TASK-007. The client harness failed closed and automatic rollback began at `2026-09-03T23:31:36Z`. Exact prior digest is restored with healthy readiness/liveliness, zero restart/OOM, unchanged protected state and dependencies, 161 compatible migrations, five-minute stable memory, MCP initialize 200, and a successful rollback-image `defend_memory-find`. No database restore, ad-hoc production correction, or NAS action occurred. Create a governed exact-audience credential-preparation task before reopening this task
+
+## Reopen 2 Outcome
+
+Reopen 2 stopped at the mandatory principal preflight before any candidate deployment. The only owner-only username/password file found has the correct protected shape, but its username matches zero existing Fedora database users and both values differ from the configured proxy-admin pair. It therefore cannot be proven to represent an existing currently `defend_memory`-authorized principal
+
+No backup or watchdog was started because selector mutation was already prohibited. No login, DCR registration, consent POST, token, request, or auth artifact was created. Fedora remained healthy on the exact rollback digest with 161 completed migrations and NAS remained untouched. See `logs/02-reopen2-preflight-blocker.md`
