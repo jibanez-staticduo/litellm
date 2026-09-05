@@ -556,6 +556,7 @@ RETRY_BREADCRUMB_EXCLUDED_KWARGS: Final = frozenset(
         "messages",
         "original_function",
         "attempted_targets",
+        "litellm_logging_obj",
     )
 )
 

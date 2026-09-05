@@ -1,5 +1,9 @@
 # Fedora runtime repair: rapid OOM corrected, live functionality restored with limits
 
+## Retained-root correction pending final deployment
+
+The slower retention now has a proven long-lived root: retry breadcrumbs retain live Logging objects, which retain exception tracebacks and completed Request bodies. Logging queues were empty; a one-frame allocation sample and direct field/traceback path establish the cause. Excluding only litellm_logging_obj from retry breadcrumbs passes two previously failing 25-request lifetime regressions and the 337-test focused matrix. See logs/18-retained-request-root.md for counts, diagnostic limitations and clock correction. Next exact-image repeated trials/drain/soak are pending; no NAS action or promotion PASS yet
+
 ## Latest JSON-contract verification and memory gate
 
 Exact pushed source `2c6af6ee3aeeaa349f2169e37bfb383d7131e2ba` is deployed on Fedora as digest `e340ea66f58af527dfe56d7b229cc913163639497e03b7d9db154413116894c1`. The actual OpenAI SDK now receives Response objects for omitted/false stream, while true streaming remains functional. Real Chat, Responses, twenty repeated JSON calls and MCP/LazyMCP calls pass. 335 focused tests and direct checks pass

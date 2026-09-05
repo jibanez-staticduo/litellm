@@ -1,5 +1,7 @@
 scope: module
 parent: ../.staticeng/codemap.yml
+invariants:
+  - Retry breadcrumbs retain attempt diagnostics but never live logging objects that own exception tracebacks and completed request graphs
 entrypoints:
   - path: main.py
 internals:

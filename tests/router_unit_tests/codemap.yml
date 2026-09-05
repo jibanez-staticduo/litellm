@@ -1,6 +1,7 @@
 scope: module
 parent: ../../.staticeng/codemap.yml
 internals:
+  - path: test_retry_breadcrumb_lifetime.py
   - path: test_router_adding_deployments.py
   - path: test_router_acancel_batch.py
   - path: test_router_handle_error.py
