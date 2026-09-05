@@ -1,6 +1,6 @@
 # NAS functional residuals
 
-Tech Lead continuation completes the three scoped source corrections with 303 passing mapped tests and no skips. The unrelated OAuth assertion is reproduced on clean baseline and remains an explicitly failing pre-existing product path, not an introduced regression. Build and Fedora-first rollout verification remain pending; no live fix PASS is claimed
+Tech Lead completed the three scoped source corrections with 303 passing mapped tests and no skips, committed/pushed source 2dee9cd19e329d5c59eb712b8f27b8205ca0ff02, and built/published exact-source digest 4800816a96e35e7e87549e23823b0627148b6dfe2ac3cb7b55dab345dede1258. Fedora alone now selects it, but startup is blocked in the existing wrapper's apk child before port 4000 listens. Fedora is running/unhealthy and contained; no rollback occurred. NAS remains unchanged and healthy. No deployed-fix or soak PASS is claimed
 
 ## Root causes
 
@@ -17,7 +17,7 @@ Aggregate MCP initialize waits for optional upstream instructions. NAS sets MCP_
 | AC-1 | Source correction implemented; live correction pending | Live catalog/deployment mismatch, upstream error classification, successful Responses; router regression fails before and passes after |
 | AC-2 | Source correction verified; live validation pending | Full per-peer aggregate setup/list/filter deadline; six timeout/caller-cancellation/drain regressions pass with healthy tools retained |
 | AC-3 | Diagnosis complete; deployment verification pending | Running image remains unchanged, so no live fix PASS claimed; Frigate connectivity remains external |
-| AC-4 | Review/release gate pending | No image rollout, commit or push; Fedora-first validation remains required |
+| AC-4 | PARTIAL, Fedora startup hold | Source pushed and exact-source build passed; Fedora candidate recreated under existing containment, but not ready; NAS not promoted |
 | AC-5 | Evidence recorded | This summary and logs; no credentials or private payloads retained |
 
 ## Verification
@@ -36,4 +36,4 @@ Technical availability invariants and relevant CodeMaps are updated. No advertis
 
 ## Open risks and next step
 
-Tech Lead source continuation evidence is in logs/04-tech-lead-source-review.md. Build and Fedora-first live validation remain necessary before NAS rollout. On NAS verify Astra Chat JSON/stream, native Responses, persistence after normal price-map reload, aggregate MCP initialize/list with truthful partial outcomes, and real healthy tools. Frigate connectivity requires its service/network owner; it was not repaired or hidden here. The baseline OAuth method absence is not repaired by these scoped changes
+Tech Lead source evidence is in logs/04-tech-lead-source-review.md; exact build, actual runtime identities and startup hold are in logs/05-build-fedora-startup-hold.md. Resolve Fedora bootstrap readiness first, then complete Astra reload/Chat/Responses, aggregate partial availability, healthy real-tool and 900-second resource gates before NAS promotion. No automatic rollback or tooling repair was performed. Frigate connectivity requires its service/network owner; it was not repaired or hidden here. The unrelated OAuth assertion is reproduced on clean baseline because its discovery helper is absent, and was not repaired or represented as passing
