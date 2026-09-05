@@ -4,7 +4,7 @@
 - (None)
 
 ## Active
-- TASK-2026-09-05-002-fix-nas-functional-residuals: both hosts healthy on exact repaired digest; live Astra and aggregate partial-availability gates plus both 900-second observations pass; PMA closure and separate NAS spend-log recursion disposition pending
+- TASK-2026-09-05-002-fix-nas-functional-residuals: Reopen 1 spend recursion corrected and zero markers after dual-host rollout; both healthy on exact new digest, public Astra/MCP and both renewed 900-second observations pass; PMA closure pending
 - TASK-2026-09-01-004-deploy-lazymcp-oauth-nas: Astra Chat and unscoped MCP residuals corrected and verified by TASK-2026-09-05-002; PMA closure pending, external Frigate reachability remains unavailable
 - TASK-2026-09-05-001-repair-fedora-runtime: Fedora functional/memory PASS, unchanged runtime rechecked after NAS promotion; PMA closure pending
 - TASK-2026-08-28-009-define-resilient-lazymcp-discovery

@@ -8,6 +8,14 @@ date: 2026-09-01
 
 # SCR: Upstream Main Integration
 
+## Reopen 1 Product Logging and Discovery Correction - 2026-09-05
+
+PMA explicitly resumed TASK-2026-09-05-002 for active NAS spend-sanitizer recursion, including bounded cyclic/deep traversal and preservation of spend fields/callbacks, and permitted correction of the missing OAuth fetch helper only if it affected supported flows. Both were proven: fresh live recursion and local failures were reproduced, and RFC 9728 resource discovery calls the absent helper
+
+Source 6ba4b3b366386e16364a6723c43319f4e52cc7a0 passed 951 complete mapped tests in isolated processes and built through the unchanged Dockerfile. The exact index 0c8009530d20ca8a5306f38ff4f6aecb6e3261ded0c5e7336237033b6557717c passed Fedora-first public functional/900-second checks, then NAS equivalent checks and a final Fedora recheck. Both remain healthy and contained on this digest with corrected startup wrappers and protected host configuration unchanged
+
+The active recursion is resolved in the observed workload, with zero post-startup markers on both hosts and actual NAS spend records retaining token/structured response fields. External Frigate failures and other auth-required/unavailable peers remain explicit. No rate-limit bypass, rollback, credential mutation, security remediation or unrelated tooling work occurred. This supersedes the prior separate-recursion follow-up hold, without claiming error-free client traffic or indefinite memory stability
+
 ## Runtime Residual Startup Correction - 2026-09-05
 
 PMA explicitly authorized TASK-2026-09-05-002 to correct the real Fedora startup-wrapper apk stall as a deployment defect, preserving the selected new candidate and host-specific required behavior. Both databases already contain the maintained source_url column. The legacy runtime PostgreSQL-client install and repeated column-repair loops were removed from each independently inspected wrapper; Fedora's guarded synthetic Responses health correction was retained, while NAS retains its own simpler startup path. Both wrappers now exec the image's normal prod_entrypoint.sh and their original configuration remains in protected host release backups
