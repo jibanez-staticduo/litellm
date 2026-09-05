@@ -4,6 +4,7 @@
 - (None)
 
 ## Active
+- TASK-2026-09-05-002-fix-nas-functional-residuals
 - TASK-2026-09-01-004-deploy-lazymcp-oauth-nas: exact image deployed, representative functional/parity and 900-second memory gate passed; full closure awaits Astra Chat cooldown and unscoped MCP timeout disposition
 - TASK-2026-09-05-001-repair-fedora-runtime: Fedora functional/memory PASS, unchanged runtime rechecked after NAS promotion; PMA closure pending
 - TASK-2026-08-28-009-define-resilient-lazymcp-discovery

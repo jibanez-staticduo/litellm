@@ -1820,10 +1820,10 @@ class MCPServerManager:
             (per-user auth / missing static auth token / static headers that
             reference a per-user env var),
           - a prior probe attempt for this server is within
-            MCP_HEALTH_CHECK_TIMEOUT seconds (the probe is a health-check-shaped
-            op and already uses this knob for its inner call timeout; reusing it
-            as the cooldown avoids reconnecting on every gateway initialize when
-            upstream returns empty or fails).
+            MCP_HEALTH_CHECK_TIMEOUT seconds.
+
+        Metadata resolution and initialization share a deadline capped by
+        MCP_METADATA_TIMEOUT, independently of a longer health-check timeout.
         """
         if server.spec_path:
             return
@@ -1852,24 +1852,25 @@ class MCPServerManager:
         self._upstream_initialize_instructions_probed_at[server.server_id] = time.monotonic()
 
         try:
-            resolved_static_headers: Final = await self._resolve_static_headers_with_env_vars(
-                server=server,
-                user_api_key_auth=None,
-                raise_on_missing=False,
-            )
-            extra_headers: dict[str, str] | None = dict(resolved_static_headers) if resolved_static_headers else None
-            client: Final = await self._create_mcp_client(
-                server=server,
-                mcp_auth_header=None,
-                extra_headers=extra_headers,
-                stdio_env=None,
-            )
+            with anyio.fail_after(min(MCP_METADATA_TIMEOUT, MCP_HEALTH_CHECK_TIMEOUT)):
+                resolved_static_headers: Final = await self._resolve_static_headers_with_env_vars(
+                    server=server,
+                    user_api_key_auth=None,
+                    raise_on_missing=False,
+                )
+                extra_headers: Final = dict(resolved_static_headers) if resolved_static_headers else None
+                client: Final = await self._create_mcp_client(
+                    server=server,
+                    mcp_auth_header=None,
+                    extra_headers=extra_headers,
+                    stdio_env=None,
+                )
 
-            async def _noop(_session):
-                return "ok"
+                async def _noop(_session):
+                    return "ok"
 
-            await asyncio.wait_for(client.run_with_session(_noop), timeout=MCP_HEALTH_CHECK_TIMEOUT)
-            self._remember_upstream_initialize_instructions(server, client)
+                await client.run_with_session(_noop)
+                self._remember_upstream_initialize_instructions(server, client)
         except Exception as e:
             verbose_logger.debug(
                 "Upstream initialize instructions prefetch failed for %s: %s",

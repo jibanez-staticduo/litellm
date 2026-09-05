@@ -916,6 +916,33 @@ def test_wildcard_zero_cost_request_does_not_poison_named_deployment_pricing():
         _restore_model_cost_entries(model_keys)
 
 
+@pytest.mark.parametrize("initial_models", [None, []])
+def test_price_data_reload_preserves_dynamically_added_responses_mode(monkeypatch, initial_models):
+    from litellm.main import responses_api_bridge_check
+
+    monkeypatch.setattr(litellm, "model_cost", {})
+    router = Router(model_list=initial_models)
+    try:
+        router.add_deployment(
+            Deployment(
+                model_name="dynamic-responses",
+                litellm_params={"model": "openai/responses/dynamic-model", "api_key": "synthetic"},
+                model_info={"id": "dynamic-responses-id", "mode": "responses"},
+            )
+        )
+        assert responses_api_bridge_check("dynamic-model", "openai")[0]["mode"] == "responses"
+
+        _simulate_price_data_reload({})
+
+        assert responses_api_bridge_check("dynamic-model", "openai")[0].get("mode") == "responses"
+        router.discard()
+        _simulate_price_data_reload({})
+        assert "openai/dynamic-model" not in litellm.model_cost
+    finally:
+        router.discard()
+        _invalidate_model_cost_lowercase_map()
+
+
 def test_price_data_reload_preserves_router_registered_model_info(monkeypatch):
     """
     A price-data reload replaces litellm.model_cost wholesale. Deployment

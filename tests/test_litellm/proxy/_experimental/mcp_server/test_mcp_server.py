@@ -5200,6 +5200,53 @@ class TestEnsureUpstreamInitializeInstructionsCached:
             global_mcp_server_manager._upstream_initialize_instructions_probed_at.pop("reload-target", None)
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("blocked_phase", ["creation", "session"])
+async def test_instruction_prefetch_metadata_deadline_preserves_healthy_peer(monkeypatch, blocked_phase):
+    import asyncio
+
+    from litellm.proxy._experimental.mcp_server import mcp_server_manager
+    from litellm.proxy._experimental.mcp_server import server as gateway
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import MCPServerManager
+
+    manager = MCPServerManager()
+    healthy = _make_instruction_server(server_id="healthy-instructions")
+    unavailable = _make_instruction_server(server_id="unavailable-instructions")
+    cancelled = asyncio.Event()
+
+    async def block():
+        try:
+            await asyncio.Event().wait()
+        finally:
+            cancelled.set()
+
+    async def create_client(server, **kwargs):
+        if server.server_id == unavailable.server_id and blocked_phase == "creation":
+            await block()
+        client = MagicMock()
+        client._last_initialize_instructions = "healthy guidance"
+        client.run_with_session = AsyncMock(return_value="ok")
+        if server.server_id == unavailable.server_id:
+
+            async def run_blocked(callback):
+                await block()
+
+            client.run_with_session = run_blocked
+        return client
+
+    monkeypatch.setattr(manager, "_create_mcp_client", create_client)
+    monkeypatch.setattr(gateway, "global_mcp_server_manager", manager)
+    monkeypatch.setattr(gateway, "_get_allowed_mcp_servers", AsyncMock(return_value=[healthy, unavailable]))
+    monkeypatch.setattr(mcp_server_manager, "MCP_METADATA_TIMEOUT", 0.02)
+    monkeypatch.setattr(mcp_server_manager, "MCP_HEALTH_CHECK_TIMEOUT", 30)
+    async with asyncio.timeout(1):
+        async with gateway._gateway_initialize_instructions_request_scope(None, None, None):
+            assert gateway.server.create_initialization_options().instructions == "healthy guidance"
+    assert cancelled.is_set()
+    assert unavailable.server_id not in manager._upstream_initialize_instructions_by_server_id
+    assert unavailable.server_id in manager._upstream_initialize_instructions_probed_at
+
+
 class TestGatewayCreateInitializationOptions:
     """Tests for the patched server.create_initialization_options via ContextVar."""
 
@@ -7814,6 +7861,72 @@ async def test_call_mcp_tool_skips_failure_hook_for_upstream_auth_error():
             )
 
     proxy_logging_mock.post_call_failure_hook.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("blocked_phase", ["headers", "creation", "listing"])
+@pytest.mark.parametrize("cancel_request", [False, True])
+async def test_aggregate_listing_deadline_drains_setup_and_keeps_healthy_tools(
+    monkeypatch, blocked_phase, cancel_request
+):
+    import asyncio
+
+    from mcp.types import Tool
+
+    from litellm.proxy._experimental.mcp_server import server as gateway
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import MCPServerManager
+
+    manager = MCPServerManager()
+    healthy = _make_instruction_server(server_id="healthy")
+    unavailable = _make_instruction_server(server_id="unavailable")
+    drained = asyncio.Event()
+    started = asyncio.Event()
+
+    async def block(**kwargs):
+        started.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            drained.set()
+
+    async def resolve_headers(server, *args, **kwargs):
+        if server is unavailable and blocked_phase == "headers":
+            await block()
+        return None
+
+    async def create_client(server, **kwargs):
+        if server is unavailable and blocked_phase == "creation":
+            await block()
+        client = MagicMock()
+        client._last_initialize_instructions = None
+        client.list_tools = AsyncMock(return_value=[Tool(name="visible", inputSchema={})])
+        if server is unavailable:
+            client.list_tools = AsyncMock(side_effect=block)
+        return client
+
+    monkeypatch.setattr(manager, "_resolve_static_headers_with_env_vars", resolve_headers)
+    monkeypatch.setattr(manager, "_create_mcp_client", create_client)
+    monkeypatch.setattr(gateway, "global_mcp_server_manager", manager)
+    monkeypatch.setattr(gateway, "_get_allowed_mcp_servers", AsyncMock(return_value=[healthy, unavailable]))
+    monkeypatch.setattr(gateway, "MCP_TOOL_LISTING_TIMEOUT", 30 if cancel_request else 0.02)
+    before = asyncio.all_tasks()
+    async with asyncio.timeout(1):
+        if cancel_request:
+            request = asyncio.create_task(gateway._get_tools_from_mcp_servers(None, None, None, None))
+            await started.wait()
+            request.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await request
+            assert drained.is_set()
+            assert asyncio.all_tasks() <= before
+            return
+        listing = await gateway._get_tools_from_mcp_servers(None, None, None, None)
+    assert drained.is_set()
+    assert len(listing.tools) == 1
+    assert listing.tools[0].name.endswith("visible")
+    assert listing.outcomes[gateway._aggregate_server_key(healthy)].tag == "ok"
+    assert listing.outcomes[gateway._aggregate_server_key(unavailable)].tag == "timeout"
+    assert asyncio.all_tasks() <= before
 
 
 @pytest.mark.asyncio

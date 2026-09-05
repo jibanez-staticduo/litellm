@@ -19,6 +19,7 @@ from datetime import datetime
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Final, Protocol
 
+import anyio
 import httpx
 from fastapi import FastAPI, HTTPException
 from pydantic import AnyUrl, ConfigDict, TypeAdapter
@@ -27,7 +28,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.types import Message, Receive, Scope, Send
 
 from litellm._logging import verbose_logger
-from litellm.constants import MAXIMUM_TRACEBACK_LINES_TO_LOG
+from litellm.constants import MAXIMUM_TRACEBACK_LINES_TO_LOG, MCP_TOOL_LISTING_TIMEOUT
 from litellm.litellm_core_utils.litellm_logging import Logging as LiteLLMLoggingObj
 from litellm.llms.custom_httpx.http_handler import (
     get_async_httpx_client,
@@ -2149,8 +2150,17 @@ if MCP_AVAILABLE:
                     verbose_logger.exception("Error getting tools from server %s: %s", server.name, e)
                     return [], classify_list_exception(e)
 
+            async def _bounded_fetch_and_filter_server_tools(
+                server: MCPServer,
+            ) -> "tuple[list[MCPTool], ServerOutcome]":
+                with anyio.move_on_after(MCP_TOOL_LISTING_TIMEOUT) as deadline:
+                    result: Final = await _fetch_and_filter_server_tools(server)
+                if deadline.cancel_called:
+                    return [], classify_list_exception(TimeoutError())
+                return result
+
             # Fetch tools from all servers in parallel
-            tasks: Final = [_fetch_and_filter_server_tools(server) for server in allowed_mcp_servers]
+            tasks: Final = [_bounded_fetch_and_filter_server_tools(server) for server in allowed_mcp_servers]
             results: Final = await asyncio.gather(*tasks)
 
             # Flatten results into single list

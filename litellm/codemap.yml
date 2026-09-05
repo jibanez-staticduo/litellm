@@ -1,6 +1,7 @@
 scope: module
 parent: ../.staticeng/codemap.yml
 invariants:
+  - Live routers replay current deployment metadata after price-map reloads even when constructed without an initial model list; discarded routers do not replay.
   - Retry breadcrumbs retain attempt diagnostics but never live logging objects that own exception tracebacks and completed request graphs
 entrypoints:
   - path: main.py
