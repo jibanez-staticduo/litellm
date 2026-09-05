@@ -1,0 +1,38 @@
+Final local verification, 2026-09-05
+
+$ LITELLM_LOCAL_MODEL_COST_MAP=True .venv/bin/pytest -q tests/test_litellm/llms/chatgpt/responses/test_chatgpt_responses_transformation.py
+33 passed in 0.36s
+
+$ .venv/bin/ruff check litellm/llms/chatgpt/common_utils.py tests/test_litellm/llms/chatgpt/responses/test_chatgpt_responses_transformation.py
+All checks passed!
+
+$ .venv/bin/ruff format --check litellm/llms/chatgpt/common_utils.py tests/test_litellm/llms/chatgpt/responses/test_chatgpt_responses_transformation.py
+2 files already formatted
+
+$ git diff --check
+exit 0, no output
+
+$ staticeng_validate
+PASS: All source directories indexed. Hierarchy validated.
+Warnings: 0
+
+Blocking broader result, not waived:
+$ LITELLM_LOCAL_MODEL_COST_MAP=True .venv/bin/pytest -q tests/test_litellm/llms/chatgpt
+3 failed, 74 passed, 5 warnings in 1.97s
+Failures: test_chat_completion_to_responses_bridge_preserves_chatgpt_auth_params,
+test_litellm_completion_preserves_chatgpt_auth_params_into_provider,
+test_router_deployment_chatgpt_auth_params_survive_into_provider
+
+Baseline/mutation control: removed only the new BaseModel projection branch,
+ran the three existing auth-profile tests and three new serializer-spy cases:
+6 failed, 35 deselected in 0.73s
+All three existing failures reproduced. All three serializer-spy cases detected
+the restored recursive serialization with one unexpected invocation each.
+Restored the correction before the final passing focused verification above.
+
+No build, live corrected-image verification or soak was performed.
+AC-1: persistent containment read-back passed
+AC-2: two live Python caller captures plus bounded synthetic reproduction
+AC-3: focused source regression/lint passed; broader suite remains blocking
+AC-4: incomplete, candidate stopped and uncorrected in production
+AC-5: same-task evidence and technical invariant updated

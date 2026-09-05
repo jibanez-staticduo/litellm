@@ -1,5 +1,7 @@
 scope: module
 parent: ../../.staticeng/codemap.yml
+invariants:
+  - Sparse parameter extraction preserves supplied ChatGPT auth profile, token directory and auth filename through chat and Responses dispatch
 internals:
   - path: mock_functions.py
   - path: get_blog_posts.py

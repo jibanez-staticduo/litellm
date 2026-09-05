@@ -55,6 +55,9 @@ OPTIONAL_KWARGS_KEYS: Final = (
             "itpm",
             "otpm",
             "use_xai_oauth",
+            "chatgpt_auth_profile",
+            "chatgpt_token_dir",
+            "chatgpt_auth_file",
             # The per-deployment Rust opt-in. `all_litellm_params` keeps it out
             # of the provider body; this keeps it *in* litellm_params, which is
             # where the chat completions handlers read it from.

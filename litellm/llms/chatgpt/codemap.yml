@@ -3,3 +3,5 @@ parent: ../../../.staticeng/codemap.yml
 internals:
   - path: common_utils.py
   - path: authenticator.py
+invariants:
+  - Session ID lookup reads only session, metadata, trace and call ID attributes of Pydantic parameters without recursively serializing request state

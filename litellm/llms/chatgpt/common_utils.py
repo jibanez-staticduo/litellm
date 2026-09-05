@@ -8,6 +8,7 @@ from typing import Any, Final
 from uuid import uuid4
 
 import httpx
+from pydantic import BaseModel
 
 from litellm.llms.base_llm.chat.transformation import BaseLLMException
 
@@ -259,6 +260,11 @@ def _normalize_litellm_params(litellm_params: Any | None) -> dict:
         return {}
     if isinstance(litellm_params, dict):
         return litellm_params
+    if isinstance(litellm_params, BaseModel):
+        return {
+            key: getattr(litellm_params, key, None)
+            for key in ("litellm_session_id", "session_id", "metadata", "litellm_trace_id", "litellm_call_id")
+        }
     if hasattr(litellm_params, "model_dump"):
         try:
             return litellm_params.model_dump()

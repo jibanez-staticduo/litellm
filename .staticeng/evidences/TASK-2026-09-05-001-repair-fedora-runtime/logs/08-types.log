@@ -1,0 +1,178 @@
+/home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:75:5 - error: Type of parameter "metadata" is partially unknown
+    Parameter type is "dict[Unknown, Unknown] | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:75:15 - error: Expected type arguments for generic class "dict" (reportMissingTypeArgument)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:79:5 - error: Type of "model_info" is partially unknown
+    Type of "model_info" is "Unknown | None" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:79:25 - error: Type of "get" is partially unknown
+    Type of "get" is "Overload[(key: Unknown, default: None = None, /) -> (Unknown | None), (key: Unknown, default: Unknown, /) -> Unknown, (key: Unknown, default: _T@get, /) -> (Unknown | _T@get)]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:81:16 - error: Type of "get" is unknown (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:81:16 - error: Return type is unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:85:5 - error: Return type, "dict[Unknown, Unknown]", is partially unknown (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:87:5 - error: Type annotation is missing for parameter "force_timeout" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:88:5 - error: Type annotation is missing for parameter "azure" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:89:5 - error: Type of parameter "logger_fn" is partially unknown
+    Parameter type is "Unknown | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:89:5 - error: Type annotation is missing for parameter "logger_fn" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:90:5 - error: Type annotation is missing for parameter "verbose" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:91:5 - error: Type annotation is missing for parameter "hugging_face" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:92:5 - error: Type annotation is missing for parameter "replicate" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:93:5 - error: Type annotation is missing for parameter "together_ai" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:96:5 - error: Type of parameter "litellm_call_id" is partially unknown
+    Parameter type is "Unknown | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:96:5 - error: Type annotation is missing for parameter "litellm_call_id" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:97:5 - error: Type of parameter "model_alias_map" is partially unknown
+    Parameter type is "Unknown | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:97:5 - error: Type annotation is missing for parameter "model_alias_map" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:98:5 - error: Type of parameter "completion_call_id" is partially unknown
+    Parameter type is "Unknown | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:98:5 - error: Type annotation is missing for parameter "completion_call_id" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:99:5 - error: Type of parameter "metadata" is partially unknown
+    Parameter type is "dict[Unknown, Unknown] | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:99:15 - error: Expected type arguments for generic class "dict" (reportMissingTypeArgument)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:100:5 - error: Type of parameter "model_info" is partially unknown
+    Parameter type is "Unknown | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:100:5 - error: Type annotation is missing for parameter "model_info" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:101:5 - error: Type of parameter "proxy_server_request" is partially unknown
+    Parameter type is "Unknown | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:101:5 - error: Type annotation is missing for parameter "proxy_server_request" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:102:5 - error: Type of parameter "acompletion" is partially unknown
+    Parameter type is "Unknown | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:102:5 - error: Type annotation is missing for parameter "acompletion" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:103:5 - error: Type of parameter "aembedding" is partially unknown
+    Parameter type is "Unknown | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:103:5 - error: Type annotation is missing for parameter "aembedding" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:104:5 - error: Type of parameter "allm_passthrough_route" is partially unknown
+    Parameter type is "Unknown | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:104:5 - error: Type annotation is missing for parameter "allm_passthrough_route" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:105:5 - error: Type of parameter "preset_cache_key" is partially unknown
+    Parameter type is "Unknown | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:105:5 - error: Type annotation is missing for parameter "preset_cache_key" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:106:5 - error: Type of parameter "no_log" is partially unknown
+    Parameter type is "Unknown | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:106:5 - error: Type annotation is missing for parameter "no_log" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:107:5 - error: Type of parameter "input_cost_per_second" is partially unknown
+    Parameter type is "Unknown | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:107:5 - error: Type annotation is missing for parameter "input_cost_per_second" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:108:5 - error: Type of parameter "input_cost_per_token" is partially unknown
+    Parameter type is "Unknown | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:108:5 - error: Type annotation is missing for parameter "input_cost_per_token" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:109:5 - error: Type of parameter "output_cost_per_token" is partially unknown
+    Parameter type is "Unknown | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:109:5 - error: Type annotation is missing for parameter "output_cost_per_token" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:110:5 - error: Type of parameter "output_cost_per_second" is partially unknown
+    Parameter type is "Unknown | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:110:5 - error: Type annotation is missing for parameter "output_cost_per_second" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:111:5 - error: Type of parameter "cost_per_query" is partially unknown
+    Parameter type is "Unknown | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:111:5 - error: Type annotation is missing for parameter "cost_per_query" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:112:5 - error: Type of parameter "cooldown_time" is partially unknown
+    Parameter type is "Unknown | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:112:5 - error: Type annotation is missing for parameter "cooldown_time" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:113:5 - error: Type of parameter "text_completion" is partially unknown
+    Parameter type is "Unknown | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:113:5 - error: Type annotation is missing for parameter "text_completion" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:114:5 - error: Type of parameter "azure_ad_token_provider" is partially unknown
+    Parameter type is "Unknown | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:114:5 - error: Type annotation is missing for parameter "azure_ad_token_provider" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:115:5 - error: Type of parameter "user_continue_message" is partially unknown
+    Parameter type is "Unknown | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:115:5 - error: Type annotation is missing for parameter "user_continue_message" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:120:5 - error: Type of parameter "custom_prompt_dict" is partially unknown
+    Parameter type is "dict[Unknown, Unknown] | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:120:25 - error: Expected type arguments for generic class "dict" (reportMissingTypeArgument)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:121:5 - error: Type of parameter "litellm_metadata" is partially unknown
+    Parameter type is "dict[Unknown, Unknown] | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:121:23 - error: Expected type arguments for generic class "dict" (reportMissingTypeArgument)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:125:5 - error: Type of parameter "prompt_variables" is partially unknown
+    Parameter type is "dict[Unknown, Unknown] | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:125:23 - error: Expected type arguments for generic class "dict" (reportMissingTypeArgument)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:133:7 - error: Type of parameter "kwargs" is unknown (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:133:7 - error: Type annotation is missing for parameter "kwargs" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:134:6 - error: Expected type arguments for generic class "dict" (reportMissingTypeArgument)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:135:5 - error: Type of "_litellm_metadata_dict" is partially unknown
+    Type of "_litellm_metadata_dict" is "dict[Unknown, Unknown] | None" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:136:5 - error: Type of "resolved_metadata" is partially unknown
+    Type of "resolved_metadata" is "dict[Unknown, Unknown] | None" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:139:5 - error: Type of "_meta" is partially unknown
+    Type of "_meta" is "dict[Unknown, Unknown]" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:141:9 - error: Type of "litellm_session_id" is partially unknown
+    Type of "litellm_session_id" is "Unknown | None" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:141:30 - error: Type of "get" is partially unknown
+    Type of "get" is "Overload[(key: Unknown, default: None = None, /) -> (Unknown | None), (key: Unknown, default: Unknown, /) -> Unknown, (key: Unknown, default: _T@get, /) -> (Unknown | _T@get)]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:141:57 - error: Type of "get" is partially unknown
+    Type of "get" is "Overload[(key: Unknown, default: None = None, /) -> (Unknown | None), (key: Unknown, default: Unknown, /) -> Unknown, (key: Unknown, default: _T@get, /) -> (Unknown | _T@get)]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:143:9 - error: Type of "litellm_trace_id" is partially unknown
+    Type of "litellm_trace_id" is "Unknown | None" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:143:28 - error: Type of "get" is partially unknown
+    Type of "get" is "Overload[(key: Unknown, default: None = None, /) -> (Unknown | None), (key: Unknown, default: Unknown, /) -> Unknown, (key: Unknown, default: _T@get, /) -> (Unknown | _T@get)]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:143:53 - error: Type of "get" is partially unknown
+    Type of "get" is "Overload[(key: Unknown, default: None = None, /) -> (Unknown | None), (key: Unknown, default: Unknown, /) -> Unknown, (key: Unknown, default: _T@get, /) -> (Unknown | _T@get)]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:148:5 - error: Type of "litellm_params" is partially unknown
+    Type of "litellm_params" is "dict[str, Unknown | str | int | bool | dict[Unknown, Unknown] | None]" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:166:29 - error: Type of "get" is partially unknown
+    Type of "get" is "Overload[(key: str, default: None = None, /) -> (Unknown | None), (key: str, default: Unknown, /) -> Unknown, (key: str, default: _T@get, /) -> (Unknown | _T@get)]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/litellm_core_utils/get_litellm_params.py:203:12 - error: Return type, "dict[str, Unknown | str | int | bool | dict[Unknown, Unknown] | None]", is partially unknown (reportUnknownVariableType)
+/home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:112:9 - error: Type of parameter "status_code" is unknown (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:112:9 - error: Type annotation is missing for parameter "status_code" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:113:9 - error: Type of parameter "message" is unknown (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:113:9 - error: Type annotation is missing for parameter "message" (reportMissingParameterType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:116:9 - error: Type of parameter "headers" is partially unknown
+    Parameter type is "Headers | dict[Unknown, Unknown] | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:116:34 - error: Expected type arguments for generic class "dict" (reportMissingTypeArgument)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:117:9 - error: Type of parameter "body" is partially unknown
+    Parameter type is "dict[Unknown, Unknown] | None" (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:117:15 - error: Expected type arguments for generic class "dict" (reportMissingTypeArgument)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:119:9 - error: Type of "__init__" is partially unknown
+    Type of "__init__" is "(status_code: int, message: str, headers: dict[Unknown, Unknown] | Headers | None = None, request: Request | None = None, response: Response | None = None, body: dict[Unknown, Unknown] | None = None, status_code_is_synthesized: bool = False) -> None" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:120:25 - error: Argument type is unknown
+    Argument corresponds to parameter "status_code" in function "__init__" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:121:21 - error: Argument type is unknown
+    Argument corresponds to parameter "message" in function "__init__" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:233:5 - error: Return type, "dict[Unknown, Unknown]", is partially unknown (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:237:6 - error: Expected type arguments for generic class "dict" (reportMissingTypeArgument)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:258:5 - error: Return type, "dict[Unknown, Unknown]", is partially unknown (reportUnknownParameterType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:258:47 - error: Type `Any` is not allowed (reportExplicitAny)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:258:62 - error: Expected type arguments for generic class "dict" (reportMissingTypeArgument)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:260:16 - error: Return type, "dict[Unknown, Unknown]", is partially unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:262:16 - error: Return type, "dict[Unknown, Unknown]", is partially unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:264:16 - error: Return type, "dict[Unknown, Unknown]", is partially unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:268:16 - error: Argument type is Any
+    Argument corresponds to parameter "obj" in function "hasattr" (reportAny)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:270:20 - error: Type of "model_dump" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:270:20 - error: Return type is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:272:20 - error: Return type, "dict[Unknown, Unknown]", is partially unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:273:16 - error: Argument type is Any
+    Argument corresponds to parameter "obj" in function "hasattr" (reportAny)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:275:20 - error: Type of "dict" is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:275:20 - error: Return type is Any (reportAny)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:277:20 - error: Return type, "dict[Unknown, Unknown]", is partially unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:278:12 - error: Return type, "dict[Unknown, Unknown]", is partially unknown (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:281:44 - error: Type `Any` is not allowed (reportExplicitAny)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:282:5 - error: Type of "params" is partially unknown
+    Type of "params" is "dict[Unknown, Unknown]" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:284:9 - error: Type of "value" is partially unknown
+    Type of "value" is "Unknown | None" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:284:17 - error: Type of "get" is partially unknown
+    Type of "get" is "Overload[(key: Unknown, default: None = None, /) -> (Unknown | None), (key: Unknown, default: Unknown, /) -> Unknown, (key: Unknown, default: _T@get, /) -> (Unknown | _T@get)]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:286:24 - error: Argument type is unknown
+    Argument corresponds to parameter "object" in function "__new__" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:287:5 - error: Type of "metadata" is partially unknown
+    Type of "metadata" is "Unknown | None" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:287:23 - error: Type of "get" is partially unknown
+    Type of "get" is "Overload[(key: Unknown, default: None = None, /) -> (Unknown | None), (key: Unknown, default: Unknown, /) -> Unknown, (key: Unknown, default: _T@get, /) -> (Unknown | _T@get)]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:289:9 - error: Type of "value" is partially unknown
+    Type of "value" is "Unknown | None" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:289:17 - error: Type of "get" is partially unknown
+    Type of "get" is "Overload[(key: Unknown, default: None = None, /) -> (Unknown | None), (key: Unknown, default: Unknown, /) -> Unknown, (key: Unknown, default: _T@get, /) -> (Unknown | _T@get)]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:291:24 - error: Argument type is unknown
+    Argument corresponds to parameter "object" in function "__new__" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:293:9 - error: Type of "value" is partially unknown
+    Type of "value" is "Unknown | None" (reportUnknownVariableType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:293:17 - error: Type of "get" is partially unknown
+    Type of "get" is "Overload[(key: Unknown, default: None = None, /) -> (Unknown | None), (key: Unknown, default: Unknown, /) -> Unknown, (key: Unknown, default: _T@get, /) -> (Unknown | _T@get)]" (reportUnknownMemberType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:295:24 - error: Argument type is unknown
+    Argument corresponds to parameter "object" in function "__new__" (reportUnknownArgumentType)
+  /home/staticduo/git/litellm/litellm/llms/chatgpt/common_utils.py:299:47 - error: Type `Any` is not allowed (reportExplicitAny)
+118 errors, 0 warnings, 0 notes

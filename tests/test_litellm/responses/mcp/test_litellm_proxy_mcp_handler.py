@@ -1,20 +1,20 @@
+import importlib
 import subprocess
 import sys
 import textwrap
 import types
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException
-import importlib
 
 from litellm.proxy._experimental.mcp_server.faults.list_outcomes import AggregateToolListing
 from litellm.responses.mcp.litellm_proxy_mcp_handler import (
     LiteLLM_Proxy_MCP_Handler,
 )
-from typing import Any, cast
-from litellm.types.utils import ModelResponse
 from litellm.types.responses.main import OutputFunctionToolCall
+from litellm.types.utils import ModelResponse
 
 
 class _DummyMCPResult:
@@ -255,7 +255,7 @@ def test_decode_lazymcp_tool_server_map_value_handles_invalid_payloads():
     ) == {"mcp_servers": [], "toolset_id": None}
     assert LiteLLM_Proxy_MCP_Handler._decode_lazymcp_tool_server_map_value(
         'lazymcp:{"mcp_servers":"github"}'
-    ) == {"mcp_servers": []}
+    ) == {"mcp_servers": [], "toolset_id": None}
 
 
 def test_should_use_litellm_mcp_gateway_matches_proxy_urls():

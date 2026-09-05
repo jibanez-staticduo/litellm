@@ -1,0 +1,40 @@
+Sanitized verification result. Raw captured request/response diagnostics are not retained
+
+Command:
+LITELLM_LOCAL_MODEL_COST_MAP=True .venv/bin/pytest -q --timeout=30 --tb=short tests/router_unit_tests tests/test_litellm/responses tests/test_litellm/completion_extras/litellm_responses_transformation
+
+Result: 15 failed, 964 passed, 7 warnings, 3 rerun in 830.44s (0:13:50)
+No skips reported. The three reruns are existing test-runner behavior, not a waived failure
+
+Assertion/shape failures:
+tests/test_litellm/responses/test_responses_api_request_body.py::test_a_native_responses_provider_places_every_point_itself
+  Expected four cache-control placements; actual placement list empty
+tests/test_litellm/responses/test_responses_api_request_body.py::test_aresponses_injection_point_marks_input_text_on_gpt_5_6
+  Expected marked input_text object; actual value was the first character of a string
+tests/test_litellm/responses/mcp/test_litellm_proxy_mcp_handler.py::test_decode_lazymcp_tool_server_map_value_handles_invalid_payloads
+  Actual empty-map result included toolset_id=None, unlike expected shape
+tests/test_litellm/responses/test_responses_api_request_body.py::test_injection_points_still_reach_a_native_responses_provider
+  TypeError: string indices must be integers, not str
+tests/test_litellm/responses/test_responses_api_request_body.py::test_responses_injection_point_marks_input_text_on_gpt_5_6
+  Expected marked input_text object; actual value was the first character of a string
+tests/test_litellm/responses/test_responses_utils.py::TestMergePromptManagementInputReshape::test_string_system_item_becomes_input_text_with_marker
+  Expected list containing marked input_text object; actual value was a string
+
+External integration/environment failures:
+tests/router_unit_tests/test_router_endpoints.py::test_audio_speech_router[iterator]
+  HTTP 400, requested speech model unavailable at configured gateway
+tests/router_unit_tests/test_router_helper_utils.py::test_image_generation[False]
+tests/router_unit_tests/test_router_helper_utils.py::test_image_generation[True]
+tests/router_unit_tests/test_router_endpoints.py::test_moderation_endpoint[None]
+tests/router_unit_tests/test_router_endpoints.py::test_moderation_endpoint[omni-moderation-latest]
+tests/router_unit_tests/test_router_endpoints.py::test_moderation_endpoint[openai/omni-moderation-latest]
+tests/router_unit_tests/test_router_helper_utils.py::test_pass_through_moderation_endpoint_factory
+  HTTP 401, provider credential rejected
+tests/router_unit_tests/test_router_endpoints.py::test_rerank_endpoint
+  Required Cohere credential absent
+tests/router_unit_tests/test_router_endpoints.py::test_transcription_on_router
+  Required Azure credential absent
+
+Warnings: Starlette/httpx deprecation; legacy WebSocket exception/API deprecation; unawaited routing-strategy synchronization and batch-logger coroutines
+
+Boundary note: These directories include real-provider tests despite the router_unit_tests name. The environment supplied a gateway endpoint, and the speech failure proves a request reached that configured gateway. No deployment or service mutation was made, but this run must not be described as isolated or as zero NAS endpoint traffic. Do not rerun these real-provider cases until PMA provides an approved isolated test environment

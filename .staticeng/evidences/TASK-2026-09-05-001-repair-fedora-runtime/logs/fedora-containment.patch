@@ -1,0 +1,7 @@
+--- docker-compose.yaml
++++ docker-compose.yaml
+@@ -9,1 +9,3 @@
+-    restart: unless-stopped
++    restart: "no"
++    mem_limit: 8g
++    memswap_limit: 8g

@@ -9,8 +9,9 @@ from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
+from pydantic import BaseModel, model_serializer
 
-
+from litellm.llms.chatgpt.common_utils import get_chatgpt_session_id
 from litellm.llms.chatgpt.responses.transformation import ChatGPTResponsesAPIConfig
 from litellm.llms.openai.common_utils import OpenAIError
 from litellm.types.router import GenericLiteLLMParams
@@ -19,6 +20,45 @@ from litellm.utils import ProviderConfigManager
 
 
 class TestChatGPTResponsesAPITransformation:
+    @pytest.mark.parametrize("as_model", [False, True])
+    @pytest.mark.parametrize(
+        ("session_fields", "expected"),
+        [
+            ({"litellm_session_id": "explicit", "session_id": "session", "litellm_trace_id": "trace"}, "explicit"),
+            ({"session_id": "session", "litellm_trace_id": "trace"}, "session"),
+            ({"litellm_trace_id": "trace"}, "metadata-session"),
+            ({"litellm_session_id": "", "session_id": 123}, "123"),
+        ],
+    )
+    def test_session_id_does_not_serialize_recursive_metadata(self, as_model, session_fields, expected):
+        metadata = {"session_id": "metadata-session"}
+        metadata["history"] = metadata
+        values = {**session_fields, "metadata": metadata}
+        params = GenericLiteLLMParams(**values) if as_model else values
+
+        assert get_chatgpt_session_id(params) == expected
+
+    @pytest.mark.parametrize(
+        ("session_fields", "expected"),
+        [
+            ({"litellm_trace_id": "trace", "litellm_call_id": "call"}, "trace"),
+            ({"litellm_call_id": "call"}, "call"),
+            ({}, None),
+        ],
+    )
+    def test_session_id_does_not_serialize_unrelated_params(self, session_fields, expected):
+        serialize_history = MagicMock(return_value={})
+
+        class History(BaseModel):
+            @model_serializer
+            def serialize(self):
+                return serialize_history()
+
+        params = GenericLiteLLMParams(**session_fields, history=History())
+
+        assert get_chatgpt_session_id(params) == expected
+        serialize_history.assert_not_called()
+
     @pytest.mark.parametrize(
         "model_name",
         [

@@ -1,0 +1,15 @@
+.F.....................................................F................ [  7%]
+........................F............................................... [ 14%]
+...........10:55:43 - LiteLLM:DEBUG: litellm_logging.py:2414 - Logging Details LiteLLM-Success Call: Cache_hit=None
+10:55:43 - LiteLLM:DEBUG: utils.py:5626 - checking potential_model_names in litellm.model_cost: {'split_model': 'gpt-5-mini', 'combined_model_name': 'openai/gpt-5-mini', 'stripped_model_name': 'gpt-5-mini', 'combined_stripped_model_name': 'openai/gpt-5-mini', 'provider_prefixed_model_name': 'openai/gpt-5-mini', 'custom_llm_provider': 'openai'}
+10:55:43 - LiteLLM:DEBUG: utils.py:5626 - checking potential_model_names in litellm.model_cost: {'split_model': 'gpt-5-mini', 'combined_model_name': 'openai/gpt-5-mini', 'stripped_model_name': 'gpt-5-mini', 'combined_stripped_model_name': 'openai/gpt-5-mini', 'provider_prefixed_model_name': 'openai/gpt-5-mini', 'custom_llm_provider': 'openai'}
+10:55:43 - LiteLLM:DEBUG: utils.py:5626 - checking potential_model_names in litellm.model_cost: {'split_model': 'gpt-5-mini', 'combined_model_name': 'openai/gpt-5-mini', 'stripped_model_name': 'gpt-5-mini', 'combined_stripped_model_name': 'openai/gpt-5-mini', 'provider_prefixed_model_name': 'openai/gpt-5-mini', 'custom_llm_provider': 'openai'}
+10:55:43 - LiteLLM:DEBUG: callback_controls.py:37 - Dynamically disabled callbacks from x-litellm-disable-callbacks: None
+10:55:43 - LiteLLM:DEBUG: callback_controls.py:38 - Checking if <bound method Router.sync_deployment_callback_on_success of <litellm.router.Router object at 0x7f273349de50>> is disabled via headers. Disable callbacks from headers: None
+10:55:43 - LiteLLM:DEBUG: utils.py:535 - success callbacks: Running Custom Callback Function - <bound method Router.sync_deployment_callback_on_success of <litellm.router.Router object at 0x7f273349de50>>
+10:55:43 - LiteLLM:DEBUG: callback_controls.py:37 - Dynamically disabled callbacks from x-litellm-disable-callbacks: None
+10:55:43 - LiteLLM:DEBUG: callback_controls.py:38 - Checking if <litellm.proxy.hooks.model_max_budget_limiter._PROXY_VirtualKeyModelMaxBudgetLimiter object at 0x7f27452e0ad0> is disabled via headers. Disable callbacks from headers: None
+........10:55:45 - LiteLLM:DEBUG: utils.py:535 - Logging Details LiteLLM-Async Success Call, cache_hit=False
+.10:55:45 - LiteLLM:DEBUG: litellm_logging.py:2414 - Logging Details LiteLLM-Success Call: Cache_hit=False
+.....................................F.............. [ 22%]
+......................................................................

@@ -1,0 +1,13 @@
+........................................................................ [ 62%]
+...........................................                              [100%]
+=============================== warnings summary ===============================
+tests/test_litellm/llms/chatgpt/test_chatgpt_authenticator.py::TestChatGPTAuthenticator::test_multiprocess_account_id_merge_preserves_refreshed_token
+tests/test_litellm/llms/chatgpt/test_chatgpt_authenticator.py::TestChatGPTAuthenticator::test_multiprocess_device_auth_single_flight
+tests/test_litellm/llms/chatgpt/test_chatgpt_authenticator.py::TestChatGPTAuthenticator::test_multiprocess_device_auth_single_flight
+tests/test_litellm/llms/chatgpt/test_chatgpt_authenticator.py::TestChatGPTAuthenticator::test_multiprocess_device_auth_single_flight
+tests/test_litellm/llms/chatgpt/test_chatgpt_authenticator.py::TestChatGPTAuthenticator::test_multiprocess_device_auth_single_flight
+  /home/staticduo/.local/share/uv/python/cpython-3.13.12-linux-x86_64-gnu/lib/python3.13/multiprocessing/popen_fork.py:67: DeprecationWarning: This process (pid=1209009) is multi-threaded, use of fork() may lead to deadlocks in the child.
+    self.pid = os.fork()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+115 passed, 5 warnings in 1.85s

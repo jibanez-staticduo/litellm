@@ -1,0 +1,121 @@
+diff --git a/litellm/litellm_core_utils/codemap.yml b/litellm/litellm_core_utils/codemap.yml
+index f6ba3353c3..280e552588 100644
+--- a/litellm/litellm_core_utils/codemap.yml
++++ b/litellm/litellm_core_utils/codemap.yml
+@@ -1,5 +1,7 @@
+ scope: module
+ parent: ../../.staticeng/codemap.yml
++invariants:
++  - Sparse parameter extraction preserves supplied ChatGPT auth profile, token directory and auth filename through chat and Responses dispatch
+ internals:
+   - path: mock_functions.py
+   - path: get_blog_posts.py
+diff --git a/litellm/litellm_core_utils/get_litellm_params.py b/litellm/litellm_core_utils/get_litellm_params.py
+index b12c715c9f..517a8d38bb 100644
+--- a/litellm/litellm_core_utils/get_litellm_params.py
++++ b/litellm/litellm_core_utils/get_litellm_params.py
+@@ -55,6 +55,9 @@ OPTIONAL_KWARGS_KEYS: Final = (
+             "itpm",
+             "otpm",
+             "use_xai_oauth",
++            "chatgpt_auth_profile",
++            "chatgpt_token_dir",
++            "chatgpt_auth_file",
+             # The per-deployment Rust opt-in. `all_litellm_params` keeps it out
+             # of the provider body; this keeps it *in* litellm_params, which is
+             # where the chat completions handlers read it from.
+diff --git a/litellm/llms/chatgpt/codemap.yml b/litellm/llms/chatgpt/codemap.yml
+index 0a6de238ab..b6287a2203 100644
+--- a/litellm/llms/chatgpt/codemap.yml
++++ b/litellm/llms/chatgpt/codemap.yml
+@@ -3,3 +3,5 @@ parent: ../../../.staticeng/codemap.yml
+ internals:
+   - path: common_utils.py
+   - path: authenticator.py
++invariants:
++  - Session ID lookup reads only session, metadata, trace and call ID attributes of Pydantic parameters without recursively serializing request state
+diff --git a/litellm/llms/chatgpt/common_utils.py b/litellm/llms/chatgpt/common_utils.py
+index 87488c7514..c2e5a47770 100644
+--- a/litellm/llms/chatgpt/common_utils.py
++++ b/litellm/llms/chatgpt/common_utils.py
+@@ -8,6 +8,7 @@ from typing import Any, Final
+ from uuid import uuid4
+ 
+ import httpx
++from pydantic import BaseModel
+ 
+ from litellm.llms.base_llm.chat.transformation import BaseLLMException
+ 
+@@ -259,6 +260,11 @@ def _normalize_litellm_params(litellm_params: Any | None) -> dict:
+         return {}
+     if isinstance(litellm_params, dict):
+         return litellm_params
++    if isinstance(litellm_params, BaseModel):
++        return {
++            key: getattr(litellm_params, key, None)
++            for key in ("litellm_session_id", "session_id", "metadata", "litellm_trace_id", "litellm_call_id")
++        }
+     if hasattr(litellm_params, "model_dump"):
+         try:
+             return litellm_params.model_dump()
+diff --git a/tests/test_litellm/llms/chatgpt/responses/test_chatgpt_responses_transformation.py b/tests/test_litellm/llms/chatgpt/responses/test_chatgpt_responses_transformation.py
+index 006dcfcaf7..6b303dd297 100644
+--- a/tests/test_litellm/llms/chatgpt/responses/test_chatgpt_responses_transformation.py
++++ b/tests/test_litellm/llms/chatgpt/responses/test_chatgpt_responses_transformation.py
+@@ -9,8 +9,9 @@ from unittest.mock import MagicMock, patch
+ 
+ import httpx
+ import pytest
++from pydantic import BaseModel, model_serializer
+ 
+-
++from litellm.llms.chatgpt.common_utils import get_chatgpt_session_id
+ from litellm.llms.chatgpt.responses.transformation import ChatGPTResponsesAPIConfig
+ from litellm.llms.openai.common_utils import OpenAIError
+ from litellm.types.router import GenericLiteLLMParams
+@@ -19,6 +20,45 @@ from litellm.utils import ProviderConfigManager
+ 
+ 
+ class TestChatGPTResponsesAPITransformation:
++    @pytest.mark.parametrize("as_model", [False, True])
++    @pytest.mark.parametrize(
++        ("session_fields", "expected"),
++        [
++            ({"litellm_session_id": "explicit", "session_id": "session", "litellm_trace_id": "trace"}, "explicit"),
++            ({"session_id": "session", "litellm_trace_id": "trace"}, "session"),
++            ({"litellm_trace_id": "trace"}, "metadata-session"),
++            ({"litellm_session_id": "", "session_id": 123}, "123"),
++        ],
++    )
++    def test_session_id_does_not_serialize_recursive_metadata(self, as_model, session_fields, expected):
++        metadata = {"session_id": "metadata-session"}
++        metadata["history"] = metadata
++        values = {**session_fields, "metadata": metadata}
++        params = GenericLiteLLMParams(**values) if as_model else values
++
++        assert get_chatgpt_session_id(params) == expected
++
++    @pytest.mark.parametrize(
++        ("session_fields", "expected"),
++        [
++            ({"litellm_trace_id": "trace", "litellm_call_id": "call"}, "trace"),
++            ({"litellm_call_id": "call"}, "call"),
++            ({}, None),
++        ],
++    )
++    def test_session_id_does_not_serialize_unrelated_params(self, session_fields, expected):
++        serialize_history = MagicMock(return_value={})
++
++        class History(BaseModel):
++            @model_serializer
++            def serialize(self):
++                return serialize_history()
++
++        params = GenericLiteLLMParams(**session_fields, history=History())
++
++        assert get_chatgpt_session_id(params) == expected
++        serialize_history.assert_not_called()
++
+     @pytest.mark.parametrize(
+         "model_name",
+         [

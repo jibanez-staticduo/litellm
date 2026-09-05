@@ -1,0 +1,134 @@
+make[1]: Entering directory '/home/staticduo/git/litellm'
+uv sync --inexact --frozen --extra proxy --group proxy-dev --group e2e-dev
+Checked 229 packages in 47ms
+uv run --no-sync python scripts/prisma_generate_if_needed.py
+Prisma client already generated for litellm/proxy/schema.prisma (prisma 0.11.0); skipping prisma generate
+cd ui/litellm-dashboard && ../../scripts/with_dashboard_node.sh npm install --no-audit --no-fund
+
+up to date in 1s
+bootstrap: .env left untouched
+bootstrap: done
+./scripts/pre_commit_lint.sh
+check: logging full output to /home/staticduo/git/litellm/.git/pre_commit_lint.log
+check: NOTE - unstaged/untracked changes are included in these checks but
+  won't be in a commit of only your staged changes, so this result may differ from
+  CI. Stage everything you intend to commit (git add) for an accurate prediction:
+    .staticeng/docs/scrs/SCR-2026-09-01-001-upstream-main-integration.md
+    .staticeng/evidences/TASK-2026-09-01-009-finalize-premerge-fork-work/SUMMARY.md
+    .staticeng/evidences/TASK-2026-09-02-006-fix-image-discovery-routing/SUMMARY.md
+    .staticeng/evidences/TASK-2026-09-03-006-diagnose-fedora-candidate-live/logs/09-reopen9-dependency-projection.md
+    .staticeng/evidences/TASK-2026-09-03-006-diagnose-fedora-candidate-live/logs/10-contained-direct-result.md
+    .staticeng/evidences/TASK-2026-09-03-006-diagnose-fedora-candidate-live/logs/11-resume-containment-loss.md
+    .staticeng/evidences/TASK-2026-09-03-006-diagnose-fedora-candidate-live/SUMMARY.md
+    .staticeng/evidences/TASK-2026-09-03-007-plan-fedora-live-diagnostics/SUMMARY.md
+    .staticeng/evidences/TASK-2026-09-03-009-design-candidate-dcr-bootstrap/SUMMARY.md
+    .staticeng/evidences/TASK-2026-09-03-010-design-headless-dcr-authorization/SUMMARY.md
+    .staticeng/evidences/TASK-2026-09-03-011-investigate-reentrant-memory-path/SUMMARY.md
+    .staticeng/evidences/TASK-2026-09-03-016-investigate-internal-user-login/SUMMARY.md
+    .staticeng/evidences/TASK-2026-09-03-017-fix-internal-user-login/SUMMARY.md
+    .staticeng/evidences/TASK-2026-09-03-018-fix-dcr-maintenance-client/SUMMARY.md
+    .staticeng/evidences/TASK-2026-09-04-002-fix-fedora-watchdog-harness/harness/generate-watchdog-harness.sh
+    .staticeng/evidences/TASK-2026-09-04-002-fix-fedora-watchdog-harness/harness/test-health-template.go
+    .staticeng/evidences/TASK-2026-09-04-002-fix-fedora-watchdog-harness/harness/test-watchdog-harness.sh
+    .staticeng/evidences/TASK-2026-09-04-002-fix-fedora-watchdog-harness/SUMMARY.md
+    .staticeng/evidences/TASK-2026-09-04-003-fix-watchdog-proof-wiring/SUMMARY.md
+    .staticeng/evidences/TASK-2026-09-04-005-fix-deployment-controller/logs/10-reopen4-health-tests.log
+    .staticeng/evidences/TASK-2026-09-04-005-fix-deployment-controller/logs/11-reopen4-fedora-projections.md
+    .staticeng/evidences/TASK-2026-09-05-001-repair-fedora-runtime/logs/01-live-observations.md
+    .staticeng/evidences/TASK-2026-09-05-001-repair-fedora-runtime/logs/02-tech-lead-python-caller.md
+    .staticeng/evidences/TASK-2026-09-05-001-repair-fedora-runtime/logs/03-tech-lead-verification.log
+    .staticeng/evidences/TASK-2026-09-05-001-repair-fedora-runtime/logs/04-chatgpt-params-tests.log
+    .staticeng/evidences/TASK-2026-09-05-001-repair-fedora-runtime/logs/05-router-responses-tests.log
+    .staticeng/evidences/TASK-2026-09-05-001-repair-fedora-runtime/logs/06-router-responses-bounded-tests.log
+    .staticeng/evidences/TASK-2026-09-05-001-repair-fedora-runtime/logs/07-ruff.log
+    .staticeng/evidences/TASK-2026-09-05-001-repair-fedora-runtime/logs/08-types.log
+    .staticeng/evidences/TASK-2026-09-05-001-repair-fedora-runtime/logs/09-make-check.log
+    .staticeng/evidences/TASK-2026-09-05-001-repair-fedora-runtime/logs/10-pinned-make-check.log
+    .staticeng/evidences/TASK-2026-09-05-001-repair-fedora-runtime/logs/fedora-containment.patch
+    .staticeng/evidences/TASK-2026-09-05-001-repair-fedora-runtime/SUMMARY.md
+    .staticeng/tasks/current.md
+    .staticeng/tasks/done/TASK-2026-09-04-005-fix-deployment-controller.md
+    .staticeng/tasks/todo/TASK-2026-09-01-002-design-dual-host-release.md
+    .staticeng/tasks/todo/TASK-2026-09-01-008-design-upstream-main-integration.md
+    .staticeng/tasks/todo/TASK-2026-09-03-006-diagnose-fedora-candidate-live.md
+    .staticeng/tasks/todo/TASK-2026-09-05-001-repair-fedora-runtime.md
+check: linting Python (make lint)
+make[2]: Entering directory '/home/staticduo/git/litellm'
+make[3]: Entering directory '/home/staticduo/git/litellm'
+uv sync --inexact --frozen --group proxy-dev --group e2e-dev
+Checked 202 packages in 3ms
+uv run --no-sync python scripts/prisma_generate_if_needed.py
+Prisma client already generated for litellm/proxy/schema.prisma (prisma 0.11.0); skipping prisma generate
+origin/litellm_internal_staging is unavailable; using ed9d29a9b45d433db0c629bee9550f35980f00cb already present locally.
+make -j 12 --output-sync=target LINT_DEP_INSTALL= LINT_E2E_DEP_INSTALL= LINT_DEP_BASE= lint-checks
+make[4]: Entering directory '/home/staticduo/git/litellm'
+cd litellm && uv run --no-sync python ../tests/documentation_tests/test_circular_imports.py && cd ..
+No LiteLLM type hints found.
+make[4]: Leaving directory '/home/staticduo/git/litellm'
+make[4]: Entering directory '/home/staticduo/git/litellm'
+52 files already formatted
+make[4]: Leaving directory '/home/staticduo/git/litellm'
+make[4]: Entering directory '/home/staticduo/git/litellm'
+cd litellm && uv run --no-sync ruff check . && cd ..
+All checks passed!
+uv run --no-sync ruff check --config ruff-tests.toml tests
+RUF043 Pattern passed to `match=` contains metacharacters but is neither escaped nor raw
+   --> tests/e2e/maintenance/test_disposable_runner.py:396:51
+    |
+394 |             previous: Final = os.umask(0o012)
+395 |             try:
+396 |                 with pytest.raises(OSError, match="fsync failure|close-before failure|close-after failure"):
+    |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+397 |                     AtomicSecretDirectory(operations).create(Path(parent), "secrets", {"one": "value"})
+398 |                 assert not directory.exists()
+    |
+help: Use a raw string or `re.escape()` to make the intention explicit
+
+Found 1 error.
+make[4]: *** [Makefile:169: lint-ruff] Error 1
+make[4]: Leaving directory '/home/staticduo/git/litellm'
+make[4]: *** Waiting for unfinished jobs....
+make[4]: Entering directory '/home/staticduo/git/litellm'
+[from litellm import *] OK! no issues!
+make[4]: Leaving directory '/home/staticduo/git/litellm'
+make[4]: Entering directory '/home/staticduo/git/litellm'
+uv run --no-sync python scripts/ruff_strict_gate.py --base ed9d29a9b45d433db0c629bee9550f35980f00cb
+OK: every strict rule is within its codebase ceiling (base ed9d29a9b45d433db0c629bee9550f35980f00cb)
+make[4]: Leaving directory '/home/staticduo/git/litellm'
+make[4]: Entering directory '/home/staticduo/git/litellm'
+uv run --no-sync basedpyright tests/e2e
+0 errors, 0 warnings, 0 notes
+make[4]: Leaving directory '/home/staticduo/git/litellm'
+make[4]: Entering directory '/home/staticduo/git/litellm'
+uv run --no-sync python scripts/test_quality_gate.py --base ed9d29a9b45d433db0c629bee9550f35980f00cb
+FAIL: TQ-rule totals exceed their limit (base ed9d29a9b45d433db0c629bee9550f35980f00cb):
+  TQ004: total 470 over limit 469 (this change added 1)
+    tests/e2e/maintenance/candidate_secret_wrapper.py:23
+Fix the new violations, or give each one a reason (`# test-quality-ok: <reason>`), or remove an equal number elsewhere; the ceiling is the limit in test-quality-budget.json. Run `python scripts/check_test_quality.py tests/` to see every finding.
+make[4]: *** [Makefile:218: lint-test-quality] Error 1
+make[4]: Leaving directory '/home/staticduo/git/litellm'
+make[4]: Entering directory '/home/staticduo/git/litellm'
+uv run --no-sync python scripts/type_discipline_gate.py --base ed9d29a9b45d433db0c629bee9550f35980f00cb
+OK: every LIT rule is within its codebase ceiling (base ed9d29a9b45d433db0c629bee9550f35980f00cb)
+make[4]: Leaving directory '/home/staticduo/git/litellm'
+make[4]: Entering directory '/home/staticduo/git/litellm'
+uv run --no-sync python scripts/type_check_gate.py --base ed9d29a9b45d433db0c629bee9550f35980f00cb
+OK: every rule is within its basedpyright limit or no higher than base (143077 errors total)
+make[4]: Leaving directory '/home/staticduo/git/litellm'
+make[3]: *** [Makefile:265: lint-inner] Error 2
+make[3]: Leaving directory '/home/staticduo/git/litellm'
+make[2]: *** [Makefile:262: lint] Error 2
+make[2]: Leaving directory '/home/staticduo/git/litellm'
+✗ Python lint failed. Fix the reds above, then re-run make check.
+check: ruff format --check (scoped litellm files)
+2 files already formatted
+check: summary
+    ran:     Python lint (make lint)
+    skipped: tests/e2e checks (basedpyright + raw HTTP client ban) (no tests/e2e Python files in scope)
+    skipped: dashboard lint (prettier + eslint + lint budgets) (no dashboard files in scope)
+    skipped: dashboard API-type sync (npm run gen:api) (no litellm/proxy, litellm/types, or generator files in scope)
+check: FAIL
+check: full log: /home/staticduo/git/litellm/.git/pre_commit_lint.log
+make[1]: *** [Makefile:283: check-inner] Error 1
+make[1]: Leaving directory '/home/staticduo/git/litellm'
+make: *** [Makefile:280: check] Error 2

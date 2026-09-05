@@ -1,0 +1,18 @@
+make[1]: Entering directory '/home/staticduo/git/litellm'
+uv sync --inexact --frozen --extra proxy --group proxy-dev --group e2e-dev
+warning: Failed to parse `pyproject.toml` during settings discovery:
+  TOML parse error at line 298, column 5
+      |
+  298 |     { package = { name = "redisvl", version = "0.4.1" }, dependencies = ["ml-dtypes==0.5.4"] },
+      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  invalid type: map, expected a string containing a PEP 508 requirement
+
+error: Failed to parse: `pyproject.toml`
+  Caused by: TOML parse error at line 298, column 5
+    |
+298 |     { package = { name = "redisvl", version = "0.4.1" }, dependencies = ["ml-dtypes==0.5.4"] },
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+invalid type: map, expected a string containing a PEP 508 requirement
+make[1]: *** [Makefile:89: bootstrap] Error 2
+make[1]: Leaving directory '/home/staticduo/git/litellm'
+make: *** [Makefile:280: check] Error 2
