@@ -265,6 +265,51 @@ def test_get_logging_payload_maps_responses_api_cache_write_tokens_from_usage_ob
     assert additional_usage_values["cache_creation_input_tokens"] == 800
 
 
+@pytest.mark.parametrize("container_kind", ["dict", "list"])
+def test_spend_sanitizer_bounds_deep_values(container_kind):
+    value = {"leaf": "not required beyond the depth boundary"}
+    for _ in range(2000):
+        value = {"nested": value} if container_kind == "dict" else [value]
+    body = {"model": "synthetic-model", "deep": value, "usage": {"total_tokens": 7}}
+    sanitized = _sanitize_request_body_for_spend_logs_payload(body)
+    assert sanitized["model"] == "synthetic-model"
+    assert sanitized["usage"] == {"total_tokens": 7}
+    assert len(json.dumps(sanitized)) < 1000
+
+
+def test_spend_sanitizer_list_cycles_shared_nodes_and_runtime_objects():
+    class RuntimeCallback:
+        def __repr__(self):
+            raise AssertionError("Runtime state must not be rendered")
+
+    callback = RuntimeCallback()
+    shared = {"total_tokens": 7}
+    cycle = []
+    cycle.append(cycle)
+    body = {"loop": cycle, "first": shared, "again": shared, "callback": callback}
+    sanitized = _sanitize_request_body_for_spend_logs_payload(body)
+    assert sanitized == {"loop": [[]], "first": {"total_tokens": 7}, "again": {}, "callback": None}
+    assert json.loads(json.dumps(sanitized)) == sanitized
+    assert body["callback"] is callback
+    assert body["first"] is body["again"]
+    assert cycle[0] is cycle
+
+
+def test_spend_sanitizer_preserves_typed_response_fields_and_callbacks():
+    from pydantic import BaseModel
+
+    class Usage(BaseModel):
+        total_tokens: int
+
+    callbacks = [lambda: "unchanged"]
+    body = {"responses": [Usage(total_tokens=i) for i in range(20)], "callbacks": callbacks}
+    sanitized = _sanitize_request_body_for_spend_logs_payload(body)
+    assert sanitized["responses"] == [{"total_tokens": i} for i in range(20)]
+    assert sanitized["callbacks"] == [None]
+    assert callbacks[0]() == "unchanged"
+    assert json.loads(json.dumps(sanitized)) == sanitized
+
+
 def test_sanitize_request_body_for_spend_logs_payload_basic():
     request_body = {
         "messages": [{"role": "user", "content": "Hello, how are you?"}],

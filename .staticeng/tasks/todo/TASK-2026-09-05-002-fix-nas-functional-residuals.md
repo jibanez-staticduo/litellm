@@ -23,6 +23,11 @@ Both hosts are healthy on image 7b2368711ff10db3107772d627e03aa89319598f8897ff74
 - AC-3: Validate actual NAS Astra Chat and aggregate MCP or precisely establish external dependency limitation; distinguish real provider unavailability from router state bug.
 - AC-4: If source changes, test/review/build then Fedora first and NAS only after renewed Fedora validation. Preserve both running services where possible, all host-specific data/config and containment.
 - AC-5: Evidence under `.staticeng/evidences/TASK-2026-09-05-002-fix-nas-functional-residuals/` with SUMMARY.md and logs, numbered coverage. No secrets. No security or harness refactors.
+- AC-6: Reproduce and eliminate active spend-sanitizer recursion on cyclic/deep values; preserve normal spend fields, shared-graph handling and callbacks without serializing arbitrary runtime state. Verify the exact correction Fedora first, then NAS, with real public calls and bounded resource/log observation
+
+## Reopen History
+
+2026-09-05: PMA resumed the same task for the real NAS spend-log RecursionError, explicitly classified as product logging rather than security/tooling work. Fresh bounded five-minute NAS logs contain 148 RecursionError lines in _sanitize_request_body_for_spend_logs_payload/_sanitize_value. Existing functional deployments and corrected startup wrappers must remain intact until a verified source fix is built. Inspect the missing OAuth discovery helper only for supported-flow impact; do not conceal external auth-required peers
 
 [Agent Message] From: product_manager To: developer
 
@@ -57,3 +62,9 @@ Fedora then passed actual Astra reload/Chat/Responses, aggregate listing with tr
 NAS passes actual Astra Chat and Responses JSON/stream after manual price reload, aggregate initialize/list with 487 tools and 24 successful peers despite all three Frigate registrations timing out, and the real memory-health tool. Fresh bounded TCP tests confirm Frigate remains unreachable. NAS completed 900.00 seconds with 31/31 readiness checks and no memory-limit/OOM event. Final uncached-prompt checks passed on both hosts through loopback and public URLs; Fedora was rechecked after NAS soak
 
 Both hosts remain on digest 4800816a96e35e7e87549e23823b0627148b6dfe2ac3cb7b55dab345dede1258, source 2dee9cd19e329d5c59eb712b8f27b8205ca0ff02, running/healthy with zero restarts/OOM and persistent 8-GiB/no-swap/restart-disabled containment. The bounded resource windows passed but memory was not flat; retain measured growth in final evidence rather than claiming indefinite leak-free operation. Task is ready for PMA acceptance/closure with external Frigate limitations explicitly retained
+
+### Reopen 1 source expectations
+
+Active recursion was confirmed by 148 NAS RecursionError lines in five minutes. Local deep dict/list and list-cycle regressions failed before correction. Sanitization now bounds depth at 32, tracks container identities, preserves typed response and normal spend fields, and nulls arbitrary runtime objects without inspecting or mutating callbacks. Supported RFC 9728 discovery actually reaches the missing OAuth helper; its existing guarded fetch path was restored at resource and issuer metadata sites rather than adding speculative OAuth behavior
+
+All four mapped files pass in isolated Python processes: 951 tests total, no skips. Direct production/spend-test Ruff, all changed-file formatting and diff checks pass. A combined single-process run timed out and existing whole-manager-test lint findings remain disclosed. See logs/09-reopen1-source.md. Both existing functional deployments remain unchanged at this source checkpoint; build and Fedora-first/NAS live verification are still required

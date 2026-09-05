@@ -749,6 +749,7 @@ def _get_messages_for_spend_logs_payload(
 
 
 _SENSITIVE_REQUEST_BODY_KEYS: Final = frozenset({"secret_fields"})
+_MAX_SPEND_PAYLOAD_DEPTH: Final = 32
 
 
 def _sanitize_request_body_for_spend_logs_payload(
@@ -768,22 +769,31 @@ def _sanitize_request_body_for_spend_logs_payload(
         LITELLM_TRUNCATION_DB_SAFEGUARD_NOTE,
     )
 
-    if visited is None:
-        visited = set()
+    seen: Final = visited if visited is not None else set()
+    serialized_models: Final[list[object]] = []
     if max_string_length_prompt_in_db is None:
         max_string_length_prompt_in_db = _get_max_string_length_prompt_in_db()
 
-    # Get the object's memory address to track visited objects
-    obj_id: Final = id(request_body)
-    if obj_id in visited:
-        return {}
-    visited.add(obj_id)
-
-    def _sanitize_value(value: Any) -> Any:
-        if isinstance(value, dict):
-            return _sanitize_request_body_for_spend_logs_payload(value, visited, max_string_length_prompt_in_db)
-        elif isinstance(value, list):
-            return [_sanitize_value(item) for item in value]
+    def _sanitize_value(value: object, depth: int) -> object:
+        if isinstance(value, (dict, list, tuple, BaseModel)):
+            if id(value) in seen or depth >= _MAX_SPEND_PAYLOAD_DEPTH:
+                return [] if isinstance(value, (list, tuple)) else {}
+            seen.add(id(value))
+            if isinstance(value, dict):
+                return {
+                    k: _sanitize_value(v, depth + 1)
+                    for k, v in value.items()
+                    if isinstance(k, str) and k not in _SENSITIVE_REQUEST_BODY_KEYS
+                }
+            if isinstance(value, (list, tuple)):
+                return [_sanitize_value(item, depth + 1) for item in value]
+            try:
+                dumped: Final = value.model_dump()
+                # Keep temporary dumps alive while their identities remain in seen.
+                serialized_models.append(dumped)
+                return _sanitize_value(dumped, depth + 1)
+            except (ValueError, TypeError, RecursionError):
+                return {}
         elif isinstance(value, str):
             if len(value) > max_string_length_prompt_in_db:
                 # Keep 35% from beginning and 65% from end (end is usually more important)
@@ -816,9 +826,11 @@ def _sanitize_request_body_for_spend_logs_payload(
                 )
                 return truncated_value
             return value
-        return value
+        if isinstance(value, datetime):
+            return value.isoformat()
+        return value if value is None or isinstance(value, (bool, int, float)) else None
 
-    return {k: _sanitize_value(v) for k, v in request_body.items() if k not in _SENSITIVE_REQUEST_BODY_KEYS}
+    return cast(dict, _sanitize_value(request_body, 0))
 
 
 # Quoted-key form: ``"input"`` / ``'messages'`` / ``"prompt"`` followed by

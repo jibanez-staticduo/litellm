@@ -51,6 +51,7 @@ from litellm.experimental_mcp_client.client import MCPClient, MCPSigV4Auth, stri
 from litellm.integrations.custom_guardrail import (
     _sync_guardrail_info_to_logging_obj,  # pyright: ignore[reportPrivateUsage] - the same bridge @log_guardrail_information uses; reimplementing it here would fork the metadata-key logic
 )
+from litellm.litellm_core_utils.url_utils import async_safe_get
 from litellm.llms.custom_httpx.http_handler import get_async_httpx_client
 from litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp import (
     MCPRequestHandler,
@@ -4302,6 +4303,30 @@ class MCPServerManager:
 
         return resource_metadata_url, scopes
 
+    @staticmethod
+    def _is_same_authority_metadata_url(url: str, server_url: str) -> bool:
+        target: Final = urlparse(url)
+        base: Final = urlparse(server_url)
+        return (
+            target.scheme in ("http", "https")
+            and target.hostname is not None
+            and target.username is None
+            and target.password is None
+            and target.scheme == base.scheme
+            and target.hostname.lower() == (base.hostname or "").lower()
+            and (target.port or (443 if target.scheme == "https" else 80))
+            == (base.port or (443 if base.scheme == "https" else 80))
+        )
+
+    async def _fetch_oauth_discovery_url(self, url: str, server_url: str) -> httpx.Response:
+        client: Final = get_async_httpx_client(
+            llm_provider=httpxSpecialProvider.MCP,
+            params={"timeout": MCP_METADATA_TIMEOUT},
+        )
+        if self._is_same_authority_metadata_url(url, server_url):
+            return await client.get(url, follow_redirects=False)
+        return await async_safe_get(client, url)
+
     async def _fetch_oauth_metadata_from_resource(
         self, resource_metadata_url: str, server_url: str
     ) -> tuple[list[str], list[str] | None]:
@@ -4428,13 +4453,7 @@ class MCPServerManager:
 
         for url in candidate_urls:
             try:
-                client = get_async_httpx_client(
-                    llm_provider=httpxSpecialProvider.MCP,
-                    params={  # mutable-ok: framework contract requires mutable request or response containers
-                        "timeout": MCP_METADATA_TIMEOUT
-                    },  # mutable-ok: framework contract requires mutable request or response containers
-                )
-                response = await client.get(url)
+                response = await self._fetch_oauth_discovery_url(url, server_url)
                 response.raise_for_status()
                 data = response.json()
             except Exception as exc:  # pragma: no cover - network issues

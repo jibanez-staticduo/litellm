@@ -1,5 +1,6 @@
 scope: module
 invariants:
+  - OAuth resource and issuer metadata use the same guarded fetch boundary; administrator-configured same-authority metadata disables redirects and federated metadata uses async_safe_get.
   - Aggregate listing bounds each allowed peer's complete setup, list and permission filtering by MCP_TOOL_LISTING_TIMEOUT; expired peers drain and report timeout without suppressing healthy peers or changing scoped errors.
   - Optional initialize instruction probes bound setup and session by the smaller metadata and health timeout; failed peers do not cancel healthy peers.
 parent: ../../../../.staticeng/codemap.yml

@@ -7764,6 +7764,47 @@ class TestMCPServerManagerExpandToolPermissions:
         assert sorted(result["uuid-a"]) == ["read_file", "write_file"]
 
 
+@pytest.mark.asyncio
+async def test_oauth_discovery_follows_advertised_resource_metadata():
+    import httpx
+
+    manager = MCPServerManager()
+    resource = "https://resource.example/mcp"
+    metadata_url = "https://resource.example/.well-known/oauth-protected-resource"
+    issuer = "https://resource.example/issuer"
+
+    async def get(url, **kwargs):
+        request = httpx.Request("GET", url)
+        if url == resource:
+            response = httpx.Response(
+                401, headers={"WWW-Authenticate": f'Bearer resource_metadata="{metadata_url}"'}, request=request
+            )
+            response.raise_for_status()
+        if url == metadata_url:
+            assert kwargs.get("follow_redirects") is False
+            return httpx.Response(
+                200, json={"authorization_servers": [issuer], "scopes_supported": ["mcp.read"]}, request=request
+            )
+        return httpx.Response(
+            200,
+            json={
+                "issuer": issuer,
+                "authorization_endpoint": issuer + "/authorize",
+                "token_endpoint": issuer + "/token",
+            },
+            request=request,
+        )
+
+    client = MagicMock()
+    client.get = AsyncMock(side_effect=get)
+    with patch("litellm.proxy._experimental.mcp_server.mcp_server_manager.get_async_httpx_client", return_value=client):
+        metadata = await manager._descovery_metadata(resource, allow_origin_fallback=False)
+    assert metadata is not None
+    assert metadata.authorization_url == issuer + "/authorize"
+    assert metadata.token_url == issuer + "/token"
+    assert metadata.scopes == ["mcp.read"]
+
+
 class TestOAuthDiscoverySSRFGuard:
     """SSRF guard for the OAuth metadata discovery follow-up fetches.
 

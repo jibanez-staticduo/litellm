@@ -1,5 +1,9 @@
 # NAS functional residuals
 
+## Reopen 1 in progress
+
+PMA resumed this task for active spend recursion. Source corrections and 951 isolated mapped tests now pass, including repaired supported OAuth discovery; see logs/09-reopen1-source.md and AC-6 in the task. The dual-host verification below describes the preceding deployed image until the new source completes its own rollout gates
+
 Both hosts are running/healthy on exact-source digest 4800816a96e35e7e87549e23823b0627148b6dfe2ac3cb7b55dab345dede1258, application source 2dee9cd19e329d5c59eb712b8f27b8205ca0ff02. Three scoped product corrections passed 303 mapped tests with no skips and built successfully. The real startup-wrapper defect was then corrected with backed-up host-specific changes. Fedora passed first; only then was the same digest promoted to NAS. Both pass actual Astra reload/Chat/Responses and aggregate partial-availability/healthy-tool checks through loopback and public URLs, plus complete 900-second observations
 
 This is a scoped functional result, not an error-free all-traffic release claim. External Frigate reachability, other timeout/auth-required peers, finite-window memory growth and a separate NAS spend-log recursion finding remain disclosed for PMA disposition

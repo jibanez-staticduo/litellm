@@ -1,4 +1,6 @@
 scope: module
+invariants:
+  - Spend payload sanitization bounds container depth, tracks shared and cyclic containers, excludes runtime objects and secret_fields, and leaves caller-owned callbacks and payloads unchanged.
 parent: ../../../.staticeng/codemap.yml
 internals:
   - path: vantage_endpoints.py

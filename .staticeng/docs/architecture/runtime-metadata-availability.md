@@ -10,6 +10,14 @@ These deadlines do not change upstream tool execution timeouts, health status or
 
 Verification lives in tests/test_litellm/test_router_model_cost_isolation.py and tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py
 
+## Spend payload traversal and OAuth discovery
+
+Spend request/response sanitization bounds container traversal at 32 levels and tracks identities for dictionaries, lists, tuples and typed response models. Repeated containers retain the existing first-occurrence logging semantics, with subsequent occurrences represented as empty containers. Depth-boundary containers are empty as well. This prevents cyclic lists and deeply nested request/logging graphs from exhausting the Python stack before a spend record can be assembled
+
+Normal scalar values, string truncation, secret_fields exclusion, datetime serialization and typed response fields remain available. Arbitrary nonserializable runtime objects become null without inspecting attributes or rendering repr/str. Caller-owned inputs and callback objects are not mutated. Temporary model dumps remain alive only for the sanitizer call so their IDs cannot be reused and incorrectly suppress later independent typed responses
+
+Supported RFC 9728 resource discovery calls the restored OAuth metadata fetch helper. Both resource and issuer documents use its existing fetch boundary: same scheme/host/effective-port metadata for administrator-configured resources is fetched without redirects, and cross-authority metadata goes through the shared async_safe_get helper. No credential, token, consent, auth-required outcome or issuer-match policy is changed
+
 ## Deployment bootstrap
 
 Fedora and NAS persist their own mounted start-litellm.sh wrappers and invoke the image's /app/docker/prod_entrypoint.sh with exec. Neither wrapper installs PostgreSQL clients or repeatedly alters schema at startup. The source_url column exists in both databases and the maintained Prisma schema; ordinary application migration/startup owns database readiness and schema lifecycle
