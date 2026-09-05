@@ -20,6 +20,23 @@ from litellm.utils import ProviderConfigManager
 
 
 class TestChatGPTResponsesAPITransformation:
+    @pytest.mark.parametrize("input_value", ["hi", "", [{"role": "user", "content": "hi"}]])
+    def test_chatgpt_responses_normalizes_string_input(self, input_value):
+        request = ChatGPTResponsesAPIConfig().transform_responses_api_request(
+            model="chatgpt/gpt-6-astra",
+            input=input_value,
+            response_api_optional_request_params={},
+            litellm_params=GenericLiteLLMParams(),
+            headers={},
+        )
+
+        expected = (
+            [{"role": "user", "content": [{"type": "input_text", "text": input_value}]}]
+            if isinstance(input_value, str)
+            else input_value
+        )
+        assert request["input"] == expected
+
     @pytest.mark.parametrize("as_model", [False, True])
     @pytest.mark.parametrize(
         ("session_fields", "expected"),

@@ -2,3 +2,5 @@ scope: module
 parent: ../../../../.staticeng/codemap.yml
 internals:
   - path: transformation.py
+invariants:
+  - String Responses input is normalized to a user input_text item for the ChatGPT upstream list-only contract; list input is preserved

@@ -1,5 +1,9 @@
 # Fedora runtime repair: containment fixed, product blocker reproduced
 
+## First live correction result
+
+Checkpoint 8865c5d20c75552d7db3a79f888c2c79f42fc02f was pushed, built and deployed by digest on Fedora. The allocation correction survived 900.37 seconds with all 91 readiness samples passing, zero OOM events and 1.17-GB sampled peak. Real Chat streaming/non-streaming and MCP/LazyMCP initialize/list passed. Direct Responses revealed the provider requires list input; the next minimal correction normalizes accepted string input in the ChatGPT provider. Three regression cases reproduce/fix it, and 232 focused isolated tests pass. See logs/14-first-corrected-live.md. Full functionality and final corrected-image soak remain pending; NAS remains untouched
+
 ## Tech Lead checkpoint review
 
 PMA-authorized isolated comparison against unpatched HEAD classified the 15 broader failures without changing maintenance tools. Five cache-shape cases pass on both trees with inherited endpoints removed; one stale LazyMCP test expectation now includes the required `toolset_id=None`; nine external-provider failures reproduce with absent credentials and disabled networking on both trees. Focused product matrix: 229 passed, no skips. This does not turn the prior 964-pass/15-failure broad result into an all-pass claim
