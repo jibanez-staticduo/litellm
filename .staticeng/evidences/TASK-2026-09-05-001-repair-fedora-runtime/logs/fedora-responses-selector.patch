@@ -1,0 +1,5 @@
+--- .env
++++ .env
+@@ -1 +1 @@
+-LITELLM_IMAGE=docker.staticduo.com/litellm@sha256:849c75ee0eef2855b79277886db2794d5b98182a6dcc426b8ed55f79b44efff9
++LITELLM_IMAGE=docker.staticduo.com/litellm@sha256:bc9a9123b774f5e2c250d2a9d4b5441397571e54cf41fc64c1192021940d6042

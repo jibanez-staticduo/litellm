@@ -1,4 +1,14 @@
-# Fedora runtime repair: containment fixed, product blocker reproduced
+# Fedora runtime repair: rapid OOM corrected, live functionality restored with limits
+
+## Latest final observation
+
+Fedora is running/healthy on exact registry digest `bc9a9123b774f5e2c250d2a9d4b5441397571e54cf41fc64c1192021940d6042`, built from pushed source `fb8943a9cc67573f34e0a56f6cb923f3a2dc845f`. Persistent 8-GiB/no-swap/restart=no containment survived recreation. Three product corrections are deployed: non-recursive ChatGPT session lookup, preserved account-profile parameters and Responses string-input normalization
+
+232 focused isolated tests pass. Astra Chat streaming/non-streaming, Astra Responses SSE, Sol/Luna Chat, real LazyMCP defend_memory-find and standard MCP health invocation completed successfully. Final 900.36-second observation passed all 91 readiness checks, no OOM or memory-limit events, peak 1187172352 bytes. No rapid allocation burst recurred
+
+**Not full release closure:** Responses stream=false still returns SSE under the existing explicitly tested provider-forced streaming contract; memory grew gradually by about 231 MB during the window; incoming Luna requests with temperature=0 and active reasoning continue to be rejected. The broad suite is not all-pass, and clean logs/indefinite memory stability/JSON non-stream semantics are not claimed. Route these contract/caller-policy questions through PMA. NAS remains untouched and promotion prohibited
+
+Exact final source, digest, live matrix, sample series and AC coverage are in logs/15-final-fedora-observation.md. AC-1/AC-2/AC-3/AC-5 have the described evidence; AC-4 remains partial. The sections below are historical checkpoint records, superseded by this final observation
 
 ## First live correction result
 
