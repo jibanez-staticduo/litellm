@@ -124,20 +124,36 @@ bash -n "$W/mock/collector.sh"
 
 cat >"$W/mock/docker" <<'SH'
 #!/bin/bash
+case "${1:-}" in
+    inspect)
+        [ "$#" -eq 6 ] && [ "$2" = --type ] && [ "$3" = container ] && [ "$4" = --format ] || exit 97
+        if [ "$6" = litellm ]; then
+            expected='[{{json .Config.Image}},{{json .Image}},{{json .Id}},{{json .State.StartedAt}},{{json .State.Pid}},{{json .State.ExitCode}},{{json .RestartCount}},{{json .State.OOMKilled}},{{if .State.Health}}{{json .State.Health.Status}}{{else}}"none"{{end}}]'
+        else
+            case "$6" in postgresql|litellm-redis|defend-memory-mcp|defend-memory-memory-agent-gateway|defend-memory-postgres|defend-memory-qdrant|defend-memory-neo4j) : ;; *) exit 97 ;; esac
+            expected='[{{json .Id}},{{json .Image}},{{json .State.StartedAt}},{{json .State.Status}},{{if .State.Health}}{{json .State.Health.Status}}{{else}}"none"{{end}},{{json .RestartCount}},{{json .State.OOMKilled}}]'
+        fi
+        [ "$5" = "$expected" ] || exit 97
+        ;;
+    image)
+        [ "$#" -eq 5 ] && [ "$2" = inspect ] && [ "$3" = --format ] || exit 97
+        [ "$4" = '[{{json .Id}},{{json (index .Config.Labels "org.opencontainers.image.revision")}}]' ] || exit 97
+        ;;
+esac
 case "${COMMAND_MODE:-}" in
     timeout) sleep 10 ;;
     error) exit 19 ;;
 esac
 case "${1:-}" in
     inspect)
-        if [ "${2:-}" = litellm ]; then
-            printf '[{"Config":{"Image":"candidate"},"Image":"runtime","Id":"cid","State":{"StartedAt":"start","Pid":4242,"ExitCode":0,"OOMKilled":false,"Health":{"Status":"healthy"}},"RestartCount":0}]\n'
+        if [ "$6" = litellm ]; then
+            printf '["candidate","runtime","cid","start",4242,0,0,false,"healthy"]\n'
         else
-            printf '[{"Id":"dep","Image":"dep-image","State":{"StartedAt":"start","Status":"running","Health":{"Status":"healthy"},"OOMKilled":false},"RestartCount":0}]\n'
+            printf '["dep","dep-image","start","running","healthy",0,false]\n'
         fi
         ;;
     image)
-        printf '[{"Id":"config","Config":{"Labels":{"org.opencontainers.image.revision":"source"}}}]\n'
+        printf '["config","source"]\n'
         ;;
     exec)
         case "${2:-}" in
@@ -353,12 +369,24 @@ run_generated_collector_case() {
         "$COLLECTOR_SANDBOX/rollback/collect-watchdog-sample.sh" >"$W/collector.out" 2>"$W/collector.err"
     status=$?
     set -e
-    [ "$status" -ne 0 ]
+    if [ "$command_mode" = timeout ]; then [ "$status" -eq 124 ]; else [ "$status" -ne 0 ] && [ "$status" -ne 97 ]; fi
     printf 'generated_%s_%s=pass\n' "$command_name" "$command_mode"
 }
-for command_name in docker postgres redis health dependency journal; do
+for command_name in docker image postgres redis health dependency journal; do
     run_generated_collector_case "$command_name" timeout
     run_generated_collector_case "$command_name" error
+done
+
+for command_name in docker image dependency; do
+    PATH="$W/mock:$PATH" COMMAND_MODE=success WATCHDOG_COMMAND_TEST="$command_name" WATCHDOG_ATTEMPT="$COLLECTOR_SANDBOX" WATCHDOG_COMMAND_TIMEOUT=1 \
+        "$COLLECTOR_SANDBOX/rollback/collect-watchdog-sample.sh" >"$W/collector.out"
+    case "$command_name" in
+        docker) expected='["candidate","runtime","cid","start",4242,0,0,false,"healthy"]' ;;
+        image) expected='["config","source"]' ;;
+        dependency) expected='["dep","dep-image","start","running","healthy",0,false]' ;;
+    esac
+    [ "$(cat "$W/collector.out")" = "$expected" ]
+    printf 'fixed_projection_%s=pass\n' "$command_name"
 done
 
 PATH="$W/mock:$PATH" COMMAND_MODE=match WATCHDOG_COMMAND_TEST=journal WATCHDOG_ATTEMPT="$COLLECTOR_SANDBOX" WATCHDOG_COMMAND_TIMEOUT=0.02 \

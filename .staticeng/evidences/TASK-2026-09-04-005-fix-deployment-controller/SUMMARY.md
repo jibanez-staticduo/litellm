@@ -1,5 +1,13 @@
 # TASK-2026-09-04-005 Evidence Summary
 
+## Reopen 3: Collector Projections
+
+Tech Lead final verdict: PASS. Independently reran both full suites and ShellCheck; generated Bash syntax and StaticEng validation pass with zero warnings. Reviewed every inspection site including generated child collector and dependency loop: only fixed scalar projections are retrieved. The 43-field sample output and seven-field dependency TSV fingerprint order remain unchanged. AC-1 through AC-5 pass. Executor may immediately continue the existing authorized TASK-006 diagnosis after closure push; this review performs no deployment. Fourteen unrelated normalization files remain preserved outside the commit. See `.staticeng/evidences/TASK-2026-09-04-005-fix-deployment-controller/logs/09-tech-lead-reopen3-review.md`
+
+Replaced broad Docker reads only in the generated collector with fixed JSON arrays of scalar fields. Container projection: configured image, runtime image, ID, start time, PID, exit code, restart count, OOM flag, health. Image projection: ID and exact `org.opencontainers.image.revision` label. Dependency projection: ID, image, start time, status, health, restart count, OOM flag, in the prior TSV fingerprint order. No environment, whole Config, or whole inspect object is retrieved
+
+Controller, rollback, thresholds, and 43-field sample contract remain unchanged. Exact-command mocks and successful projection tests plus both full regression suites pass; ShellCheck and diff checks pass. See `logs/08-reopen3-projections.log`. Independent approval pending; no deployment, credentials, commit, or push
+
 ## Final Tech Lead Reopen 2 Verdict
 
 PASS. Independent full controller/watchdog suites, maintained/generated Bash syntax, ShellCheck, whitespace, and StaticEng validation pass. Previous startup OOM coverage, nonce/lock readiness and rollback intent, pre-mutation signal/rollback-failure preservation, and runtime config identity findings are closed. AC-1 through AC-5 pass under PMA's review-only closure and original-session execution handoff

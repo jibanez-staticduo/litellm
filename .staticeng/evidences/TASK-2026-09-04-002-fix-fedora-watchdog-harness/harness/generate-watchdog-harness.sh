@@ -80,13 +80,18 @@ probe_kernel_oom() {
     esac
 }
 
+CONTAINER_FORMAT='[{{json .Config.Image}},{{json .Image}},{{json .Id}},{{json .State.StartedAt}},{{json .State.Pid}},{{json .State.ExitCode}},{{json .RestartCount}},{{json .State.OOMKilled}},{{if .State.Health}}{{json .State.Health.Status}}{{else}}"none"{{end}}]'
+IMAGE_FORMAT='[{{json .Id}},{{json (index .Config.Labels "org.opencontainers.image.revision")}}]'
+DEPENDENCY_FORMAT='[{{json .Id}},{{json .Image}},{{json .State.StartedAt}},{{json .State.Status}},{{if .State.Health}}{{json .State.Health.Status}}{{else}}"none"{{end}},{{json .RestartCount}},{{json .State.OOMKilled}}]'
+
 if [ -n "${WATCHDOG_COMMAND_TEST:-}" ]; then
     case "$WATCHDOG_COMMAND_TEST" in
-        docker) bounded docker inspect litellm >/dev/null ;;
+        docker) bounded docker inspect --type container --format "$CONTAINER_FORMAT" litellm ;;
         postgres) bounded docker exec postgresql psql -U postgres -d litellm -Atqc 'select count(*) from pg_stat_activity' >/dev/null ;;
         redis) bounded docker exec litellm-redis sh -lc 'export REDISCLI_AUTH="${REDIS_PASSWORD:?}"; exec redis-cli --raw INFO clients' >/dev/null ;;
         health) bounded curl -sS -o /dev/null --max-time "$COMMAND_TIMEOUT" http://127.0.0.1:4000/health/liveliness ;;
-        dependency) bounded docker inspect postgresql >/dev/null ;;
+        dependency) bounded docker inspect --type container --format "$DEPENDENCY_FORMAT" postgresql ;;
+        image) bounded docker image inspect --format "$IMAGE_FORMAT" "$C" ;;
         journal) probe_kernel_oom ;;
         *) exit 64 ;;
     esac
@@ -97,22 +102,23 @@ watchdog_phase=rollback
 if [ "${WATCHDOG_PROOF_ROLLBACK:-0}" != 1 ]; then watchdog_phase=$(bounded cat "$A/safe/watchdog-phase"); fi
 case "$watchdog_phase" in pre-start|active|rollback) : ;; *) exit 1 ;; esac
 
-i=$(bounded docker inspect litellm)
-im=$(bounded jq -er '.[0].Config.Image | strings | select(length>0)' <<<"$i")
-runtime=$(bounded jq -er '.[0].Image | strings | select(length>0)' <<<"$i")
-cid=$(bounded jq -er '.[0].Id | strings | select(length>0)' <<<"$i")
-started=$(bounded jq -er '.[0].State.StartedAt | strings | select(length>0)' <<<"$i")
-pid=$(bounded jq -er '.[0].State.Pid | numbers | select(.>0)' <<<"$i")
-exit_code=$(bounded jq -er '.[0].State.ExitCode | numbers' <<<"$i")
-restart=$(bounded jq -er '.[0].RestartCount | numbers | select(.>=0)' <<<"$i")
-oom=$(bounded jq -r '.[0].State.OOMKilled | booleans' <<<"$i")
+i=$(bounded docker inspect --type container --format "$CONTAINER_FORMAT" litellm)
+im=$(bounded jq -er '.[0] | strings | select(length>0)' <<<"$i")
+runtime=$(bounded jq -er '.[1] | strings | select(length>0)' <<<"$i")
+cid=$(bounded jq -er '.[2] | strings | select(length>0)' <<<"$i")
+started=$(bounded jq -er '.[3] | strings | select(length>0)' <<<"$i")
+pid=$(bounded jq -er '.[4] | numbers | select(.>0)' <<<"$i")
+exit_code=$(bounded jq -er '.[5] | numbers' <<<"$i")
+restart=$(bounded jq -er '.[6] | numbers | select(.>=0)' <<<"$i")
+oom=$(bounded jq -r '.[7] | booleans' <<<"$i")
 case "$oom" in true|false) : ;; *) exit 1 ;; esac
-health=$(bounded jq -er '.[0].State.Health.Status | strings | select(length>0)' <<<"$i")
+health=$(bounded jq -er '.[8] | strings | select(length>0)' <<<"$i")
 config_identity=none
 source_identity=none
 if [ "$watchdog_phase" != pre-start ] || [ "$im" = "$C" ]; then
-    config_identity=$(bounded docker image inspect "$im" | bounded jq -er '.[0].Id | strings | select(length>0)')
-    source_identity=$(bounded docker image inspect "$im" | bounded jq -er '.[0].Config.Labels["org.opencontainers.image.revision"] | strings | select(length>0)')
+    image_identity=$(bounded docker image inspect --format "$IMAGE_FORMAT" "$im")
+    config_identity=$(bounded jq -er '.[0] | strings | select(length>0)' <<<"$image_identity")
+    source_identity=$(bounded jq -er '.[1] | strings | select(length>0)' <<<"$image_identity")
 fi
 cg=$(bounded awk -F: '$1=="0"{print $3}' "/proc/$pid/cgroup")
 [ -n "$cg" ]
@@ -150,7 +156,7 @@ redis_info=$(bounded docker exec litellm-redis sh -lc 'export REDISCLI_AUTH="${R
 redis_clients=$(bounded awk -F: '$1=="connected_clients"{gsub(/\r/,"",$2);print $2}' <<<"$redis_info")
 redis_blocked=$(bounded awk -F: '$1=="blocked_clients"{gsub(/\r/,"",$2);print $2}' <<<"$redis_info")
 read -r disk_bytes disk_percent < <(bounded df -PB1 "$R" | bounded awk 'NR==2{gsub(/%/,"",$5);print $4,$5}')
-dependencies=$(for dependency in postgresql litellm-redis defend-memory-mcp defend-memory-memory-agent-gateway defend-memory-postgres defend-memory-qdrant defend-memory-neo4j; do bounded docker inspect "$dependency" | bounded jq -er '.[0]|[.Id,.Image,.State.StartedAt,.State.Status,(.State.Health.Status//"none"),.RestartCount,.State.OOMKilled]|@tsv'; done | bounded sha256sum | bounded cut -d' ' -f1)
+dependencies=$(for dependency in postgresql litellm-redis defend-memory-mcp defend-memory-memory-agent-gateway defend-memory-postgres defend-memory-qdrant defend-memory-neo4j; do bounded docker inspect --type container --format "$DEPENDENCY_FORMAT" "$dependency" | bounded jq -er '@tsv'; done | bounded sha256sum | bounded cut -d' ' -f1)
 [ -s "$A/safe/protected-baseline.sha256" ]
 (cd "$R" && bounded sha256sum --check --status "$A/safe/protected-baseline.sha256")
 protected=pass

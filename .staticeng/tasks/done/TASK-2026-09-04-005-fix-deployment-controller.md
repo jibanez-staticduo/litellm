@@ -8,7 +8,7 @@ scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-03-006-diagnose-fedora-candidate-live
 assigned_to: tech_lead
 handoff_from: product_manager
-reopened_count: 2
+reopened_count: 3
 ---
 
 # Task: Fix deployment controller
@@ -33,6 +33,10 @@ Fix only the complete deployment controller script. Reuse the already approved w
 
 ## Reopen History
 
+### Reopen 3 - Executor collector projections
+
+PMA requested replacement only of broad collector Docker inspection with fixed non-secret format projections, preserving sample layout, thresholds, and controller. Same task retained at its existing path for review; no live execution or commit/push is delegated
+
 ### Reopen 1 - Atomic mutation and watcher readiness handshake
 
 Prevent watcher rollback during normal startup by using an explicit controller/watchdog phase handshake: pre-start monitoring validates host/dependencies without requiring candidate identity/health, then candidate-active phase enforces exact identity and health after controller confirms startup. Set rollback-required state atomically before selector replacement, so every signal after mutation begins rolls back. Before publishing ready, require watcher alive, no trigger, current phase active, exact identity, and health in one final fail-closed handshake; a watcher trip during final checks must prevent readiness and rollback. Add race tests for startup, final checks, and signal between state write and selector replacement.
@@ -42,6 +46,28 @@ Prevent watcher rollback during normal startup by using an explicit controller/w
 During `pre-start`, enforce candidate container existence plus cgroup memory, growth, OOM-event, restart, and process gates as soon as the container appears, while health remains startup-tolerant. Replace final check-then-act with an atomic ownership protocol: watcher alone transitions a nonce-bound attempt from active to ready, and controller accepts success only if that same nonce is still ready with no rollback/trigger state. Never install the candidate selector during rollback; preserve the prior selector in a separate immutable file and make rollback idempotently restore it. A signal before selector replacement must leave the prior selector untouched. Add tests for startup OOM/growth/restart/process trips, watcher-ready versus rollback race, rollback failure, and pre-selector signal preserving the old selector.
 
 # Post Implementation Task Updates
+
+## Tech Lead Reopen 3: Post Implementation Expectations
+
+- Summary: PASS, bounded collector projection correction approved
+- Work performed: inspected the two-file source diff and all generated Docker inspection sites, including child collector command seams and the seven-dependency loop. Every inspection supplies a fixed scalar format; no Env, whole Config, whole Labels, or whole inspect object is fetched. Controller and rollback remain unchanged
+- Acceptance criteria coverage: AC-1 PASS full suites and generated Bash syntax/ShellCheck; AC-2 PASS unchanged failure and threshold handling; AC-3 PASS full controller rollback/signal matrix; AC-4 PASS fixed container/image/dependency projections, unchanged 43-field output and dependency TSV ordering, exact-command success/error/timeout tests; AC-5 PASS renewed technical closure and authorization after non-force push
+- Documentation impact: task-local evidence only; no steady-state product or CodeMap changes
+- Open risks: isolated contract verification is not live Fedora qualification. Known unrelated 14 StaticEng normalization files remain unstaged and preserved
+- Recommended next step: executor is authorized immediately after this closure push to continue the existing TASK-006 direct-admin diagnosis under unchanged fresh preflight, exact identity, OOM, one-request/deadline, rollback, full Fedora gates, and soak controls. No deployment or credential/request use occurred in review. NAS remains deferred until fully successful Fedora and separate activation
+
+## Developer Reopen 3: Post Implementation Expectations
+
+- Summary: collector now requests only nine scalar container fields, two scalar image fields, and seven scalar dependency fields using literal Docker `--format` templates
+- Work performed: removed broad-object retrieval/filtering, retained per-field parsing and dependency TSV ordering, and used the same projections in collector command-test seams. Image ID/source label are obtained in one projected read
+- AC-1: PASS, full controller/watchdog suites and generated syntax; maintained files pass ShellCheck
+- AC-2: PASS, existing failure handling and thresholds preserved
+- AC-3: PASS, full startup/signal/rollback regression suite unchanged and passing
+- AC-4: PASS, mocks require exact command flags, templates, and dependency subjects; success tests verify projected values and timeout/error tests reject command mismatch
+- AC-5: pending renewed independent approval; prior approval below applies to Reopen 2 only
+- Documentation impact: task-local evidence only; no controller, rollback, threshold, output schema, product documentation, or CodeMap change
+- Open risks: this validates isolated command contracts, not live Fedora qualification
+- Recommended next step: immediate reviewer approval of the two-file source diff and `logs/08-reopen3-projections.log`. No live deployment, credentials, commit, or push performed; unrelated normalizations preserved
 
 ## Developer: Post Implementation Expectations
 
