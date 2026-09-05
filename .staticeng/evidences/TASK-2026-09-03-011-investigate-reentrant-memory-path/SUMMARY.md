@@ -17,7 +17,7 @@ The highest-ranked failure model is candidate-specific nested model routing or c
 
 ## Acceptance Criteria Coverage
 
-- **AC-1: PASS.** `logs/01-call-graph-and-ranked-hypotheses.md` traces the full client -> LazyMCP -> LiteLLM MCP manager -> Defend deterministic find -> Fedora LiteLLM embedding/rerank -> provider -> return path
+- **AC-1: PASS.** `.staticeng/evidences/TASK-2026-09-03-011-investigate-reentrant-memory-path/logs/01-call-graph-and-ranked-hypotheses.md` traces the full client -> LazyMCP -> LiteLLM MCP manager -> Defend deterministic find -> Fedora LiteLLM embedding/rerank -> provider -> return path
 - **AC-2: PASS.** The evidence ranks all requested hypotheses and distinguishes likely root cause from amplifiers and low-probability standalone explanations
 - **AC-3: PASS.** Candidate and rollback are compared at source and preserved config-shape boundaries without secret values; the unresolved selected-deployment/upstream-authority equality is explicit
 - **AC-4: PASS.** The evidence defines bounded live instrumentation for one request plus isolated cancellation, recursion, cache, and RSS regressions
@@ -37,7 +37,7 @@ No steady-state product, architecture, technical, or CodeMap update is required.
 
 ## Recommended Next Step
 
-PMA should add the route-cardinality and normalized egress-authority counters from `logs/01-call-graph-and-ranked-hypotheses.md` to TASK-007's already authorized single-call retry, then hand TASK-010's headless authorization precondition and TASK-007's diagnostic contract to Tech Lead. Roll back immediately if the candidate receives more than one nested embedding, more than three nested reranks, any nested LazyMCP request, any continued arrivals after settlement, or any existing watchdog threshold. Do not send a second diagnostic request
+PMA should add the route-cardinality and normalized egress-authority counters from `.staticeng/evidences/TASK-2026-09-03-011-investigate-reentrant-memory-path/logs/01-call-graph-and-ranked-hypotheses.md` to TASK-007's already authorized single-call retry, then hand TASK-010's headless authorization precondition and TASK-007's diagnostic contract to Tech Lead. Roll back immediately if the candidate receives more than one nested embedding, more than three nested reranks, any nested LazyMCP request, any continued arrivals after settlement, or any existing watchdog threshold. Do not send a second diagnostic request
 
 ## Signed Handoff
 

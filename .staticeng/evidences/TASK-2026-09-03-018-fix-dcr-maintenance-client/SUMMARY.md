@@ -14,7 +14,7 @@ BLOCKED/DEFERRED experimental source checkpoint. Bounded source review, secret s
 
 ## Verification
 
-See `logs/27-reopen13-verification.log` and `logs/28-tech-lead-reopen13-execution.log`. Canonical review and 143 tests pass; the one authorized concrete run and automatic cleanup failed. Final checkpoint verification reconfirmed the same test/static result, no credential signatures, zero task resources, and invariant production
+See `.staticeng/evidences/TASK-2026-09-03-018-fix-dcr-maintenance-client/logs/27-reopen13-verification.log` and `.staticeng/evidences/TASK-2026-09-03-018-fix-dcr-maintenance-client/logs/28-tech-lead-reopen13-execution.log`. Canonical review and 143 tests pass; the one authorized concrete run and automatic cleanup failed. Final checkpoint verification reconfirmed the same test/static result, no credential signatures, zero task resources, and invariant production
 
 Source checkpoint commit: `43e437c100` (`test: TASK-2026-09-03-018 checkpoint DCR maintenance harness`). Functional qualification remains blocked/deferred
 

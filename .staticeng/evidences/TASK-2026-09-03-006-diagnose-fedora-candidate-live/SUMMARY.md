@@ -80,25 +80,25 @@ REJECT CANDIDATE; VERIFIED ROLLBACK PASS. Fresh backup/isolated restore, exact s
 
 Reopen 2 stopped at the mandatory principal preflight before any candidate deployment. The only owner-only username/password file found has the correct protected shape, but its username matches zero existing Fedora database users and both values differ from the configured proxy-admin pair. It therefore cannot be proven to represent an existing currently `defend_memory`-authorized principal
 
-No backup or watchdog was started because selector mutation was already prohibited. No login, DCR registration, consent POST, token, request, or auth artifact was created. Fedora remained healthy on the exact rollback digest with 161 completed migrations and NAS remained untouched. See `logs/02-reopen2-preflight-blocker.md`
+No backup or watchdog was started because selector mutation was already prohibited. No login, DCR registration, consent POST, token, request, or auth artifact was created. Fedora remained healthy on the exact rollback digest with 161 completed migrations and NAS remained untouched. See `.staticeng/evidences/TASK-2026-09-03-006-diagnose-fedora-candidate-live/logs/02-reopen2-preflight-blocker.md`
 
 ## Reopen 3 Outcome
 
 Reopen 3 stopped at the required supported-API proof before creating a principal or deploying the candidate. Candidate, rollback, and live OpenAPI contracts all show that `NewUserRequest` does not define `password`; a supplied password is dropped. `/user/update` can set it, but the amended SCR prohibits follow-up repair before use and requires atomic password-backed creation. The root cause is a specification/API-contract mismatch
 
-Fedora remained healthy on the exact rollback digest. No watchdog or rollback was needed because the selector did not change. There was no task-owned principal, grant, key, membership, auth workspace, DCR artifact, consent, or diagnostic request. NAS remained untouched. See `logs/03-reopen3-api-contract-blocker.md`
+Fedora remained healthy on the exact rollback digest. No watchdog or rollback was needed because the selector did not change. There was no task-owned principal, grant, key, membership, auth workspace, DCR artifact, consent, or diagnostic request. NAS remained untouched. See `.staticeng/evidences/TASK-2026-09-03-006-diagnose-fedora-candidate-live/logs/03-reopen3-api-contract-blocker.md`
 
 ## Reopen 4 Outcome
 
 Reopen 4 completed fresh backup/isolated restore, rollback-unit, candidate identity, signature, and attestation preparation, then stopped at the mandatory existing-toolset baseline. Supported admin `GET /v1/mcp/toolset` returned HTTP 200 with zero toolsets, so the required existing `defend_memory` toolset ID and membership digest could not be resolved
 
-No principal was created and no watchdog/candidate/auth/request phase started. All disposable restore resources and rendered temporary configuration were removed, the active pointer was cleared, Fedora remained healthy on exact rollback, and NAS remained untouched. See `logs/04-reopen4-toolset-read-blocker.md`
+No principal was created and no watchdog/candidate/auth/request phase started. All disposable restore resources and rendered temporary configuration were removed, the active pointer was cleared, Fedora remained healthy on exact rollback, and NAS remained untouched. See `.staticeng/evidences/TASK-2026-09-03-006-diagnose-fedora-candidate-live/logs/04-reopen4-toolset-read-blocker.md`
 
 ## Reopen 5 Outcome
 
 Reopen 5 passed fresh backup/isolated restore, rollback, exact candidate provenance, exact temporary one-tool toolset create/read-back, independent cleanup arming, and the strict `/user/new` then immediate password-only `/user/update` transaction. Least-privilege read-back passed, but the first required `/login` returned HTTP 401
 
-The explicit stop gate triggered before watchdog activation or candidate deployment. Supported cleanup cleared/deleted the principal before deleting the toolset and restored the zero-toolset baseline. No DCR, consent, audience, or diagnostic request occurred; all task auth artifacts were destroyed; Fedora remained healthy on exact rollback; NAS was untouched. See `logs/05-reopen5-login-blocker.md`
+The explicit stop gate triggered before watchdog activation or candidate deployment. Supported cleanup cleared/deleted the principal before deleting the toolset and restored the zero-toolset baseline. No DCR, consent, audience, or diagnostic request occurred; all task auth artifacts were destroyed; Fedora remained healthy on exact rollback; NAS was untouched. See `.staticeng/evidences/TASK-2026-09-03-006-diagnose-fedora-candidate-live/logs/05-reopen5-login-blocker.md`
 
 ## Reopen 6 Outcome
 
@@ -110,7 +110,7 @@ Cleanup explicitly requested UI-key deletion before grant/principal deletion, re
 
 Reopen 7 passed fresh backup/isolated restore, rollback, exact candidate identity, signature, and attestations, then stopped before deployment because the generated one-second watchdog failed shell syntax during its mandatory proving period. No administrator credential was consumed and no LazyMCP request was sent
 
-All disposable resources and rendered temporary configuration were removed, the active pointer was cleared, Fedora remained healthy on exact rollback, and NAS was untouched. See `logs/07-reopen7-watchdog-syntax-blocker.md`
+All disposable resources and rendered temporary configuration were removed, the active pointer was cleared, Fedora remained healthy on exact rollback, and NAS was untouched. See `.staticeng/evidences/TASK-2026-09-03-006-diagnose-fedora-candidate-live/logs/07-reopen7-watchdog-syntax-blocker.md`
 
 The subsequently authorized retry used the reviewed TASK-002 generator and passed `bash -n`, fresh backup/restore, rollback, identity, and provenance. Its 31-sample proof ran with the production rollback action, which completed and removed the active pointer before deployment. The operation failed closed with zero credential use and zero requests; Fedora stayed healthy on exact rollback. This proof-mode contract mismatch is appended to the same Reopen 7 evidence
 

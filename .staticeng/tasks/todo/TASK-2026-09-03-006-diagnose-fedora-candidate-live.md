@@ -3,15 +3,35 @@ id: TASK-2026-09-03-006-diagnose-fedora-candidate-live
 complexity: complex
 track: implementation
 slice: qa
-status: blocked
+status: active
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-012-release-upstream-main-fedora
 assigned_to: tech_lead
 handoff_from: product_manager
-reopened_count: 8
+reopened_count: 9
 ---
 
 # Task: Diagnose Fedora candidate live
+
+## Latest Resume Result: Candidate Selected, Stopped for Containment
+
+Current inspection supersedes the earlier successful single-request result: readiness timed out at five seconds, restart count was 39, memory.current was 31176536064 bytes, and memory.max/memory.swap.max were both unlimited. The optional containment file remains present but no longer applies to the current runtime. Disable-restart and stop were applied only to LiteLLM; candidate selection is unchanged, no rollback occurred, and NAS was untouched. Fedora is intentionally unavailable. Full functional matrix and 900-second soak have not passed. PMA must delegate the same-task persistent containment correction and protected upstream/model diagnosis. See `logs/11-resume-containment-loss.md`; no exact allocator or restart root cause is claimed.
+
+## Controlling Execution Direction - 2026-09-05
+
+The latest PMA/PO correction requires deploy-and-repair without automatic rollback, superseding historical rollback instructions below. Preserve backups, contain the exact candidate with a conservative candidate-only memory limit, execute one bounded direct-admin probe, and retain candidate selection on failure. Stop the candidate if host exhaustion threatens. Delegate any required correction through PMA in this same task. NAS remains untouched until verified Fedora functionality/soak and publication.
+
+Actual contained deployment and one direct request completed: HTTP 200, result present, isError false, 2.045 seconds, sampled peak 1061855232 bytes including 15 seconds post-response. Candidate remains selected with 8-GiB memory/no-swap and restart disabled. Full gates, correlated nested counters, task/socket drain proof, and 900-second soak remain pending. See evidence `logs/10-contained-direct-result.md`; no release PASS or NAS authorization follows from this result.
+
+## Controlling Product Owner Correction
+
+The latest explicit user instruction supersedes the earlier automatic-rollback maintenance policy: deploy the candidate to Fedora and leave it selected while investigating and repairing functional failures. Do not automatically restore the previous image for unhealthy status, failed requests, or timeout. Preserve the backup and old digest as emergency recovery information only. Bound candidate memory/process consumption so the known 100 GiB failure cannot exhaust the host; on exhaustion stop the candidate safely, retain its selector and diagnostic evidence, and repair/restart it. Do not weaken authentication or expose secrets. No destructive database changes. Obtain current host identity and state before mutation.
+
+The intended outcome is a fully functioning corrected Fedora image, verified with actual models, Responses, MCP/LazyMCP and the real Defend tool, stable under observation. Then finalize code, tests, documentation, commit/push and immutable publication; deploy exactly that verified digest to NAS and verify equivalent functionality. NAS must remain unchanged until Fedora passes. Do not make further harness-hardening tasks a prerequisite for functional investigation unless necessary to prevent host exhaustion or data loss.
+
+## Reopen 9 - Deploy and repair in place
+
+Use the latest user correction above, not earlier rollback requirements. Retire/disable any task-owned automatic rollback timers/watchers before deployment, preserving other services. Use a simple syntax-checked deployment and bounded diagnostics rather than the legacy rollback controller. Tech Lead must update the SCR/current registry to this explicit instruction, inspect current Fedora state, set a conservative candidate-only memory cap based on available capacity, deploy the retained candidate and perform the actual failing call with bounded timeouts. Reproduction and minimal source fixes take priority over speculative hardening. Delegate source fixes through PMA and the original task; never run concurrent shared-worktree implementations. No automatic rollback. Report actual candidate identity, request outcome, memory measurements and next correction.
 
 ## Objective
 

@@ -13,13 +13,13 @@ PASS and closed after Tech Lead Reopen 2 review. The disposable runtime's docume
 
 ## Verification
 
-- `logs/01-live-disposable-lifecycle.log`
-- `logs/02-source-and-static-gates.log`
-- `logs/03-cleanup.log`
-- `logs/05-reopen1-verification.log`
-- `logs/06-tech-lead-reopen1-review.log`
-- `logs/07-reopen2-cache-expiry-verification.log`
-- `logs/08-tech-lead-reopen2-review.log`
+- `.staticeng/evidences/TASK-2026-09-03-017-fix-internal-user-login/logs/01-live-disposable-lifecycle.log`
+- `.staticeng/evidences/TASK-2026-09-03-017-fix-internal-user-login/logs/02-source-and-static-gates.log`
+- `.staticeng/evidences/TASK-2026-09-03-017-fix-internal-user-login/logs/03-cleanup.log`
+- `.staticeng/evidences/TASK-2026-09-03-017-fix-internal-user-login/logs/05-reopen1-verification.log`
+- `.staticeng/evidences/TASK-2026-09-03-017-fix-internal-user-login/logs/06-tech-lead-reopen1-review.log`
+- `.staticeng/evidences/TASK-2026-09-03-017-fix-internal-user-login/logs/07-reopen2-cache-expiry-verification.log`
+- `.staticeng/evidences/TASK-2026-09-03-017-fix-internal-user-login/logs/08-tech-lead-reopen2-review.log`
 
 ## Documentation Impact
 
@@ -41,7 +41,7 @@ TASK-017 PASS FOR TECH LEAD REVIEW. Added and ran the disposable database lifecy
 
 ## Tech Lead Review
 
-REJECT. Fresh mapped review gates pass and no runtime source changed, but AC-2 remains open. The automated lifecycle test does not assert that the generated UI session key is absent or rejected after `/user/delete`, so an orphan-key regression would pass. It also verifies viewer metadata and JWT claims without exercising a denial that proves the minted session enforces least privilege. See `logs/04-tech-lead-review.log`
+REJECT. Fresh mapped review gates pass and no runtime source changed, but AC-2 remains open. The automated lifecycle test does not assert that the generated UI session key is absent or rejected after `/user/delete`, so an orphan-key regression would pass. It also verifies viewer metadata and JWT claims without exercising a denial that proves the minted session enforces least privilege. See `.staticeng/evidences/TASK-2026-09-03-017-fix-internal-user-login/logs/04-tech-lead-review.log`
 
 [Agent Message] From: tech_lead To: product_manager
 
@@ -49,7 +49,7 @@ TASK-017 REJECTED. Add mutation-sensitive generated-session-key cleanup and enfo
 
 ## Reopen 1 Developer Result
 
-PASS. The retained session key is proven present before deletion, is denied 403 on the proxy-admin-only `/user/list` route while its own `/user/info` remains permitted, then is absent from `/key/info` with 404 after `/user/delete`. The same key can no longer resolve the deleted user, and direct final disposable-DB checks prove zero matching users and keys. See `logs/05-reopen1-verification.log`
+PASS. The retained session key is proven present before deletion, is denied 403 on the proxy-admin-only `/user/list` route while its own `/user/info` remains permitted, then is absent from `/key/info` with 404 after `/user/delete`. The same key can no longer resolve the deleted user, and direct final disposable-DB checks prove zero matching users and keys. See `.staticeng/evidences/TASK-2026-09-03-017-fix-internal-user-login/logs/05-reopen1-verification.log`
 
 [Agent Message] From: developer To: product_manager
 
@@ -57,7 +57,7 @@ TASK-017 REOPEN 1 PASS FOR TECH LEAD REREVIEW. The regression now enforces viewe
 
 ## Tech Lead Reopen 1 Review
 
-REJECT. The retained session key exists and is denied the proxy-admin-only operation before deletion. Master-authenticated `/key/info` 404 and direct database checks prove storage cleanup. However, retained-key `/user/info` returning 404 proves that the deleted key still passed bearer authentication and self-access authorization before the handler found the user absent. This is not an invalid/unauthorized admission result and does not prove exact-key unusability. See `logs/06-tech-lead-reopen1-review.log`
+REJECT. The retained session key exists and is denied the proxy-admin-only operation before deletion. Master-authenticated `/key/info` 404 and direct database checks prove storage cleanup. However, retained-key `/user/info` returning 404 proves that the deleted key still passed bearer authentication and self-access authorization before the handler found the user absent. This is not an invalid/unauthorized admission result and does not prove exact-key unusability. See `.staticeng/evidences/TASK-2026-09-03-017-fix-internal-user-login/logs/06-tech-lead-reopen1-review.log`
 
 [Agent Message] From: tech_lead To: product_manager
 
@@ -65,7 +65,7 @@ TASK-017 REOPEN 1 REJECTED. Require an authentication denial for the exact retai
 
 ## Reopen 2 Developer Result
 
-PASS. Source documents a 60-second default `UserAPIKeyCacheTTLEnum.in_memory_cache_ttl`, configurable by `general_settings.user_api_key_cache_ttl`, with `_cache_key_object` using `get_management_object_ttl`. In the exact disposable no-Redis config, no override exists, so the effective TTL is 60 seconds. After deletion, `/key/info` 404 and zero rows establish authoritative absence; retained-key `/user/info` 404 is correctly treated as handler-level cached admission. Harmless retained-key `/user/list` remained 403 only during that cache window and returned true authentication 401 after 60.50 seconds. See `logs/07-reopen2-cache-expiry-verification.log`
+PASS. Source documents a 60-second default `UserAPIKeyCacheTTLEnum.in_memory_cache_ttl`, configurable by `general_settings.user_api_key_cache_ttl`, with `_cache_key_object` using `get_management_object_ttl`. In the exact disposable no-Redis config, no override exists, so the effective TTL is 60 seconds. After deletion, `/key/info` 404 and zero rows establish authoritative absence; retained-key `/user/info` 404 is correctly treated as handler-level cached admission. Harmless retained-key `/user/list` remained 403 only during that cache window and returned true authentication 401 after 60.50 seconds. See `.staticeng/evidences/TASK-2026-09-03-017-fix-internal-user-login/logs/07-reopen2-cache-expiry-verification.log`
 
 [Agent Message] From: developer To: product_manager
 
@@ -73,7 +73,7 @@ TASK-017 REOPEN 2 PASS FOR TECH LEAD REREVIEW. The disposable runtime auth-cache
 
 ## Tech Lead Reopen 2 Review
 
-PASS. Source and exact runtime evidence establish a 60-second effective no-Redis authorization-cache TTL. The regression proves immediate user/key storage deletion, correctly classifies retained-key `/user/info` 404 as cached admission, and requires true `/user/list` authentication 401 within 70 seconds. Viewer denial, email-versus-ID behavior, baseline restoration, raw-HTTP confinement, and every mapped gate pass. Maintenance compatibility is conditional on its already mandatory supported deletion of the separately addressable UI key and immediate destruction of client-held auth artifacts; this cache-expiry check is fallback qualification, not an operational delay or reuse allowance. See `logs/08-tech-lead-reopen2-review.log`
+PASS. Source and exact runtime evidence establish a 60-second effective no-Redis authorization-cache TTL. The regression proves immediate user/key storage deletion, correctly classifies retained-key `/user/info` 404 as cached admission, and requires true `/user/list` authentication 401 within 70 seconds. Viewer denial, email-versus-ID behavior, baseline restoration, raw-HTTP confinement, and every mapped gate pass. Maintenance compatibility is conditional on its already mandatory supported deletion of the separately addressable UI key and immediate destruction of client-held auth artifacts; this cache-expiry check is fallback qualification, not an operational delay or reuse allowance. See `.staticeng/evidences/TASK-2026-09-03-017-fix-internal-user-login/logs/08-tech-lead-reopen2-review.log`
 
 [Agent Message] From: tech_lead To: product_manager
 

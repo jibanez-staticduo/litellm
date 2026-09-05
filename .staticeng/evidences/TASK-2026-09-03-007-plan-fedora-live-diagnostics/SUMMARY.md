@@ -10,8 +10,8 @@ The exact allocation site remains unproven. The highest-value boundary is the re
 
 - Read the failed release task/evidence, amended SCR, parent execution task, release authorization, source CodeMaps, health endpoints, LazyMCP routes, MCP manager, and Defend memory source
 - Inspected Fedora topology, healthchecks, container identities, network membership, mounts, cgroup limits, process shape, resource state, pool metrics, kernel OOM evidence, and bounded service logs read-only
-- Defined the exact diagnostic, correlation, reproduction, decision, correction, timing, rebuild/sign, soak, and rollback contract in `logs/01-fedora-live-diagnostic-runbook.md`
-- Retained only secret-free facts in `logs/00-read-only-findings.md`
+- Defined the exact diagnostic, correlation, reproduction, decision, correction, timing, rebuild/sign, soak, and rollback contract in `.staticeng/evidences/TASK-2026-09-03-007-plan-fedora-live-diagnostics/logs/01-fedora-live-diagnostic-runbook.md`
+- Retained only secret-free facts in `.staticeng/evidences/TASK-2026-09-03-007-plan-fedora-live-diagnostics/logs/00-read-only-findings.md`
 
 ## Acceptance Criteria Coverage
 

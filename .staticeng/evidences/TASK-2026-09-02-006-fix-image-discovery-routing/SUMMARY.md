@@ -18,7 +18,7 @@ The unchanged retained image `sha256:eeb98cc84cd1f3b73ce1dc584ac9922e47515fc3db4
 
 - **AC-1: PASS.** The unchanged exact retained image returns exact aggregate, scoped and toolset metadata for both alias forms under reserved HTTPS `PROXY_BASE_URL`, covering all six aliases
 - **AC-2: PASS.** Focused source tests preserve exact resources and OpenAPI route ownership. TASK-011 now requires transports, exact challenges, DCR/audience, reconnect and `/mcp` in its corrected full qualification rerun
-- **AC-3: PASS FOR TASK-OWNED GATES.** Packaged runtime, focused source/OpenAPI, Ruff, focused basedpyright, `git diff --check` and `staticeng_validate` pass. The mapped broad suite has four independently reproducible pre-existing failures recorded in `logs/02-source-tests.log`
+- **AC-3: PASS FOR TASK-OWNED GATES.** Packaged runtime, focused source/OpenAPI, Ruff, focused basedpyright, `git diff --check` and `staticeng_validate` pass. The mapped broad suite has four independently reproducible pre-existing failures recorded in `.staticeng/evidences/TASK-2026-09-02-006-fix-image-discovery-routing/logs/02-source-tests.log`
 - **AC-4: PASS FOR DEVELOPER SCOPE.** Evidence and disposable-resource cleanup pass. Per PMA instruction, Developer did not commit, push, qualify the full isolated stack or deploy; Tech Lead commit/push and QA qualification remain next-stage gates
 
 ## Documentation Impact
@@ -179,7 +179,7 @@ Closed deterministic cleanup and linked-worktree index findings. Interrupts now 
 
 ### Work Performed
 
-- Consolidated transient logs/reports under a run-owned directory with EXIT cleanup
+- Consolidated transient .staticeng/evidences/TASK-2026-09-02-006-fix-image-discovery-routing/logs/reports under a run-owned directory with EXIT cleanup
 - Made INT/TERM cleanup terminate process groups, wait for all children, remove all run artifacts and exit 130
 - Resolved canonical index through `git rev-parse --path-format=absolute --git-path index` with caller `GIT_INDEX_FILE` removed only for that resolution command
 - Added a real linked-worktree hook commit using the absolute linked index path

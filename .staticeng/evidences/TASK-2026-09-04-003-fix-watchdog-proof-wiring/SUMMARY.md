@@ -23,10 +23,10 @@ PASS. The maintained watchdog generator now emits a dedicated proof runner and p
 
 ## Verification
 
-- `logs/01-local-syntax-and-behavior.log`: maintained/generated Bash syntax and complete behavioral matrix pass, including proof success, proof failure no-op rollback, no-cross-state assertions, link rejection, and unchanged real rollback
-- `logs/02-shellcheck.log`: ShellCheck passes with no findings
-- `logs/03-diff-check.log`: `git diff --check` passes
-- `logs/04-staticeng-validate.log`: StaticEng CodeMap validation passes with zero warnings
+- `.staticeng/evidences/TASK-2026-09-04-003-fix-watchdog-proof-wiring/logs/01-local-syntax-and-behavior.log`: maintained/generated Bash syntax and complete behavioral matrix pass, including proof success, proof failure no-op rollback, no-cross-state assertions, link rejection, and unchanged real rollback
+- `.staticeng/evidences/TASK-2026-09-04-003-fix-watchdog-proof-wiring/logs/02-shellcheck.log`: ShellCheck passes with no findings
+- `.staticeng/evidences/TASK-2026-09-04-003-fix-watchdog-proof-wiring/logs/03-diff-check.log`: `git diff --check` passes
+- `.staticeng/evidences/TASK-2026-09-04-003-fix-watchdog-proof-wiring/logs/04-staticeng-validate.log`: StaticEng CodeMap validation passes with zero warnings
 
 ## Documentation Impact
 

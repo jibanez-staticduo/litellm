@@ -187,7 +187,7 @@ Each deployment evidence packet must be host-local owner-only `0700` directories
 
 ### Impact And Documentation
 
-Runtime impact is constrained to `/home/staticduo/docker/litellm/.env` and Fedora `litellm`, then `/volume2/docker/litellm/.env` and NAS `litellm`. Compose, config, wrappers, database, registrations, credentials, dependencies, networks, volumes, public routing, source, and registry tags are preservation-only. No maintained source directory or `codemap.yml` changes. The steady-state protocol contract remains `.staticeng/docs/architecture/lazymcp-oauth-discovery-contract.md`; this task is the operational release handoff and requires no product documentation change
+Runtime impact is constrained to `/home/staticduo/docker/litellm/.env` and Fedora `litellm`, then `/volume2/docker/litellm/.env` and NAS `litellm`. Compose, config, wrappers, database, registrations, credentials, dependencies, networks, volumes, public routing, source, and registry tags are preservation-only. No maintained source directory or `.staticeng/codemap.yml` changes. The steady-state protocol contract remains `.staticeng/docs/architecture/lazymcp-oauth-discovery-contract.md`; this task is the operational release handoff and requires no product documentation change
 
 ### Technical Architect Review Note
 

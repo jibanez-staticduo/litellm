@@ -8,6 +8,10 @@ date: 2026-09-01
 
 # SCR: Upstream Main Integration
 
+## Controlling PO Correction - 2026-09-05
+
+PMA relayed explicit PO authorization to deploy and repair Fedora without automatic rollback. This supersedes the prior automatic rollback gates for TASK-006. Preserve recovery backups; disable only task-owned rollback automation; deploy the retained exact candidate with a candidate-only conservative memory limit. On diagnostic failure keep the candidate selected; stop it if host exhaustion threatens and return the source/configuration fix to PMA for same-task delegation. No auth weakening, secret output, destructive database action, or unrelated changes are authorized. A single bounded direct-admin diagnostic request remains authorized. NAS stays untouched until Fedora functionality and soak pass and the working code/image is committed, pushed, and published.
+
 ## Problem and Outcome
 
 The StaticDuo LiteLLM fork is behind current upstream `main`, while the fork contains intentional product, security, protocol, model-policy, and operational behavior that must not be lost during integration. Advancing the fork without an exact upstream snapshot, explicit conflict decisions, broad regression coverage, and isolated release qualification could silently remove fork behavior or expose Fedora production to an unqualified image

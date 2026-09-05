@@ -16,7 +16,7 @@ A Fedora-only HTTP session client can remove the external-browser dependency wit
 
 ## Acceptance Criteria Coverage
 
-- **AC-1: PASS.** `logs/01-headless-dcr-authorization.md` maps all candidate DCR routes and proves principal identity comes only from the valid UI cookie at both authorization steps
+- **AC-1: PASS.** `.staticeng/evidences/TASK-2026-09-03-010-design-headless-dcr-authorization/logs/01-headless-dcr-authorization.md` maps all candidate DCR routes and proves principal identity comes only from the valid UI cookie at both authorization steps
 - **AC-2: PASS.** Existing API/master/service-account/session credentials cannot directly authorize DCR. The supported headless bridge is normal username/password `/login` for an existing principal; OIDC-only identity has no supported non-interactive grant
 - **AC-3: PASS.** The design confines password, cookies, client identifier, verifier, state, code, access token, refresh token, callback URL, and request body to one Fedora process, inherited descriptors/stdin, or owner-only tmpfs files and excludes them from arguments, output, environment exports, Syncthing, and evidence
 - **AC-4: PASS.** The procedure preserves exact `https://litellm.defend.tech/toolset/defend_memory/lazymcp`, S256, one-hour access expiry, aggregate/scope/`/mcp` rejection, TASK-007 watchdog gates, refresh revocation, UI-session cleanup, artifact absence, and the T+7 cutoff

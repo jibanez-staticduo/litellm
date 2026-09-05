@@ -33,6 +33,10 @@ Fix only the complete deployment controller script. Reuse the already approved w
 
 ## Reopen History
 
+### Reopen 4 - Absent dependency Health map
+
+PMA requested safe map lookup for missing Health, shared by maintained collector and baseline projection, strict Go-template regression for absent/healthy/unhealthy Health, and read-only verification of all seven actual Fedora dependencies. No deployment, restart, credentials/config/Env reads, or commit/push permitted
+
 ### Reopen 3 - Executor collector projections
 
 PMA requested replacement only of broad collector Docker inspection with fixed non-secret format projections, preserving sample layout, thresholds, and controller. Same task retained at its existing path for review; no live execution or commit/push is delegated
@@ -46,6 +50,20 @@ Prevent watcher rollback during normal startup by using an explicit controller/w
 During `pre-start`, enforce candidate container existence plus cgroup memory, growth, OOM-event, restart, and process gates as soon as the container appears, while health remains startup-tolerant. Replace final check-then-act with an atomic ownership protocol: watcher alone transitions a nonce-bound attempt from active to ready, and controller accepts success only if that same nonce is still ready with no rollback/trigger state. Never install the candidate selector during rollback; preserve the prior selector in a separate immutable file and make rollback idempotently restore it. A signal before selector replacement must leave the prior selector untouched. Add tests for startup OOM/growth/restart/process trips, watcher-ready versus rollback race, rollback failure, and pre-selector signal preserving the old selector.
 
 # Post Implementation Task Updates
+
+## Developer Reopen 4: Post Implementation Expectations
+
+Summary: replaced direct optional Health access with `{{with index .State "Health"}}{{json .Status}}{{else}}"none"{{end}}` in both fixed scalar templates. Absent healthcheck produces `none`; unhealthy remains `unhealthy`, never healthy. Added `WATCHDOG_COMMAND_TEST=dependency-baseline` using the identical maintained dependency format and prior TSV order to avoid executor template duplication
+
+Work Performed: strict `text/template` tests use `missingkey=error` on absent, healthy, and unhealthy maps for both templates. Exact-command mocks updated. Both full suites, generated syntax, ShellCheck, and diff checks pass. Read-only SSH fixed projection succeeded for all seven real Fedora dependencies; Qdrant returned `none`, other six `healthy`, all running/restart 0/OOM false
+
+Acceptance Criteria Coverage: AC-1 through AC-4 regression gates pass; renewed AC-5 reviewer approval pending. Logs: `10-reopen4-health-tests.log` and `11-reopen4-fedora-projections.md` in task evidence
+
+Documentation Impact: task-local baseline invocation documented; no runtime source, controller, thresholds, credentials, or product configuration changed. Unrelated orchestrator changes preserved
+
+Open Risks: read-only projections do not qualify the candidate or authorize deployment. Baseline generation must replace the failed partial digest, using a fresh complete successful pipeline
+
+Recommended Next Step: immediate review, then executor regenerates scripts and obtains a fresh baseline with the tested maintained template. No commit or push performed
 
 ## Tech Lead Reopen 3: Post Implementation Expectations
 

@@ -4,6 +4,8 @@
 - (None)
 
 ## Active
+- TASK-2026-09-01-004-deploy-lazymcp-oauth-nas
+- TASK-2026-09-05-001-repair-fedora-runtime
 - TASK-2026-08-28-009-define-resilient-lazymcp-discovery
 - TASK-2026-09-01-001-qualify-lazymcp-oauth-release
 - TASK-2026-09-01-002-design-dual-host-release
@@ -23,7 +25,7 @@
 - TASK-2026-08-26-004-implement-client-qwen38-modes
 
 ## Blocked
-- TASK-2026-09-03-006-diagnose-fedora-candidate-live — Reopen 8 candidate attempt rolled back when the surrounding deployment controller failed syntax before the real watcher armed
+- TASK-2026-09-03-006-diagnose-fedora-candidate-live — candidate remains selected but intentionally stopped after readiness timeout, 39 restarts, and 31.18-GB uncapped memory; same-task containment/product diagnosis required, no rollback
 - TASK-2026-09-03-018-fix-dcr-maintenance-client — blocked/deferred experimental source checkpoint; functional DCR qualification failed, zero resources restored, no retry authorized
 - TASK-2026-09-03-008-prepare-fedora-dcr-credential — healthy rollback image lacks exact toolset DCR discovery and transport routes; no bearer could be minted or audience-tested
 - TASK-2026-09-01-012-release-upstream-main-fedora — exact candidate rolled back after authorized real-tool timeout and unhealthy transition; investigation and fresh reauthorization required

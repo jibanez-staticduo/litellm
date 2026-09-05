@@ -21,8 +21,8 @@ The collector emits one atomic 43-field allowlisted row or fails the sample. Eve
 
 - **AC-1: PASS.** Valid fail-closed syntax, final-30 maximum `B`, every TASK-007 threshold, and exact rollback remain unchanged. Candidate manifest/config/source identities are enforced independently
 - **AC-2: PASS.** Maintained scripts and generated `rollback.sh`, collector, and watchdog pass `bash -n`; generation fails if any emitted shell is invalid
-- **AC-3: PASS.** Existing Fedora proof remains valid: 31 healthy rollback-image samples, 29.08 seconds first through thirtieth, live after row 30, 43 fields per row, and identical before/after state. Reopen 3 required and performed no new Fedora action. See `logs/03-reopen2-fedora-sanitized-proof.log`
-- **AC-4: PASS.** Generated-collector Docker/PostgreSQL/Redis/health/dependency/journal timeout and error tests pass; journal match and no-match remain distinct; three whole-sample timeouts reach rollback in 2.810 seconds. The complete prior matrix remains green. See `logs/01-local-syntax-and-behavior.log`
+- **AC-3: PASS.** Existing Fedora proof remains valid: 31 healthy rollback-image samples, 29.08 seconds first through thirtieth, live after row 30, 43 fields per row, and identical before/after state. Reopen 3 required and performed no new Fedora action. See `.staticeng/evidences/TASK-2026-09-04-002-fix-fedora-watchdog-harness/logs/03-reopen2-fedora-sanitized-proof.log`
+- **AC-4: PASS.** Generated-collector Docker/PostgreSQL/Redis/health/dependency/journal timeout and error tests pass; journal match and no-match remain distinct; three whole-sample timeouts reach rollback in 2.810 seconds. The complete prior matrix remains green. See `.staticeng/evidences/TASK-2026-09-04-002-fix-fedora-watchdog-harness/logs/01-local-syntax-and-behavior.log`
 - **AC-5: PENDING.** Reopen 3 is ready for renewed Tech Lead review. No commit or push was made
 
 ## Documentation Impact

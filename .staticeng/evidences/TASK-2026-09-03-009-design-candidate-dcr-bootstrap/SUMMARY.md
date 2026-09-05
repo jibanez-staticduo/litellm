@@ -16,7 +16,7 @@ Candidate deployment is not contingent on a pre-existing bearer. Deployment is a
 
 ## Acceptance Criteria Coverage
 
-- **AC-1: PASS.** `logs/01-candidate-live-dcr-bootstrap.md` maps the exact endpoint chain, mandatory S256 parameters, existing UI-session principal, deliberate consent POST, manual loopback delivery, exact-resource token redemption, and live-principal revalidation without recording secrets
+- **AC-1: PASS.** `.staticeng/evidences/TASK-2026-09-03-009-design-candidate-dcr-bootstrap/logs/01-candidate-live-dcr-bootstrap.md` maps the exact endpoint chain, mandatory S256 parameters, existing UI-session principal, deliberate consent POST, manual loopback delivery, exact-resource token redemption, and live-principal revalidation without recording secrets
 - **AC-2: PASS.** The runbook orders preflight, watchdog, candidate health, DCR mint, exact and cross-audience proof, immediate one-call reproduction, refresh revocation, token destruction, and exact rollback within explicit monotonic deadlines
 - **AC-3: PASS.** The independent watchdog is armed before selector mutation and remains active through browser authorization, token exchange, audience proof, diagnostic request, settlement, cleanup, and rollback. Existing memory and host thresholds remain unchanged, and no bearer is a deployment prerequisite
 - **AC-4: PASS.** If interactive authorization and token exchange do not finish by T+7 minutes, or any stage fails, the operator cancels the flow, revokes any minted refresh token, destroys all client artifacts, and rolls back without a reproduction or alternate credential

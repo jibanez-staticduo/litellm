@@ -6,10 +6,10 @@ PASS. Exact candidate and rollback images reproduce the same contract: password-
 
 ## Acceptance Criteria Coverage
 
-- **AC-1: PASS.** `logs/01-source-contract.md` traces request parsing, creation, update, hashing, schema storage, login handlers, and `authenticate_user`
-- **AC-2: PASS.** `logs/02-runtime-matrix.md` records matching candidate and rollback HTTP behavior, hash shape, negative-password behavior, supported deletion, and cleanup
+- **AC-1: PASS.** `.staticeng/evidences/TASK-2026-09-03-016-investigate-internal-user-login/logs/01-source-contract.md` traces request parsing, creation, update, hashing, schema storage, login handlers, and `authenticate_user`
+- **AC-2: PASS.** `.staticeng/evidences/TASK-2026-09-03-016-investigate-internal-user-login/logs/02-runtime-matrix.md` records matching candidate and rollback HTTP behavior, hash shape, negative-password behavior, supported deletion, and cleanup
 - **AC-3: PASS.** The defect is in harness/SCR identity mapping. Hashing, source execution, schema, and migrations behave correctly
-- **AC-4: PASS.** `logs/03-fix-procedure.md` gives the exact no-rebuild procedure and bounded optional source hardening
+- **AC-4: PASS.** `.staticeng/evidences/TASK-2026-09-03-016-investigate-internal-user-login/logs/03-fix-procedure.md` gives the exact no-rebuild procedure and bounded optional source hardening
 - **AC-5: PASS.** All credentials and identities were synthetic and ephemeral; no values are retained. Every labelled container, network, and volume is absent and no production resource was used
 
 ## Verification
