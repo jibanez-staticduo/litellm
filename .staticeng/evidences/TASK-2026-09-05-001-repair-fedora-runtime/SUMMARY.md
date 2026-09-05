@@ -1,5 +1,13 @@
 # Fedora runtime repair: rapid OOM corrected, live functionality restored with limits
 
+## Latest JSON-contract verification and memory gate
+
+Exact pushed source `2c6af6ee3aeeaa349f2169e37bfb383d7131e2ba` is deployed on Fedora as digest `e340ea66f58af527dfe56d7b229cc913163639497e03b7d9db154413116894c1`. The actual OpenAI SDK now receives Response objects for omitted/false stream, while true streaming remains functional. Real Chat, Responses, twenty repeated JSON calls and MCP/LazyMCP calls pass. 335 focused tests and direct checks pass
+
+**API functionality PASS; promotion readiness HOLD.** Final-image 900.37-second availability/OOM observation passed all 91 samples, but another 927.74 seconds and later repeat sampling showed continued anonymous-memory growth to about 1.56 GB. The older image's mature plateau does not prove this final image has stabilized. No sustained-leak root cause or safe-to-promote memory claim is made. Fedora remains running with persistent 8-GiB/no-swap/restart=no containment; NAS remains unchanged
+
+Detailed final client results, resource measurements, diagnostics and conditional NAS compatibility/deployment handoff: logs/17-json-live-memory-gate.md. The following sections are historical and must not override this latest hold
+
 ## Promotion-readiness continuation
 
 The public Responses contract confirms stream=false must return a Response, although this fork's SSE behavior predates integration. A two-line sync/async correction keeps upstream ChatGPT SSE while using existing buffered parsing for non-stream callers. New text/tool/usage regressions and complete focused coverage pass: 335 tests, no skips. Mature-runtime memory comparison after about 2.5 hours stabilized near 1.33 GB; ten identical real calls caused no anon-memory growth, and recovery ended below pre-call current memory. Details and honest background-traffic accounting are in logs/16-stream-contract-memory-comparison.md. Rebuild/live SDK/900-second verification of this next checkpoint is pending; no NAS mutation is authorized
