@@ -3,7 +3,9 @@ id: TASK-2026-09-03-016-investigate-internal-user-login
 complexity: standard
 track: investigation
 slice: logic
-status: review
+status: superseded
+superseded_by: TASK-2026-09-05-003-close-dual-host-repair
+supersession_note: Historical email-login investigation retained; no final-image DCR lifecycle or deferred client-harness PASS inferred.
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-03-017-fix-internal-user-login
 assigned_to: technical_architect

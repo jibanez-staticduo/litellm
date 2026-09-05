@@ -3,7 +3,9 @@ id: TASK-2026-09-03-005-spec-fedora-maintenance-investigation
 complexity: standard
 track: spec
 slice: foundation
-status: active
+status: superseded
+superseded_by: TASK-2026-09-05-003-close-dual-host-repair
+supersession_note: Historical maintenance specification PASS retained; later explicit no-rollback repair direction supersedes its execution policy.
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-012-release-upstream-main-fedora
 assigned_to: business_analyst

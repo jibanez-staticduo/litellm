@@ -1,5 +1,7 @@
 # NAS functional residuals
 
+> PMA independently accepted this final repair/deployment scope. The task is archived; [closure index and deferrals](../TASK-2026-09-05-003-close-dual-host-repair/SUMMARY.md) record acceptance without changing the runtime evidence below
+
 ## Current verified result, including Reopen 1
 
 Both hosts are running/healthy on exact-source digest 0c8009530d20ca8a5306f38ff4f6aecb6e3261ded0c5e7336237033b6557717c, application source 6ba4b3b366386e16364a6723c43319f4e52cc7a0. The active spend recursion is corrected, supported OAuth discovery restored, and all 951 isolated mapped tests pass with no skips. The unchanged Dockerfile built from the exact source archive. Fedora passed first; only then was the same digest promoted to NAS. Both pass renewed public Astra reload/Chat/Responses and aggregate partial-availability/healthy-tool checks, plus complete 900-second observations. Corrected startup wrappers remain intact

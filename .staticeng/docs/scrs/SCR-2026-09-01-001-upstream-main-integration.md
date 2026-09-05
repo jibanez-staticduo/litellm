@@ -8,6 +8,12 @@ date: 2026-09-01
 
 # SCR: Upstream Main Integration
 
+## PMA Functional Repair Closure - 2026-09-05
+
+Under TASK-2026-09-05-003, PMA independently verified both hosts running/healthy with zero restarts/OOM on shared index 0c8009530d20ca8a5306f38ff4f6aecb6e3261ded0c5e7336237033b6557717c, source 6ba4b3b366386e16364a6723c43319f4e52cc7a0, and accepted the functional repair/deployment scope. The final repair, NAS deployment and closure records are archived; older execution/qualification entries are superseded as current workflow without rewriting their historical outcomes
+
+This acceptance does not transfer earlier image signatures/scans to the final digest, declare external Frigate/auth-required peers healthy, prove indefinite memory stability, or pass the deferred experimental maintenance client. Private-local-output credential rotation recommendations and fresh final-subject security/signature verification remain deferred owner decisions. Closure is documentation-only and authorizes no further runtime or remediation action. Final index and concise deferral report: .staticeng/evidences/TASK-2026-09-05-003-close-dual-host-repair/SUMMARY.md
+
 ## Reopen 1 Product Logging and Discovery Correction - 2026-09-05
 
 PMA explicitly resumed TASK-2026-09-05-002 for active NAS spend-sanitizer recursion, including bounded cyclic/deep traversal and preservation of spend fields/callbacks, and permitted correction of the missing OAuth fetch helper only if it affected supported flows. Both were proven: fresh live recursion and local failures were reproduced, and RFC 9728 resource discovery calls the absent helper

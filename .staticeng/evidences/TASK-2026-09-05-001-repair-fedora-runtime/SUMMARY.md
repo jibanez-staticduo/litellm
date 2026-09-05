@@ -1,5 +1,7 @@
 # Fedora runtime repair: functional and bounded memory gates PASS
 
+> PMA has accepted and archived this repair scope through [final workflow closure](../TASK-2026-09-05-003-close-dual-host-repair/SUMMARY.md). All execution-time identities, failures and holds below are preserved history; the closure index identifies the final accepted dual-host release
+
 ## Final approval and exact promotion subject
 
 **Tech Lead approves Fedora functional/memory readiness and authorizes PMA NAS promotion** of:

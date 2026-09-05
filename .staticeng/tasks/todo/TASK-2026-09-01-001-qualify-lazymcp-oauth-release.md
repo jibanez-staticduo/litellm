@@ -3,7 +3,9 @@ id: TASK-2026-09-01-001-qualify-lazymcp-oauth-release
 complexity: complex
 track: implementation
 slice: qa
-status: active
+status: superseded
+superseded_by: TASK-2026-09-05-003-close-dual-host-repair
+supersession_note: Historical rejected candidate and failed gates retained; no new qualification PASS.
 scr: SCR-2026-08-31-001-lazymcp-oauth-discovery
 parent: null
 assigned_to: qa_engineer

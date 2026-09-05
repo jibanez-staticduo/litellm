@@ -3,7 +3,10 @@ id: TASK-2026-09-05-001-repair-fedora-runtime
 complexity: complex
 track: implementation
 slice: logic
-status: active
+status: done
+closed_by: product_manager
+closed_on: 2026-09-05
+closure_task: TASK-2026-09-05-003-close-dual-host-repair
 assigned_to: tech_lead
 handoff_from: product_manager
 scr: SCR-2026-09-01-001-upstream-main-integration
@@ -11,6 +14,10 @@ parent: TASK-2026-09-03-006-diagnose-fedora-candidate-live
 ---
 
 # Repair Fedora LiteLLM runtime
+
+## PMA acceptance and archive
+
+PMA accepted the verified functional repair/deployment scope through TASK-2026-09-05-003. The final gate here and subsequent residual correction in TASK-2026-09-05-002 are retained, including every failed attempt and Reopen History below. Historical stopped/blocked/runtime descriptions are not current deployment instructions. Final accepted application source is 6ba4b3b366386e16364a6723c43319f4e52cc7a0 on shared image index 0c8009530d20ca8a5306f38ff4f6aecb6e3261ded0c5e7336237033b6557717c. Closure does not certify indefinite memory stability or external integrations. Evidence index: .staticeng/evidences/TASK-2026-09-05-003-close-dual-host-repair/SUMMARY.md
 
 ## Scope and authorization
 

@@ -3,7 +3,9 @@ id: TASK-2026-09-03-006-diagnose-fedora-candidate-live
 complexity: complex
 track: implementation
 slice: qa
-status: active
+status: superseded
+superseded_by: TASK-2026-09-05-003-close-dual-host-repair
+supersession_note: Historical failures and containment loss retained; final repair tasks supersede these runtime-state and retry instructions.
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-012-release-upstream-main-fedora
 assigned_to: tech_lead

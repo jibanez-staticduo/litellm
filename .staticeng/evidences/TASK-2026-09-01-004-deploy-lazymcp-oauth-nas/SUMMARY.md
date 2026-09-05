@@ -1,5 +1,7 @@
 # TASK-2026-09-01-004 Reopen 1
 
+> Archived under PMA's scoped acceptance after TASK-2026-09-05-002 resolved the functional residuals. See [final closure index](../TASK-2026-09-05-003-close-dual-host-repair/SUMMARY.md). The partial results and old identities below remain historical, not retroactive full passes or current blockers
+
 ## Summary
 
 NAS deployed the exact Fedora-approved image and passed representative functional, preservation, cross-host identity and 900-second resource checks. Both hosts remain healthy on that same release. Full acceptance is pending for two concrete live limitations: NAS Astra Chat deployment cooldown and unscoped standard MCP initialization timeout. The task is not marked done

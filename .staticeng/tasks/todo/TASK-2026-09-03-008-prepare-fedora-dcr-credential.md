@@ -3,7 +3,9 @@ id: TASK-2026-09-03-008-prepare-fedora-dcr-credential
 complexity: standard
 track: implementation
 slice: qa
-status: blocked
+status: superseded
+superseded_by: TASK-2026-09-05-003-close-dual-host-repair
+supersession_note: Failed credential preparation remains a failed historical attempt; later approved direct probes replaced this prerequisite.
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-03-006-diagnose-fedora-candidate-live
 assigned_to: tech_lead

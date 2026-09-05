@@ -3,7 +3,9 @@ id: TASK-2026-09-01-011-qualify-upstream-isolated-candidate
 complexity: complex
 track: implementation
 slice: qa
-status: active
+status: superseded
+superseded_by: TASK-2026-09-05-003-close-dual-host-repair
+supersession_note: All reopen results retained; Reopen 6 qualification applies only to its exact earlier subjects.
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-010-integrate-upstream-main
 assigned_to: qa_engineer

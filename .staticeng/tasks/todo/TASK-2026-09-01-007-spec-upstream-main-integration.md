@@ -3,7 +3,9 @@ id: TASK-2026-09-01-007-spec-upstream-main-integration
 complexity: complex
 track: spec
 slice: foundation
-status: active
+status: superseded
+superseded_by: TASK-2026-09-05-003-close-dual-host-repair
+supersession_note: Historical specification PASS retained; current SCR amendments and accepted repair close this workflow entry.
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: null
 assigned_to: business_analyst

@@ -3,7 +3,9 @@ id: TASK-2026-09-03-004-sign-attest-release-images
 complexity: complex
 track: implementation
 slice: qa
-status: active
+status: superseded
+superseded_by: TASK-2026-09-05-003-close-dual-host-repair
+supersession_note: Historical signatures and attestations cover their earlier digests; final-image refresh remains deferred.
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-012-release-upstream-main-fedora
 assigned_to: tech_lead

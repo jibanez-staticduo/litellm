@@ -3,7 +3,9 @@ id: TASK-2026-09-01-008-design-upstream-main-integration
 complexity: complex
 track: investigation
 slice: foundation
-status: active
+status: superseded
+superseded_by: TASK-2026-09-05-003-close-dual-host-repair
+supersession_note: Historical architecture handoff retained; its pre-integration blockers are not current repair blockers.
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-010-integrate-upstream-main
 assigned_to: technical_architect

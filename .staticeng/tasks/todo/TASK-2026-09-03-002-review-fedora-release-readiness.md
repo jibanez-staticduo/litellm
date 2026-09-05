@@ -3,7 +3,9 @@ id: TASK-2026-09-03-002-review-fedora-release-readiness
 complexity: complex
 track: investigation
 slice: qa
-status: active
+status: superseded
+superseded_by: TASK-2026-09-05-003-close-dual-host-repair
+supersession_note: Earlier rejection and later exact-subject authorization retained; neither is fresh final-image security verification.
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-012-release-upstream-main-fedora
 assigned_to: tech_lead

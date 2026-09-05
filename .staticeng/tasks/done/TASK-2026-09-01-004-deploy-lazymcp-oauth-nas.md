@@ -3,7 +3,10 @@ id: TASK-2026-09-01-004-deploy-lazymcp-oauth-nas
 complexity: complex
 track: implementation
 slice: foundation
-status: active
+status: done
+closed_by: product_manager
+closed_on: 2026-09-05
+closure_task: TASK-2026-09-05-003-close-dual-host-repair
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: null
 assigned_to: tech_lead
@@ -12,6 +15,10 @@ reopened_count: 1
 ---
 
 # Task: Deploy LazyMCP OAuth to NAS
+
+## PMA acceptance and archive
+
+Closed under PMA's explicit functional repair/deployment acceptance in TASK-2026-09-05-003. The initial AC-5/AC-6 Astra and aggregate-MCP residuals were subsequently corrected and verified in TASK-2026-09-05-002, including its Reopen 1 and final dual-host parity checks. The original checklist and failed/partial findings below remain unchanged historical evidence, not retroactive full qualification passes. AC-7 recovery was prepared but unused; later explicit no-automatic-rollback direction and successful same-digest deployment supersede the old rollback-on-any-failure wording without claiming a new rollback exercise. Final accepted index is 0c8009530d20ca8a5306f38ff4f6aecb6e3261ded0c5e7336237033b6557717c, source 6ba4b3b366386e16364a6723c43319f4e52cc7a0. Closure excludes external Frigate availability, an all-provider/security qualification and indefinite memory stability. Evidence index: .staticeng/evidences/TASK-2026-09-05-003-close-dual-host-repair/SUMMARY.md
 
 ## Objective
 

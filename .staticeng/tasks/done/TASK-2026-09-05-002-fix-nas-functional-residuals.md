@@ -3,7 +3,10 @@ id: TASK-2026-09-05-002-fix-nas-functional-residuals
 complexity: complex
 track: implementation
 slice: logic
-status: active
+status: done
+closed_by: product_manager
+closed_on: 2026-09-05
+closure_task: TASK-2026-09-05-003-close-dual-host-repair
 assigned_to: tech_lead
 handoff_from: product_manager
 scr: SCR-2026-09-01-001-upstream-main-integration
@@ -11,6 +14,10 @@ parent: TASK-2026-09-01-004-deploy-lazymcp-oauth-nas
 ---
 
 # Fix NAS functional residuals
+
+## PMA acceptance and archive
+
+PMA independently verified both hosts healthy, restart=0, OOM=false on the same final digest and accepted the repair/deployment scope in TASK-2026-09-05-003. AC-1 through AC-6 evidence remains in logs/09-reopen1-source.md through logs/11-reopen1-resource-samples.csv under this task's evidence directory. Final source is 6ba4b3b366386e16364a6723c43319f4e52cc7a0; shared image index is 0c8009530d20ca8a5306f38ff4f6aecb6e3261ded0c5e7336237033b6557717c. All prior failures, intermediate identities and Reopen History below remain historical, not current blockers. External Frigate/auth-required outcomes and finite-window memory limitations remain explicit. Closure evidence index: .staticeng/evidences/TASK-2026-09-05-003-close-dual-host-repair/SUMMARY.md
 
 ## Scope
 

@@ -1,0 +1,4 @@
+665b95b3707c157efaf7e08c42803b3201b4ff8dac7597409e5658a9f87cdd6a  .staticeng/evidences/TASK-2026-09-04-002-fix-fedora-watchdog-harness/harness/generate-watchdog-harness.sh
+656910e34f59b9f72dc428c8d0760e17360919cc6cd6348d616fe2c975656580  .staticeng/evidences/TASK-2026-09-04-002-fix-fedora-watchdog-harness/harness/test-watchdog-harness.sh
+d450f6ba26d23890991179ed41d3e4da675ca21d5f070fc847d68fced763fdc7  .staticeng/evidences/TASK-2026-09-04-002-fix-fedora-watchdog-harness/harness/test-health-template.go
+7cddd2cd1f03b87bf9725c365d9b3942ccd5d80f60fcd55ab4f06dee710f486e  .staticeng/evidences/TASK-2026-09-04-005-fix-deployment-controller/logs/10-reopen4-health-tests.log

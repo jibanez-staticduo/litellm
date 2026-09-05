@@ -3,7 +3,9 @@ id: TASK-2026-09-01-002-design-dual-host-release
 complexity: complex
 track: investigation
 slice: foundation
-status: active
+status: superseded
+superseded_by: TASK-2026-09-05-003-close-dual-host-repair
+supersession_note: Historical design-only PASS retained; later approved repair path replaces this execution handoff.
 scr: SCR-2026-08-31-001-lazymcp-oauth-discovery
 parent: TASK-2026-09-01-003-deploy-lazymcp-oauth-fedora
 assigned_to: technical_architect

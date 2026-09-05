@@ -3,7 +3,9 @@ id: TASK-2026-09-01-003-deploy-lazymcp-oauth-fedora
 complexity: complex
 track: implementation
 slice: foundation
-status: blocked
+status: superseded
+superseded_by: TASK-2026-09-05-003-close-dual-host-repair
+supersession_note: Original candidate was rejected and never authorized here; accepted later repair does not turn this attempt into a PASS.
 scr: SCR-2026-08-31-001-lazymcp-oauth-discovery
 parent: null
 assigned_to: developer

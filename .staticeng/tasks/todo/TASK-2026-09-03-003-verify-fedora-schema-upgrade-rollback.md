@@ -3,7 +3,9 @@ id: TASK-2026-09-03-003-verify-fedora-schema-upgrade-rollback
 complexity: complex
 track: implementation
 slice: qa
-status: active
+status: superseded
+superseded_by: TASK-2026-09-05-003-close-dual-host-repair
+supersession_note: Historical isolated schema and rollback-startup PASS retained; no new full production restore rehearsal claimed.
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: TASK-2026-09-01-012-release-upstream-main-fedora
 assigned_to: qa_engineer

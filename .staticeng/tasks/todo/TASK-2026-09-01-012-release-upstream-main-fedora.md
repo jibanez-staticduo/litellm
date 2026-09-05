@@ -3,7 +3,9 @@ id: TASK-2026-09-01-012-release-upstream-main-fedora
 complexity: complex
 track: implementation
 slice: polish
-status: blocked
+status: superseded
+superseded_by: TASK-2026-09-05-003-close-dual-host-repair
+supersession_note: Candidate release failure and verified rollback remain historical; later repaired deployment is a distinct accepted result.
 scr: SCR-2026-09-01-001-upstream-main-integration
 parent: null
 assigned_to: tech_lead

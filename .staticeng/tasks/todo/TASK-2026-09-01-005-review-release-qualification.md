@@ -3,7 +3,9 @@ id: TASK-2026-09-01-005-review-release-qualification
 complexity: standard
 track: investigation
 slice: qa
-status: active
+status: superseded
+superseded_by: TASK-2026-09-05-003-close-dual-host-repair
+supersession_note: Historical rejection remains valid for its candidate; not a finding about the final repaired image.
 scr: SCR-2026-08-31-001-lazymcp-oauth-discovery
 parent: TASK-2026-09-01-001-qualify-lazymcp-oauth-release
 assigned_to: tech_lead
