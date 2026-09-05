@@ -1,0 +1,33 @@
+#!/usr/bin/env sh
+set -eu
+
+# LiteLLM 1.92.0 discards its Responses health input and substitutes an
+# invalid string item. Patch only the synthetic Responses health path.
+python - <<'PYCODE'
+from pathlib import Path
+
+proxy_path = Path("/app/.venv/lib/python3.13/site-packages/litellm/proxy/health_check.py")
+proxy_source = proxy_path.read_text()
+proxy_old = '            prompt=DEFAULT_HEALTH_CHECK_PROMPT,\n            input=["test from litellm"],\n'
+proxy_new = '''            prompt=None,
+            input=[
+                {
+                    "role": "user",
+                    "content": [{"type": "input_text", "text": "test from litellm"}],
+                }
+            ],
+'''
+
+helper_path = Path("/app/.venv/lib/python3.13/site-packages/litellm/litellm_core_utils/health_check_helpers.py")
+helper_source = helper_path.read_text()
+helper_old = '            "responses": lambda: litellm.aresponses(\n                **_filter_model_params(model_params=model_params),\n                input=prompt or "test",\n            ),\n'
+helper_new = '            "responses": lambda: litellm.aresponses(\n                **_filter_model_params(model_params=model_params),\n                input=input or [{"role": "user", "content": [{"type": "input_text", "text": prompt or "test"}]}],\n            ),\n'
+
+if proxy_old in proxy_source and helper_old in helper_source:
+    proxy_path.write_text(proxy_source.replace(proxy_old, proxy_new, 1))
+    helper_path.write_text(helper_source.replace(helper_old, helper_new, 1))
+elif proxy_new not in proxy_source or helper_new not in helper_source:
+    raise SystemExit("Unsupported LiteLLM health-check implementation; refusing an unsafe patch")
+PYCODE
+
+exec /app/docker/prod_entrypoint.sh "$@"

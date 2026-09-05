@@ -9,3 +9,11 @@ Aggregate tool listing gives each allowed peer one MCP_TOOL_LISTING_TIMEOUT dead
 These deadlines do not change upstream tool execution timeouts, health status or registration state. Tool listing retains its existing per-server fault outcomes and permission filtering. Unavailable integrations must remain visible as unavailable rather than being deleted, disabled or represented as successful empty servers
 
 Verification lives in tests/test_litellm/test_router_model_cost_isolation.py and tests/test_litellm/proxy/_experimental/mcp_server/test_mcp_server.py
+
+## Deployment bootstrap
+
+Fedora and NAS persist their own mounted start-litellm.sh wrappers and invoke the image's /app/docker/prod_entrypoint.sh with exec. Neither wrapper installs PostgreSQL clients or repeatedly alters schema at startup. The source_url column exists in both databases and the maintained Prisma schema; ordinary application migration/startup owns database readiness and schema lifecycle
+
+Fedora retains its pre-existing, guarded synthetic Responses health-check correction before exec. NAS has no such host-specific patch and goes directly to the image entrypoint. These host differences are intentional: the image digest is shared, but Fedora's existing health-file override is not copied to NAS or misrepresented as byte-identical runtime files
+
+The persistent host paths are /home/staticduo/docker/litellm/start-litellm.sh on Fedora and /volume2/docker/litellm/start-litellm.sh on NAS, mounted as /app/start-litellm.sh by each host's actual docker-compose.yaml. Secret-free final wrapper snapshots and checksums are retained in the TASK-2026-09-05-002 evidence config directory. Host-specific .env/configuration and original wrappers remain in owner-only release backups on each host, never in source control

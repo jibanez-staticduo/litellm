@@ -1,34 +1,36 @@
 # NAS functional residuals
 
-Tech Lead completed the three scoped source corrections with 303 passing mapped tests and no skips, committed/pushed source 2dee9cd19e329d5c59eb712b8f27b8205ca0ff02, and built/published exact-source digest 4800816a96e35e7e87549e23823b0627148b6dfe2ac3cb7b55dab345dede1258. Fedora alone now selects it, but startup is blocked in the existing wrapper's apk child before port 4000 listens. Fedora is running/unhealthy and contained; no rollback occurred. NAS remains unchanged and healthy. No deployed-fix or soak PASS is claimed
+Both hosts are running/healthy on exact-source digest 4800816a96e35e7e87549e23823b0627148b6dfe2ac3cb7b55dab345dede1258, application source 2dee9cd19e329d5c59eb712b8f27b8205ca0ff02. Three scoped product corrections passed 303 mapped tests with no skips and built successfully. The real startup-wrapper defect was then corrected with backed-up host-specific changes. Fedora passed first; only then was the same digest promoted to NAS. Both pass actual Astra reload/Chat/Responses and aggregate partial-availability/healthy-tool checks through loopback and public URLs, plus complete 900-second observations
+
+This is a scoped functional result, not an error-free all-traffic release claim. External Frigate reachability, other timeout/auth-required peers, finite-window memory growth and a separate NAS spend-log recursion finding remain disclosed for PMA disposition
 
 ## Root causes
 
-Astra's four effective deployments retain `mode=responses`, but the running catalog lacks `chatgpt/gpt-6-astra`. The unprefixed entry belongs to OpenAI and is chat-mode. Consequently Chat misses the Responses bridge and reaches the Codex chat/completions endpoint, receiving an HTTP 403 browser challenge. Cooldown then reports no available deployments as HTTP 429. Native Responses succeeds through the configured profile fallback. This is not evidence of exhausted provider quota
+Originally Astra's deployments retained mode=responses while the catalog lost chatgpt/gpt-6-astra. Chat missed its Responses bridge, hit the Codex chat/completions endpoint and received a browser challenge; cooldown produced later 429s. DB-only routers were missing from the live weak registry used for price-map metadata replay. Tracking initially empty routers restores metadata without changing profile fallback or provider limits
 
-NAS configuration enables DB model storage and has no top-level model_list. The proxy constructs Router without a model_list and adds DB deployments later. Such routers were absent from the weak set used to replay deployment metadata after price-map replacement. A focused regression reproduced loss of Responses mode after replay for Router(None), while Router([]) passed. Track both construction paths without retaining discarded routers
+Optional MCP initialize probes lacked a whole-setup metadata deadline, and aggregate listings bounded only the inner list call rather than each peer's complete setup. AnyIO scopes now bound both paths, preserve classified peer failures and drain cancellation without suppressing healthy tools or changing scoped access/error semantics
 
-Aggregate MCP initialize waits for optional upstream instructions. NAS sets MCP_HEALTH_CHECK_TIMEOUT=30, equal to the observed 30-second gateway deadline, and MCP_CLIENT_TIMEOUT=180. Each Frigate registration currently fails a bounded TCP connection from the LiteLLM container. Optional metadata probes therefore exhaust the gateway deadline despite 24 healthy registrations. The fix bounds header/client resolution and initialization together by the smaller of the existing metadata and health timeouts, using the established AnyIO cancellation pattern. No registration or access control changes
+The legacy host wrappers installed postgresql-client for an already-existing source_url column repair. Removing that obsolete dependency restored normal startup. Fedora's separate guarded Responses health correction was retained; NAS's simpler wrapper was reviewed independently. Both exec the image entrypoint. Original configuration is preserved in owner-only host backups, with secret-free final wrapper snapshots committed in config/
 
 ## Acceptance criteria coverage
 
 | Criterion | Status | Verification |
 | --- | --- | --- |
-| AC-1 | Source correction implemented; live correction pending | Live catalog/deployment mismatch, upstream error classification, successful Responses; router regression fails before and passes after |
-| AC-2 | Source correction verified; live validation pending | Full per-peer aggregate setup/list/filter deadline; six timeout/caller-cancellation/drain regressions pass with healthy tools retained |
-| AC-3 | Diagnosis complete; deployment verification pending | Running image remains unchanged, so no live fix PASS claimed; Frigate connectivity remains external |
-| AC-4 | PARTIAL, Fedora startup hold | Source pushed and exact-source build passed; Fedora candidate recreated under existing containment, but not ready; NAS not promoted |
-| AC-5 | Evidence recorded | This summary and logs; no credentials or private payloads retained |
+| AC-1 | PASS for requested routing correction | Actual public Astra Chat and Responses JSON/stream pass after supported price reload on both hosts |
+| AC-2 | PASS for bounded partial availability | Six deadline/cancellation/drain regressions; NAS exposes 487 tools from 24 successful peers with three truthful Frigate timeout outcomes |
+| AC-3 | PASS with external limitation | Actual NAS Chat, initialize/list and real memory-health pass; fresh Frigate TCP probes still fail |
+| AC-4 | PASS for requested sequence | Exact clean build, Fedora-first functional/900.01s pass, same-digest NAS promotion/900.00s pass, preserved configuration, final Fedora recheck |
+| AC-5 | PASS | Numbered results, actual identities, config snapshots, checksums and resource samples in logs 04-08 |
 
 ## Verification
 
-Before source correction, focused regressions returned three failures and one pass: missing replay for Router(None), and both metadata timeout phases failed their one-second outer deadline. Router([]) was the passing control
+Source verification totals 303 passing mapped tests, no skips. Production Ruff, test formatting, git diff checks and StaticEng validation pass. Initial failing regressions and intermediate partial results are retained chronologically in logs 01-04, not confused with final results
 
-After correction, the complete router cost-isolation and MCP server test files passed: 289 tests, no skips. An attempted broader run including the MCP manager file encountered unrelated OAuth-discovery failures and exceeded its 120-second command deadline. A bounded rerun stopped at TestOAuthDiscoverySSRFGuard.test_cross_origin_allowed_when_resolves_to_public_ip after 130 passes: expected authorization server, got an empty list. This failure is not waived or presented as a passing broad suite. No security or harness fix was attempted
+The unrelated OAuth-discovery assertion reproduces on clean baseline because its discovery helper is absent. That failure is not waived or presented as a passing broad suite. No unrelated OAuth or sanitizer repair was added
 
-Final mapped run including manager instruction-cache and environment-interpolation coverage: 297 passed, no skips, four warnings, 79.93 seconds. Production-file Ruff passed; both edited test files pass formatting; git diff --check and StaticEng validation passed. Whole-test-file Ruff also reports existing import-order findings and an unused variable outside this change; the new import-order issue was corrected. Package/image build has not been run because technical disposition and completion of aggregate listing remain pending
+Both actual public endpoints pass fresh-nonce Astra Chat/Responses JSON and streams, supported catalog reload, standard aggregate initialize/list and a healthy real tool. NAS returns 24 ok/3 timeout peer outcomes; Fedora returns 11 ok/1 timeout/1 auth_required. End-to-end NAS listing takes 30-40 seconds because optional metadata setup can add ten seconds to the thirty-second peer listing boundary
 
-A later actual aggregate GET /mcp-rest/tools/list exceeded its 40.05-second client deadline. NAS uses the default MCP_TOOL_LISTING_TIMEOUT=30. The manager bounds client.list_tools but not the preceding full setup, and the aggregate awaits all peers. The instruction fix does not resolve this additional listing path. No partial-availability completion is claimed. PMA was asked to route Tech Lead guidance before broadening the timeout boundary
+Both 900-second windows passed 31/31 readiness samples and zero memory-limit/OOM events. Memory.current increased by 143196160 bytes on Fedora and 124948480 bytes on NAS; this is not a plateau claim. Final health, same-container/digest identity and 8-GiB/no-swap/restart-disabled containment pass. See logs/07-dual-host-functional-pass.md and logs/08-resource-samples.csv
 
 ## Documentation impact
 
@@ -36,4 +38,4 @@ Technical availability invariants and relevant CodeMaps are updated. No advertis
 
 ## Open risks and next step
 
-Tech Lead source evidence is in logs/04-tech-lead-source-review.md; exact build, actual runtime identities and startup hold are in logs/05-build-fedora-startup-hold.md. Resolve Fedora bootstrap readiness first, then complete Astra reload/Chat/Responses, aggregate partial availability, healthy real-tool and 900-second resource gates before NAS promotion. No automatic rollback or tooling repair was performed. Frigate connectivity requires its service/network owner; it was not repaired or hidden here. The unrelated OAuth assertion is reproduced on clean baseline because its discovery helper is absent, and was not repaired or represented as passing
+PMA owns final acceptance/closure. Frigate requires its service/network owner; registrations were neither repaired nor hidden. Final logs also expose NAS spend-sanitizer RecursionError traces and ordinary background rate-limit/client failures, so no clean-log or all-provider PASS is claimed. The spend sanitizer source was not changed by this task, and runtime causality has not been established. Route that finding separately if required, retain ongoing memory monitoring, and do not reopen the now-resolved startup or Astra metadata failures without new evidence

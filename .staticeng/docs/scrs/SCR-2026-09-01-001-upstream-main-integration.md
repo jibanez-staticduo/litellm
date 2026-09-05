@@ -8,6 +8,14 @@ date: 2026-09-01
 
 # SCR: Upstream Main Integration
 
+## Runtime Residual Startup Correction - 2026-09-05
+
+PMA explicitly authorized TASK-2026-09-05-002 to correct the real Fedora startup-wrapper apk stall as a deployment defect, preserving the selected new candidate and host-specific required behavior. Both databases already contain the maintained source_url column. The legacy runtime PostgreSQL-client install and repeated column-repair loops were removed from each independently inspected wrapper; Fedora's guarded synthetic Responses health correction was retained, while NAS retains its own simpler startup path. Both wrappers now exec the image's normal prod_entrypoint.sh and their original configuration remains in protected host release backups
+
+Source 2dee9cd19e329d5c59eb712b8f27b8205ca0ff02 and exact image digest 4800816a96e35e7e87549e23823b0627148b6dfe2ac3cb7b55dab345dede1258 passed the scoped source/build checks. Fedora passed actual Astra reload/Chat/Responses, aggregate partial availability, a healthy real tool and 900.01 seconds of bounded observation before NAS promotion. NAS then passed equivalent actual calls and 900.00 seconds, followed by a Fedora public recheck. Both remain healthy and contained on that digest. No rollback, Frigate repair, credential rotation, security remediation or new tool framework was performed
+
+This is a scoped functional and bounded-resource result, not an all-provider/all-MCP or error-free logging approval. Three Frigate peers remain TCP-unreachable, Fedora retains timeout/auth-required peer outcomes, memory was not flat during the finite observations, and final NAS logs exposed a separate spend-sanitizer recursion finding for PMA disposition. Final evidence and secret-free wrapper snapshots are in TASK-2026-09-05-002
+
 ## Controlling NAS Promotion Authorization - 2026-09-05
 
 After the final Fedora functional/memory PASS, PMA relayed explicit user authorization for TASK-2026-09-01-004 Reopen 1 to promote only docker.staticduo.com/litellm@sha256:7b2368711ff10db3107772d627e03aa89319598f8897ff7431497775926b2eb9, source 7a9ef0335303d973f3a228dcf7baadff18c82fb5, to NAS. This supersedes the historical NAS exclusion for that governed task only. Preserve NAS-specific credentials, configuration, models, MCP registrations, database and dependencies; obtain protected recovery and schema preflight; persist suitable LiteLLM-only memory/no-swap containment; recreate only the actual LiteLLM Compose service; verify real model and MCP behavior, at least 900 seconds resource observation, and final Fedora image/source parity
