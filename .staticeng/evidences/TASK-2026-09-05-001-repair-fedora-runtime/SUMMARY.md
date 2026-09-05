@@ -1,4 +1,18 @@
-# Fedora runtime repair: rapid OOM corrected, live functionality restored with limits
+# Fedora runtime repair: functional and bounded memory gates PASS
+
+## Final approval and exact promotion subject
+
+**Tech Lead approves Fedora functional/memory readiness and authorizes PMA NAS promotion** of:
+
+`docker.staticduo.com/litellm@sha256:7b2368711ff10db3107772d627e03aa89319598f8897ff7431497775926b2eb9`
+
+Exact source: `7a9ef0335303d973f3a228dcf7baadff18c82fb5`. Fedora is running/healthy, zero restarts/OOM, persistent 8-GiB/no-swap/restart=no. NAS was not accessed or changed
+
+The final correction excludes live logging owners from retry breadcrumbs, breaking the proven traceback-to-completed-request root. 337 focused tests plus the existing retry test pass. Actual SDK JSON/stream, representative real models and MCP/LazyMCP calls pass. Twelve equivalent batches completed 120 successful JSON calls and 120 intended rejections without weakening error policy
+
+Live traced allocations across loaded windows were 258 MB -> 175 MB -> 191 MB, not cumulative retention. Final uninstrumented 900.75-second natural drain passed 33/33 readiness samples while 538 background requests continued. Python RSS growth fell to only 4 KiB in the last five-minute/158-request window, file cache unchanged, no OOM/limit events. This is a bounded functional/memory PASS, not an indefinite-stability or all-provider-credentials claim
+
+Authoritative final AC coverage, counts, slopes and conditional NAS deployment procedure: **logs/19-functional-memory-pass.md**. This final approval supersedes the historical holds below; PMA owns task closure and the separate NAS execution step. Unrelated maintenance findings and unavailable integration cases remain explicitly disclosed
 
 ## Retained-root correction pending final deployment
 
