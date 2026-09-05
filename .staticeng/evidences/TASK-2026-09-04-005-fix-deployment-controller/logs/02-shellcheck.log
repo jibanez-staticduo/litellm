@@ -1,0 +1,2 @@
+command: shellcheck complete controller and approved watcher harness
+shellcheck=pass

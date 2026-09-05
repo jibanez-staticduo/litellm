@@ -18,6 +18,9 @@ printf 'pass\n' >"$A/safe/control-state"
 printf '999999999\n' >"$A/safe/maintenance-deadline-monotonic"
 printf 'armed\n' >"$A/safe/rollback-confidence"
 printf '2026-09-04T00:00:00Z\n' >"$A/safe/watchdog-start-wall"
+printf 'active\n' >"$A/safe/watchdog-phase"
+printf 'test-nonce\n' >"$A/safe/watchdog-nonce"
+printf 'nonce=test-nonce\nstate=active\n' >"$A/safe/watchdog-ownership"
 
 cat >"$A/rollback/rollback.sh" <<'SH'
 #!/bin/bash
@@ -43,13 +46,17 @@ n=$((n + 1))
 printf '%s\n' "$n" >"$MOCK/count"
 s=$SCENARIO
 if [[ "$s" == failure_* ]]; then printf '%s\n' "${s#failure_}" >&2; exit 1; fi
-utc=2026-09-04T00:00:00Z; mono=$n; phase=candidate; cid=cid; started=start; configured="$CANDIDATE"; runtime="$CANDIDATE_RUNTIME"; config="$CONFIG"; source="$SOURCE"; exit_code=0
+phase=active
+if [[ "$s" == startup_* ]]; then phase=pre-start; s=${s#startup_}; fi
+utc=2026-09-04T00:00:00Z; mono=$n; cid=cid; started=start; configured="$CANDIDATE"; runtime="$CANDIDATE_RUNTIME"; config="$CONFIG"; source="$SOURCE"; exit_code=0
 cur=1073741824; peak=1073741824; cgroup_swap=0; oom_event=0; oom_kill_event=0; available=68719476736; host_swap=0; psi=0.00
 pids=10; cpu=$((n * 10000)); restart=0; oom=false; health=healthy; rss=536870912; anonymous=268435456; private_dirty=134217728; threads=10; fds=20; sockets=2
 postgres=10; redis_clients=10; redis_blocked=0; disk_bytes=107374182400; disk_percent=20; dependencies=expected-dependencies; protected=pass
 live=200; ready=200; kernel_oom=0; request=pre; control=pass
 case "$s" in
     healthy) ;;
+    starting) health=starting; live=0; ready=0 ;;
+    initial_oom_event) oom_event=1 ;;
     memory_absolute) cur=8589934592 ;;
     available) available=34359738367 ;;
     swap) host_swap=536870913 ;;
@@ -161,11 +168,12 @@ SH
 chmod 0700 "$W/mock/docker" "$W/mock/curl" "$W/mock/sudo"
 
 CANDIDATE=docker.staticduo.com/litellm@sha256:b4c960ce7630a7bb7af475ce5e93c6b19a51cacd944b4cbcda6e1a9243af83b3
-CANDIDATE_RUNTIME=sha256:b4c960ce7630a7bb7af475ce5e93c6b19a51cacd944b4cbcda6e1a9243af83b3
+CANDIDATE_RUNTIME=sha256:ad33017b518b66d9dc81ec272b8a91ce1eda935f25b851e8ab7d2e8fa7d0d915
 CONFIG=sha256:ad33017b518b66d9dc81ec272b8a91ce1eda935f25b851e8ab7d2e8fa7d0d915
 SOURCE=bf58974a935521fa570fa7e280c51a00b2e5b54e
 
 reset_run() {
+    rm -f "$A/safe/rollback-intent" "$A/safe/ready-request" "$A/safe/candidate-ready" "$A/safe/watchdog-active"
     rm -f "$A/safe/trigger" "$A/safe/collector-error" "$A/raw/watchdog.tsv" "$W/marker" "$W/out"
     printf '0\n' >"$W/mock/count"
     P=
@@ -185,6 +193,8 @@ expect_trip() {
     scenario=$1
     reason=$2
     reset_run
+    if [[ "$scenario" == startup_* ]]; then printf 'pre-start\n' >"$A/safe/watchdog-phase"; else printf 'active\n' >"$A/safe/watchdog-phase"; fi
+    printf 'nonce=test-nonce\nstate=active\n' >"$A/safe/watchdog-ownership"
     start_run "$scenario"
     wait "$P"
     P=
@@ -193,8 +203,69 @@ expect_trip() {
     printf '%s=pass\n' "$reason"
 }
 
+while read -r scenario reason; do expect_trip "$scenario" "$reason"; done <<'STARTUP_CASES'
+startup_memory_absolute memory_absolute
+startup_rate rate
+startup_cgroup_oom cgroup_oom
+startup_cgroup_oom_kill cgroup_oom_kill
+startup_restart restart
+startup_pids pids
+startup_fds fds
+startup_initial_oom_event cgroup_oom
+startup_oom oom
+startup_exit_137 exit_137
+STARTUP_CASES
+printf 'startup_candidate_resource_gates=pass\n'
+
+reset_run
+printf 'pre-start\n' >"$A/safe/watchdog-phase"
+printf 'nonce=test-nonce\nstate=active\n' >"$A/safe/watchdog-ownership"
+start_run startup_starting 4
+wait "$P"
+P=
+[ ! -e "$W/marker" ]
+[ -s "$A/safe/watchdog-pre-start" ]
+[ ! -e "$A/safe/candidate-ready" ]
+printf 'startup_health_tolerant_resources_sampled=pass\n'
+
+reset_run
+printf 'active\n' >"$A/safe/watchdog-phase"
+printf 'nonce=test-nonce\nstate=active\n' >"$A/safe/watchdog-ownership"
+printf 'nonce=test-nonce\nrequest=ready\n' >"$A/safe/ready-request"
+start_run healthy 2
+wait "$P"
+P=
+grep -qx 'nonce=test-nonce' "$A/safe/candidate-ready"
+grep -qx 'state=ready' "$A/safe/watchdog-ownership"
+[ ! -e "$W/marker" ]
+printf 'generated_watcher_nonce_ready=pass\n'
+
+reset_run
+printf 'nonce=test-nonce\nstate=active\n' >"$A/safe/watchdog-ownership"
+printf 'nonce=stale-nonce\nrequest=ready\n' >"$A/safe/ready-request"
+start_run healthy
+wait "$P"
+P=
+grep -qx 'reason=ready_handshake' "$A/safe/trigger"
+grep -qx 'state=rollback' "$A/safe/watchdog-ownership"
+[ ! -e "$A/safe/candidate-ready" ]
+printf 'generated_watcher_stale_nonce_rejected=pass\n'
+
+reset_run
+printf 'nonce=test-nonce\nstate=active\n' >"$A/safe/watchdog-ownership"
+printf 'nonce=test-nonce\nrequest=ready\n' >"$A/safe/ready-request"
+touch "$A/safe/rollback-intent"
+start_run healthy
+wait "$P"
+P=
+grep -qx 'reason=ready_handshake' "$A/safe/trigger"
+[ ! -e "$A/safe/candidate-ready" ]
+printf 'generated_watcher_rollback_intent_wins=pass\n'
+
 for signal in HUP INT TERM; do
     reset_run
+    printf 'active\n' >"$A/safe/watchdog-phase"
+    printf 'nonce=test-nonce\nstate=active\n' >"$A/safe/watchdog-ownership"
     set +e
     MOCK="$W/mock" SCENARIO=healthy CANDIDATE="$CANDIDATE" CANDIDATE_RUNTIME="$CANDIDATE_RUNTIME" CONFIG="$CONFIG" SOURCE="$SOURCE" MARKER="$W/marker" \
         WATCHDOG_ATTEMPT="$A" WATCHDOG_COLLECTOR="$W/mock/collector.sh" WATCHDOG_ROLLBACK="$A/rollback/rollback.sh" \
@@ -267,6 +338,9 @@ COLLECTOR_SANDBOX="$W/collector-sandbox"
 mkdir -p "$COLLECTOR_SANDBOX/rollback" "$COLLECTOR_SANDBOX/safe"
 cp "$G/collect-watchdog-sample.sh" "$COLLECTOR_SANDBOX/rollback/collect-watchdog-sample.sh"
 printf '2026-09-04T00:00:00Z\n' >"$COLLECTOR_SANDBOX/safe/watchdog-start-wall"
+printf 'active\n' >"$COLLECTOR_SANDBOX/safe/watchdog-phase"
+printf 'test-nonce\n' >"$COLLECTOR_SANDBOX/safe/watchdog-nonce"
+printf 'nonce=test-nonce\nstate=active\n' >"$COLLECTOR_SANDBOX/safe/watchdog-ownership"
 printf 'pass\n' >"$COLLECTOR_SANDBOX/safe/control-state"
 printf 'armed\n' >"$COLLECTOR_SANDBOX/safe/rollback-confidence"
 printf '999999999\n' >"$COLLECTOR_SANDBOX/safe/maintenance-deadline-monotonic"
@@ -409,9 +483,19 @@ printf 'pass\n' >"$PROOF_ATTEMPT/safe/control-state"
 printf '999999999\n' >"$PROOF_ATTEMPT/safe/maintenance-deadline-monotonic"
 printf 'armed\n' >"$PROOF_ATTEMPT/safe/rollback-confidence"
 printf '2026-09-04T00:00:00Z\n' >"$PROOF_ATTEMPT/safe/watchdog-start-wall"
+printf 'rollback\n' >"$PROOF_ATTEMPT/safe/watchdog-phase"
+cp "$W/mock/collector.sh" "$W/mock/proof-collector.sh"
+python3 - "$W/mock/proof-collector.sh" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+path.write_text(path.read_text().replace("phase=active", "phase=rollback", 1))
+PY
+chmod 0700 "$W/mock/proof-collector.sh"
 
 MOCK="$W/mock" SCENARIO=healthy CANDIDATE="$CANDIDATE" CANDIDATE_RUNTIME="$CANDIDATE_RUNTIME" CONFIG="$CONFIG" SOURCE="$SOURCE" \
-    WATCHDOG_ROOT="$PRODUCTION_ROOT" WATCHDOG_PROOF_COLLECTOR="$W/mock/collector.sh" WATCHDOG_SAMPLE_SECONDS=0.001 WATCHDOG_SAMPLE_TIMEOUT=0.10 \
+    WATCHDOG_ROOT="$PRODUCTION_ROOT" WATCHDOG_PROOF_COLLECTOR="$W/mock/proof-collector.sh" WATCHDOG_SAMPLE_SECONDS=0.001 WATCHDOG_SAMPLE_TIMEOUT=0.10 \
     "$G/run-watchdog-proof.sh" "$PROOF_ROOT" >"$W/proof.out"
 PRODUCTION_STATE_AFTER=$(sha256sum "$PRODUCTION_POINTER" "$PRODUCTION_ROOT/.env" "$PRODUCTION_ATTEMPT/raw/rollback.log" "$PRODUCTION_ATTEMPT/safe/control-state")
 [ "$PRODUCTION_STATE_BEFORE" = "$PRODUCTION_STATE_AFTER" ]
@@ -426,7 +510,7 @@ printf 'proof_31_samples=pass\nproof_owned_pointer_log_control=pass\nproof_no_cr
 reset_run
 set +e
 MOCK="$W/mock" SCENARIO=failure_jq CANDIDATE="$CANDIDATE" CANDIDATE_RUNTIME="$CANDIDATE_RUNTIME" CONFIG="$CONFIG" SOURCE="$SOURCE" \
-    WATCHDOG_ROOT="$PRODUCTION_ROOT" WATCHDOG_PROOF_COLLECTOR="$W/mock/collector.sh" WATCHDOG_SAMPLE_SECONDS=0.001 WATCHDOG_SAMPLE_TIMEOUT=0.10 \
+    WATCHDOG_ROOT="$PRODUCTION_ROOT" WATCHDOG_PROOF_COLLECTOR="$W/mock/proof-collector.sh" WATCHDOG_SAMPLE_SECONDS=0.001 WATCHDOG_SAMPLE_TIMEOUT=0.10 \
     "$G/run-watchdog-proof.sh" "$PROOF_ROOT" >"$W/proof-trip.out" 2>&1
 proof_trip_status=$?
 set -e

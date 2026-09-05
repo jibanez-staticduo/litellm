@@ -1,0 +1,3 @@
+command: staticeng_validate
+PASS: All source directories indexed. Hierarchy validated.
+Warnings: 0

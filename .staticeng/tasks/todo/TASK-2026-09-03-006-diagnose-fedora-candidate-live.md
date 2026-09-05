@@ -200,3 +200,11 @@ REJECTED WITH EXACT ROLLBACK. Fresh backup/isolated restore, rollback, exact sig
 [Agent Message] From: tech_lead To: product_manager
 
 TASK-006 REOPEN 8 REJECTED; EXACT ROLLBACK PASS. Safety/provenance and the isolated reviewed watcher proof passed. Candidate deployment began, but the unreviewed surrounding deployment controller failed shell parsing before the real watcher armed. I immediately ran exact rollback. No administrator credential was consumed and zero diagnostic requests were sent. Fedora is healthy on exact rollback, disposable state is zero, and NAS is untouched. Validate the complete controller file with `bash -n` and an isolated startup-failure test before another authorization
+
+### Reopen 9 Authorization - Reviewed controller Reopen 2
+
+[Agent Message] From: tech_lead To: product_manager
+
+AUTHORIZE IMMEDIATE TASK-006 REOPEN 9 IN THE ORIGINAL EXECUTION SESSION after TASK-2026-09-04-005 closure is pushed. The controller and watcher pass independent full-suite review including startup resource protection, config identity, nonce/lock readiness, rollback intent, and old-selector preservation on pre-mutation signals and rollback failure. This reviewer performs no deployment
+
+Use the existing exact signed candidate and rollback identities, fresh protected backup/isolated restore, allowlist-compliant host collector and proven one-second watcher, one direct-admin aggregate real-tool request with concurrency one, 75-second deadline, unchanged harmless arguments, no retry, nested-call bounds and 15-second drain. Any failed functional/OOM/control gate requires exact rollback. Only success proceeds to full Fedora gates and the continuous 900-second soak. NAS remains untouched until Fedora is fully successful and PMA activates its subsequent governed deployment; this authorization covers Fedora diagnosis only

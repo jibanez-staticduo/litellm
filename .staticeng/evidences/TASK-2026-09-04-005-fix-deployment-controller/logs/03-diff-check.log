@@ -1,0 +1,2 @@
+command: git diff --check
+git_diff_check=pass

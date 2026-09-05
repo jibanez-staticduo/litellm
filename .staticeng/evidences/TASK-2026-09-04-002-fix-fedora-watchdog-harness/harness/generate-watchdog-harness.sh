@@ -18,10 +18,22 @@ P=docker.staticduo.com/litellm@sha256:1b7a6dc4514b0f43902a6ac38dfde269aeb902497e
 exec 9>"$A/rollback/lock"
 flock 9
 [ ! -e "$A/safe/rollback-complete" ] || exit 0
+touch "$A/safe/rollback-intent"
+exec 8>"$A/safe/watchdog-ownership.lock"
+flock 8
+nonce=$(cat "$A/safe/watchdog-nonce")
+printf 'nonce=%s\nstate=rollback\n' "$nonce" >"$A/safe/watchdog-ownership.$$"
+mv "$A/safe/watchdog-ownership.$$" "$A/safe/watchdog-ownership"
+rm -f "$A/safe/candidate-ready"
+flock -u 8
 date -u +%FT%TZ >"$A/safe/rollback-start"
-python3 - "$R/.env" "$P" <<'PY'
+python3 - "$R/.env" "$P" "$A/safe/prior-selector.env" <<'PY'
 import os,pathlib,sys,tempfile
-p=pathlib.Path(sys.argv[1]);r=sys.argv[2];s=p.stat();x=p.read_text().splitlines();assert sum(a.startswith('LITELLM_IMAGE=')for a in x)==1;y='\n'.join(('LITELLM_IMAGE='+r)if a.startswith('LITELLM_IMAGE=')else a for a in x)+'\n';f,t=tempfile.mkstemp(prefix='.r7.',dir=p.parent);os.fchmod(f,s.st_mode&511);os.write(f,y.encode());os.fsync(f);os.close(f);os.chown(t,s.st_uid,s.st_gid);os.replace(t,p)
+p=pathlib.Path(sys.argv[1]);r=sys.argv[2];b=pathlib.Path(sys.argv[3]);s=p.stat()
+assert b.is_file() and not b.is_symlink()
+y=b.read_bytes()
+assert [a for a in y.decode().splitlines() if a.startswith('LITELLM_IMAGE=')]==['LITELLM_IMAGE='+r]
+f,t=tempfile.mkstemp(prefix='.r7.',dir=p.parent);os.fchmod(f,s.st_mode&511);os.write(f,y);os.fsync(f);os.close(f);os.chown(t,s.st_uid,s.st_gid);os.replace(t,p)
 PY
 cd "$R"
 docker compose --env-file .env -f docker-compose.yaml up -d --no-deps litellm >>"$A/raw/rollback.log" 2>&1
@@ -44,7 +56,7 @@ set -euo pipefail
 R=/home/staticduo/docker/litellm
 A=${WATCHDOG_ATTEMPT:-$(cat "$R/releases/TASK-2026-09-03-006.active")}
 C=docker.staticduo.com/litellm@sha256:b4c960ce7630a7bb7af475ce5e93c6b19a51cacd944b4cbcda6e1a9243af83b3
-C_RUNTIME=sha256:b4c960ce7630a7bb7af475ce5e93c6b19a51cacd944b4cbcda6e1a9243af83b3
+C_RUNTIME=sha256:ad33017b518b66d9dc81ec272b8a91ce1eda935f25b851e8ab7d2e8fa7d0d915
 if [ "${WATCHDOG_PROOF_ROLLBACK:-0}" = 1 ]; then
     COMMAND_TIMEOUT=${WATCHDOG_COMMAND_TIMEOUT:-1.00}
 else
@@ -81,6 +93,10 @@ if [ -n "${WATCHDOG_COMMAND_TEST:-}" ]; then
     exit
 fi
 
+watchdog_phase=rollback
+if [ "${WATCHDOG_PROOF_ROLLBACK:-0}" != 1 ]; then watchdog_phase=$(bounded cat "$A/safe/watchdog-phase"); fi
+case "$watchdog_phase" in pre-start|active|rollback) : ;; *) exit 1 ;; esac
+
 i=$(bounded docker inspect litellm)
 im=$(bounded jq -er '.[0].Config.Image | strings | select(length>0)' <<<"$i")
 runtime=$(bounded jq -er '.[0].Image | strings | select(length>0)' <<<"$i")
@@ -92,8 +108,12 @@ restart=$(bounded jq -er '.[0].RestartCount | numbers | select(.>=0)' <<<"$i")
 oom=$(bounded jq -r '.[0].State.OOMKilled | booleans' <<<"$i")
 case "$oom" in true|false) : ;; *) exit 1 ;; esac
 health=$(bounded jq -er '.[0].State.Health.Status | strings | select(length>0)' <<<"$i")
-config_identity=$(bounded docker image inspect "$im" | bounded jq -er '.[0].Id | strings | select(length>0)')
-source_identity=$(bounded docker image inspect "$im" | bounded jq -er '.[0].Config.Labels["org.opencontainers.image.revision"] | strings | select(length>0)')
+config_identity=none
+source_identity=none
+if [ "$watchdog_phase" != pre-start ] || [ "$im" = "$C" ]; then
+    config_identity=$(bounded docker image inspect "$im" | bounded jq -er '.[0].Id | strings | select(length>0)')
+    source_identity=$(bounded docker image inspect "$im" | bounded jq -er '.[0].Config.Labels["org.opencontainers.image.revision"] | strings | select(length>0)')
+fi
 cg=$(bounded awk -F: '$1=="0"{print $3}' "/proc/$pid/cgroup")
 [ -n "$cg" ]
 cb="/sys/fs/cgroup$cg"
@@ -134,8 +154,12 @@ dependencies=$(for dependency in postgresql litellm-redis defend-memory-mcp defe
 [ -s "$A/safe/protected-baseline.sha256" ]
 (cd "$R" && bounded sha256sum --check --status "$A/safe/protected-baseline.sha256")
 protected=pass
-live=$(bounded curl -sS -o /dev/null --max-time "$COMMAND_TIMEOUT" -w '%{http_code}' http://127.0.0.1:4000/health/liveliness)
-ready=$(bounded curl -sS -o /dev/null --max-time "$COMMAND_TIMEOUT" -w '%{http_code}' http://127.0.0.1:4000/health/readiness)
+live=0
+ready=0
+if [ "$watchdog_phase" != pre-start ]; then
+    live=$(bounded curl -sS -o /dev/null --max-time "$COMMAND_TIMEOUT" -w '%{http_code}' http://127.0.0.1:4000/health/liveliness)
+    ready=$(bounded curl -sS -o /dev/null --max-time "$COMMAND_TIMEOUT" -w '%{http_code}' http://127.0.0.1:4000/health/readiness)
+fi
 kernel_oom=$(probe_kernel_oom)
 request_state=pre
 [ ! -e "$A/safe/request-active" ] || request_state=active
@@ -146,10 +170,8 @@ deadline=$(bounded cat "$A/safe/maintenance-deadline-monotonic")
 now=$(bounded cut -d' ' -f1 /proc/uptime)
 bounded awk -v now="$now" -v deadline="$deadline" 'BEGIN{exit !(deadline>now)}'
 [ "$rollback_confidence" = armed ]
-phase=candidate
-if [ "${WATCHDOG_PROOF_ROLLBACK:-0}" = 1 ]; then
-    phase=rollback
-elif [ "$im" != "$C" ] || [ "$runtime" != "$C_RUNTIME" ]; then
+phase=$watchdog_phase
+if [ "$phase" = active ] && { [ "$im" != "$C" ] || [ "$runtime" != "$C_RUNTIME" ]; }; then
     printf 'identity_image\n' >&2
     exit 1
 fi
@@ -168,7 +190,7 @@ set -uo pipefail
 R=/home/staticduo/docker/litellm
 A=${WATCHDOG_ATTEMPT:-$(cat "$R/releases/TASK-2026-09-03-006.active")}
 C=docker.staticduo.com/litellm@sha256:b4c960ce7630a7bb7af475ce5e93c6b19a51cacd944b4cbcda6e1a9243af83b3
-C_RUNTIME=sha256:b4c960ce7630a7bb7af475ce5e93c6b19a51cacd944b4cbcda6e1a9243af83b3
+C_RUNTIME=sha256:ad33017b518b66d9dc81ec272b8a91ce1eda935f25b851e8ab7d2e8fa7d0d915
 EXPECTED_CONFIG=sha256:ad33017b518b66d9dc81ec272b8a91ce1eda935f25b851e8ab7d2e8fa7d0d915
 EXPECTED_SOURCE=bf58974a935521fa570fa7e280c51a00b2e5b54e
 COLLECTOR=${WATCHDOG_COLLECTOR:-$A/rollback/collect-watchdog-sample.sh}
@@ -178,6 +200,14 @@ SAMPLE_SECONDS=${WATCHDOG_SAMPLE_SECONDS:-1}
 SAMPLE_TIMEOUT=${WATCHDOG_SAMPLE_TIMEOUT:-0.75}
 PROOF_SAMPLE_LIMIT=${WATCHDOG_PROOF_SAMPLE_LIMIT:-0}
 PROOF_STOP_FILE=${WATCHDOG_PROOF_STOP_FILE:-}
+PHASE_FILE=${WATCHDOG_PHASE_FILE:-$A/safe/watchdog-phase}
+ACTIVE_FILE=${WATCHDOG_ACTIVE_FILE:-$A/safe/watchdog-active}
+READY_REQUEST=${WATCHDOG_READY_REQUEST:-$A/safe/ready-request}
+READY_FILE=${WATCHDOG_READY_FILE:-$A/safe/candidate-ready}
+PRESTART_FILE=${WATCHDOG_PRESTART_FILE:-$A/safe/watchdog-pre-start}
+OWNERSHIP_LOCK=${WATCHDOG_OWNERSHIP_LOCK:-$A/safe/watchdog-ownership.lock}
+OWNERSHIP_STATE=${WATCHDOG_OWNERSHIP_STATE:-$A/safe/watchdog-ownership}
+NONCE_FILE=${WATCHDOG_NONCE_FILE:-$A/safe/watchdog-nonce}
 EXPECTED_DEPENDENCIES=${WATCHDOG_EXPECTED_DEPENDENCIES:-}
 missed=0
 samples=0
@@ -192,6 +222,8 @@ blocked_count=0
 initial_oom=-1
 initial_oom_kill=-1
 identity=
+candidate_identity=
+resource_identity=
 previous_post=
 memory_growth=0
 rss_growth=0
@@ -205,12 +237,24 @@ declare -a baseline_ring=()
 
 trip() {
     trap - HUP INT TERM
+    flock -u 8 2>/dev/null || :
+    touch "$A/safe/rollback-intent"
     if [ -n "$collector_pid" ]; then
         kill "$collector_pid" 2>/dev/null || :
         wait "$collector_pid" 2>/dev/null || :
         collector_pid=
     fi
-    printf 'reason=%s\nutc=%s\nmonotonic=%s\nlast_memory=%s\n' "$1" "$(date -u +%FT%TZ)" "$(cut -d' ' -f1 /proc/uptime)" "${cur:-unknown}" >"$A/safe/trigger"
+    exec 8>"$OWNERSHIP_LOCK"
+    flock 8
+    nonce=${attempt_nonce:-missing}
+    ownership_temporary="$OWNERSHIP_STATE.$$"
+    printf 'nonce=%s\nstate=rollback\n' "$nonce" >"$ownership_temporary"
+    mv "$ownership_temporary" "$OWNERSHIP_STATE"
+    rm -f "$READY_FILE" "$READY_REQUEST" "$ACTIVE_FILE" "$PRESTART_FILE"
+    trigger_temporary="$A/safe/trigger.$$"
+    printf 'reason=%s\nnonce=%s\nutc=%s\nmonotonic=%s\nlast_memory=%s\n' "$1" "$nonce" "$(date -u +%FT%TZ)" "$(cut -d' ' -f1 /proc/uptime)" "${cur:-unknown}" >"$trigger_temporary"
+    mv "$trigger_temporary" "$A/safe/trigger"
+    flock -u 8
     if [ -s "$A/safe/client.pid" ]; then
         client_pid=$(cat "$A/safe/client.pid")
         kill "$client_pid" 2>/dev/null || :
@@ -241,9 +285,10 @@ trap 'trip signal_hup' HUP
 trap 'trip signal_int' INT
 trap 'trip signal_term' TERM
 
-for prerequisite in protected-baseline.sha256 control-state maintenance-deadline-monotonic rollback-confidence dependencies.digest watchdog-start-wall; do
+for prerequisite in protected-baseline.sha256 control-state maintenance-deadline-monotonic rollback-confidence dependencies.digest watchdog-start-wall watchdog-phase watchdog-nonce watchdog-ownership; do
     [ -s "$A/safe/$prerequisite" ] || trip "prerequisite_${prerequisite//./_}"
 done
+attempt_nonce=$(cat "$NONCE_FILE")
 EXPECTED_DEPENDENCIES=$(cat "$A/safe/dependencies.digest")
 [ -n "$EXPECTED_DEPENDENCIES" ] || trip prerequisite_dependencies
 [ "$(cat "$A/safe/rollback-confidence")" = armed ] || trip prerequisite_rollback_confidence
@@ -283,7 +328,9 @@ while :; do
         finish_cycle
         continue
     fi
-    case "$phase" in rollback|candidate) : ;; *) lost_sample phase; finish_cycle; continue ;; esac
+    case "$phase" in rollback|pre-start|active) : ;; *) lost_sample phase; finish_cycle; continue ;; esac
+    current_phase=$(cat "$PHASE_FILE")
+    [ "$phase" = rollback ] || [ "$phase" = "$current_phase" ] || { lost_sample phase_transition; finish_cycle; continue; }
     case "$oom" in true|false) : ;; *) lost_sample oom; finish_cycle; continue ;; esac
     case "$health" in healthy|starting|unhealthy|none) : ;; *) lost_sample health; finish_cycle; continue ;; esac
     case "$protected" in pass|fail) : ;; *) lost_sample protected; finish_cycle; continue ;; esac
@@ -294,26 +341,43 @@ while :; do
     printf '%s\n' "$sample" >&3
     samples=$((samples + 1))
     [ "$control" = pass ] || trip "control_$control"
-    if [ "$phase" = candidate ]; then
+    if [ "$phase" != rollback ]; then
         [ -n "$EXPECTED_DEPENDENCIES" ] || trip dependency_baseline
         [ "$dependencies" = "$EXPECTED_DEPENDENCIES" ] || trip dependency
         [ "$protected" = pass ] || trip protected
-        [ "$live" = 200 ] || trip liveliness
-        [ "$ready" = 200 ] || trip readiness
         [ "$kernel_oom" -eq 0 ] || trip kernel_oom
-        [ "$health" = healthy ] || trip health
-        [ "$restart" -eq 0 ] || trip restart
-        [ "$oom" = false ] || trip oom
-        [ "$exit_code" -ne 137 ] || trip exit_137
         [ "$available" -ge 34359738368 ] || trip available
         [ "$host_swap" -le 536870912 ] || trip swap
         awk -v x="$psi" 'BEGIN{exit !(x>0.10)}' && trip psi
-        [ "$pids" -le 500 ] || trip pids
-        [ "$fds" -le 8192 ] || trip fds
         [ "$postgres_connections" -lt 80 ] || trip postgres
         [ "$redis_clients" -lt 500 ] || trip redis_clients
         [ "$disk_bytes" -ge 21474836480 ] || trip disk_bytes
         [ "$disk_percent" -le 85 ] || trip disk_percent
+        if [ -e "$A/safe/rollback-required" ] && [ ! -e "$A/safe/controller-owner" ]; then trip controller_owner; fi
+    fi
+    if [ "$phase" = pre-start ] || [ "$phase" = active ]; then
+        [ "$restart" -eq 0 ] || trip restart
+        [ "$oom" = false ] || trip oom
+        [ "$exit_code" -ne 137 ] || trip exit_137
+        [ "$pids" -le 500 ] || trip pids
+        [ "$fds" -le 8192 ] || trip fds
+        current_resource_identity="$cid|$started"
+        if [ "$current_resource_identity" != "$resource_identity" ]; then
+            resource_identity=$current_resource_identity
+            initial_oom=$oom_event
+            initial_oom_kill=$oom_kill_event
+            if [ "$configured" = "$C" ]; then
+                initial_oom=0
+                initial_oom_kill=0
+            fi
+            previous_cur=
+            previous_cpu=
+            previous_mono=
+            rate_count=0
+            cpu_count=0
+            baseline_ring=()
+            baseline_count=0
+        fi
         if [ -n "$previous_cpu" ]; then
             cpu_percent=$(awk -v c="$cpu" -v p="$previous_cpu" -v m="$mono" -v q="$previous_mono" 'BEGIN{d=m-q;if(d<=0)exit 1;printf "%.2f",(c-p)/(d*10000)}') || trip instrumentation_cpu_delta
             if awk -v x="$cpu_percent" 'BEGIN{exit !(x>800)}'; then cpu_count=$((cpu_count + 1)); else cpu_count=0; fi
@@ -323,13 +387,6 @@ while :; do
         [ "$cpu_count" -lt 10 ] || trip cpu
         if [ "$redis_blocked" -gt 0 ]; then blocked_count=$((blocked_count + 1)); else blocked_count=0; fi
         [ "$blocked_count" -lt 10 ] || trip redis_blocked
-        [ "$configured" = "$C" ] && [ "$runtime" = "$C_RUNTIME" ] || trip identity_image
-        [ "$config_identity" = "$EXPECTED_CONFIG" ] || trip identity_config
-        [ "$source_identity" = "$EXPECTED_SOURCE" ] || trip identity_source
-        current_identity="$cid|$started"
-        if [ -z "$identity" ]; then identity=$current_identity; fi
-        [ "$current_identity" = "$identity" ] || trip identity_container
-        if [ "$initial_oom" -lt 0 ]; then initial_oom=$oom_event; initial_oom_kill=$oom_kill_event; fi
         [ "$oom_event" -le "$initial_oom" ] || trip cgroup_oom
         [ "$oom_kill_event" -le "$initial_oom_kill" ] || trip cgroup_oom_kill
         if [ "$request_state" = pre ]; then
@@ -370,6 +427,55 @@ while :; do
         fi
         if [ "$request_state" = post ]; then previous_post="$cur,$rss,$anonymous,$private_dirty,$threads,$pids,$fds"; fi
         previous_cur=$cur
+    fi
+    if [ "$phase" = pre-start ]; then
+        if [ "$configured" = "$C" ] && [ "$runtime" = "$C_RUNTIME" ]; then
+            current_identity="$cid|$started"
+            if [ -z "$candidate_identity" ]; then candidate_identity=$current_identity; fi
+            [ "$current_identity" = "$candidate_identity" ] || trip identity_container
+        fi
+        prestart_temporary="$PRESTART_FILE.$$"
+        printf 'phase=pre-start\ncontainer_id=%s\nstarted_at=%s\ndependencies=%s\nprotected=%s\n' "$cid" "$started" "$dependencies" "$protected" >"$prestart_temporary"
+        mv "$prestart_temporary" "$PRESTART_FILE"
+    fi
+    if [ "$phase" = active ]; then
+        [ "$live" = 200 ] || trip liveliness
+        [ "$ready" = 200 ] || trip readiness
+        [ "$health" = healthy ] || trip health
+        [ "$configured" = "$C" ] && [ "$runtime" = "$C_RUNTIME" ] || trip identity_image
+        [ "$config_identity" = "$EXPECTED_CONFIG" ] || trip identity_config
+        [ "$source_identity" = "$EXPECTED_SOURCE" ] || trip identity_source
+        current_identity="$cid|$started"
+        if [ -z "$candidate_identity" ]; then candidate_identity=$current_identity; fi
+        [ "$current_identity" = "$candidate_identity" ] || trip identity_container
+        if [ -z "$identity" ]; then identity=$current_identity; fi
+        [ "$current_identity" = "$identity" ] || trip identity_container
+        active_temporary="$ACTIVE_FILE.$$"
+        printf 'phase=active\ncontainer_id=%s\nstarted_at=%s\nconfigured_image=%s\nruntime_image=%s\nconfig_identity=%s\nsource_identity=%s\nhealth=%s\nliveliness=%s\nreadiness=%s\n' \
+            "$cid" "$started" "$configured" "$runtime" "$config_identity" "$source_identity" "$health" "$live" "$ready" >"$active_temporary"
+        mv "$active_temporary" "$ACTIVE_FILE"
+        if [ -e "$READY_REQUEST" ] && grep -qx 'state=active' "$OWNERSHIP_STATE"; then
+            exec 8>"$OWNERSHIP_LOCK"
+            flock 8
+            nonce=$attempt_nonce
+            expected_ownership=$(printf 'nonce=%s\nstate=active' "$nonce")
+            expected_request=$(printf 'nonce=%s\nrequest=ready' "$nonce")
+            if [ "$(cat "$OWNERSHIP_STATE")" != "$expected_ownership" ] || [ "$(cat "$READY_REQUEST")" != "$expected_request" ] || \
+                [ "$(cat "$NONCE_FILE")" != "$attempt_nonce" ] || [ -e "$A/safe/rollback-intent" ] || \
+                [ -e "$A/safe/trigger" ] || [ -e "$A/safe/rollback-start" ] || [ -e "$A/safe/rollback-complete" ] || \
+                [ "$(cat "$PHASE_FILE")" != active ]; then
+                flock -u 8
+                trip ready_handshake
+            fi
+            ready_temporary="$READY_FILE.$$"
+            printf 'nonce=%s\ncandidate=ready\nwatchdog=armed\nphase=active\ncontainer_id=%s\nstarted_at=%s\nconfigured_image=%s\nconfig_identity=%s\n' \
+                "$nonce" "$cid" "$started" "$configured" "$config_identity" >"$ready_temporary"
+            mv "$ready_temporary" "$READY_FILE"
+            ownership_temporary="$OWNERSHIP_STATE.$$"
+            printf 'nonce=%s\nstate=ready\n' "$nonce" >"$ownership_temporary"
+            mv "$ownership_temporary" "$OWNERSHIP_STATE"
+            flock -u 8
+        fi
     fi
     if [ "$PROOF_SAMPLE_LIMIT" -gt 0 ] && [ "$samples" -ge "$PROOF_SAMPLE_LIMIT" ]; then exit 0; fi
     if [ -n "$PROOF_STOP_FILE" ] && [ -e "$PROOF_STOP_FILE" ]; then exit 0; fi
@@ -412,6 +518,9 @@ pointer_temporary="$ACTIVE_POINTER.$$"
 printf '%s\n' "$A" >"$pointer_temporary"
 mv "$pointer_temporary" "$ACTIVE_POINTER"
 rm -f "$A/safe/trigger" "$A/safe/proof-rollback-invoked" "$A/raw/proof-rollback.log" "$L"
+printf 'rollback\n' >"$A/safe/watchdog-phase"
+printf 'proof\n' >"$A/safe/watchdog-nonce"
+printf 'nonce=proof\nstate=active\n' >"$A/safe/watchdog-ownership"
 
 set +e
 WATCHDOG_ATTEMPT="$(cat "$ACTIVE_POINTER")" \
