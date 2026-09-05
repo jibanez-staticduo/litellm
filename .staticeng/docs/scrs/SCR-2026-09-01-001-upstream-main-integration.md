@@ -8,6 +8,12 @@ date: 2026-09-01
 
 # SCR: Upstream Main Integration
 
+## Controlling NAS Promotion Authorization - 2026-09-05
+
+After the final Fedora functional/memory PASS, PMA relayed explicit user authorization for TASK-2026-09-01-004 Reopen 1 to promote only docker.staticduo.com/litellm@sha256:7b2368711ff10db3107772d627e03aa89319598f8897ff7431497775926b2eb9, source 7a9ef0335303d973f3a228dcf7baadff18c82fb5, to NAS. This supersedes the historical NAS exclusion for that governed task only. Preserve NAS-specific credentials, configuration, models, MCP registrations, database and dependencies; obtain protected recovery and schema preflight; persist suitable LiteLLM-only memory/no-swap containment; recreate only the actual LiteLLM Compose service; verify real model and MCP behavior, at least 900 seconds resource observation, and final Fedora image/source parity
+
+No security remediation, maintenance-harness building, destructive database restoration or unrelated service change is authorized. Existing unavailable-provider test failures and nonfunctional security tooling are disclosed rather than blocking this execution. Real live functional failures remain explicit and prevent an unqualified completion claim. Recovery stays available for a proven NAS regression, without automatically undoing Fedora's independently verified repair
+
 ## Controlling PO Correction - 2026-09-05
 
 PMA relayed explicit PO authorization to deploy and repair Fedora without automatic rollback. This supersedes the prior automatic rollback gates for TASK-006. Preserve recovery backups; disable only task-owned rollback automation; deploy the retained exact candidate with a candidate-only conservative memory limit. On diagnostic failure keep the candidate selected; stop it if host exhaustion threatens and return the source/configuration fix to PMA for same-task delegation. No auth weakening, secret output, destructive database action, or unrelated changes are authorized. A single bounded direct-admin diagnostic request remains authorized. NAS stays untouched until Fedora functionality and soak pass and the working code/image is committed, pushed, and published.
