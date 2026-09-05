@@ -1,5 +1,9 @@
 # Fedora runtime repair: rapid OOM corrected, live functionality restored with limits
 
+## Promotion-readiness continuation
+
+The public Responses contract confirms stream=false must return a Response, although this fork's SSE behavior predates integration. A two-line sync/async correction keeps upstream ChatGPT SSE while using existing buffered parsing for non-stream callers. New text/tool/usage regressions and complete focused coverage pass: 335 tests, no skips. Mature-runtime memory comparison after about 2.5 hours stabilized near 1.33 GB; ten identical real calls caused no anon-memory growth, and recovery ended below pre-call current memory. Details and honest background-traffic accounting are in logs/16-stream-contract-memory-comparison.md. Rebuild/live SDK/900-second verification of this next checkpoint is pending; no NAS mutation is authorized
+
 ## Latest final observation
 
 Fedora is running/healthy on exact registry digest `bc9a9123b774f5e2c250d2a9d4b5441397571e54cf41fc64c1192021940d6042`, built from pushed source `fb8943a9cc67573f34e0a56f6cb923f3a2dc845f`. Persistent 8-GiB/no-swap/restart=no containment survived recreation. Three product corrections are deployed: non-recursive ChatGPT session lookup, preserved account-profile parameters and Responses string-input normalization

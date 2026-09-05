@@ -10,14 +10,16 @@ import pytest
 import litellm
 from litellm._logging import verbose_logger
 from litellm.integrations.code_interpreter_interception.handler import (
-    CodeInterpreterInterceptionLogger,
     LITELLM_CODE_EXECUTION_TOOL_NAME,
+    CodeInterpreterInterceptionLogger,
 )
+from litellm.llms.azure.videos.transformation import AzureVideoConfig
 from litellm.llms.base_llm.audio_transcription.transformation import (
     AudioTranscriptionRequestData,
     BaseAudioTranscriptionConfig,
 )
 from litellm.llms.base_llm.chat.transformation import BaseLLMException
+from litellm.llms.chatgpt.responses.transformation import ChatGPTResponsesAPIConfig
 from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
 from litellm.llms.custom_httpx.llm_http_handler import (
     BaseLLMHTTPHandler,
@@ -26,7 +28,6 @@ from litellm.llms.custom_httpx.llm_http_handler import (
     _has_pre_call_deployment_hook,
     _rust_responses_websocket_enabled,
 )
-from litellm.llms.azure.videos.transformation import AzureVideoConfig
 from litellm.llms.openai.videos.transformation import OpenAIVideoConfig
 from litellm.types.llms.openai import ResponsesAPIResponse
 from litellm.types.router import GenericLiteLLMParams
@@ -93,6 +94,76 @@ def test_prepare_fake_stream_request():
     assert result_data["messages"] == [{"role": "user", "content": "Hello"}]
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("async_mode", [False, True])
+@pytest.mark.parametrize("optional_params", [{}, {"stream": False}])
+async def test_chatgpt_nonstream_responses_aggregate_upstream_sse(async_mode, optional_params):
+    payload = {
+        "id": "resp_test",
+        "object": "response",
+        "created_at": 1,
+        "model": "gpt-6-astra",
+        "status": "completed",
+        "output": [
+            {
+                "id": "msg_test",
+                "type": "message",
+                "role": "assistant",
+                "status": "completed",
+                "content": [{"type": "output_text", "text": "OK", "annotations": []}],
+            },
+            {
+                "id": "fc_test",
+                "type": "function_call",
+                "call_id": "call_test",
+                "name": "lookup",
+                "arguments": "{}",
+                "status": "completed",
+            },
+        ],
+        "usage": {"input_tokens": 2, "output_tokens": 1, "total_tokens": 3},
+    }
+    raw_response = httpx.Response(
+        200,
+        headers={"content-type": "text/event-stream"},
+        content=f"data: {json.dumps({'type': 'response.completed', 'response': payload})}\n\ndata: [DONE]\n\n",
+        request=httpx.Request("POST", "https://chatgpt.example.com/responses"),
+    )
+    config = Mock(wraps=ChatGPTResponsesAPIConfig())
+    config.validate_environment.return_value = {}
+    config.get_complete_url.return_value = "https://chatgpt.example.com/responses"
+    client = AsyncHTTPHandler() if async_mode else HTTPHandler(client=httpx.Client())
+    client.post = AsyncMock(return_value=raw_response) if async_mode else Mock(return_value=raw_response)
+    logging_obj = Mock()
+    logging_obj.dynamic_success_callbacks = []
+    logging_obj.model_call_details = {}
+    kwargs = {
+        "model": "gpt-6-astra",
+        "input": "hi",
+        "responses_api_provider_config": config,
+        "response_api_optional_request_params": optional_params,
+        "custom_llm_provider": "chatgpt",
+        "litellm_params": GenericLiteLLMParams(),
+        "logging_obj": logging_obj,
+        "client": client,
+        "extra_body": {"stream": False},
+    }
+    handler = BaseLLMHTTPHandler()
+    result = (
+        await handler.async_response_api_handler(**kwargs) if async_mode else handler.response_api_handler(**kwargs)
+    )
+
+    assert client.post.call_args.kwargs["json"]["stream"] is True
+    assert not client.post.call_args.kwargs.get("stream", False)
+    assert isinstance(result, ResponsesAPIResponse)
+    assert result.id == "resp_test"
+    assert result.output_text == "OK"
+    assert result.output[1].call_id == "call_test"
+    assert result.usage.total_tokens == 3
+    assert logging_obj.stream is False
+    assert logging_obj.model_call_details["stream"] is False
+
+
 def test_response_api_handler_preserves_chatgpt_provider_stream_requirement():
     handler = BaseLLMHTTPHandler()
     config = Mock()
@@ -104,6 +175,7 @@ def test_response_api_handler_preserves_chatgpt_provider_stream_requirement():
         "stream": True,
     }
     config.sign_request.return_value = ({}, None)
+    config.finalize_request.side_effect = lambda **kwargs: kwargs["request_data"]
     client = HTTPHandler(client=httpx.Client())
     client.post = Mock(
         return_value=httpx.Response(
@@ -118,7 +190,7 @@ def test_response_api_handler_preserves_chatgpt_provider_stream_requirement():
         model="gpt-5.3-codex",
         input="hi",
         responses_api_provider_config=config,
-        response_api_optional_request_params={},
+        response_api_optional_request_params={"stream": True},
         custom_llm_provider="chatgpt",
         litellm_params=GenericLiteLLMParams(),
         logging_obj=logging_obj,
@@ -146,6 +218,7 @@ def test_response_api_handler_does_not_force_provider_stream(custom_llm_provider
         transformed_request["stream"] = transformed_stream
     config.transform_responses_api_request.return_value = transformed_request
     config.sign_request.return_value = ({}, None)
+    config.finalize_request.side_effect = lambda **kwargs: kwargs["request_data"]
     config.transform_response_api_response.return_value = Mock()
     client = HTTPHandler(client=httpx.Client())
     client.post = Mock(
@@ -181,6 +254,7 @@ def test_response_api_handler_runs_agentic_hooks_in_sync_path(monkeypatch):
         "input": "hi",
     }
     config.sign_request.return_value = ({}, None)
+    config.finalize_request.side_effect = lambda **kwargs: kwargs["request_data"]
     initial_response = Mock()
     final_response = Mock()
     config.transform_response_api_response.return_value = initial_response
@@ -221,6 +295,7 @@ def test_response_api_handler_runs_responses_pre_call_hook_before_transform():
     config.validate_environment.return_value = {}
     config.get_complete_url.return_value = "https://api.openai.com/v1/responses"
     config.sign_request.return_value = ({}, None)
+    config.finalize_request.side_effect = lambda **kwargs: kwargs["request_data"]
     initial_response = ResponsesAPIResponse(
         id="resp_1",
         created_at=0,
@@ -290,6 +365,7 @@ async def test_async_response_api_handler_preserves_chatgpt_provider_stream_requ
         "stream": True,
     }
     config.sign_request.return_value = ({}, None)
+    config.finalize_request.side_effect = lambda **kwargs: kwargs["request_data"]
     client = AsyncHTTPHandler()
     client.post = AsyncMock(
         return_value=httpx.Response(
@@ -305,7 +381,7 @@ async def test_async_response_api_handler_preserves_chatgpt_provider_stream_requ
         model="gpt-5.3-codex",
         input="hi",
         responses_api_provider_config=config,
-        response_api_optional_request_params={},
+        response_api_optional_request_params={"stream": True},
         custom_llm_provider="chatgpt",
         litellm_params=GenericLiteLLMParams(),
         logging_obj=logging_obj,
@@ -1428,6 +1504,7 @@ def _make_responses_handler_call(signed_body):
     signing provider (e.g. Bedrock Mantle).
     """
     from unittest.mock import MagicMock
+
     from litellm.llms.custom_httpx.http_handler import HTTPHandler
     from litellm.llms.custom_httpx.llm_http_handler import BaseLLMHTTPHandler
     from litellm.types.router import GenericLiteLLMParams
@@ -1438,6 +1515,7 @@ def _make_responses_handler_call(signed_body):
     provider_config.transform_responses_api_request.return_value = {"input": "hi"}
     provider_config.should_fake_stream.return_value = False
     provider_config.sign_request.return_value = ({"X-Signed": "1"}, signed_body)
+    provider_config.finalize_request.side_effect = lambda **kwargs: kwargs["request_data"]
 
     mock_client = MagicMock(spec=HTTPHandler)
     mock_client.post.return_value = MagicMock()
@@ -1483,6 +1561,7 @@ def test_responses_handler_signs_after_fake_stream_prep_strips_stream():
     We snapshot request_data at sign time and assert "stream" is already gone.
     """
     from unittest.mock import MagicMock
+
     from litellm.llms.custom_httpx.http_handler import HTTPHandler
     from litellm.llms.custom_httpx.llm_http_handler import BaseLLMHTTPHandler
     from litellm.types.llms.openai import ResponsesAPIResponse
@@ -1496,6 +1575,7 @@ def test_responses_handler_signs_after_fake_stream_prep_strips_stream():
         "stream": True,
     }
     provider_config.should_fake_stream.return_value = True
+    provider_config.finalize_request.side_effect = lambda **kwargs: kwargs["request_data"]
     provider_config.transform_response_api_response.return_value = ResponsesAPIResponse(
         id="resp_1",
         created_at=0,
@@ -1546,6 +1626,7 @@ def _make_compact_handler_call(signed_body, is_async):
     signing provider (e.g. Bedrock Mantle SigV4 / bearer).
     """
     from unittest.mock import MagicMock
+
     from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
     from litellm.llms.custom_httpx.llm_http_handler import BaseLLMHTTPHandler
     from litellm.types.router import GenericLiteLLMParams

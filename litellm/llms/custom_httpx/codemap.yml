@@ -9,3 +9,5 @@ internals:
   - path: http_handler.py
   - path: aiohttp_handler.py
   - path: llm_http_handler.py
+invariants:
+  - ChatGPT may require upstream Responses SSE, but caller stream false or omitted uses buffered response parsing and returns a ResponsesAPIResponse

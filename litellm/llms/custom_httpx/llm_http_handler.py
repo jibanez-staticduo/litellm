@@ -2656,7 +2656,7 @@ class BaseLLMHTTPHandler:
         )
         if custom_llm_provider == "chatgpt" and provider_requires_native_stream:
             data["stream"] = True
-        stream = bool(stream or data.get("stream"))
+        stream = bool(stream or (custom_llm_provider != "chatgpt" and data.get("stream")))
 
         # Preserve the OpenAI-style request context (not sent to the provider) for streaming
         # hooks/metadata; the streaming iterator now consumes this to run deployment hooks
@@ -2850,7 +2850,7 @@ class BaseLLMHTTPHandler:
         )
         if custom_llm_provider == "chatgpt" and provider_requires_native_stream:
             data["stream"] = True
-        stream = bool(stream or data.get("stream"))
+        stream = bool(stream or (custom_llm_provider != "chatgpt" and data.get("stream")))
 
         # Preserve the OpenAI-style request context (not sent to the provider) for streaming
         # hooks/metadata; the streaming iterator now consumes this to run deployment hooks
