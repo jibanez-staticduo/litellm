@@ -123,6 +123,7 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
             "reasoning",
             "previous_response_id",
             "truncation",
+            "text",
         }
         is_codex_responses_lite: Final = any(key.lower() == "x-openai-internal-codex-responses-lite" for key in headers)
         request_items: Final = (

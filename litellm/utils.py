@@ -9008,6 +9008,10 @@ class ProviderConfigManager:
         model: str,
         provider: LlmProviders,
     ) -> BaseImageGenerationConfig | None:
+        if LlmProviders.CHATGPT == provider:
+            from litellm.llms.chatgpt.images import ChatGPTImageGenerationConfig
+
+            return ChatGPTImageGenerationConfig()
         if LlmProviders.OPENAI == provider:
             from litellm.llms.openai.image_generation import (
                 get_openai_image_generation_config,
@@ -9201,6 +9205,10 @@ class ProviderConfigManager:
         model: str,
         provider: LlmProviders,
     ) -> BaseImageEditConfig | None:
+        if LlmProviders.CHATGPT == provider:
+            from litellm.llms.chatgpt.images import ChatGPTImageEditConfig
+
+            return ChatGPTImageEditConfig()
         if LlmProviders.OPENAI == provider:
             from litellm.llms.openai.image_edit import get_openai_image_edit_config
 

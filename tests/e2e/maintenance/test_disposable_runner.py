@@ -393,7 +393,7 @@ class TestDisposableRunner:
             directory: Final = Path(parent) / "secrets"
             previous: Final = os.umask(0o012)
             try:
-                with pytest.raises(OSError, match="fsync failure|close-before failure|close-after failure"):
+                with pytest.raises(OSError, match=r"fsync failure|close-before failure|close-after failure"):
                     AtomicSecretDirectory(operations).create(Path(parent), "secrets", {"one": "value"})
                 assert not directory.exists()
                 observed: Final = os.umask(0o012)

@@ -1,0 +1,16 @@
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+ARG SOURCE_REVISION
+LABEL org.opencontainers.image.revision=${SOURCE_REVISION}
+COPY litellm/utils.py /app/.venv/lib/python3.13/site-packages/litellm/utils.py
+COPY litellm/litellm_core_utils/llm_response_utils/get_api_base.py /app/.venv/lib/python3.13/site-packages/litellm/litellm_core_utils/llm_response_utils/get_api_base.py
+COPY litellm/images/main.py /app/.venv/lib/python3.13/site-packages/litellm/images/main.py
+COPY litellm/llms/chatgpt/images.py /app/.venv/lib/python3.13/site-packages/litellm/llms/chatgpt/images.py
+COPY litellm/llms/chatgpt/realtime.py /app/.venv/lib/python3.13/site-packages/litellm/llms/chatgpt/realtime.py
+COPY litellm/llms/chatgpt/responses/transformation.py /app/.venv/lib/python3.13/site-packages/litellm/llms/chatgpt/responses/transformation.py
+COPY litellm/llms/custom_httpx/llm_http_handler.py /app/.venv/lib/python3.13/site-packages/litellm/llms/custom_httpx/llm_http_handler.py
+COPY litellm/proxy/proxy_server.py /app/.venv/lib/python3.13/site-packages/litellm/proxy/proxy_server.py
+COPY litellm/proxy/realtime_endpoints/endpoints.py /app/.venv/lib/python3.13/site-packages/litellm/proxy/realtime_endpoints/endpoints.py
+COPY litellm/proxy/realtime_endpoints/codex.py /app/.venv/lib/python3.13/site-packages/litellm/proxy/realtime_endpoints/codex.py
+COPY litellm/realtime_api/main.py /app/.venv/lib/python3.13/site-packages/litellm/realtime_api/main.py
+COPY litellm/types/realtime.py /app/.venv/lib/python3.13/site-packages/litellm/types/realtime.py
