@@ -3,6 +3,7 @@ FROM ${BASE_IMAGE}
 ARG SOURCE_REVISION
 LABEL org.opencontainers.image.revision=${SOURCE_REVISION}
 COPY litellm/llms/chatgpt/authenticator.py /app/.venv/lib/python3.13/site-packages/litellm/llms/chatgpt/authenticator.py
+COPY litellm/llms/chatgpt/common_utils.py /app/.venv/lib/python3.13/site-packages/litellm/llms/chatgpt/common_utils.py
 COPY litellm/llms/chatgpt/chat/transformation.py /app/.venv/lib/python3.13/site-packages/litellm/llms/chatgpt/chat/transformation.py
 COPY litellm/model_prices_and_context_window_backup.json /app/.venv/lib/python3.13/site-packages/litellm/model_prices_and_context_window_backup.json
 COPY litellm/utils.py /app/.venv/lib/python3.13/site-packages/litellm/utils.py
