@@ -165,8 +165,8 @@ class Authenticator:
             return getter(key)
         return getattr(litellm_params, key, None)
 
-    def get_api_base(self) -> str:
-        return os.getenv("CHATGPT_API_BASE") or os.getenv("OPENAI_CHATGPT_API_BASE") or CHATGPT_API_BASE
+    def get_api_base(self, default_base: str = CHATGPT_API_BASE) -> str:
+        return os.getenv("CHATGPT_API_BASE") or os.getenv("OPENAI_CHATGPT_API_BASE") or default_base
 
     def get_access_token(self) -> str:
         with _auth_lock(self.auth_file), open(f"{self.auth_file}.lock", "a+") as lock_file:

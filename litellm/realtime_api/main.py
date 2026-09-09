@@ -301,11 +301,13 @@ async def arealtime_calls(
         api_version=litellm_params.api_version,
     )
     if custom_llm_provider == "chatgpt":
+        from litellm.llms.chatgpt.realtime import ChatGPTRealtime
+
         response.extensions["chatgpt_realtime"] = MappingProxyType(
             {
                 "model": model_name,
                 "profile": litellm_params.chatgpt_auth_profile,
-                "api_base": litellm_params.api_base,
+                "api_base": ChatGPTRealtime.get_api_base(litellm_params.api_base),
             }
         )
     return response
@@ -461,7 +463,7 @@ async def _arealtime(
             model=model,
             websocket=websocket,
             logging_obj=litellm_logging_obj,
-            api_base=api_base or "https://api.openai.com/v1",
+            api_base=ChatGPTRealtime.get_api_base(api_base),
             api_key="chatgpt-oauth",
             timeout=timeout,
             query_params=query_params,
