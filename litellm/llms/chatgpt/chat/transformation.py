@@ -34,7 +34,7 @@ class ChatGPTConfig(OpenAIConfig):
             litellm_params
         )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         dynamic_api_base = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
-            authenticator.get_api_base()
+            api_base or authenticator.get_api_base()
         )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         try:
             dynamic_api_key = (  # rebind-ok: framework flow intentionally updates request or lifecycle state

@@ -9,8 +9,9 @@ from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
 from litellm.types.router import GenericLiteLLMParams
 
 
+@pytest.mark.parametrize("api_base", [None, "https://image-gateway.test"])
 @pytest.mark.parametrize("profile", [None, "account2", "account3"])
-def test_generation_routes_with_selected_profile(profile, chatgpt_tokens):
+def test_generation_routes_with_selected_profile(profile, chatgpt_tokens, api_base):
     requests = []
 
     def respond(request):
@@ -22,6 +23,7 @@ def test_generation_routes_with_selected_profile(profile, chatgpt_tokens):
     result = litellm.image_generation(
         model="chatgpt/gpt-image-2",
         prompt="blue circle",
+        api_base=api_base,
         client=client,
         chatgpt_token_dir=chatgpt_tokens,
         chatgpt_auth_profile=profile,
@@ -32,7 +34,7 @@ def test_generation_routes_with_selected_profile(profile, chatgpt_tokens):
     )
     assert requests[0].headers["x-gateway-route"] == "images"
     assert result.data[0].b64_json == "aGVsbG8="
-    assert str(requests[0].url) == "https://chatgpt.com/backend-api/codex/images/generations"
+    assert str(requests[0].url) == (api_base or "https://chatgpt.com/backend-api/codex") + "/images/generations"
     assert requests[0].headers["authorization"] == "Bearer test-token-" + (profile or "default")
     assert requests[0].headers["chatgpt-account-id"] == "test-account-" + (profile or "default")
     assert b'"model":"gpt-image-2"' in requests[0].content
