@@ -1,0 +1,109 @@
+--- a/policy.py
++++ b/policy.py
+@@ -11,0 +12,10 @@
++AUXILIARY = frozenset({"gpt-image-2", "codex-auto-review", "gpt-realtime-1.5", "gpt-live-1-codex"})
++
++
++def managed_upstream(upstream):
++    return upstream.startswith("chatgpt/gpt-") or upstream == "chatgpt/codex-auto-review"
++
++
++def reserve_compatible(upstream):
++    name = upstream.removeprefix("chatgpt/")
++    return name not in AUXILIARY and not name.startswith(("gpt-image-", "gpt-realtime-", "gpt-live-"))
+@@ -144 +154 @@
+-        if not upstream.startswith("chatgpt/gpt-"):
++        if not managed_upstream(upstream):
+@@ -151 +161 @@
+-        if "/" not in name and name.startswith("gpt-"):
++        if "/" not in name and (name.startswith("gpt-") or name == "codex-auto-review"):
+@@ -202 +212 @@
+-        if exhausted and alias != "gpt-reserve" and "gpt-reserve" not in after:
++        if exhausted and reserve_compatible(upstream) and alias != "gpt-reserve" and "gpt-reserve" not in after:
+--- a/controller.py
++++ b/controller.py
+@@ -227 +227 @@
+-        if deployment["upstream"].startswith("chatgpt/gpt-"):
++        if policy.managed_upstream(deployment["upstream"]):
+@@ -256 +256 @@
+-        if not deployment["upstream"].startswith("chatgpt/gpt-"):
++        if not policy.managed_upstream(deployment["upstream"]):
+--- a/operator_attest.py
++++ b/operator_attest.py
+@@ -43 +43 @@
+-        if not params["model"].startswith("chatgpt/gpt-"):
++        if not (params["model"].startswith("chatgpt/gpt-") or params["model"] == "chatgpt/codex-auto-review"):
+--- /dev/null
++++ b/test/test_auxiliary.py
+@@ -0,0 +1,59 @@
++import copy
++import unittest
++from test_policy import fixture, apply_fixture, NOW
++from policy import AUXILIARY, plan
++import controller
++
++
++def auxiliary_fixture(a, b):
++    data = fixture(a, b)
++    inventory, routes = data[1:3]
++    for host in inventory:
++        originals = [d for d in inventory[host]['deployments'] if d['upstream'] == 'chatgpt/gpt-5.4']
++        chain = next(e['gpt-5.4'] for e in routes[host]['fallbacks'] if 'gpt-5.4' in e)
++        for name in AUXILIARY:
++            for deployment in originals:
++                row = copy.deepcopy(deployment)
++                for key in ('alias', 'id', 'upstream'):
++                    row[key] = row[key].replace('gpt-5.4', name)
++                inventory[host]['deployments'].append(row)
++            routes[host]['fallbacks'].append({name: [x.replace('gpt-5.4', name) for x in chain]})
++    return data
++
++
++class AuxiliaryTests(unittest.TestCase):
++    def test_rotation_exhaustion_and_recovery(self):
++        for usage in ((20, 10), (50, 60), (100, 100)):
++            data = auxiliary_fixture(*usage)
++            result = plan(*data, now=NOW)
++            self.assertEqual(result['decision'], 'apply')
++            for host, target in result['targets'].items():
++                aliases = {a['alias']: a for a in target['aliases']}
++                for name in AUXILIARY:
++                    self.assertIn(name, aliases)
++                    self.assertEqual(aliases[name]['identity_order'], aliases['gpt-5.4']['identity_order'])
++                    self.assertNotIn('gpt-reserve', aliases[name]['fallback_after'])
++                    self.assertNotIn(name, target['ownership_after'])
++                    self.assertTrue(all(x.endswith('/' + name) for x in aliases[name]['fallback_after']))
++            applied = apply_fixture(data, result)
++            self.assertEqual(plan(*applied, now=NOW)['decision'], 'noop')
++            applied[0]['accounts'][0]['weekly']['used_percent'] = 1
++            applied[0]['accounts'][1]['weekly']['used_percent'] = 2
++            recovered = plan(*applied, now=NOW)
++            self.assertNotEqual(recovered['decision'], 'freeze')
++            self.assertTrue(all(not t['ownership_after'] for t in recovered['targets'].values()))
++
++    def test_guardian_requires_verified_profile(self):
++        inventory, routes = auxiliary_fixture(10, 20)[1:3]
++        inv = inventory['nas']
++        rows = [{'model_name': d['alias'], 'model_info': {'id': d['id']},
++                 'litellm_params': {'model': d['upstream'], **({'chatgpt_auth_profile': d['profile']}
++                    if 'profile' in d else {})}} for d in inv['deployments']]
++        att = {'default_auth_equivalent': True, 'identity_profiles': inv['identity_profiles'],
++               'deployments': [{k: d[k] for k in ('id', 'alias', 'upstream')} for d in inv['deployments']]}
++        verified, _ = controller.adapt('nas', {'data': rows}, routes['nas'], att)
++        guardian = next(d for d in verified['deployments'] if d['alias'] == 'codex-auto-review')
++        self.assertTrue(guardian['identity_verified'])
++        next(r for r in rows if r['model_name'] == 'codex-auto-review')['litellm_params']['chatgpt_auth_profile'] = 'unknown'
++        with self.assertRaisesRegex(controller.Stop, 'unknown_live_profile'):
++            controller.adapt('nas', {'data': rows}, routes['nas'], att)
+--- a/SHA256SUMS
++++ b/SHA256SUMS
+@@ -3,2 +3,2 @@
+-995a899b7b62f1135fb1077934b9c557ae4f121784778e97a225b561c36a1dbf  policy.py
+-d52a9259883e9240aac73879effa557968edfdca8b640357b4f2e2f19841b630  controller.py
++a169663f98e0ecde37ba253e68177697bf2c79624ab47fe5acc0d4ee3a74dbea  policy.py
++5cabe2666ba4c8e81576936c30c0f8905e792715e56693d99c9adc53932e75ce  controller.py
+@@ -14 +14 @@
+-4f7fe4861b95fbb74aa5f127fc25014996a4c9e8e7798fd7ebb73bfe2c644aa1  operator_attest.py
++dcbb2a39cf4eb32afc99d2a5430f501919661508473320e50eedb7d66d4f0e28  operator_attest.py
+@@ -21,0 +22 @@
++c7f5b53393b0f17d6b67a95a84cf352f45902db76c0b2d0f46b9fc1839f553b5  test/test_auxiliary.py
