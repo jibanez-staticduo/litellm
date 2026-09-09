@@ -11,7 +11,7 @@ from fastapi import HTTPException, Request, Response, WebSocket
 from pydantic import BaseModel, Field
 
 from litellm.llms.base_llm.chat.transformation import BaseLLMException
-from litellm.proxy._types import UserAPIKeyAuth
+from litellm.proxy._types import ProxyException, UserAPIKeyAuth
 from litellm.proxy.auth.auth_checks import can_key_call_resolved_model
 from litellm.proxy.auth.user_api_key_auth import user_api_key_auth
 from litellm.proxy.common_utils.encrypt_decrypt_utils import decrypt_value_helper, encrypt_value_helper
@@ -170,7 +170,7 @@ async def codex_realtime_sideband(websocket: WebSocket, token: str, auth: UserAP
             valid_token=auth,
             llm_router=server.llm_router,
         )
-    except HTTPException:
+    except (HTTPException, ProxyException):
         await websocket.close(code=1008, reason="Invalid realtime call")
         return
     await websocket.accept()

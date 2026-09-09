@@ -476,7 +476,7 @@ async def test_arealtime_transcription_intent_defaults_to_ga(monkeypatch):
         MagicMock(async_realtime=mock_async_realtime),
     )
 
-    def fake_get_llm_provider(model, api_base=None, api_key=None):
+    def fake_get_llm_provider(model, api_base=None, api_key=None, litellm_params=None):
         return (
             "gpt-realtime-whisper",
             "azure",
@@ -640,7 +640,7 @@ async def test_arealtime_resolves_azure_ad_token_when_no_api_key(monkeypatch):
     monkeypatch.setattr(
         realtime_main,
         "get_llm_provider",
-        lambda model, api_base=None, api_key=None: (
+        lambda model, api_base=None, api_key=None, litellm_params=None: (
             "gpt-realtime-whisper",
             "azure",
             None,
@@ -680,7 +680,7 @@ async def test_arealtime_does_not_resolve_azure_ad_token_when_api_key_present(mo
     monkeypatch.setattr(
         realtime_main,
         "get_llm_provider",
-        lambda model, api_base=None, api_key=None: (
+        lambda model, api_base=None, api_key=None, litellm_params=None: (
             "gpt-realtime-whisper",
             "azure",
             "test-key",
@@ -756,7 +756,7 @@ async def test_arealtime_forwards_deployment_azure_ad_token(monkeypatch):
     monkeypatch.setattr(
         realtime_main,
         "get_llm_provider",
-        lambda model, api_base=None, api_key=None: (
+        lambda model, api_base=None, api_key=None, litellm_params=None: (
             "gpt-realtime-whisper",
             "azure",
             None,

@@ -107,6 +107,8 @@ GATEWAY_PATH_PREFIXES: tuple[str, ...] = (
     "/toolset/",
     "/.well-known/oauth-protected-resource",
     # Realtime / streaming
+    "/v1/live",
+    "/live",
     "/v1/realtime",
     "/realtime",
     # Health & ops
