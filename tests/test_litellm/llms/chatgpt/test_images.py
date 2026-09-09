@@ -28,7 +28,9 @@ def test_generation_routes_with_selected_profile(profile, chatgpt_tokens):
         quality="auto",
         size="auto",
         background="auto",
+        extra_headers={"x-gateway-route": "images"},
     )
+    assert requests[0].headers["x-gateway-route"] == "images"
     assert result.data[0].b64_json == "aGVsbG8="
     assert str(requests[0].url) == "https://chatgpt.com/backend-api/codex/images/generations"
     assert requests[0].headers["authorization"] == "Bearer test-token-" + (profile or "default")

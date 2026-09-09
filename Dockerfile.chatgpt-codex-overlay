@@ -13,6 +13,7 @@ COPY litellm/llms/chatgpt/responses/transformation.py /app/.venv/lib/python3.13/
 COPY litellm/llms/custom_httpx/llm_http_handler.py /app/.venv/lib/python3.13/site-packages/litellm/llms/custom_httpx/llm_http_handler.py
 COPY litellm/proxy/proxy_server.py /app/.venv/lib/python3.13/site-packages/litellm/proxy/proxy_server.py
 COPY litellm/proxy/_types.py /app/.venv/lib/python3.13/site-packages/litellm/proxy/_types.py
+COPY litellm/proxy/auth/user_api_key_auth.py /app/.venv/lib/python3.13/site-packages/litellm/proxy/auth/user_api_key_auth.py
 COPY litellm/proxy/realtime_endpoints/endpoints.py /app/.venv/lib/python3.13/site-packages/litellm/proxy/realtime_endpoints/endpoints.py
 COPY litellm/llms/chatgpt/codex.py /app/.venv/lib/python3.13/site-packages/litellm/llms/chatgpt/codex.py
 COPY litellm/realtime_api/main.py /app/.venv/lib/python3.13/site-packages/litellm/realtime_api/main.py
