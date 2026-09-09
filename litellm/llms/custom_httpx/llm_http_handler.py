@@ -6609,6 +6609,14 @@ class BaseLLMHTTPHandler:
                 else:
                     raise Exception(f"Unexpected error while closing WebSocket: {close_error}")
 
+    @staticmethod
+    def _image_extra_headers(custom_llm_provider: str, headers: Mapping[str, object]) -> Mapping[str, object]:
+        if custom_llm_provider == "chatgpt":
+            from litellm.llms.chatgpt.images import without_image_identity_headers
+
+            return without_image_identity_headers(headers)
+        return headers
+
     def image_edit_handler(
         self,
         model: str,
@@ -6665,7 +6673,7 @@ class BaseLLMHTTPHandler:
         )
 
         if extra_headers:
-            headers.update(extra_headers)
+            headers.update(self._image_extra_headers(custom_llm_provider, extra_headers))
 
         api_base: Final = image_edit_provider_config.get_complete_url(
             model=model,
@@ -6764,7 +6772,7 @@ class BaseLLMHTTPHandler:
         )
 
         if extra_headers:
-            headers.update(extra_headers)
+            headers.update(self._image_extra_headers(custom_llm_provider, extra_headers))
 
         api_base: Final = image_edit_provider_config.get_complete_url(
             model=model,
@@ -6881,7 +6889,7 @@ class BaseLLMHTTPHandler:
         )
 
         if extra_headers:
-            headers.update(extra_headers)
+            headers.update(self._image_extra_headers(custom_llm_provider, extra_headers))
 
         api_base: Final = image_generation_provider_config.get_complete_url(
             model=model,
@@ -6988,7 +6996,7 @@ class BaseLLMHTTPHandler:
         )
 
         if extra_headers:
-            headers.update(extra_headers)
+            headers.update(self._image_extra_headers(custom_llm_provider, extra_headers))
 
         api_base: Final = image_generation_provider_config.get_complete_url(
             model=model,

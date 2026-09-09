@@ -30,7 +30,7 @@ def test_generation_routes_with_selected_profile(profile, chatgpt_tokens, api_ba
         quality="auto",
         size="auto",
         background="auto",
-        extra_headers={"x-gateway-route": "images"},
+        extra_headers={"x-gateway-route": "images", "aUtHoRiZaTiOn": "Bearer wrong", "CHATGPT-ACCOUNT-ID": "wrong"},
     )
     assert requests[0].headers["x-gateway-route"] == "images"
     assert result.data[0].b64_json == "aGVsbG8="
@@ -53,6 +53,7 @@ def test_codex_json_edit_survives_sdk_dispatch(chatgpt_tokens):
     result = litellm.image_edit(
         model="chatgpt/gpt-image-2",
         prompt="red circle",
+        extra_headers={"x-gateway-route": "images", "authorization": "Bearer wrong", "CHATGPT-ACCOUNT-ID": "wrong"},
         images=references,
         client=client,
         chatgpt_token_dir=chatgpt_tokens,
@@ -65,6 +66,10 @@ def test_codex_json_edit_survives_sdk_dispatch(chatgpt_tokens):
     import json
 
     assert json.loads(requests[0].content)["images"] == references
+
+    assert requests[0].headers["authorization"] == "Bearer test-token-account2"
+    assert requests[0].headers["chatgpt-account-id"] == "test-account-account2"
+    assert requests[0].headers["x-gateway-route"] == "images"
 
 
 @pytest.mark.parametrize(
@@ -87,9 +92,10 @@ def test_edit_converts_multipart_image_bytes():
 
 def test_image_auth_does_not_accept_inbound_override(chatgpt_tokens):
     headers = ChatGPTImageGenerationConfig().validate_environment(
-        {"Authorization": "Bearer wrong"}, "gpt-image-2", [], {}, {"chatgpt_token_dir": chatgpt_tokens}
+        {"authorization": "Bearer wrong", "CHATGPT-ACCOUNT-ID": "wrong"}, "gpt-image-2", [], {}, {"chatgpt_token_dir": chatgpt_tokens}
     )
-    assert headers["Authorization"] == "Bearer test-token-default"
+    assert httpx.Headers(headers)["authorization"] == "Bearer test-token-default"
+    assert httpx.Headers(headers)["chatgpt-account-id"] == "test-account-default"
 
 
 @pytest.mark.asyncio
@@ -105,6 +111,7 @@ async def test_async_codex_edit_without_multipart_image(chatgpt_tokens):
     response = await litellm.aimage_edit(
         model="chatgpt/gpt-image-2",
         prompt="red circle",
+        extra_headers={"x-gateway-route": "images", "authorization": "Bearer wrong", "CHATGPT-ACCOUNT-ID": "wrong"},
         client=client,
         chatgpt_token_dir=chatgpt_tokens,
         images=[{"image_url": "data:image/png;base64,aGVsbG8="}],
@@ -114,6 +121,10 @@ async def test_async_codex_edit_without_multipart_image(chatgpt_tokens):
     assert str(requests[0].url).endswith("/codex/images/edits")
     assert requests[0].headers["content-type"] == "application/json"
     await client.client.aclose()
+
+    assert requests[0].headers["authorization"] == "Bearer test-token-account3"
+    assert requests[0].headers["chatgpt-account-id"] == "test-account-account3"
+    assert requests[0].headers["x-gateway-route"] == "images"
 
 
 @pytest.mark.parametrize("as_tuple", [False, True])
