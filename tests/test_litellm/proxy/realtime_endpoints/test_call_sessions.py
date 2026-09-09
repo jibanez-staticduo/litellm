@@ -137,7 +137,7 @@ async def test_offer_exchange_wraps_call_and_filters_client_headers(monkeypatch,
 
         async def respond():
             return httpx.Response(201, content=b"v=0\r\nanswer", headers={"Location": "/v1/realtime/calls/rtc_private"},
-                extensions={"chatgpt_realtime": {"model": "gpt-live-1-codex"}})
+                extensions={"chatgpt_realtime": {"model": "gpt-live-1-codex", "api_base": "https://voice.example/codex"}})
         return respond()
 
     monkeypatch.setattr(proxy_server, "route_request", route)
@@ -177,6 +177,7 @@ async def test_offer_exchange_wraps_call_and_filters_client_headers(monkeypatch,
     assert forward.await_args.kwargs["metadata"] == {"guardrails": ["policy-guardrail"], "user_api_key_team_id": "team"}
     assert forward.await_args.kwargs["chatgpt_realtime_call_id"] == "rtc_private"
     assert forward.await_args.kwargs["model"] == "chatgpt/gpt-live-1-codex"
+    assert forward.await_args.kwargs["api_base"] == "https://voice.example/codex"
     assert authorize.await_count == 2
 
 

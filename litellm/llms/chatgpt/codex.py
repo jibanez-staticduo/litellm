@@ -19,6 +19,7 @@ class CodexRealtimeCall(BaseModel):
     model: str
     alias: str
     profile: str | None = None
+    api_base: str | None = None
     owner: str
     expires_at: float
 
@@ -26,9 +27,11 @@ class CodexRealtimeCall(BaseModel):
 class ChatGPTCallRouting(BaseModel):
     model: str
     profile: str | None = None
+    api_base: str | None = None
 
 
 class CodexSidebandRequest(TypedDict):
+    api_base: ReadOnly[str | None]
     model: ReadOnly[str]
     chatgpt_realtime_call_id: ReadOnly[str]
     query_params: ReadOnly[RealtimeQueryParams]
@@ -67,11 +70,13 @@ def parse_call_response(response: httpx.Response, alias: str, owner: str, expire
         owner=owner,
         expires_at=expires_at,
         profile=routing.profile,
+        api_base=routing.api_base,
     )
 
 
 def build_sideband_request(call: CodexRealtimeCall) -> CodexSidebandRequest:
     return CodexSidebandRequest(
+        api_base=call.api_base,
         model=f"chatgpt/{call.model}",
         chatgpt_realtime_call_id=call.call_id,
         query_params=RealtimeQueryParams(model=call.model),

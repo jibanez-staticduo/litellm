@@ -11,7 +11,8 @@ from litellm.types.router import GenericLiteLLMParams
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("profile", [None, "account2", "account3"])
-async def test_chatgpt_call_keeps_profile_and_frameless_session(profile, chatgpt_tokens):
+@pytest.mark.parametrize("api_base", [None, "https://voice.example/backend-api/codex"])
+async def test_chatgpt_call_keeps_profile_and_frameless_session(profile, chatgpt_tokens, api_base):
     requests = []
 
     def respond(request):
@@ -22,6 +23,7 @@ async def test_chatgpt_call_keeps_profile_and_frameless_session(profile, chatgpt
     client.client = httpx.AsyncClient(transport=httpx.MockTransport(respond))
     response = await litellm.arealtime_calls(
         model="chatgpt/gpt-live-1-codex",
+        api_base=api_base,
         openai_ephemeral_key="",
         sdp_body=b"v=0\r\n",
         session={"model": "chatgpt/gpt-live-1-codex", "audio": {"output": {"voice": "sol"}}},
@@ -31,6 +33,8 @@ async def test_chatgpt_call_keeps_profile_and_frameless_session(profile, chatgpt
         client=client,
         chatgpt_token_dir=chatgpt_tokens,
     )
+    assert response.extensions["chatgpt_realtime"]["api_base"] == api_base
+    assert requests[0].url.host == ("voice.example" if api_base else "chatgpt.com")
     assert response.status_code == 201
     assert response.extensions["chatgpt_realtime"]["profile"] == profile
     assert requests[0].url.path == "/backend-api/codex/realtime/calls"
