@@ -44,7 +44,7 @@ async def test_chatgpt_call_keeps_profile_and_frameless_session(profile, chatgpt
 
 
 @pytest.mark.parametrize("model,endpoint", [("gpt-realtime-1.5", "realtime"), ("gpt-live-1-codex", "live")])
-def test_realtime_uses_platform_endpoint_with_profile_headers(model, endpoint, chatgpt_tokens):
+def test_realtime_uses_platform_endpoint_with_profile_headers(model, endpoint, chatgpt_tokens, local_model_cost_map):
     handler = ChatGPTRealtime(
         GenericLiteLLMParams(chatgpt_auth_profile="account2", chatgpt_token_dir=chatgpt_tokens),
         {
@@ -59,3 +59,28 @@ def test_realtime_uses_platform_endpoint_with_profile_headers(model, endpoint, c
     assert headers["Authorization"] == "Bearer test-token-account2"
     assert "authorization" not in headers
     assert headers["openai-alpha"] == "quicksilver=v2"
+
+
+@pytest.mark.parametrize("endpoint", ["live", "realtime"])
+@pytest.mark.parametrize("call_id", [None, "rtc_metadata"])
+def test_realtime_routes_new_models_using_registered_metadata(endpoint, call_id, chatgpt_tokens, local_model_cost_map):
+    model = "metadata-voice-model"
+    litellm.register_model({f"chatgpt/{model}": {
+        "litellm_provider": "chatgpt", "mode": "realtime", "supported_endpoints": [f"/v1/{endpoint}"]
+    }})
+    handler = ChatGPTRealtime(
+        GenericLiteLLMParams(chatgpt_realtime_call_id=call_id, chatgpt_token_dir=chatgpt_tokens), {}
+    )
+    expected = (
+        f"wss://api.openai.com/v1/{endpoint}?model={model}" if call_id is None
+        else f"wss://api.openai.com/v1/live/{call_id}" if endpoint == "live"
+        else f"wss://api.openai.com/v1/realtime?call_id={call_id}"
+    )
+    assert handler._construct_url("https://api.openai.com/v1", {"model": model}) == expected
+
+
+def test_realtime_unknown_model_keeps_standard_endpoint(chatgpt_tokens, local_model_cost_map):
+    handler = ChatGPTRealtime(GenericLiteLLMParams(chatgpt_token_dir=chatgpt_tokens), {})
+    assert handler._construct_url("https://api.openai.com/v1", {"model": "unknown-voice-model"}) == (
+        "wss://api.openai.com/v1/realtime?model=unknown-voice-model"
+    )
