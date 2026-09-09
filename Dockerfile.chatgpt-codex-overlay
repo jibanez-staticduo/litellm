@@ -16,3 +16,4 @@ COPY litellm/llms/chatgpt/codex.py /app/.venv/lib/python3.13/site-packages/litel
 COPY litellm/realtime_api/main.py /app/.venv/lib/python3.13/site-packages/litellm/realtime_api/main.py
 COPY litellm/types/realtime.py /app/.venv/lib/python3.13/site-packages/litellm/types/realtime.py
 RUN rm -f /app/.venv/lib/python3.13/site-packages/litellm/proxy/realtime_endpoints/codex.py
+COPY litellm/proxy/realtime_endpoints/call_sessions.py /app/.venv/lib/python3.13/site-packages/litellm/proxy/realtime_endpoints/call_sessions.py
