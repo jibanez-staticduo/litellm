@@ -116,3 +116,70 @@ class TestAdditionalToolsThroughTheBridge:
         contents = json.dumps(request["messages"])
         assert request["messages"], "the user turn must survive"
         assert "read a file for me" in contents
+
+
+@pytest.mark.parametrize(
+    ("tool", "backend_name", "expected_type", "expected_namespace"),
+    [
+        ({"type": "custom", "name": "exec", "description": "Run code"}, "exec", "custom_tool_call", None),
+        (
+            {"type": "namespace", "name": "functions", "tools": [_fn("exec")]},
+            "functions__exec",
+            "function_call",
+            "functions",
+        ),
+        (
+            {
+                "type": "namespace",
+                "name": "functions",
+                "tools": [{"type": "custom", "name": "exec", "description": "Run code"}],
+            },
+            "functions__exec",
+            "custom_tool_call",
+            "functions",
+        ),
+    ],
+)
+def test_additional_tool_round_trip_preserves_identity(tool, backend_name, expected_type, expected_namespace):
+    from copy import deepcopy
+
+    from litellm.types.utils import ModelResponse
+
+    request_input = [
+        {"type": "additional_tools", "role": "developer", "tools": [tool]},
+        {"role": "user", "content": "Run the code"},
+    ]
+    original = deepcopy(request_input)
+    request = TestAdditionalToolsThroughTheBridge._bridge(request_input)
+    assert len(request["tools"]) == 1
+    assert request["tools"][0]["function"]["name"] == backend_name
+
+    completion = ModelResponse(
+        model="qwen3.8-flash-next",
+        choices=[{
+            "index": 0,
+            "finish_reason": "tool_calls",
+            "message": {
+                "role": "assistant",
+                "tool_calls": [{
+                    "id": "call_exec",
+                    "type": "function",
+                    "function": {"name": backend_name, "arguments": '{"content":"print(1)"}'},
+                }],
+            },
+        }],
+    )
+    response = LiteLLMCompletionResponsesConfig.transform_chat_completion_response_to_responses_api_response(
+        request_input=request_input,
+        responses_api_request={},
+        chat_completion_response=completion,
+    )
+    calls = [item for item in response.output if item.type in ("function_call", "custom_tool_call")]
+    assert len(calls) == 1
+    assert calls[0].type == expected_type
+    assert calls[0].name == "exec"
+    assert getattr(calls[0], "namespace", None) == expected_namespace
+    assert calls[0].call_id == "call_exec"
+    if expected_type == "custom_tool_call":
+        assert calls[0].input == "print(1)"
+    assert request_input == original

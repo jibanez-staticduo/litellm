@@ -4163,3 +4163,21 @@ class TestStreamingSnapshotItemIds:
         reasoning_items = _bridged_output_items(completed_event.response, "reasoning")
         assert len(reasoning_items) == 1
         assert reasoning_items[0].id == streamed_event.item_id
+
+
+def test_codex_agent_message_preserves_assistant_role_and_participants():
+    item = {
+        "type": "agent_message",
+        "author": "parent-agent",
+        "recipient": "child-agent",
+        "content": [{"type": "input_text", "text": "Inspect the service status"}],
+    }
+    messages = LiteLLMCompletionResponsesConfig.transform_responses_api_input_to_messages(
+        input=[item], responses_api_request={}
+    )
+    assert len(messages) == 1
+    assert messages[0]["role"] == "assistant"
+    content = json.dumps(messages[0]["content"])
+    assert "parent-agent" in content
+    assert "child-agent" in content
+    assert "Inspect the service status" in content
