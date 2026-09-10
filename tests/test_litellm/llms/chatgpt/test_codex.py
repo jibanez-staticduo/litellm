@@ -6,16 +6,26 @@ from litellm.llms.chatgpt.codex import build_sideband_request, parse_call_respon
 
 @pytest.mark.parametrize("location", ["", "/v1/realtime/calls/foreign-id"])
 def test_signaling_rejects_invalid_upstream_call_id(location):
-    response = httpx.Response(201, headers={"Location": location},
-        extensions={"chatgpt_realtime": {"model": "gpt-live-1-codex"}})
+    response = httpx.Response(
+        201, headers={"Location": location}, extensions={"chatgpt_realtime": {"model": "gpt-live-1-codex"}}
+    )
     with pytest.raises(ValueError, match="String should match pattern"):
         parse_call_response(response, "voice", "owner", 1000)
 
 
 def test_signaling_preserves_selected_model_for_sideband():
-    response = httpx.Response(201, headers={"Location": "/v1/realtime/calls/rtc_provider"},
-        extensions={"chatgpt_realtime": {"model": "gpt-live-1-codex", "profile": "account3", "api_base": "https://voice.example/codex",
-                                      "extra_headers": {"x-gateway-route": "voice"}}})
+    response = httpx.Response(
+        201,
+        headers={"Location": "/v1/realtime/calls/rtc_provider"},
+        extensions={
+            "chatgpt_realtime": {
+                "model": "gpt-live-1-codex",
+                "profile": "account3",
+                "api_base": "https://voice.example/codex",
+                "extra_headers": {"x-gateway-route": "voice"},
+            }
+        },
+    )
     call = parse_call_response(response, "voice", "owner", 1000)
     request = build_sideband_request(call)
     assert request["api_base"] == "https://voice.example/codex"

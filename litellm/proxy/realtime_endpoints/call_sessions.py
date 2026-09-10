@@ -10,6 +10,8 @@ from fastapi import HTTPException, Request, Response, WebSocket
 from starlette.types import Message
 
 from litellm._logging import verbose_proxy_logger
+from litellm.litellm_core_utils.litellm_logging import Logging
+from litellm.litellm_core_utils.realtime_streaming import REALTIME_SESSION_SUCCESS_LOGGED_KEY
 from litellm.llms.base_llm.chat.transformation import BaseLLMException
 from litellm.llms.chatgpt.codex import (
     CodexRealtimeCall,
@@ -22,6 +24,7 @@ from litellm.proxy._types import ProxyException, UserAPIKeyAuth
 from litellm.proxy.auth.auth_checks import can_key_call_resolved_model
 from litellm.proxy.auth.user_api_key_auth import user_api_key_auth
 from litellm.proxy.common_utils.encrypt_decrypt_utils import decrypt_value_helper, encrypt_value_helper
+from litellm.proxy.spend_tracking.budget_reservation import release_or_invalidate_budget_reservation
 
 
 def encode_call(call: CodexRealtimeCall) -> str:
@@ -59,12 +62,12 @@ async def process_codex_request(
     auth: UserAPIKeyAuth,
     model: str,
     route_type: Literal["arealtime_calls", "_arealtime"],
-) -> dict[str, object]:  # mutable-ok: common request processor returns enriched routing arguments
+) -> tuple[dict[str, object], Logging]:  # mutable-ok: common request processor returns enriched routing arguments
     from litellm.proxy import proxy_server as server
     from litellm.proxy.common_request_processing import ProxyBaseLLMRequestProcessing
 
     processor: Final = ProxyBaseLLMRequestProcessing(data=data)
-    processed, _ = await processor.common_processing_pre_call_logic(
+    processed, logging_obj = await processor.common_processing_pre_call_logic(
         request=request,
         general_settings=server.general_settings,
         user_api_key_dict=auth,
@@ -80,7 +83,7 @@ async def process_codex_request(
         route_type=route_type,
         llm_router=server.llm_router,
     )
-    return processed
+    return processed, logging_obj
 
 
 async def create_codex_realtime_call(request: Request) -> Response:
@@ -102,44 +105,47 @@ async def create_codex_realtime_call(request: Request) -> Response:
         azure_apim_header=None,
         custom_litellm_key_header=None,
     )
-    await can_key_call_resolved_model(
-        model=model,
-        llm_model_list=server.llm_model_list,
-        valid_token=auth,
-        llm_router=server.llm_router,
-    )
-    data: Final = build_call_request(offer, request.query_params, request.headers)
-    processed: Final = await process_codex_request(request, data, auth, model, "arealtime_calls")
-    result: Final = await server.route_request(
-        data=processed,
-        route_type="arealtime_calls",
-        llm_router=server.llm_router,
-        user_model=server.user_model,
-    )
     try:
-        response: Final = await result
-    except BaseLLMException as exc:
-        raise HTTPException(exc.status_code, str(exc)) from exc
-    if not isinstance(response, httpx.Response):
-        raise HTTPException(502, "Invalid realtime signaling response")
-    if response.is_error:
-        return Response(response.content, status_code=response.status_code, media_type="application/json")
-    try:
-        call: Final = parse_call_response(
-            response,
-            alias=model,
-            owner=hashlib.sha256(request.headers.get("authorization", "").encode()).hexdigest(),
-            expires_at=time.time() + 3600,
+        await can_key_call_resolved_model(
+            model=model,
+            llm_model_list=server.llm_model_list,
+            valid_token=auth,
+            llm_router=server.llm_router,
         )
-    except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
-    token: Final = encode_call(call)
-    return Response(
-        response.content,
-        status_code=response.status_code,
-        media_type="application/sdp",
-        headers=MappingProxyType({"Location": f"/v1/realtime/calls/{token}"}),
-    )
+        data: Final = build_call_request(offer, request.query_params, request.headers)
+        processed, _ = await process_codex_request(request, data, auth, model, "arealtime_calls")
+        result: Final = await server.route_request(
+            data=processed,
+            route_type="arealtime_calls",
+            llm_router=server.llm_router,
+            user_model=server.user_model,
+        )
+        try:
+            response: Final = await result
+        except BaseLLMException as exc:
+            raise HTTPException(exc.status_code, str(exc)) from exc
+        if not isinstance(response, httpx.Response):
+            raise HTTPException(502, "Invalid realtime signaling response")
+        if response.is_error:
+            return Response(response.content, status_code=response.status_code, media_type="application/json")
+        try:
+            call: Final = parse_call_response(
+                response,
+                alias=model,
+                owner=hashlib.sha256(request.headers.get("authorization", "").encode()).hexdigest(),
+                expires_at=time.time() + 3600,
+            )
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        token: Final = encode_call(call)
+        return Response(
+            response.content,
+            status_code=response.status_code,
+            media_type="application/sdp",
+            headers=MappingProxyType({"Location": f"/v1/realtime/calls/{token}"}),
+        )
+    finally:
+        await release_or_invalidate_budget_reservation(budget_reservation=auth.budget_reservation)
 
 
 async def codex_realtime_sideband(websocket: WebSocket, token: str, auth: UserAPIKeyAuth) -> None:
@@ -153,56 +159,61 @@ async def codex_realtime_sideband(websocket: WebSocket, token: str, auth: UserAP
         (p.removeprefix("openai-insecure-api-key.") for p in protocols if p.startswith("openai-insecure-api-key.")), ""
     )
     authorization: Final = websocket.headers.get("authorization") or f"Bearer {alternate_key}"
+    logging_obj: Logging | None = None  # rebind-ok: cleanup needs the logger only after pre-call succeeds
     try:
-        call: Final = decode_call(token, authorization)
-        await can_key_call_resolved_model(
-            model=call.alias,
-            llm_model_list=server.llm_model_list,
-            valid_token=auth,
-            llm_router=server.llm_router,
+        try:
+            call: Final = decode_call(token, authorization)
+            await can_key_call_resolved_model(
+                model=call.alias,
+                llm_model_list=server.llm_model_list,
+                valid_token=auth,
+                llm_router=server.llm_router,
+            )
+        except (HTTPException, ProxyException):
+            await websocket.close(code=1008, reason="Invalid realtime call")
+            return
+
+        async def receive() -> Message:
+            return {  # mutable-ok: ASGI receive message
+                "type": "http.request",
+                "body": json.dumps({"model": call.alias}).encode(),  # mutable-ok: JSON request serialization
+                "more_body": False,
+            }
+
+        request: Final = Request(
+            {  # mutable-ok: Starlette stores request state in the ASGI scope
+                **websocket.scope,
+                "type": "http",
+                "method": "POST",
+                "path": websocket.scope.get("path", "/v1/realtime"),
+            },
+            receive=receive,
         )
-    except (HTTPException, ProxyException):
-        await websocket.close(code=1008, reason="Invalid realtime call")
-        return
-
-    async def receive() -> Message:
-        return {  # mutable-ok: ASGI receive message
-            "type": "http.request",
-            "body": json.dumps({"model": call.alias}).encode(),  # mutable-ok: JSON request serialization
-            "more_body": False,
-        }
-
-    request: Final = Request(
-        {  # mutable-ok: Starlette stores request state in the ASGI scope
-            **websocket.scope,
-            "type": "http",
-            "method": "POST",
-            "path": websocket.scope.get("path", "/v1/realtime"),
-        },
-        receive=receive,
-    )
-    data: Final = {  # mutable-ok: common request processor enriches routing arguments
-        **build_sideband_request(call),
-        "model": call.alias,
-        "websocket": websocket,
-        "guardrails": [  # mutable-ok: guardrail processing expects a list
-            name.strip() for name in websocket.query_params.get("guardrails", "").split(",") if name.strip()
-        ],
-    }
-    try:
-        processed: Final = await process_codex_request(request, data, auth, call.alias, "_arealtime")
-    except Exception:  # noqa: BLE001  # custom hook exceptions must reject the connection
-        verbose_proxy_logger.exception("Realtime sideband pre-call rejected")
-        await websocket.close(code=1008, reason="Realtime pre-call rejected")
-        return
-    await websocket.accept(
-        subprotocol=next((p for p in protocols if not p.startswith("openai-insecure-api-key.")), None)
-    )
-    await litellm._arealtime(  # pyright: ignore[reportPrivateUsage]  # dispatch for an already authorized call
-        **{  # mutable-ok: retain processed policy metadata while pinning the existing call's routing
-            **processed,
+        data: Final = {  # mutable-ok: common request processor enriches routing arguments
             **build_sideband_request(call),
+            "model": call.alias,
             "websocket": websocket,
-            "user_api_key_dict": auth,
+            "guardrails": [  # mutable-ok: guardrail processing expects a list
+                name.strip() for name in websocket.query_params.get("guardrails", "").split(",") if name.strip()
+            ],
         }
-    )
+        try:
+            processed, logging_obj = await process_codex_request(request, data, auth, call.alias, "_arealtime")
+        except Exception:  # noqa: BLE001  # custom hook exceptions must reject the connection
+            verbose_proxy_logger.exception("Realtime sideband pre-call rejected")
+            await websocket.close(code=1008, reason="Realtime pre-call rejected")
+            return
+        await websocket.accept(
+            subprotocol=next((p for p in protocols if not p.startswith("openai-insecure-api-key.")), None)
+        )
+        await litellm._arealtime(  # pyright: ignore[reportPrivateUsage]  # dispatch for an already authorized call
+            **{  # mutable-ok: retain processed policy metadata while pinning the existing call's routing
+                **processed,
+                **build_sideband_request(call),
+                "websocket": websocket,
+                "user_api_key_dict": auth,
+            }
+        )
+    finally:
+        if logging_obj is None or not logging_obj.model_call_details.get(REALTIME_SESSION_SUCCESS_LOGGED_KEY):
+            await release_or_invalidate_budget_reservation(budget_reservation=auth.budget_reservation)

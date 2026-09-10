@@ -12,7 +12,9 @@ import httpx
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from typing_extensions import Protocol, ReadOnly, Required, TypedDict, runtime_checkable
 
+from litellm._logging import verbose_logger
 from litellm._uuid import uuid
+from litellm.litellm_core_utils.core_helpers import normalize_drop_params
 
 if TYPE_CHECKING:
     from litellm.router import Router
@@ -104,6 +106,22 @@ class RetryPolicy(BaseModel):
     RateLimitErrorRetries: int | None = None
     ContentPolicyViolationErrorRetries: int | None = None
     InternalServerErrorRetries: int | None = None
+    ServiceUnavailableErrorRetries: int | None = None
+    DefaultRetries: int | None = None
+
+
+OptionalPreCallChecks = list[
+    Literal[
+        "prompt_caching",
+        "router_budget_limiting",
+        "responses_api_deployment_check",
+        "deployment_affinity",
+        "session_affinity",
+        "forward_client_headers_by_model_group",
+        "enforce_model_rate_limits",
+        "encrypted_content_affinity",
+    ]
+]
 
 
 class UpdateRouterConfig(BaseModel):
@@ -128,6 +146,7 @@ class UpdateRouterConfig(BaseModel):
     model_group_alias: dict[str, str | dict] | None = {}
     enable_tag_filtering: bool | None = None
     tag_routing_prefix: str | None = None
+    optional_pre_call_checks: OptionalPreCallChecks | None = None
 
     model_config = ConfigDict(protected_namespaces=())
 
@@ -189,12 +208,17 @@ class ModelInfo(MirroredPricingParams):
     # router-wide default.
     enable_tag_filtering: bool | None = None
 
-    def __init__(self, id: str | int | None = None, **params) -> None:  # pyright: ignore[reportCallIssue]  # Pydantic accepts the declared model fields through params
+    # when True, calls routed to this deployment persist a router_metadata block
+    # (requested model group, selected model + provider, router correlation id)
+    # in the spend log row's metadata. Set it on every deployment of the group.
+    internal_router_model: bool | None = None
+
+    def __init__(self, id: str | int | None = None, **params) -> None:
         if id is None:
             id = str(uuid.uuid4())  # Generate a UUID if id is None or not provided
         elif isinstance(id, int):
             id = str(id)
-        super().__init__(id=id, **params)
+        super().__init__(id=id, **params)  # pyright: ignore[reportCallIssue]  # Pydantic accepts the subclass id field here
 
     @model_validator(mode="after")
     def _validate_ptu_bounds(self) -> "ModelInfo":
@@ -292,6 +316,7 @@ class GenericLiteLLMParams(CredentialLiteLLMParams, CustomPricingLiteLLMParams):
     timeout: float | str | httpx.Timeout | None = None  # if str, pass in as os.environ/
     stream_timeout: float | str | None = None  # timeout when making stream=True calls, if str, pass in as os.environ/
     max_retries: int | None = None
+    drop_params: bool | str | None = None
     organization: str | None = None  # for openai orgs
     configurable_clientside_auth_params: CONFIGURABLE_CLIENTSIDE_AUTH_PARAMS = None
     litellm_credential_name: str | None = None
@@ -341,6 +366,10 @@ class GenericLiteLLMParams(CredentialLiteLLMParams, CustomPricingLiteLLMParams):
     auto_router_default_model: str | None = None
     auto_router_embedding_model: str | None = None
     auto_router_max_input_chars: int | None = None
+    # Compression policy for the two hops of a routed request. Both unset means the
+    # request's own compression guardrails apply to both, as they always have.
+    auto_router_routing_compression: str | None = None
+    auto_router_model_compression: str | None = None
 
     # complexity-router params
     complexity_router_config: dict | None = None
@@ -367,7 +396,7 @@ class GenericLiteLLMParams(CredentialLiteLLMParams, CustomPricingLiteLLMParams):
 
     @model_validator(mode="before")
     @classmethod
-    def preprocess_input_data(cls, data: Any) -> Any:
+    def preprocess_input_data(cls, data: object) -> object:
         """
         Pre-process input data before validation:
         1. Filter out reserved Python keywords ('self', 'params', '__class__') to prevent
@@ -380,6 +409,18 @@ class GenericLiteLLMParams(CredentialLiteLLMParams, CustomPricingLiteLLMParams):
                 filtered["max_retries"] = int(filtered["max_retries"])
             return filtered
         return data
+
+    @field_validator("drop_params", mode="before")
+    @classmethod
+    def coerce_drop_params(cls, value: object) -> bool | str | None:
+        normalized: Final = normalize_drop_params(value)
+        if normalized is not None:
+            return normalized
+        if isinstance(value, str):
+            return value
+        if value is not None:
+            verbose_logger.warning("drop_params=%r is not a flag value, treating it as unset", value)
+        return None
 
     def __contains__(self, key) -> bool:
         # Define custom behavior for the 'in' operator
@@ -490,6 +531,7 @@ class LiteLLMParamsTypedDict(TypedDict, total=False):
     input_cost_per_second: float | None
     output_cost_per_second: float | None
     output_cost_per_second_480p: ReadOnly[float | None]
+    output_cost_per_second_720p: ReadOnly[float | None]
     output_cost_per_second_1080p: float | None
     output_cost_per_second_4k: ReadOnly[float | None]
     num_retries: int | None
@@ -628,6 +670,11 @@ class AlertingConfig(BaseModel):
     alerting_threshold: float | None = 300
 
 
+def _resolved_annotations(model_class: type[object]) -> Mapping[str, object]:
+    """Resolve a class's annotations, keeping each resolved annotation opaque."""
+    return get_type_hints(model_class)
+
+
 class ModelGroupInfo(BaseModel):
     model_group: str
     providers: list[str]
@@ -656,7 +703,7 @@ class ModelGroupInfo(BaseModel):
     configurable_clientside_auth_params: CONFIGURABLE_CLIENTSIDE_AUTH_PARAMS = None
 
     def __init__(self, **data) -> None:
-        for field_name, field_type in get_type_hints(self.__class__).items():
+        for field_name, field_type in _resolved_annotations(self.__class__).items():
             if field_type is bool and data.get(field_name) is None:
                 data[field_name] = False
         super().__init__(**data)
@@ -865,18 +912,16 @@ class FallbackAccessCheck(Protocol):
     async def __call__(self, *, model: str, request_kwargs: Mapping[str, object], llm_router: "Router") -> bool: ...
 
 
-OptionalPreCallChecks = list[
-    Literal[
-        "prompt_caching",
-        "router_budget_limiting",
-        "responses_api_deployment_check",
-        "deployment_affinity",
-        "session_affinity",
-        "forward_client_headers_by_model_group",
-        "enforce_model_rate_limits",
-        "encrypted_content_affinity",
-    ]
-]
+class AutoRouterCapabilityLimit(Protocol):
+    """
+    Resolves how many complexity routers may claim each licensed capability right now; None means unlimited.
+
+    The Router calls it on every registration and limit query instead of caching the answer, so the
+    proxy can keep the limit on its license object (re-verified on config load) rather than hand
+    over a snapshot.
+    """
+
+    def __call__(self) -> int | None: ...
 
 
 class LiteLLM_RouterFileObject(TypedDict, total=False):

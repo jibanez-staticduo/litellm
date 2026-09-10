@@ -499,15 +499,20 @@ export const isLovableLoopbackOAuthServer = (
     | "token_url"
     | "registration_url"
   >,
-): boolean =>
-  server.server_id === LOVABLE_LOOPBACK_SERVER_ID &&
-  server.url === "https://mcp.lovable.dev" &&
-  server.auth_type === AUTH_TYPE.OAUTH2 &&
-  server.oauth2_flow === "authorization_code" &&
-  server.issuer === "https://lovable.dev/oauth" &&
-  server.authorization_url === "https://lovable.dev/oauth/authorize" &&
-  server.token_url === "https://lovable.dev/oauth/token" &&
-  server.registration_url === "https://lovable.dev/oauth/register";
+): boolean => {
+  const matchesServer =
+    server.server_id === LOVABLE_LOOPBACK_SERVER_ID &&
+    server.url === "https://mcp.lovable.dev" &&
+    server.auth_type === AUTH_TYPE.OAUTH2;
+  const matchesAuthorization =
+    server.oauth2_flow === "authorization_code" &&
+    server.issuer === "https://lovable.dev/oauth" &&
+    server.authorization_url === "https://lovable.dev/oauth/authorize";
+  const matchesTokenEndpoints =
+    server.token_url === "https://lovable.dev/oauth/token" &&
+    server.registration_url === "https://lovable.dev/oauth/register";
+  return matchesServer && matchesAuthorization && matchesTokenEndpoints;
+};
 
 /** One environment variable entry on an MCP server. */
 export type MCPEnvVarScope = "global" | "user";

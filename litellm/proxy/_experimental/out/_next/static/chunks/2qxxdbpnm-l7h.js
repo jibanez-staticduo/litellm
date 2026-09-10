@@ -120,7 +120,7 @@
     <body>
       <h1>LLM Cost Estimate Report</h1>
       <p style="color: #666; margin-top: -20px; margin-bottom: 30px;">${r} model${1!==r?"s":""} configured</p>
-
+      
       <div class="summary-box">
         <h2>Combined Totals</h2>
         <div class="summary-grid">
@@ -159,7 +159,7 @@
       ${s.map(e=>{let t;return t=e.result,`
     <div class="model-section">
       <h3>${t.model} ${t.provider?`<span class="provider">(${t.provider})</span>`:""}</h3>
-
+      
       <div class="meta">
         <p><strong>Input Tokens per Request:</strong> ${W(t.input_tokens)}</p>
         <p><strong>Output Tokens per Request:</strong> ${W(t.output_tokens)}</p>

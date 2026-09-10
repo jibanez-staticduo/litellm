@@ -27,6 +27,7 @@ from litellm.proxy.client.cli.commands.auth import (
     print_token,
     whoami,
 )
+from litellm.proxy.client.cli.commands import auth as auth_module
 from litellm.proxy.client.cli.commands.claude_settings import SettingsFileOwner
 
 
@@ -59,6 +60,7 @@ def _mock_cli_sso_start_response(
     login_id: str = "cli-session-uuid-456",
     poll_secret: str = "poll-secret",
     user_code: str = "ABCD-EFGH",
+    **extra_fields: object,
 ) -> Mock:
     mock_response = Mock()
     mock_response.status_code = 200
@@ -66,6 +68,7 @@ def _mock_cli_sso_start_response(
         "login_id": login_id,
         "poll_secret": poll_secret,
         "user_code": user_code,
+        **extra_fields,
     }
     mock_response.raise_for_status = Mock()
     return mock_response
@@ -333,7 +336,9 @@ class TestLoginCommand:
             call_args = mock_browser.call_args[0][0]
             assert "https://test.example.com/sso/key/generate" in call_args
             assert "cli-test-uuid-123" in call_args
+            assert "user_code" not in call_args
             assert "Verification code: ABCD-EFGH" in result.output
+            assert "pre-filled in the browser" not in result.output
             mock_post.assert_called_once()
             mock_get.assert_called()
             assert mock_get.call_args.kwargs["headers"] == {"x-litellm-cli-poll-secret": "poll-secret"}
@@ -346,6 +351,72 @@ class TestLoginCommand:
 
             # Verify commands were shown
             mock_show_commands.assert_called_once()
+
+    def test_login_prefills_the_code_in_the_browser_when_the_proxy_advertises_it(
+        self, isolated_home, secret_vault_factory
+    ) -> None:
+        vault = secret_vault_factory()
+        poll_response = Mock()
+        poll_response.status_code = 200
+        poll_response.json.return_value = {
+            "status": "ready",
+            "key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.jwt",
+            "user_id": "test-user-123",
+            "team_id": "team-1",
+            "teams": ["team-1"],
+        }
+        start_response = _mock_cli_sso_start_response(
+            login_id="cli-test-uuid-123",
+            verification_uri_complete=(
+                "https://internal-hostname.example.com/sso/key/generate"
+                "?source=litellm-cli&key=cli-test-uuid-123&user_code=ABCD-EFGH"
+            ),
+        )
+
+        with (
+            patch("webbrowser.open") as mock_browser,
+            patch("requests.post", return_value=start_response),
+            patch("requests.get", return_value=poll_response),
+        ):
+            result = self.runner.invoke(login, obj={"base_url": "https://test.example.com", "secret_vault": vault})
+
+        assert result.exit_code == 0, result.output
+        assert json.loads(vault.blob)["key"] == "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.jwt"
+        assert json.loads((isolated_home / ".litellm" / "token.json").read_text())["user_id"] == "test-user-123"
+        opened_url = mock_browser.call_args[0][0]
+        assert opened_url.startswith("https://test.example.com/sso/key/generate?")
+        assert "internal-hostname" not in opened_url
+        assert "key=cli-test-uuid-123" in opened_url
+        assert "user_code=ABCD-EFGH" in opened_url
+        assert "Verification code: ABCD-EFGH (pre-filled in the browser, check it matches)" in result.output
+
+    def test_login_keeps_the_code_out_of_the_url_when_the_proxy_sends_a_non_url_verification_uri(
+        self, secret_vault_factory
+    ) -> None:
+        poll_response = Mock()
+        poll_response.status_code = 200
+        poll_response.json.return_value = {
+            "status": "ready",
+            "key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.jwt",
+            "user_id": "test-user-123",
+            "team_id": "team-1",
+            "teams": ["team-1"],
+        }
+        for advertised in (None, True):
+            start_response = _mock_cli_sso_start_response(verification_uri_complete=advertised)
+
+            with (
+                patch("webbrowser.open") as mock_browser,
+                patch("requests.post", return_value=start_response),
+                patch("requests.get", return_value=poll_response),
+            ):
+                result = self.runner.invoke(
+                    login, obj={"base_url": "https://test.example.com", "secret_vault": secret_vault_factory()}
+                )
+
+            assert result.exit_code == 0, result.output
+            assert "user_code" not in mock_browser.call_args[0][0]
+            assert "pre-filled in the browser" not in result.output
 
     def test_login_timeout(self):
         """Test login timeout scenario"""
@@ -1328,8 +1399,10 @@ class TestLoginConfigClaude:
     def setup_method(self):
         self.runner = CliRunner()
 
-    def _run_login(self, tmp_path, args, base_url="https://test.example.com"):
+    def _run_login(self, tmp_path, monkeypatch, args, base_url="https://test.example.com"):
         settings_path = tmp_path / "claude" / "settings.json"
+        monkeypatch.setattr(auth_module, "CLAUDE_SETTINGS_PATH", settings_path)
+        monkeypatch.setattr(auth_module, "CONFIGURE_STATE_PATH", tmp_path / "claude_configure_state.json")
         backup_path = tmp_path / "claude_settings_backup.json"
         poll_response = Mock()
         poll_response.status_code = 200
@@ -1346,7 +1419,6 @@ class TestLoginConfigClaude:
             patch("requests.get", return_value=poll_response),
             patch("litellm.proxy.client.cli.commands.auth.save_cli_token"),
             patch("litellm.proxy.client.cli.interface.show_commands"),
-            patch("litellm.proxy.client.cli.commands.auth.CLAUDE_SETTINGS_PATH", settings_path),
             patch(
                 "litellm.proxy.client.cli.commands.auth.SETTINGS_FILE_OWNERS",
                 (SettingsFileOwner(backup_path, "lite up", "lite down"),),
@@ -1359,41 +1431,60 @@ class TestLoginConfigClaude:
             result = self.runner.invoke(login, args, obj={"base_url": base_url})
         return result, settings_path, backup_path
 
-    def test_default_login_does_not_touch_claude_settings(self, tmp_path):
-        result, settings_path, _backup_path = self._run_login(tmp_path, [])
+    def test_default_login_does_not_touch_claude_settings(self, tmp_path, monkeypatch):
+        result, settings_path, _backup_path = self._run_login(tmp_path, monkeypatch, [])
 
         assert result.exit_code == 0
         assert "Login successful!" in result.output
         assert not settings_path.exists()
         assert "Configured Claude Code" not in result.output
 
-    def test_flag_writes_the_settings_file_and_reports_success(self, tmp_path):
-        result, settings_path, _backup_path = self._run_login(tmp_path, ["--config-claude"])
+    def test_flag_writes_the_settings_file_and_reports_success(self, tmp_path, monkeypatch):
+        result, settings_path, _backup_path = self._run_login(tmp_path, monkeypatch, ["--config-claude"])
 
         assert result.exit_code == 0
         written = json.loads(settings_path.read_text())
         assert written["env"]["ANTHROPIC_BASE_URL"] == "https://test.example.com"
+        assert written["env"]["ENABLE_TOOL_SEARCH"] == "true"
         assert written["apiKeyHelper"] == "/usr/local/bin/lite --base-url https://test.example.com auth print-token"
         assert "Configured Claude Code" in result.output
+        assert "pins a proxy model for every tier" not in result.output
+        assert "the model Claude Code starts on" in result.output
 
-    def test_flag_preserves_unrelated_settings_on_an_existing_file(self, tmp_path):
+    def test_flag_preserves_unrelated_settings_on_an_existing_file(self, tmp_path, monkeypatch):
         settings_path = tmp_path / "claude" / "settings.json"
         settings_path.parent.mkdir(parents=True)
         settings_path.write_text(json.dumps({"theme": "dark", "env": {"KEEP": "me"}}))
 
-        result, _settings_path, _backup_path = self._run_login(tmp_path, ["--config-claude"])
+        result, _settings_path, _backup_path = self._run_login(tmp_path, monkeypatch, ["--config-claude"])
 
         assert result.exit_code == 0
         written = json.loads(settings_path.read_text())
         assert written["theme"] == "dark"
         assert written["env"]["KEEP"] == "me"
 
-    def test_settings_failure_is_reported_without_claiming_login_failed(self, tmp_path):
+    def test_refuses_before_logging_in_while_lite_up_holds_the_settings(self, tmp_path, monkeypatch):
+        # The local precondition comes first: no browser, no token stored, no "Login successful!".
+        backup_path = tmp_path / "claude_settings_backup.json"
+        backup_path.write_text("{}")
+        monkeypatch.setattr(auth_module, "CLAUDE_SETTINGS_PATH", tmp_path / "claude" / "settings.json")
+        monkeypatch.setattr(
+            auth_module, "SETTINGS_FILE_OWNERS", (SettingsFileOwner(backup_path, "lite up", "lite down"),)
+        )
+        with patch("requests.post") as post, patch("webbrowser.open") as browser:
+            result = self.runner.invoke(login, ["--config-claude"], obj={"base_url": "https://test.example.com"})
+        assert result.exit_code != 0
+        assert "not logging in" in result.output and "lite down" in result.output
+        assert "Login successful!" not in result.output
+        post.assert_not_called()
+        browser.assert_not_called()
+
+    def test_settings_failure_is_reported_without_claiming_login_failed(self, tmp_path, monkeypatch):
         settings_path = tmp_path / "claude" / "settings.json"
         settings_path.parent.mkdir(parents=True)
         settings_path.write_text("not json at all {{{")
 
-        result, _settings_path, _backup_path = self._run_login(tmp_path, ["--config-claude"])
+        result, _settings_path, _backup_path = self._run_login(tmp_path, monkeypatch, ["--config-claude"])
 
         assert result.exit_code != 0
         assert "Login successful!" in result.output

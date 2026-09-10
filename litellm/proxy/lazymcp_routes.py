@@ -6,7 +6,7 @@ from starlette.responses import Response
 from litellm._logging import verbose_proxy_logger
 
 router: Final = APIRouter()
-_METHODS: Final = ("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD")
+_METHODS: Final = ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"]  # mutable-ok: FastAPI requires a list
 
 
 async def _forward_lazymcp(request: Request, internal_path: str) -> Response:

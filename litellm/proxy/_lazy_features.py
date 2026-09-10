@@ -39,17 +39,11 @@ def _include_discoverable_router(app: "FastAPI", module: object) -> None:
     router: Final = cast(  # cast-ok: lazy import returns an object before protocol narrowing
         _RouterModule, module
     ).router
-    ordered_routes: Final = tuple(
-        sorted(
-            router.routes,
-            key=lambda route: "oauth-protected-resource" not in getattr(route, "path", ""),
-        )
+    ordered_routes: Final = sorted(  # mutable-ok: FastAPI requires a list; sorting copies the source routes
+        router.routes,
+        key=lambda route: "oauth-protected-resource" not in getattr(route, "path", ""),
     )
-    app.include_router(
-        APIRouter(  # pyright: ignore[reportArgumentType]  # FastAPI stubs require list although runtime accepts Sequence
-            routes=ordered_routes  # mutable-ok: immutable copy prevents shared-router mutation
-        )
-    )
+    app.include_router(APIRouter(routes=ordered_routes))
 
 
 def _mount_app(prefix: str, attr_name: str = "app") -> Callable[["FastAPI", object], None]:
@@ -346,15 +340,18 @@ class LazyFeatureMiddleware:
         # Short-circuit once every feature has loaded.
         if scope["type"] in ("http", "websocket") and len(self._loaded) < len(self._features):
             path = scope.get("path", "")
-            # Strip SERVER_ROOT_PATH so prefix matching works under a server
-            # root path. Without this, requests like /api/v1/policies/... never
-            # match the registered prefixes (/policies/...) and lazy features
-            # stay unloaded — every endpoint under them returns 404. The
+            # Strip the request's root_path so prefix matching works under a
+            # server root path. Without this, requests like /api/v1/policies/...
+            # never match the registered prefixes (/policies/...) and lazy
+            # features stay unloaded — every endpoint under them returns 404.
+            # scope["root_path"] wins over the cached env scalar: FastAPI
+            # stamps SERVER_ROOT_PATH there, and PerRequestRootPathMiddleware
+            # resolves SERVER_ROOT_PATHS prefixes there per request. The
             # `+ "/"` boundary prevents false-positive matches (e.g. /apiv2
-            # against root /api). If the path doesn't start with the prefix
-            # (e.g. a reverse proxy already stripped it), we leave it alone.
-            if self._root_path and path.startswith(self._root_path + "/"):
-                path = path[len(self._root_path) :]
+            # against root /api); a pre-stripped path is left alone.
+            root_path: Final = str(scope.get("root_path", "")).rstrip("/") or self._root_path
+            if root_path and path.startswith(root_path + "/"):
+                path = path[len(root_path) :]  # rebind-ok: local strip after the boundary check above
             for feat in self._features:
                 if feat.module_path in self._loaded:
                     continue

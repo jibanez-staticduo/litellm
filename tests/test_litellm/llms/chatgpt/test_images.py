@@ -92,7 +92,11 @@ def test_edit_converts_multipart_image_bytes():
 
 def test_image_auth_does_not_accept_inbound_override(chatgpt_tokens):
     headers = ChatGPTImageGenerationConfig().validate_environment(
-        {"authorization": "Bearer wrong", "CHATGPT-ACCOUNT-ID": "wrong"}, "gpt-image-2", [], {}, {"chatgpt_token_dir": chatgpt_tokens}
+        {"authorization": "Bearer wrong", "CHATGPT-ACCOUNT-ID": "wrong"},
+        "gpt-image-2",
+        [],
+        {},
+        {"chatgpt_token_dir": chatgpt_tokens},
     )
     assert httpx.Headers(headers)["authorization"] == "Bearer test-token-default"
     assert httpx.Headers(headers)["chatgpt-account-id"] == "test-account-default"
@@ -132,8 +136,12 @@ def test_edit_accepts_filesystem_path(tmp_path, as_tuple):
     image = tmp_path / "reference.png"
     image.write_bytes(b"reference image bytes")
     data, files = ChatGPTImageEditConfig().transform_image_edit_request(
-        "gpt-image-2", "edit", ("reference.png", image, "image/png") if as_tuple else image,
-        {}, GenericLiteLLMParams(), {}
+        "gpt-image-2",
+        "edit",
+        ("reference.png", image, "image/png") if as_tuple else image,
+        {},
+        GenericLiteLLMParams(),
+        {},
     )
     assert not files
     assert data["images"] == ({"image_url": "data:image/png;base64," + base64.b64encode(image.read_bytes()).decode()},)

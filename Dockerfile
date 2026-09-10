@@ -108,6 +108,7 @@ RUN uv sync --frozen --no-install-project --no-install-workspace --no-default-gr
     --extra extra_proxy \
     --extra semantic-router \
     --extra saml \
+    --extra bedrock-realtime \
     --python /usr/bin/python3.13
 
 # Copy full source tree
@@ -129,6 +130,7 @@ RUN uv sync --frozen --no-default-groups --no-editable \
     --extra extra_proxy \
     --extra semantic-router \
     --extra saml \
+    --extra bedrock-realtime \
     --python /usr/bin/python3.13
 
 RUN HOME=/opt/prisma XDG_CACHE_HOME=/opt/prisma/.cache PRISMA_BINARY_CACHE_DIR=/opt/prisma/binaries \
@@ -144,6 +146,12 @@ RUN sed -i 's/\r$//' docker/entrypoint.sh && chmod +x docker/entrypoint.sh && \
 FROM $LITELLM_RUNTIME_IMAGE AS runtime
 
 USER root
+
+# The base image only configures Chainguard's authenticated apk repo, which
+# requires an enterprise subscription. Add the public Wolfi repo so `apk add`
+# also works for anyone installing extra packages into a running container.
+# https://github.com/BerriAI/litellm/issues/33518
+RUN echo "https://packages.wolfi.dev/os" >> /etc/apk/repositories
 
 # node (without npm) is required by the prisma CLI at runtime
 RUN apk add --no-cache bash openssl tzdata nodejs python-3.13=3.13.15-r4 libsndfile

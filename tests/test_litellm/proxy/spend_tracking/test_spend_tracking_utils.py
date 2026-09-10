@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import json
+from collections.abc import Mapping
 from datetime import timezone
 from typing import Any, Final, cast
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -12,14 +13,20 @@ import litellm
 from litellm.constants import (
     LITELLM_TRUNCATED_PAYLOAD_FIELD,
     LITELLM_TRUNCATION_DB_SAFEGUARD_NOTE,
+    LITTELM_CLI_SERVICE_ACCOUNT_NAME,
+    LITTELM_INTERNAL_HEALTH_SERVICE_ACCOUNT_NAME,
     REDACTED_BY_LITELM_STRING,
+    SESSION_ID_OMITTED_METADATA_KEY,
 )
 from litellm.litellm_core_utils.safe_json_dumps import safe_dumps
+from litellm.proxy._types import SpendLogsPayload, UserAPIKeyAuth
+from litellm.proxy.litellm_pre_call_utils import LiteLLMProxyRequestSetup
 from litellm.proxy.spend_tracking.spend_tracking_utils import (
     _get_messages_for_spend_logs_payload,
     _get_proxy_server_request_for_spend_logs_payload,
     _get_request_duration_ms,
     _get_response_for_spend_logs_payload,
+    _get_session_id_for_spend_log,
     _get_spend_logs_metadata,
     _get_vector_store_request_for_spend_logs_payload,
     _is_master_key,
@@ -71,6 +78,170 @@ def test_get_logging_payload_maps_openai_cached_tokens_to_cache_read_input_token
 
     assert additional_usage_values["cache_read_input_tokens"] == 123
     assert additional_usage_values["prompt_tokens_details"]["cached_tokens"] == 123
+
+
+_TRACE_ONLY_STANDARD_LOGGING: Final = cast(
+    StandardLoggingPayload,
+    {
+        "trace_id": "trace-abc",
+        "session_id": "trace-abc",
+        "metadata": {},
+        "model_map_information": None,
+        "request_tags": [],
+    },
+)
+
+
+def _trace_only_session_id(omit_when_missing: bool) -> str | None:
+    """get_litellm_params copies metadata.trace_id into litellm_session_id, so every field echoes the trace id."""
+    return _get_session_id_for_spend_log(
+        kwargs={"litellm_trace_id": "trace-abc", "litellm_session_id": "trace-abc"},
+        metadata={"trace_id": "trace-abc"},
+        standard_logging_payload=_TRACE_ONLY_STANDARD_LOGGING,
+        omit_when_missing=omit_when_missing,
+    )
+
+
+def test_omit_leaves_session_id_none_when_only_a_trace_id_exists():
+    assert _trace_only_session_id(omit_when_missing=True) is None
+
+
+def test_omit_leaves_session_id_none_without_any_ids():
+    assert (
+        _get_session_id_for_spend_log(kwargs={}, metadata=None, standard_logging_payload=None, omit_when_missing=True)
+        is None
+    )
+
+
+def test_omit_records_metadata_session_id():
+    session_id: Final = _get_session_id_for_spend_log(
+        kwargs={"litellm_session_id": "chain-1"},
+        metadata={"trace_id": "chain-1", "session_id": "chain-1"},
+        standard_logging_payload=_TRACE_ONLY_STANDARD_LOGGING,
+        omit_when_missing=True,
+    )
+    assert session_id == "chain-1"
+
+
+def test_legacy_policy_keeps_trace_id_fallback():
+    assert _trace_only_session_id(omit_when_missing=False) == "trace-abc"
+    generated: Final = _get_session_id_for_spend_log(
+        kwargs={}, metadata=None, standard_logging_payload=None, omit_when_missing=False
+    )
+    assert len(str(generated)) == 36
+
+
+def test_batch_lifecycle_rows_derive_the_same_session_from_the_batch_id():
+    """The create call's request id IS the batch id and the poller's cost row appends
+    _batch_cost to it, so deriving the session from the request id lands both rows in one
+    trace on the logs UI even though the poller builds a fresh logging context per cycle."""
+    from litellm.proxy.spend_tracking.spend_tracking_utils import _get_batch_trace_session_id
+
+    create_session: Final = _get_batch_trace_session_id(call_type="acreate_batch", request_id="batch-uid-1")
+    cost_session: Final = _get_batch_trace_session_id(call_type="aretrieve_batch", request_id="batch-uid-1_batch_cost")
+    assert create_session == cost_session == "batch-uid-1"
+
+
+def test_non_batch_call_types_derive_no_batch_session():
+    from litellm.proxy.spend_tracking.spend_tracking_utils import _get_batch_trace_session_id
+
+    assert _get_batch_trace_session_id(call_type="acompletion", request_id="chatcmpl-1") is None
+
+
+def test_batch_session_outranks_the_per_request_trace_id():
+    """Each batch lifecycle call carries its own auto-generated trace id, so letting the
+    trace id win would scatter the rows across sessions again."""
+    session_id: Final = _get_session_id_for_spend_log(
+        kwargs={"litellm_trace_id": "trace-abc"},
+        metadata={"trace_id": "trace-abc"},
+        standard_logging_payload=_TRACE_ONLY_STANDARD_LOGGING,
+        omit_when_missing=False,
+        batch_trace_session_id="batch-uid-1",
+    )
+    assert session_id == "batch-uid-1"
+
+
+def test_omit_policy_still_suppresses_batch_sessions():
+    session_id: Final = _get_session_id_for_spend_log(
+        kwargs={},
+        metadata=None,
+        standard_logging_payload=None,
+        omit_when_missing=True,
+        batch_trace_session_id="batch-uid-1",
+    )
+    assert session_id is None
+
+
+def test_get_logging_payload_groups_batch_create_and_cost_rows_in_one_session():
+    def _payload(call_type: str) -> SpendLogsPayload:
+        return get_logging_payload(
+            kwargs={
+                "call_type": call_type,
+                "model": "gpt-4o-mini",
+                "litellm_params": {"metadata": {"user_api_key": "test-key"}},
+            },
+            response_obj=litellm.ModelResponse(id="batch-uid-1", choices=[], usage=litellm.Usage()),
+            start_time=datetime.datetime.now(timezone.utc),
+            end_time=datetime.datetime.now(timezone.utc),
+        )
+
+    create_payload: Final = _payload("acreate_batch")
+    cost_payload: Final = _payload("aretrieve_batch")
+    assert cost_payload["request_id"] == "batch-uid-1_batch_cost"
+    assert create_payload["session_id"] == cost_payload["session_id"] == "batch-uid-1"
+
+
+@pytest.mark.parametrize(
+    ("request_metadata", "expected"),
+    [
+        ({"trace_id": "trace-abc"}, "trace-abc"),
+        ({"trace_id": "trace-abc", SESSION_ID_OMITTED_METADATA_KEY: True}, None),
+        ({"trace_id": "trace-abc", "session_id": "chain-1", SESSION_ID_OMITTED_METADATA_KEY: True}, "chain-1"),
+    ],
+)
+def test_get_logging_payload_reads_omit_decision_stamped_on_request(
+    request_metadata: dict[str, object], expected: str | None
+):
+    """The pre-call stamp, not the live general_settings, decides the policy, so a config reload between
+    pre-call and spend logging cannot fabricate a session for a request accepted under `omit`."""
+    with patch(  # test-quality-ok: proves log time ignores proxy config; general_settings is yaml, not an HTTP boundary
+        "litellm.proxy.proxy_server.general_settings", {"missing_session_id": "generate"}
+    ):
+        payload: SpendLogsPayload = get_logging_payload(
+            kwargs={
+                "model": "gpt-4o-mini",
+                "litellm_trace_id": "trace-abc",
+                "litellm_params": {"litellm_session_id": "trace-abc", "metadata": request_metadata},
+                "standard_logging_object": _TRACE_ONLY_STANDARD_LOGGING,
+            },
+            response_obj=litellm.ModelResponse(id="chatcmpl-test", choices=[]),
+            start_time=datetime.datetime.now(timezone.utc),
+            end_time=datetime.datetime.now(timezone.utc),
+        )
+    assert payload["session_id"] == expected
+
+
+@pytest.mark.parametrize("policy", ["omit", "generate", None])
+def test_get_logging_payload_applies_omit_to_requests_that_carry_no_stamp(policy: str | None):
+    """Router-model passthrough calls `allm_passthrough_route` directly and never reaches the pre-call helper that
+    stamps the omit decision, so an unstamped request falls back to the configured policy. Without that fallback
+    `missing_session_id: omit` would fabricate a uuid session id on every passthrough spend log while its Langfuse
+    trace has none, which is the divergence the policy exists to remove."""
+    with patch(  # test-quality-ok: general_settings is proxy config, loaded from yaml, not an HTTP boundary
+        "litellm.proxy.proxy_server.general_settings", {} if policy is None else {"missing_session_id": policy}
+    ):
+        payload: SpendLogsPayload = get_logging_payload(
+            kwargs={
+                "model": "claude-opus-4",
+                "litellm_trace_id": "trace-abc",
+                "litellm_params": {"litellm_session_id": "trace-abc", "metadata": {"trace_id": "trace-abc"}},
+                "standard_logging_object": _TRACE_ONLY_STANDARD_LOGGING,
+            },
+            response_obj=litellm.ModelResponse(id="chatcmpl-test", choices=[]),
+            start_time=datetime.datetime.now(timezone.utc),
+            end_time=datetime.datetime.now(timezone.utc),
+        )
+    assert payload["session_id"] == (None if policy == "omit" else "trace-abc")
 
 
 def test_get_logging_payload_preserves_anthropic_cache_read_input_tokens():
@@ -2757,6 +2928,41 @@ def test_get_spend_logs_metadata_already_hashed_no_provenance_is_rehashed():
     assert meta["user_api_key"] == hash_token(already_hashed)
 
 
+def test_get_logging_payload_batch_attribution_keeps_verification_token_hash():
+    """
+    Batch cost rebuilds metadata with the managed object's already-hashed api_key.
+    That hash must land in SpendLogs.api_key unchanged so Usage/CloudZero can join
+    LiteLLM_VerificationToken for api_key_alias and user_email. Regression: without
+    user_api_key_hash provenance, v1.99+ re-hashed the token and broke the join.
+    """
+    token_hash = hash_token("sk-batch-creator-key")
+    kwargs = {
+        "model": "gpt-4o",
+        "call_type": "aretrieve_batch",
+        "litellm_params": {
+            "metadata": {
+                "user_api_key": token_hash,
+                "user_api_key_hash": token_hash,
+                "user_api_key_alias": "batch-creator",
+                "user_api_key_user_id": "alice",
+                "user_api_key_team_id": "team-1",
+            }
+        },
+    }
+    payload = get_logging_payload(
+        kwargs=kwargs,
+        response_obj={"id": "batch_123", "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}},
+        start_time=datetime.datetime.now(timezone.utc),
+        end_time=datetime.datetime.now(timezone.utc),
+    )
+
+    assert payload["api_key"] == token_hash
+    assert payload["api_key"] != hash_token(token_hash)
+    parsed_meta = json.loads(payload["metadata"])
+    assert parsed_meta["user_api_key"] == token_hash
+    assert parsed_meta["user_api_key_alias"] == "batch-creator"
+
+
 def test_get_spend_logs_metadata_provenance_bypass_requires_hash_match():
     already_hashed = hash_token("sk-some-key")
     different_hash = hash_token("sk-other-key")
@@ -3038,6 +3244,47 @@ def test_get_logging_payload_keeps_master_key_alias_readable():
 @patch(
     "litellm.proxy.proxy_server.general_settings", {}
 )  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+@pytest.mark.parametrize(
+    "service_account",
+    [LITTELM_INTERNAL_HEALTH_SERVICE_ACCOUNT_NAME, LITTELM_CLI_SERVICE_ACCOUNT_NAME],
+)
+def test_get_logging_payload_keeps_internal_service_account_key_readable(service_account: str):
+    data = LiteLLMProxyRequestSetup.add_user_api_key_auth_to_request_metadata(
+        data={"metadata": {}},
+        user_api_key_dict=UserAPIKeyAuth(
+            api_key=service_account,
+            team_id=service_account,
+            key_alias=service_account,
+            team_alias=service_account,
+        ),
+        _metadata_variable_name="metadata",
+    )
+    kwargs = {
+        "model": "openai/gpt-4.1",
+        "messages": [{"role": "user", "content": "Hello"}],
+        "call_type": "acompletion",
+        "litellm_params": {"metadata": data["metadata"]},
+    }
+    payload = get_logging_payload(
+        kwargs=kwargs,
+        response_obj=Exception("error"),
+        start_time=datetime.datetime.now(timezone.utc),
+        end_time=datetime.datetime.now(timezone.utc),
+    )
+
+    assert payload["api_key"] == service_account
+    parsed_meta = json.loads(payload["metadata"])
+    assert parsed_meta["user_api_key"] == service_account
+    assert parsed_meta["user_api_key_alias"] == service_account
+
+
+def test_redact_logged_api_key_service_account_name_without_provenance_is_hashed():
+    result = _redact_logged_api_key(LITTELM_INTERNAL_HEALTH_SERVICE_ACCOUNT_NAME)
+    assert result == hash_token(LITTELM_INTERNAL_HEALTH_SERVICE_ACCOUNT_NAME)
+
+
+@patch("litellm.proxy.proxy_server.master_key", None)
+@patch("litellm.proxy.proxy_server.general_settings", {})
 def test_get_logging_payload_hashes_bearer_prefixed_api_key():
     """Regression for LIT-4121: failed-request spend logs stored plaintext
     'Bearer sk-...' in both the api_key column and metadata.user_api_key"""
@@ -3452,6 +3699,138 @@ def test_get_spend_logs_id_prefers_the_response_id_over_the_standard_logging_id(
         )
         == "chatcmpl-from-response"
     )
+
+
+@pytest.mark.asyncio
+async def test_spend_log_request_id_is_the_message_id_a_bridged_streaming_caller_was_streamed():
+    """A streaming /v1/messages call against a non-Anthropic model is served a msg_ id the
+    adapter mints itself, and it is the only request id that call ever shows the caller, so
+    GET /spend/logs?request_id=msg_... has to land on the row."""
+    from litellm.litellm_core_utils.litellm_logging import Logging
+    from litellm.llms.anthropic.experimental_pass_through.responses_adapters.streaming_iterator import (
+        AnthropicResponsesStreamWrapper,
+    )
+    from litellm.types.llms.openai import (
+        ResponseAPIUsage,
+        ResponseCompletedEvent,
+        ResponsesAPIResponse,
+    )
+
+    logging_obj = Logging(
+        model="gpt-5.6",
+        messages=[{"role": "user", "content": "hi"}],
+        stream=True,
+        call_type="anthropic_messages",
+        start_time=datetime.datetime.now(timezone.utc),
+        litellm_call_id="6825cafe-0000-4000-8000-000000000001",
+        function_id="1234",
+    )
+    logging_obj.optional_params = {}
+
+    completed_response = ResponsesAPIResponse(
+        id="resp_01Lit6825Bridged",
+        object="response",
+        created_at=1767225600,
+        model="gpt-5.6",
+        status="completed",
+        output=[
+            {
+                "id": "msg_bridged_output",
+                "type": "message",
+                "role": "assistant",
+                "status": "completed",
+                "content": [{"type": "output_text", "text": "epsilon", "annotations": []}],
+            }
+        ],
+        usage=ResponseAPIUsage(input_tokens=12, output_tokens=5, total_tokens=17),
+    )
+
+    async def _responses_stream():
+        yield {"type": "response.created"}
+        yield {"type": "response.output_text.delta", "item_id": "msg_bridged_output", "delta": "epsilon"}
+        yield ResponseCompletedEvent(type="response.completed", response=completed_response)
+
+    wrapper = AnthropicResponsesStreamWrapper(
+        responses_stream=_responses_stream(),
+        model="gpt-5.6",
+        litellm_logging_obj=logging_obj,
+    )
+    sse_frames = [frame.decode() async for frame in wrapper.async_anthropic_sse_wrapper()]
+
+    message_start_frames = [f for f in sse_frames if f.startswith("event: message_start\n")]
+    assert len(message_start_frames) == 1
+    streamed_message_id = json.loads(message_start_frames[0].split("data: ", 1)[1])["message"]["id"]
+    assert streamed_message_id.startswith("msg_")
+
+    _, _, logged_response = logging_obj._success_handler_helper_fn(
+        result=ResponseCompletedEvent(type="response.completed", response=completed_response),
+        start_time=datetime.datetime.now(timezone.utc),
+        end_time=datetime.datetime.now(timezone.utc),
+    )
+
+    assert logged_response.id == streamed_message_id
+    payload = get_logging_payload(
+        kwargs={
+            "call_type": "anthropic_messages",
+            "model": "gpt-5.6",
+            "litellm_call_id": "6825cafe-0000-4000-8000-000000000001",
+            "litellm_params": {"metadata": {"user_api_key": "test-key"}},
+        },
+        response_obj=logged_response,
+        start_time=datetime.datetime.now(timezone.utc),
+        end_time=datetime.datetime.now(timezone.utc),
+    )
+    assert payload["request_id"] == streamed_message_id
+
+
+@pytest.mark.asyncio
+async def test_spend_log_request_id_is_untouched_when_no_message_id_was_streamed():
+    """Only the bridged streaming adapter mints a msg_ id of its own, so every other
+    /v1/messages call must keep the id its own response carried."""
+    from litellm.litellm_core_utils.litellm_logging import Logging
+    from litellm.types.llms.openai import (
+        ResponseAPIUsage,
+        ResponseCompletedEvent,
+        ResponsesAPIResponse,
+    )
+
+    logging_obj = Logging(
+        model="gpt-5.6",
+        messages=[{"role": "user", "content": "hi"}],
+        stream=False,
+        call_type="anthropic_messages",
+        start_time=datetime.datetime.now(timezone.utc),
+        litellm_call_id="6825cafe-0000-4000-8000-000000000002",
+        function_id="1234",
+    )
+    logging_obj.optional_params = {}
+
+    completed_response = ResponsesAPIResponse(
+        id="resp_01Lit6825Unbridged",
+        object="response",
+        created_at=1767225600,
+        model="gpt-5.6",
+        status="completed",
+        output=[
+            {
+                "id": "msg_unbridged_output",
+                "type": "message",
+                "role": "assistant",
+                "status": "completed",
+                "content": [{"type": "output_text", "text": "epsilon", "annotations": []}],
+            }
+        ],
+        usage=ResponseAPIUsage(input_tokens=12, output_tokens=5, total_tokens=17),
+    )
+
+    _, _, logged_response = logging_obj._success_handler_helper_fn(
+        result=ResponseCompletedEvent(type="response.completed", response=completed_response),
+        start_time=datetime.datetime.now(timezone.utc),
+        end_time=datetime.datetime.now(timezone.utc),
+    )
+
+    assert logged_response.id
+    assert not logged_response.id.startswith("msg_")
 
 
 def test_batch_cost_row_does_not_collide_with_the_batch_creation_row():
@@ -3947,3 +4326,271 @@ def test_passthrough_caching_carries_no_injection_marker():
     )
     metadata = json.loads(payload["metadata"])
     assert metadata["litellm_gateway_injected_cache"] is None
+
+
+def _routed_call_kwargs(model_info: Mapping[str, object]) -> dict[str, object]:
+    return {
+        "model": "claude-haiku-4-5",
+        "custom_llm_provider": "azure_ai",
+        "litellm_call_id": "router-corr-123",
+        "litellm_params": {
+            "metadata": {
+                "user_api_key": "test-key",
+                "model_group": "internal-router/gpt-5.4",
+                "deployment": "azure_ai/claude-haiku-4-5",
+                "model_info": model_info,
+            }
+        },
+    }
+
+
+def test_router_metadata_stamped_for_internal_router_model_deployment():
+    """A deployment flagged model_info.internal_router_model gets a router_metadata
+    block correlating the requested model group with the selected deployment."""
+    payload = get_logging_payload(
+        kwargs=_routed_call_kwargs({"id": "mi-1", "internal_router_model": True}),
+        response_obj=litellm.ModelResponse(id="chatcmpl-router-meta", choices=[], usage=litellm.Usage()),
+        start_time=datetime.datetime.now(timezone.utc),
+        end_time=datetime.datetime.now(timezone.utc),
+    )
+    metadata = json.loads(payload["metadata"])
+    assert metadata["router_metadata"] == {
+        "requested_model": "internal-router/gpt-5.4",
+        "selected_model": "azure_ai/claude-haiku-4-5",
+        "selected_provider": "azure_ai",
+        "router_correlation_id": "router-corr-123",
+    }
+
+
+def test_router_metadata_absent_without_internal_router_model_flag():
+    payload = get_logging_payload(
+        kwargs=_routed_call_kwargs({"id": "mi-1"}),
+        response_obj=litellm.ModelResponse(id="chatcmpl-unflagged", choices=[], usage=litellm.Usage()),
+        start_time=datetime.datetime.now(timezone.utc),
+        end_time=datetime.datetime.now(timezone.utc),
+    )
+    metadata = json.loads(payload["metadata"])
+    assert metadata["router_metadata"] is None
+
+
+@pytest.mark.parametrize("bucket", ["metadata", "litellm_metadata"])
+def test_caller_forged_router_metadata_is_discarded(bucket):
+    """The raw request bucket is client-writable and _get_spend_logs_metadata projects
+    every SpendLogsMetadata key from it, so the server-derived value must overwrite
+    unconditionally or a caller could plant router provenance the router never produced."""
+    payload = get_logging_payload(
+        kwargs={
+            "model": "gpt-4o-mini",
+            "litellm_params": {
+                bucket: {
+                    "user_api_key": "test-key",
+                    "router_metadata": {"requested_model": "forged", "router_correlation_id": "forged-id"},
+                }
+            },
+        },
+        response_obj=litellm.ModelResponse(id="chatcmpl-forged-router-meta", choices=[], usage=litellm.Usage()),
+        start_time=datetime.datetime.now(timezone.utc),
+        end_time=datetime.datetime.now(timezone.utc),
+    )
+    metadata = json.loads(payload["metadata"])
+    assert metadata["router_metadata"] is None
+
+
+ANTHROPIC_MESSAGES_RESPONSE: Final = {
+    "id": "msg_01Lit6806NonStreaming",
+    "type": "message",
+    "role": "assistant",
+    "model": "claude-haiku-4-5",
+    "content": [{"type": "text", "text": "epsilon"}],
+    "stop_reason": "end_turn",
+    "stop_sequence": None,
+    "usage": {"input_tokens": 14, "output_tokens": 4},
+}
+
+ANTHROPIC_MESSAGES_SSE_CHUNKS: Final = (
+    'event: message_start\ndata: {"type":"message_start","message":{"id":"msg_01Lit6806Streaming",'
+    '"type":"message","role":"assistant","model":"claude-haiku-4-5","content":[],'
+    '"usage":{"input_tokens":14,"output_tokens":1}}}\n\n',
+    'event: content_block_start\ndata: {"type":"content_block_start","index":0,'
+    '"content_block":{"type":"text","text":""}}\n\n',
+    'event: content_block_delta\ndata: {"type":"content_block_delta","index":0,'
+    '"delta":{"type":"text_delta","text":"epsilon"}}\n\n',
+    'event: content_block_stop\ndata: {"type":"content_block_stop","index":0}\n\n',
+    'event: message_delta\ndata: {"type":"message_delta","delta":{"stop_reason":"end_turn"},'
+    '"usage":{"output_tokens":4}}\n\n',
+    'event: message_stop\ndata: {"type":"message_stop"}\n\n',
+)
+
+
+def _anthropic_messages_logging_obj(*, stream: bool) -> Any:
+    from litellm.litellm_core_utils.litellm_logging import Logging
+
+    logging_obj = Logging(
+        model="claude-haiku-4-5",
+        messages=[{"role": "user", "content": "hi"}],
+        stream=stream,
+        call_type="anthropic_messages",
+        start_time=datetime.datetime.now(timezone.utc),
+        litellm_call_id="6806cafe-0000-4000-8000-000000000001",
+        function_id="1234",
+    )
+    logging_obj.optional_params = {}
+    logging_obj.model_call_details["custom_llm_provider"] = "anthropic"
+    return logging_obj
+
+
+def _spend_log_request_id(response_obj: Any, kwargs: dict) -> str:
+    payload = get_logging_payload(
+        kwargs=kwargs,
+        response_obj=response_obj,
+        start_time=datetime.datetime.now(timezone.utc),
+        end_time=datetime.datetime.now(timezone.utc),
+    )
+    return payload["request_id"]
+
+
+def test_spend_log_request_id_is_the_message_id_a_non_streaming_messages_caller_received():
+    """
+    POST /v1/messages hands the caller `id: msg_...`, the only request id they ever see, so
+    GET /spend/logs?request_id=msg_... has to find the row.
+    """
+    logging_obj = _anthropic_messages_logging_obj(stream=False)
+
+    logged_response = logging_obj._handle_anthropic_messages_response_logging(result=ANTHROPIC_MESSAGES_RESPONSE)
+
+    assert logged_response.id == "msg_01Lit6806NonStreaming"
+    assert (
+        _spend_log_request_id(
+            response_obj=logged_response,
+            kwargs={
+                "call_type": "anthropic_messages",
+                "model": "claude-haiku-4-5",
+                "litellm_call_id": "6806cafe-0000-4000-8000-000000000001",
+                "litellm_params": {"metadata": {"user_api_key": "test-key"}},
+            },
+        )
+        == "msg_01Lit6806NonStreaming"
+    )
+
+
+def test_spend_log_request_id_is_the_message_id_a_streaming_messages_caller_received():
+    """
+    The streaming leg of /v1/messages logs through the Anthropic passthrough handler, which used
+    to stamp litellm_call_id over the msg_ id carried by the message_start event.
+    """
+    from litellm.proxy.pass_through_endpoints.llm_provider_handlers.anthropic_passthrough_logging_handler import (
+        AnthropicPassthroughLoggingHandler,
+    )
+    from litellm.types.passthrough_endpoints.pass_through_endpoints import EndpointType
+
+    logging_obj = _anthropic_messages_logging_obj(stream=True)
+    logging_obj.model_call_details["stream"] = True
+
+    logged = AnthropicPassthroughLoggingHandler._handle_logging_anthropic_collected_chunks(
+        litellm_logging_obj=logging_obj,
+        passthrough_success_handler_obj=MagicMock(),
+        url_route="/v1/messages",
+        request_body={"model": "claude-haiku-4-5"},
+        endpoint_type=EndpointType.ANTHROPIC,
+        start_time=datetime.datetime.now(timezone.utc),
+        all_chunks=list(ANTHROPIC_MESSAGES_SSE_CHUNKS),
+        end_time=datetime.datetime.now(timezone.utc),
+    )
+
+    assert logged["result"].id == "msg_01Lit6806Streaming"
+    assert (
+        _spend_log_request_id(
+            response_obj=logged["result"],
+            kwargs={
+                **logged["kwargs"],
+                "call_type": "anthropic_messages",
+                "litellm_call_id": "6806cafe-0000-4000-8000-000000000001",
+                "litellm_params": {"metadata": {"user_api_key": "test-key"}},
+            },
+        )
+        == "msg_01Lit6806Streaming"
+    )
+
+
+def test_spend_log_request_id_still_falls_back_to_litellm_call_id_without_a_provider_id():
+    """
+    Anthropic-compatible upstreams that omit `id` must keep landing on litellm_call_id rather
+    than on a fresh chatcmpl- uuid nobody can look up.
+    """
+    logging_obj = _anthropic_messages_logging_obj(stream=True)
+    logging_obj.model_call_details["stream"] = True
+
+    from litellm.proxy.pass_through_endpoints.llm_provider_handlers.anthropic_passthrough_logging_handler import (
+        AnthropicPassthroughLoggingHandler,
+    )
+
+    AnthropicPassthroughLoggingHandler._create_anthropic_response_logging_payload(
+        litellm_model_response=litellm.ModelResponse(id="chatcmpl-generated"),
+        model="claude-haiku-4-5",
+        kwargs={},
+        start_time=datetime.datetime.now(timezone.utc),
+        end_time=datetime.datetime.now(timezone.utc),
+        logging_obj=logging_obj,
+    )
+    assert logging_obj.model_call_details["complete_streaming_response"].id == ("6806cafe-0000-4000-8000-000000000001")
+
+
+def test_spend_log_request_id_for_chat_completions_is_untouched():
+    """
+    /v1/chat/completions callers look their rows up by the chatcmpl- id in the response body.
+    """
+    assert (
+        _spend_log_request_id(
+            response_obj=litellm.ModelResponse(id="chatcmpl-EJvWIw3DAhuKYuwp3jJI4Pnhp2vjv", choices=[]),
+            kwargs={
+                "call_type": "acompletion",
+                "model": "gpt-5.6",
+                "litellm_call_id": "6806cafe-0000-4000-8000-000000000002",
+                "litellm_params": {"metadata": {"user_api_key": "test-key"}},
+            },
+        )
+        == "chatcmpl-EJvWIw3DAhuKYuwp3jJI4Pnhp2vjv"
+    )
+
+
+def test_spend_log_request_id_is_the_response_id_a_bridged_messages_caller_received():
+    """
+    /v1/messages against a non-Anthropic model answers with the Responses id the caller then
+    looks their row up by, so the row must not fall back to a fresh chatcmpl- uuid.
+    """
+    from litellm.types.llms.openai import ResponseAPIUsage, ResponsesAPIResponse
+
+    logging_obj = _anthropic_messages_logging_obj(stream=False)
+    bridged_response = ResponsesAPIResponse(
+        id="resp_01Lit6806Bridged",
+        object="response",
+        created_at=1767225600,
+        model="gpt-5.6",
+        status="completed",
+        output=[
+            {
+                "id": "msg_bridged_output",
+                "type": "message",
+                "role": "assistant",
+                "status": "completed",
+                "content": [{"type": "output_text", "text": "delta", "annotations": []}],
+            }
+        ],
+        usage=ResponseAPIUsage(input_tokens=13, output_tokens=5, total_tokens=18),
+    )
+
+    logged_response = logging_obj._handle_anthropic_messages_response_logging(result=bridged_response)
+
+    assert logged_response.id == "resp_01Lit6806Bridged"
+    assert (
+        _spend_log_request_id(
+            response_obj=logged_response,
+            kwargs={
+                "call_type": "anthropic_messages",
+                "model": "gpt-5.6",
+                "litellm_call_id": "6806cafe-0000-4000-8000-000000000003",
+                "litellm_params": {"metadata": {"user_api_key": "test-key"}},
+            },
+        )
+        == "resp_01Lit6806Bridged"
+    )

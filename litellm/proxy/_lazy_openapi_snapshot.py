@@ -150,7 +150,9 @@ def generate_snapshot(runtime_app: "FastAPI | None" = None) -> SnapshotResult:
     from litellm.proxy._lazy_features import LAZY_FEATURES
 
     selected_runtime_app: Final = _runtime_app() if runtime_app is None else runtime_app
-    app: Final = FastAPI(routes=tuple(copy(route) for route in selected_runtime_app.routes))
+    app: Final = FastAPI(
+        routes=[copy(route) for route in selected_runtime_app.routes]  # mutable-ok: FastAPI requires a list of routes
+    )
     skipped: Final = tuple(name for feat in LAZY_FEATURES if (name := _register_feature(app, feat)) is not None)
     used_operation_ids: Final[set[str]] = set()
     fragments: Final = {

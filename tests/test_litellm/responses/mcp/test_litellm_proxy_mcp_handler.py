@@ -8,11 +8,15 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException
+from openai.types.responses.tool_param import Mcp
 
 from litellm.proxy._experimental.mcp_server.faults.list_outcomes import AggregateToolListing
+from litellm.responses import main as responses_main
+from litellm.responses.mcp import litellm_proxy_mcp_handler as mcp_handler_module
 from litellm.responses.mcp.litellm_proxy_mcp_handler import (
     LiteLLM_Proxy_MCP_Handler,
 )
+from litellm.types.llms.openai import ResponsesAPIResponse
 from litellm.types.responses.main import OutputFunctionToolCall
 from litellm.types.utils import ModelResponse
 
@@ -105,9 +109,7 @@ def test_extract_tool_calls_from_chat_response_handles_tool_calls():
         object="chat.completion",
     )
 
-    tool_calls = LiteLLM_Proxy_MCP_Handler._extract_tool_calls_from_chat_response(
-        response
-    )
+    tool_calls = LiteLLM_Proxy_MCP_Handler._extract_tool_calls_from_chat_response(response)
 
     assert len(tool_calls) == 1
     assert tool_calls[0]["function"]["name"] == "foo"
@@ -177,9 +179,7 @@ def test_transform_mcp_tools_to_openai_uses_chat_format(monkeypatch):
         fake_transform_responses,
     )
 
-    chat_tools = LiteLLM_Proxy_MCP_Handler._transform_mcp_tools_to_openai(
-        ["tool"], target_format="chat"
-    )
+    chat_tools = LiteLLM_Proxy_MCP_Handler._transform_mcp_tools_to_openai(["tool"], target_format="chat")
     resp_tools = LiteLLM_Proxy_MCP_Handler._transform_mcp_tools_to_openai(["tool"])
 
     assert chat_tools == [{"chat": True}]
@@ -218,13 +218,18 @@ def test_create_follow_up_input_handles_response_function_tool_call():
     ]
 
 
-def test_parse_mcp_tools_recognizes_lazymcp_urls():
-    tools, other_tools = LiteLLM_Proxy_MCP_Handler._parse_mcp_tools(
+@pytest.mark.asyncio
+async def test_split_mcp_tools_recognizes_lazymcp_urls():
+    async def served_names(names):
+        return frozenset({"github"})
+
+    tools, other_tools = await LiteLLM_Proxy_MCP_Handler._split_mcp_tools(
         [
             {"type": "mcp", "server_url": "https://host.example/lazymcp"},
             {"type": "mcp", "server_url": "https://host.example/lazymcp/github"},
             {"type": "mcp", "server_url": "https://host.example/mcp/github"},
-        ]
+        ],
+        served_names=served_names,
     )
 
     assert other_tools == []
@@ -243,19 +248,19 @@ def test_should_use_litellm_mcp_gateway_callable_as_static_method():
 
 def test_decode_lazymcp_tool_server_map_value_handles_invalid_payloads():
     assert LiteLLM_Proxy_MCP_Handler._decode_lazymcp_tool_server_map_value(None) is None
-    assert (
-        LiteLLM_Proxy_MCP_Handler._decode_lazymcp_tool_server_map_value("not-lazymcp")
-        is None
-    )
-    assert LiteLLM_Proxy_MCP_Handler._decode_lazymcp_tool_server_map_value(
-        "lazymcp:not-json"
-    ) == {"mcp_servers": [], "toolset_id": None}
-    assert LiteLLM_Proxy_MCP_Handler._decode_lazymcp_tool_server_map_value(
-        "lazymcp:[]"
-    ) == {"mcp_servers": [], "toolset_id": None}
-    assert LiteLLM_Proxy_MCP_Handler._decode_lazymcp_tool_server_map_value(
-        'lazymcp:{"mcp_servers":"github"}'
-    ) == {"mcp_servers": [], "toolset_id": None}
+    assert LiteLLM_Proxy_MCP_Handler._decode_lazymcp_tool_server_map_value("not-lazymcp") is None
+    assert LiteLLM_Proxy_MCP_Handler._decode_lazymcp_tool_server_map_value("lazymcp:not-json") == {
+        "mcp_servers": [],
+        "toolset_id": None,
+    }
+    assert LiteLLM_Proxy_MCP_Handler._decode_lazymcp_tool_server_map_value("lazymcp:[]") == {
+        "mcp_servers": [],
+        "toolset_id": None,
+    }
+    assert LiteLLM_Proxy_MCP_Handler._decode_lazymcp_tool_server_map_value('lazymcp:{"mcp_servers":"github"}') == {
+        "mcp_servers": [],
+        "toolset_id": None,
+    }
 
 
 def test_should_use_litellm_mcp_gateway_matches_proxy_urls():
@@ -297,15 +302,9 @@ async def test_resolve_lazymcp_scope_handles_server_toolset_and_errors(monkeypat
     proxy_module = types.SimpleNamespace(prisma_client=object())
     monkeypatch.setitem(sys.modules, "litellm.proxy.proxy_server", proxy_module)
 
-    assert await LiteLLM_Proxy_MCP_Handler._resolve_lazymcp_scope(
-        ["github"], server_manager
-    ) == (["github"], None)
-    assert await LiteLLM_Proxy_MCP_Handler._resolve_lazymcp_scope(
-        ["toolset"], server_manager
-    ) == (None, "toolset-1")
-    assert await LiteLLM_Proxy_MCP_Handler._resolve_lazymcp_scope(
-        ["broken"], server_manager
-    ) == (["broken"], None)
+    assert await LiteLLM_Proxy_MCP_Handler._resolve_lazymcp_scope(["github"], server_manager) == (["github"], None)
+    assert await LiteLLM_Proxy_MCP_Handler._resolve_lazymcp_scope(["toolset"], server_manager) == (None, "toolset-1")
+    assert await LiteLLM_Proxy_MCP_Handler._resolve_lazymcp_scope(["broken"], server_manager) == (["broken"], None)
 
 
 @pytest.mark.asyncio
@@ -363,9 +362,7 @@ async def test_lazymcp_catalog_uses_fail_closed_client_ip(monkeypatch):
 @pytest.mark.asyncio
 async def test_lazymcp_catalog_rejects_unauthorized_toolset(monkeypatch):
     get_catalog_mock = AsyncMock(return_value={"description": "blocked"})
-    apply_scope_mock = AsyncMock(
-        side_effect=HTTPException(status_code=403, detail="forbidden")
-    )
+    apply_scope_mock = AsyncMock(side_effect=HTTPException(status_code=403, detail="forbidden"))
     monkeypatch.setattr(
         "litellm.proxy._experimental.mcp_server.server._get_lazymcp_catalog",
         get_catalog_mock,
@@ -531,11 +528,7 @@ async def test_execute_tool_calls_passes_lazymcp_route_scope(monkeypatch):
         "litellm.proxy._experimental.mcp_server.server.lazymcp_tool_call",
         fake_lazymcp_tool_call,
     )
-    tool_server_map_value = (
-        LiteLLM_Proxy_MCP_Handler._encode_lazymcp_tool_server_map_value(
-            ["github"], None
-        )
-    )
+    tool_server_map_value = LiteLLM_Proxy_MCP_Handler._encode_lazymcp_tool_server_map_value(["github"], None)
 
     await LiteLLM_Proxy_MCP_Handler._execute_tool_calls(
         tool_server_map={"mcp_call": tool_server_map_value},
@@ -590,11 +583,7 @@ async def test_execute_tool_calls_passes_lazymcp_client_ip_and_scoped_permission
     )
 
     user_auth = types.SimpleNamespace(api_key="sk-test")
-    tool_server_map_value = (
-        LiteLLM_Proxy_MCP_Handler._encode_lazymcp_tool_server_map_value(
-            ["github"], "toolset-123"
-        )
-    )
+    tool_server_map_value = LiteLLM_Proxy_MCP_Handler._encode_lazymcp_tool_server_map_value(["github"], "toolset-123")
 
     await LiteLLM_Proxy_MCP_Handler._execute_tool_calls(
         tool_server_map={"mcp_call": tool_server_map_value},
@@ -626,9 +615,7 @@ async def test_execute_tool_calls_rejects_unauthorized_lazymcp_toolset(monkeypat
     async def fake_lazymcp_tool_call(_name, _arguments):
         return _DummyMCPResult()
 
-    apply_scope_mock = AsyncMock(
-        side_effect=HTTPException(status_code=403, detail="forbidden")
-    )
+    apply_scope_mock = AsyncMock(side_effect=HTTPException(status_code=403, detail="forbidden"))
     lazymcp_tool_call_mock = AsyncMock(side_effect=fake_lazymcp_tool_call)
     monkeypatch.setattr(
         "litellm.proxy._experimental.mcp_server.server._apply_toolset_scope",
@@ -638,11 +625,7 @@ async def test_execute_tool_calls_rejects_unauthorized_lazymcp_toolset(monkeypat
         "litellm.proxy._experimental.mcp_server.server.lazymcp_tool_call",
         lazymcp_tool_call_mock,
     )
-    tool_server_map_value = (
-        LiteLLM_Proxy_MCP_Handler._encode_lazymcp_tool_server_map_value(
-            None, "toolset-blocked"
-        )
-    )
+    tool_server_map_value = LiteLLM_Proxy_MCP_Handler._encode_lazymcp_tool_server_map_value(None, "toolset-blocked")
 
     results = await LiteLLM_Proxy_MCP_Handler._execute_tool_calls(
         tool_server_map={"mcp_call": tool_server_map_value},
@@ -691,11 +674,7 @@ async def test_execute_tool_calls_allowed_lazymcp_toolset_uses_scoped_auth(
         "litellm.proxy._experimental.mcp_server.server.lazymcp_tool_call",
         fake_lazymcp_tool_call,
     )
-    tool_server_map_value = (
-        LiteLLM_Proxy_MCP_Handler._encode_lazymcp_tool_server_map_value(
-            None, "toolset-allowed"
-        )
-    )
+    tool_server_map_value = LiteLLM_Proxy_MCP_Handler._encode_lazymcp_tool_server_map_value(None, "toolset-allowed")
 
     await LiteLLM_Proxy_MCP_Handler._execute_tool_calls(
         tool_server_map={"mcp_call": tool_server_map_value},
@@ -735,11 +714,7 @@ async def test_execute_tool_calls_ignores_spoofed_lazymcp_forwarded_header(
         "litellm.proxy._experimental.mcp_server.server.lazymcp_tool_call",
         fake_lazymcp_tool_call,
     )
-    tool_server_map_value = (
-        LiteLLM_Proxy_MCP_Handler._encode_lazymcp_tool_server_map_value(
-            ["internal"], None
-        )
-    )
+    tool_server_map_value = LiteLLM_Proxy_MCP_Handler._encode_lazymcp_tool_server_map_value(["internal"], None)
 
     await LiteLLM_Proxy_MCP_Handler._execute_tool_calls(
         tool_server_map={"mcp_call": tool_server_map_value},
@@ -784,11 +759,7 @@ async def test_execute_tool_calls_passes_lazymcp_toolset_scope(monkeypatch):
         "litellm.proxy._experimental.mcp_server.server.lazymcp_tool_call",
         fake_lazymcp_tool_call,
     )
-    tool_server_map_value = (
-        LiteLLM_Proxy_MCP_Handler._encode_lazymcp_tool_server_map_value(
-            None, "toolset-123"
-        )
-    )
+    tool_server_map_value = LiteLLM_Proxy_MCP_Handler._encode_lazymcp_tool_server_map_value(None, "toolset-123")
 
     await LiteLLM_Proxy_MCP_Handler._execute_tool_calls(
         tool_server_map={"mcp_status": tool_server_map_value},
@@ -815,7 +786,7 @@ async def test_execute_tool_calls_logs_failure_via_post_call_failure_hook(monkey
 
     fake_manager = types.SimpleNamespace(
         get_registry=MagicMock(return_value={}),
-        call_tool=AsyncMock(side_effect=HTTPException(status_code=500, detail="boom"))
+        call_tool=AsyncMock(side_effect=HTTPException(status_code=500, detail="boom")),
     )
     monkeypatch.setattr(
         "litellm.proxy._experimental.mcp_server.mcp_server_manager.global_mcp_server_manager",
@@ -823,9 +794,7 @@ async def test_execute_tool_calls_logs_failure_via_post_call_failure_hook(monkey
     )
 
     tool_name = "deepwiki-read_wiki_structure"
-    tool_calls = [
-        {"id": "call-err", "function": {"name": tool_name, "arguments": "{}"}}
-    ]
+    tool_calls = [{"id": "call-err", "function": {"name": tool_name, "arguments": "{}"}}]
 
     user_auth = types.SimpleNamespace(api_key="test_key", user_id="test_user")
 
@@ -843,10 +812,7 @@ async def test_execute_tool_calls_logs_failure_via_post_call_failure_hook(monkey
 
     post_call_failure_hook.assert_awaited_once()
     assert post_call_failure_hook.await_args is not None
-    assert (
-        post_call_failure_hook.await_args.kwargs.get("route")
-        == "/responses/mcp/call_tool"
-    )
+    assert post_call_failure_hook.await_args.kwargs.get("route") == "/responses/mcp/call_tool"
 
 
 @pytest.mark.asyncio
@@ -869,9 +835,7 @@ async def test_execute_tool_calls_passes_litellm_call_id_and_trace_id_to_functio
     # NOTE: Don't patch via dotted string path here because `litellm.responses`
     # is a function attribute on the `litellm` package (shadowing the submodule),
     # which breaks monkeypatch's importpath resolution.
-    handler_module = importlib.import_module(
-        "litellm.responses.mcp.litellm_proxy_mcp_handler"
-    )
+    handler_module = importlib.import_module("litellm.responses.mcp.litellm_proxy_mcp_handler")
     monkeypatch.setattr(handler_module, "function_setup", fake_function_setup)
 
     tool_name = "deepwiki-read_wiki_structure"
@@ -955,9 +919,7 @@ async def test_get_mcp_tools_from_manager_enables_list_tools_logging(monkeypatch
     user_auth = types.SimpleNamespace(api_key="test_key", user_id="test_user")
     tools, _server_names = await LiteLLM_Proxy_MCP_Handler._get_mcp_tools_from_manager(
         user_api_key_auth=user_auth,
-        mcp_tools_with_litellm_proxy=[
-            {"type": "mcp", "server_url": "litellm_proxy/mcp/deepwiki"}
-        ],
+        mcp_tools_with_litellm_proxy=[{"type": "mcp", "server_url": "litellm_proxy/mcp/deepwiki"}],
     )
 
     assert tools == []
@@ -987,9 +949,7 @@ async def _standard_mcp_client_ip(monkeypatch, client_ip):
 
     await LiteLLM_Proxy_MCP_Handler._get_mcp_tools_from_manager(
         user_api_key_auth=None,
-        mcp_tools_with_litellm_proxy=[
-            {"type": "mcp", "server_url": "litellm_proxy/mcp/standard"}
-        ],
+        mcp_tools_with_litellm_proxy=[{"type": "mcp", "server_url": "litellm_proxy/mcp/standard"}],
         client_ip=client_ip,
     )
 
@@ -1007,9 +967,7 @@ async def test_standard_mcp_keeps_verified_client_ip(monkeypatch):
 
 
 def test_get_parent_request_tags_from_metadata():
-    tags = LiteLLM_Proxy_MCP_Handler._get_parent_request_tags(
-        {"metadata": {"tags": ["team-a", "prod"]}}
-    )
+    tags = LiteLLM_Proxy_MCP_Handler._get_parent_request_tags({"metadata": {"tags": ["team-a", "prod"]}})
     assert tags == ["team-a", "prod"]
 
 
@@ -1046,9 +1004,7 @@ async def test_get_mcp_tools_from_manager_forwards_request_tags(monkeypatch):
 
     await LiteLLM_Proxy_MCP_Handler._get_mcp_tools_from_manager(
         user_api_key_auth=types.SimpleNamespace(api_key="k", user_id="u"),
-        mcp_tools_with_litellm_proxy=[
-            {"type": "mcp", "server_url": "litellm_proxy/mcp/deepwiki"}
-        ],
+        mcp_tools_with_litellm_proxy=[{"type": "mcp", "server_url": "litellm_proxy/mcp/deepwiki"}],
         request_tags=["team-a"],
     )
 
@@ -1068,9 +1024,7 @@ async def test_execute_tool_calls_exposes_sanitized_client_headers_to_logging(mo
         captured.update(kwargs)
         return None, None
 
-    handler_module = importlib.import_module(
-        "litellm.responses.mcp.litellm_proxy_mcp_handler"
-    )
+    handler_module = importlib.import_module("litellm.responses.mcp.litellm_proxy_mcp_handler")
     monkeypatch.setattr(handler_module, "function_setup", fake_function_setup)
 
     tool_name = "deepwiki-read_wiki_structure"
@@ -1096,9 +1050,7 @@ async def test_execute_tool_calls_propagates_request_tags_to_function_setup(monk
         captured.update(kwargs)
         return None, None
 
-    handler_module = importlib.import_module(
-        "litellm.responses.mcp.litellm_proxy_mcp_handler"
-    )
+    handler_module = importlib.import_module("litellm.responses.mcp.litellm_proxy_mcp_handler")
     monkeypatch.setattr(handler_module, "function_setup", fake_function_setup)
 
     tool_name = "deepwiki-read_wiki_structure"
@@ -1198,3 +1150,388 @@ def test_extract_tool_call_details_still_prefers_openai_arguments():
     assert name == "get_weather"
     assert call_id == "call_123"
     assert arguments == '{"city": "Paris"}'
+
+
+def _registered(
+    server_id: str,
+    name: str,
+    alias: str | None = None,
+    server_name: str | None = None,
+    access_groups: list[str] | None = None,
+):
+    from litellm.types.mcp import MCPTransport
+    from litellm.types.mcp_server.mcp_server_manager import MCPServer
+
+    return MCPServer(
+        server_id=server_id,
+        name=name,
+        alias=alias,
+        server_name=server_name,
+        transport=MCPTransport.http,
+        access_groups=access_groups,
+    )
+
+
+async def _no_toolset(_: str) -> bool:
+    return False
+
+
+ZAPIER_TOOL: Mcp = {
+    "type": "mcp",
+    "server_label": "zapier",
+    "server_url": "https://mcp.zapier.com/api/mcp/mcp",
+    "require_approval": "never",
+}
+EXPLICIT_GATEWAY_TOOL = {"type": "mcp", "server_label": "github", "server_url": "litellm_proxy/mcp/github"}
+FUNCTION_TOOL = {"type": "function", "name": "get_weather", "parameters": {}}
+
+
+@pytest.mark.asyncio
+async def test_gateway_served_names_matches_alias_server_name_name_access_group_and_toolset():
+    from litellm.responses.mcp.litellm_proxy_mcp_handler import _gateway_served_names
+
+    servers = (
+        _registered("id-1", "github-name", alias="github", server_name="github-server", access_groups=["prod-group"]),
+        _registered("id-2", "deepwiki"),
+    )
+
+    async def toolset_exists(name: str) -> bool:
+        return name == "my-toolset"
+
+    served = await _gateway_served_names(
+        {"github", "github-server", "github-name", "deepwiki", "prod-group", "my-toolset", "mcp", "nope"},
+        servers=lambda: servers,
+        toolset_exists=toolset_exists,
+    )
+
+    assert served == {"github", "github-server", "github-name", "deepwiki", "prod-group", "my-toolset"}
+
+
+@pytest.mark.asyncio
+async def test_gateway_served_names_matches_server_id_short_prefix_and_alias_case_like_the_gateway():
+    from litellm.proxy._experimental.mcp_server.utils import compute_short_server_prefix
+    from litellm.responses.mcp.litellm_proxy_mcp_handler import _gateway_served_names
+
+    server_id = "0b9ae4ca-1bd2-4faa-b183-7dd812597e3b"
+    short_prefix = compute_short_server_prefix(server_id)
+    servers = (_registered(server_id, "github-name", alias="github", access_groups=["prod-group"]),)
+
+    served = await _gateway_served_names(
+        {server_id, short_prefix, "GitHub", "PROD-GROUP", "nope"}, servers=lambda: servers, toolset_exists=_no_toolset
+    )
+
+    assert served == {server_id, short_prefix, "GitHub"}
+
+
+@pytest.mark.asyncio
+async def test_routes_through_gateway_flags_explicit_and_served_tools_only():
+    served_tool = {"type": "mcp", "server_label": "github", "server_url": "http://localhost:4000/mcp/github"}
+
+    async def served_names(names):
+        assert names == {"github", "mcp"}
+        return frozenset({"github"})
+
+    flags = await LiteLLM_Proxy_MCP_Handler.routes_through_gateway(
+        [ZAPIER_TOOL, EXPLICIT_GATEWAY_TOOL, served_tool, FUNCTION_TOOL], served_names=served_names
+    )
+
+    assert flags == (False, True, True, False)
+
+
+@pytest.mark.asyncio
+async def test_split_mcp_tools_leaves_external_mcp_path_urls_for_the_provider():
+
+    async def served_names(names):
+        assert names == {"mcp"}
+        return frozenset()
+
+    gateway_tools, other_tools = await LiteLLM_Proxy_MCP_Handler._split_mcp_tools(
+        [ZAPIER_TOOL, EXPLICIT_GATEWAY_TOOL, FUNCTION_TOOL], served_names=served_names
+    )
+
+    assert gateway_tools == [EXPLICIT_GATEWAY_TOOL]
+    assert other_tools == [ZAPIER_TOOL, FUNCTION_TOOL]
+
+
+@pytest.mark.asyncio
+async def test_split_mcp_tools_repoints_served_proxy_urls_at_the_gateway():
+    served_tool = {
+        "type": "mcp",
+        "server_label": "toolset",
+        "server_url": "http://localhost:4000/mcp/my-toolset",
+        "require_approval": "never",
+        "allowed_tools": ["get_me"],
+    }
+    unserved_tool = {"type": "mcp", "server_label": "typo", "server_url": "http://localhost:4000/mcp/githb"}
+
+    async def served_names(names):
+        return frozenset({"my-toolset"})
+
+    gateway_tools, other_tools = await LiteLLM_Proxy_MCP_Handler._split_mcp_tools(
+        [served_tool, unserved_tool], served_names=served_names
+    )
+
+    assert gateway_tools == [{**served_tool, "server_url": "litellm_proxy/mcp/my-toolset"}]
+    assert other_tools == [unserved_tool]
+
+
+@pytest.mark.asyncio
+async def test_split_mcp_tools_skips_resolution_when_nothing_points_at_the_proxy():
+    async def served_names(names):
+        raise AssertionError("no lookup expected")
+
+    gateway_tools, other_tools = await LiteLLM_Proxy_MCP_Handler._split_mcp_tools(
+        [EXPLICIT_GATEWAY_TOOL, FUNCTION_TOOL], served_names=served_names
+    )
+
+    assert gateway_tools == [EXPLICIT_GATEWAY_TOOL]
+    assert other_tools == [FUNCTION_TOOL]
+
+
+def test_should_use_gateway_still_triggers_on_http_mcp_path():
+    assert LiteLLM_Proxy_MCP_Handler._should_use_litellm_mcp_gateway([ZAPIER_TOOL]) is True
+    assert LiteLLM_Proxy_MCP_Handler._should_use_litellm_mcp_gateway([EXPLICIT_GATEWAY_TOOL]) is True
+    assert LiteLLM_Proxy_MCP_Handler._should_use_litellm_mcp_gateway([FUNCTION_TOOL]) is False
+    assert LiteLLM_Proxy_MCP_Handler._should_use_litellm_mcp_gateway(None) is False
+
+
+@pytest.mark.asyncio
+async def test_aresponses_api_with_mcp_forwards_unserved_external_mcp_tool_to_the_provider(monkeypatch):
+    from litellm.proxy._experimental.mcp_server.mcp_server_manager import global_mcp_server_manager
+    from litellm.responses import main as responses_main
+    from litellm.types.llms.openai import ResponsesAPIResponse
+
+    monkeypatch.setitem(sys.modules, "litellm.proxy.proxy_server", types.SimpleNamespace(prisma_client=None))
+    monkeypatch.setattr(global_mcp_server_manager, "get_registry", lambda: {})
+    provider_tools: list[object] = []
+
+    def fake_provider(**kwargs: object) -> object:
+        request_params = cast(dict[str, object], kwargs["response_api_optional_request_params"])
+        provider_tools.append(request_params.get("tools"))
+
+        async def respond() -> ResponsesAPIResponse:
+            return ResponsesAPIResponse(id="resp_zapier", created_at=0, output=[])
+
+        return respond()
+
+    monkeypatch.setattr(responses_main.base_llm_http_handler, "response_api_handler", fake_provider)
+
+    response = await responses_main.aresponses_api_with_mcp(
+        input="Reply with the single word ok.", model="openai/gpt-4.1", tools=[ZAPIER_TOOL]
+    )
+
+    assert isinstance(response, ResponsesAPIResponse)
+    assert provider_tools == [[ZAPIER_TOOL]]
+
+
+def _response_with_reasoning_and_tool_call() -> Any:
+    """A first-turn response as a reasoning model returns it: reasoning item, then a function call."""
+    return ResponsesAPIResponse(
+        id="resp_first",
+        created_at=1234567890,
+        model="gpt-5",
+        object="response",
+        status="completed",
+        output=[
+            {
+                "type": "reasoning",
+                "id": "rs_1",
+                "summary": [],
+                "encrypted_content": "gAAAAA-opaque-blob",
+            },
+            {
+                "type": "function_call",
+                "id": "fc_1",
+                "call_id": "call-1",
+                "name": "foo",
+                "arguments": "{}",
+                "status": "completed",
+            },
+        ],
+        parallel_tool_calls=False,
+        tool_choice="auto",
+        tools=[],
+    )
+
+
+def test_create_follow_up_input_preserves_reasoning_when_stateless():
+    """
+    Regression test (LIT-5427): a store=false follow-up has to replay the reasoning
+    item, including reasoning.encrypted_content, since the provider kept no state.
+    """
+    follow_up = LiteLLM_Proxy_MCP_Handler._create_follow_up_input(
+        response=_response_with_reasoning_and_tool_call(),
+        tool_results=[{"tool_call_id": "call-1", "name": "foo", "result": "done"}],
+        original_input="hi",
+        preserve_reasoning=True,
+    )
+
+    assert follow_up[1] == {
+        "type": "reasoning",
+        "id": "rs_1",
+        "summary": [],
+        "encrypted_content": "gAAAAA-opaque-blob",
+    }
+    assert follow_up[2] == {
+        "type": "function_call",
+        "call_id": "call-1",
+        "name": "foo",
+        "arguments": "{}",
+    }
+    assert follow_up[3] == {
+        "type": "function_call_output",
+        "call_id": "call-1",
+        "output": "done",
+    }
+
+
+def _response_with_interleaved_reasoning_and_tool_calls() -> Any:
+    """A first-turn response that reasons before each of two function calls."""
+    return ResponsesAPIResponse(
+        id="resp_first",
+        created_at=1234567890,
+        model="gpt-5",
+        object="response",
+        status="completed",
+        output=[
+            {"type": "reasoning", "id": "rs_1", "summary": [], "encrypted_content": "blob-1"},
+            {"type": "function_call", "id": "fc_1", "call_id": "call-1", "name": "foo", "arguments": "{}"},
+            {"type": "reasoning", "id": "rs_2", "summary": [], "encrypted_content": "blob-2"},
+            {"type": "function_call", "id": "fc_2", "call_id": "call-2", "name": "bar", "arguments": "{}"},
+        ],
+        parallel_tool_calls=False,
+        tool_choice="auto",
+        tools=[],
+    )
+
+
+def test_create_follow_up_input_keeps_each_reasoning_item_before_its_function_call():
+    """
+    Regression test (LIT-5427): the provider pairs a replayed reasoning item with the
+    item that follows it, so the replay has to keep the response's output order instead
+    of grouping every reasoning item ahead of every function call.
+    """
+    follow_up = LiteLLM_Proxy_MCP_Handler._create_follow_up_input(
+        response=_response_with_interleaved_reasoning_and_tool_calls(),
+        tool_results=[
+            {"tool_call_id": "call-1", "name": "foo", "result": "one"},
+            {"tool_call_id": "call-2", "name": "bar", "result": "two"},
+        ],
+        original_input="hi",
+        preserve_reasoning=True,
+    )
+
+    assert [cast(dict[str, Any], item)["type"] for item in follow_up] == [
+        "message",
+        "reasoning",
+        "function_call",
+        "reasoning",
+        "function_call",
+        "function_call_output",
+        "function_call_output",
+    ]
+    assert [
+        cast(dict[str, Any], item).get("id") or cast(dict[str, Any], item).get("call_id") for item in follow_up[1:5]
+    ] == [
+        "rs_1",
+        "call-1",
+        "rs_2",
+        "call-2",
+    ]
+
+
+def test_create_follow_up_input_omits_reasoning_when_stateful():
+    """With store=true the provider still holds the reasoning item, so don't resend it."""
+    follow_up = LiteLLM_Proxy_MCP_Handler._create_follow_up_input(
+        response=_response_with_reasoning_and_tool_call(),
+        tool_results=[{"tool_call_id": "call-1", "name": "foo", "result": "done"}],
+        original_input="hi",
+    )
+
+    assert not [item for item in follow_up if isinstance(item, dict) and item.get("type") == "reasoning"]
+
+
+@pytest.mark.parametrize(
+    "call_params, expected",
+    [
+        ({"store": False}, True),
+        ({"store": True}, False),
+        ({"store": None}, False),
+        ({}, False),
+    ],
+)
+def test_is_persistence_disabled(call_params: dict[str, Any], expected: bool):
+    assert LiteLLM_Proxy_MCP_Handler._is_persistence_disabled(call_params) is expected
+
+
+@pytest.mark.parametrize(
+    "store, caller_previous_response_id, expected_previous_response_id",
+    [
+        (False, None, None),
+        (False, "resp_caller", "resp_caller"),
+        (True, None, "resp_first"),
+        (True, "resp_caller", "resp_first"),
+    ],
+)
+@pytest.mark.asyncio
+async def test_mcp_follow_up_call_is_stateless_when_store_is_false(
+    monkeypatch: pytest.MonkeyPatch,
+    store: bool,
+    caller_previous_response_id: str | None,
+    expected_previous_response_id: str | None,
+):
+    """
+    Regression test (LIT-5427): linking the MCP follow-up call to the first response's id
+    fails for zero data retention callers, because store=false means it was never persisted.
+    The caller's own previous_response_id was valid for the first call, so it stays.
+    """
+    captured_calls: list[dict[str, Any]] = []
+    first_response = _response_with_reasoning_and_tool_call()
+
+    async def fake_aresponses(**kwargs: Any) -> ResponsesAPIResponse:
+        captured_calls.append(kwargs)
+        return (
+            first_response
+            if len(captured_calls) == 1
+            else ResponsesAPIResponse(
+                id="resp_follow_up",
+                created_at=1234567891,
+                model="gpt-5",
+                object="response",
+                status="completed",
+                output=[],
+                parallel_tool_calls=False,
+                tool_choice="auto",
+                tools=[],
+            )
+        )
+
+    async def fake_process(**kwargs: Any) -> tuple[list[Any], dict[str, str]]:
+        return ([], {"foo": "litellm_proxy"})
+
+    async def fake_execute(**kwargs: Any) -> list[dict[str, Any]]:
+        return [{"tool_call_id": "call-1", "name": "foo", "result": "done"}]
+
+    monkeypatch.setattr(responses_main, "aresponses", fake_aresponses)
+    monkeypatch.setattr(mcp_handler_module, "aresponses", fake_aresponses)
+    monkeypatch.setattr(
+        LiteLLM_Proxy_MCP_Handler, "_process_mcp_tools_without_openai_transform", staticmethod(fake_process)
+    )
+    monkeypatch.setattr(LiteLLM_Proxy_MCP_Handler, "_execute_tool_calls", staticmethod(fake_execute))
+
+    await responses_main.aresponses_api_with_mcp(
+        input="hi",
+        model="gpt-5",
+        tools=[{"type": "mcp", "server_url": "litellm_proxy", "require_approval": "never"}],
+        store=store,
+        previous_response_id=caller_previous_response_id,
+    )
+
+    assert len(captured_calls) == 2
+    follow_up_call = captured_calls[1]
+    assert follow_up_call["previous_response_id"] == expected_previous_response_id
+
+    reasoning_items = [
+        item for item in follow_up_call["input"] if isinstance(item, dict) and item.get("type") == "reasoning"
+    ]
+    assert bool(reasoning_items) is (store is False)

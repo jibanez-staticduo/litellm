@@ -3,6 +3,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import litellm
+from litellm.litellm_core_utils.get_model_cost_map import get_model_cost_map
 from litellm.llms.azure_ai.azure_model_router.transformation import (
     AzureModelRouterConfig,
 )
@@ -29,6 +31,46 @@ async def test_get_openai_compatible_provider_info():
     )
 
     assert custom_llm_provider == "azure"
+
+
+@pytest.mark.parametrize(
+    "model, api_base, expected_provider",
+    [
+        ("azure_ai/gpt-4o", "https://my-resource.services.ai.azure.com", "azure_ai"),
+        ("azure_ai/gpt-4o", "https://my-resource.services.ai.azure.com/models", "azure_ai"),
+        ("azure_ai/gpt-5.4-nano", "https://my-resource.services.ai.azure.com", "azure_ai"),
+        ("azure_ai/gpt-4o", "https://my-resource.openai.azure.com", "azure"),
+        (
+            "azure_ai/gpt-4o",
+            "https://my-resource.services.ai.azure.com/openai/deployments/gpt-4o/chat/completions"
+            "?api-version=2024-08-01-preview",
+            "azure",
+        ),
+        ("azure_ai/mistral-large-latest", "https://my-resource.services.ai.azure.com", "azure_ai"),
+        ("azure_ai/mistral-large-latest", "https://my-resource.openai.azure.com", "azure_ai"),
+    ],
+)
+def test_foundry_base_keeps_azure_ai_provider(model: str, api_base: str, expected_provider: str):
+    """Regression for #38276: a Foundry .services.ai.azure.com base must not be reclassified as azure."""
+    config = AzureAIStudioConfig()
+    (
+        _,
+        _,
+        custom_llm_provider,
+    ) = config._get_openai_compatible_provider_info(
+        model=model,
+        api_base=api_base,
+        api_key="my-key",
+        custom_llm_provider="azure_ai",
+    )
+    assert custom_llm_provider == expected_provider
+
+
+def test_is_azure_openai_model_without_api_base_keeps_azure_ai():
+    """Metadata lookups (get_model_info, supports_* checks) carry no api_base and must not flip the provider."""
+    config = AzureAIStudioConfig()
+    assert config._is_azure_openai_model(model="azure_ai/gpt-4o", api_base=None) is False
+    assert config._is_azure_openai_model(model="azure_ai/gpt-4o", api_base="https://my-res.openai.azure.com") is True
 
 
 def test_azure_ai_validate_environment():
@@ -115,9 +157,47 @@ def test_azure_ai_unknown_model_supports_tool_choice():
     # A custom Azure AI deployment name that is NOT in the model cost map.
     # Before the fix, tool_choice would be incorrectly stripped.
     supported = config.get_supported_openai_params("my-custom-deployment")
-    assert "tool_choice" in supported, (
-        "Unknown Azure AI deployments must default to supporting tool_choice"
+    assert "tool_choice" in supported, "Unknown Azure AI deployments must default to supporting tool_choice"
+
+
+@pytest.fixture
+def _local_model_cost_map(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LITELLM_LOCAL_MODEL_COST_MAP", "True")
+    monkeypatch.setattr(litellm, "model_cost", get_model_cost_map(url=litellm.model_cost_map_url))
+
+
+def test_foundry_gpt_6_astra_keeps_sampling_params_when_reasoning_effort_is_none(_local_model_cost_map):
+    optional_params = AzureAIStudioConfig().map_openai_params(
+        non_default_params={"reasoning_effort": "none", "temperature": 0.2, "top_p": 0.9},
+        optional_params={},
+        model="gpt-6-astra",
+        drop_params=False,
     )
+
+    assert optional_params == {"reasoning_effort": "none", "temperature": 0.2, "top_p": 0.9}
+
+
+def test_a_gpt_5_name_without_a_foundry_row_keeps_reading_its_own_entry(
+    monkeypatch: pytest.MonkeyPatch, _local_model_cost_map
+):
+    """Most gpt-5-family names have no azure_ai/ row. Reading an azure_ai/ key for those finds
+    nothing, and an openai.azure.com base sends the name down the azure provider, which has no key
+    for it either, so every effort answer would silently fall back to false and take temperature,
+    top_p and logprobs down with it."""
+    monkeypatch.setenv("AZURE_AI_API_BASE", "https://example-resource.openai.azure.com")
+    monkeypatch.setenv("AZURE_AI_API_KEY", "placeholder")
+
+    optional_params = litellm.utils.get_optional_params(
+        model="gpt-5.1-chat-latest",
+        custom_llm_provider="azure_ai",
+        temperature=0.2,
+        top_p=0.9,
+        logprobs=True,
+    )
+
+    assert optional_params["temperature"] == 0.2
+    assert optional_params["top_p"] == 0.9
+    assert optional_params["logprobs"] is True
 
 
 def test_azure_ai_grok_stop_parameter_handling():
@@ -137,9 +217,7 @@ def test_azure_ai_grok_stop_parameter_handling():
     # Test supported parameters for Grok models
     for model in ("grok-4-fast", "grok-4.3"):
         grok_params = config.get_supported_openai_params(model)
-        assert (
-            "stop" not in grok_params
-        ), "Grok models should not support stop parameter"
+        assert "stop" not in grok_params, "Grok models should not support stop parameter"
 
     # Test supported parameters for non-Grok models
     gpt_params = config.get_supported_openai_params("gpt-4")
@@ -218,8 +296,7 @@ def test_azure_model_router_response_shows_actual_model():
 
     # Verify that the response contains the actual model used, not the router model
     assert result.model == "azure_ai/gpt-5-nano-2025-08-07", (
-        f"Expected model to be 'azure_ai/gpt-5-nano-2025-08-07' (actual model used), "
-        f"but got '{result.model}'"
+        f"Expected model to be 'azure_ai/gpt-5-nano-2025-08-07' (actual model used), but got '{result.model}'"
     )
 
 
@@ -277,19 +354,11 @@ def test_azure_model_router_stamps_selected_model_on_hidden_params():
     )
 
     assert result._hidden_params[AZURE_MODEL_ROUTER_SELECTED_MODEL_KEY] == result.model
-    assert (
-        result._hidden_params[AZURE_MODEL_ROUTER_SELECTED_MODEL_KEY]
-        == "azure_ai/grok-4-1-fast-reasoning"
+    assert result._hidden_params[AZURE_MODEL_ROUTER_SELECTED_MODEL_KEY] == "azure_ai/grok-4-1-fast-reasoning"
+    assert AzureFoundryModelInfo.get_model_router_selected_model(result._hidden_params) == (
+        "azure_ai/grok-4-1-fast-reasoning"
     )
-    assert AzureFoundryModelInfo.get_model_router_selected_model(
-        result._hidden_params
-    ) == ("azure_ai/grok-4-1-fast-reasoning")
-    assert (
-        AzureFoundryModelInfo.is_model_router_call(
-            model="smart-pick", hidden_params=result._hidden_params
-        )
-        is True
-    )
+    assert AzureFoundryModelInfo.is_model_router_call(model="smart-pick", hidden_params=result._hidden_params) is True
 
 
 def test_azure_model_router_stamp_does_not_leak_across_responses():
@@ -327,14 +396,10 @@ def test_drop_tool_level_extra_fields_strips_copilot_mcp_server_name():
     mock_response.text = error_text
     mock_response.json.return_value = json.loads(error_text)
     mock_response.status_code = 400
-    e = httpx.HTTPStatusError(
-        message="400", request=MagicMock(), response=mock_response
-    )
+    e = httpx.HTTPStatusError(message="400", request=MagicMock(), response=mock_response)
 
     assert config._error_has_tool_level_extra_fields(error_text) is True
-    assert (
-        config.should_retry_llm_api_inside_llm_translation_on_http_error(e, {}) is True
-    )
+    assert config.should_retry_llm_api_inside_llm_translation_on_http_error(e, {}) is True
 
     request_data = {
         "model": "FW-Kimi-K2.6",
@@ -457,9 +522,7 @@ def test_azure_ai_stripping_does_not_mutate_caller_messages():
         {
             "role": "assistant",
             "content": "I can help.",
-            "thinking_blocks": [
-                {"type": "thinking", "thinking": "Reading the file.", "signature": "sig"}
-            ],
+            "thinking_blocks": [{"type": "thinking", "thinking": "Reading the file.", "signature": "sig"}],
             "provider_specific_fields": {"thought_signature": "sig-top"},
             "tool_calls": [
                 {

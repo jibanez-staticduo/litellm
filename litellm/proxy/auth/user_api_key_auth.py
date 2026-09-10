@@ -20,12 +20,15 @@ import orjson
 from fastapi import HTTPException, Request, WebSocket, status
 from fastapi.security.api_key import APIKeyHeader
 from pydantic import TypeAdapter
+from starlette.exceptions import WebSocketException
 
 import litellm
 from litellm._logging import verbose_logger, verbose_proxy_logger
 from litellm._service_logger import ServiceLogging
 from litellm.constants import (
     GLOBAL_PROXY_SPEND_CACHE_KEY,
+    INVALID_VIRTUAL_KEY_ERROR_MARKER,
+    INVALID_VIRTUAL_KEY_ERROR_MESSAGE,
     LITELLM_PROXY_BUDGET_NAME,
     LITELLM_PROXY_MASTER_KEY_ALIAS,
 )
@@ -56,6 +59,7 @@ from litellm.proxy.auth.auth_checks import (
     get_team_object,
     get_user_object,
     is_valid_fallback_model,
+    jwt_key_mapping_cache_key,
     resolve_and_validate_end_user_id,
 )
 from litellm.proxy.auth.auth_exception_handler import UserAPIKeyAuthExceptionHandler
@@ -66,6 +70,7 @@ from litellm.proxy.auth.auth_utils import (
     get_model_from_request,
     get_request_route,
     get_request_route_template,
+    is_invalid_virtual_key_error,
     iter_request_fallback_targets,
     normalize_request_route,
     pre_db_read_auth_checks,
@@ -78,6 +83,7 @@ from litellm.proxy.auth.oauth2_proxy_hook import handle_oauth2_proxy_request
 from litellm.proxy.auth.resolvers import CredentialRef, Principal
 from litellm.proxy.auth.resolvers.store import IdentityStore
 from litellm.proxy.auth.route_checks import RouteChecks
+from litellm.proxy.auth.team_grants import team_grants
 from litellm.proxy.auth.trusted_proxy_utils import get_trusted_proxy_cidrs
 from litellm.proxy.common_utils.cache_coordinator import EventDrivenCacheCoordinator
 from litellm.proxy.common_utils.http_parsing_utils import (
@@ -565,6 +571,8 @@ async def user_api_key_auth_websocket(websocket: WebSocket):
         request.body = return_body
         return await user_api_key_auth(request=request, api_key=f"Bearer {api_key}")
     except Exception as e:
+        if is_invalid_virtual_key_error(e):
+            raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION)
         verbose_proxy_logger.exception(e)
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         raise HTTPException(status_code=403, detail=str(e))
@@ -990,7 +998,7 @@ async def _resolve_jwt_to_virtual_key(
             )
         return None
 
-    cache_key: Final = f"jwt_key_mapping:{virtual_key_claim_field}:{claim_value}"
+    cache_key: Final = jwt_key_mapping_cache_key(virtual_key_claim_field, str(claim_value))
     cached_mapping: Final = await user_api_key_cache.async_get_cache(cache_key)
 
     if cached_mapping == _JWT_PROXY_ADMIN_SENTINEL:
@@ -1495,24 +1503,16 @@ async def _user_api_key_auth_builder(
                             user_id=user_id,
                             user_email=user_email,
                             team_id=team_id,
-                            team_alias=(team_object.team_alias if team_object is not None else None),
-                            team_tpm_limit=(team_object.tpm_limit if team_object is not None else None),
-                            team_rpm_limit=(team_object.rpm_limit if team_object is not None else None),
-                            team_models=(team_object.models if team_object is not None else []),
-                            team_metadata=(team_object.metadata if team_object is not None else None),
                             org_id=org_id,
                             end_user_id=end_user_id,
                             parent_otel_span=parent_otel_span,
                             jwt_claims=jwt_claims,
+                            **team_grants(team_object=team_object, team_membership=team_membership, user_id=user_id),
                         )
 
                     valid_token = UserAPIKeyAuth(
                         api_key=None,
                         team_id=team_id,
-                        team_alias=(team_object.team_alias if team_object is not None else None),
-                        team_tpm_limit=(team_object.tpm_limit if team_object is not None else None),
-                        team_rpm_limit=(team_object.rpm_limit if team_object is not None else None),
-                        team_models=(team_object.models if team_object is not None else []),
                         user_role=(
                             LitellmUserRoles(_get_user_object_value(user_object, "user_role"))
                             if user_object is not None and _get_user_object_value(user_object, "user_role") is not None
@@ -1540,17 +1540,8 @@ async def _user_api_key_auth_builder(
                             if user_object is not None
                             else None
                         ),
-                        team_member_rpm_limit=(
-                            team_membership.safe_get_team_member_rpm_limit() if team_membership is not None else None
-                        ),
-                        team_member_tpm_limit=(
-                            team_membership.safe_get_team_member_tpm_limit() if team_membership is not None else None
-                        ),
-                        team_metadata=(team_object.metadata if team_object is not None else None),
                         jwt_claims=jwt_claims,
-                    )
-                    valid_token.team_object_permission = (
-                        team_object.object_permission if team_object is not None else None
+                        **team_grants(team_object=team_object, team_membership=team_membership, user_id=user_id),
                     )
 
                     # AUTO_REGISTER deferred from _resolve_jwt_to_virtual_key.
@@ -1907,13 +1898,17 @@ async def _user_api_key_auth_builder(
                 _masked_key: Final = f"{api_key[:4]}****{api_key[-4:]}" if len(api_key) > 8 else "****"
                 if not api_key.startswith("sk-"):
                     _hint = _JWT_AUTH_DISABLED_HINT if not enable_jwt_auth and JWTHandler.is_jwt(token=api_key) else ""
-                    raise HTTPException(
+                    _malformed_key_error = HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
                         detail=(
-                            f"LiteLLM Virtual Key expected. Received={_masked_key}, "
+                            f"{INVALID_VIRTUAL_KEY_ERROR_MESSAGE}. Received={_masked_key}, "
                             f"expected to start with 'sk-'.{_hint}"
                         ),
                     )  # prevent token hashes from being used
+                    # Stamp provenance here so log routing classifies this 401 by
+                    # where it was raised, never by its message text.
+                    setattr(_malformed_key_error, INVALID_VIRTUAL_KEY_ERROR_MARKER, True)
+                    raise _malformed_key_error
             else:
                 verbose_logger.warning(
                     "litellm.proxy.proxy_server.user_api_key_auth(): Warning - Key is not a string. Got type={}".format(
@@ -2072,7 +2067,7 @@ async def _user_api_key_auth_builder(
                                     fallback_spend=team_member_spend,
                                     max_budget=team_member_budget,
                                 )
-                            if team_member_spend > team_member_budget:
+                            if team_member_spend >= team_member_budget:
                                 _entity_id: Final = f"{valid_token.user_id}:{valid_token.team_id}"
                                 raise litellm.BudgetExceededError(
                                     current_cost=team_member_spend,
@@ -2741,14 +2736,6 @@ async def _reserve_budget_after_common_checks(
     if skip_budget_checks:
         return
     if general_settings.get("disable_budget_reservation") is True:
-        verbose_proxy_logger.warning(
-            "disable_budget_reservation is enabled: skipping optimistic budget "
-            "reservation. Budget enforcement is read-time only — concurrent "
-            "requests can each pass the spend check before their cost is recorded, "
-            "so a configured budget may be briefly exceeded under high concurrency. "
-            "Set disable_budget_reservation to False or remove it to restore "
-            "hard per-request budget enforcement."
-        )
         return
 
     from litellm.proxy.spend_tracking.budget_reservation import (
@@ -2879,6 +2866,43 @@ async def _authorize_authenticated_request(
     return None
 
 
+def _seed_request_destinations(user_api_key_dict: UserAPIKeyAuth, request: Request | None = None) -> None:
+    """Anchor the OTLP destinations this key or team overrides its traces to.
+
+    Called inside the ``auth`` phase span so that span reaches the tenant's account
+    as well, and on the request task so the ``ContextVar`` is inherited by the logging
+    tasks that close the LLM span. Best-effort: trace routing must never fail auth.
+
+    ``request`` carries the headers, so a backend this request disabled with
+    ``x-litellm-disable-callbacks`` resolves to no destination.
+
+    Only destinations the published fan-out can build are anchored. Anchoring one is
+    what tells the operator's exporter to hold that backend's spans back under
+    ``override``, so an unbuildable one would leave the span with nowhere to go.
+
+    The ``postgres`` spans under ``auth`` close before this runs, because they are the
+    reads that resolve the identity being read here. They never reach the tenant's
+    account, and they are never withheld from the operator's backend, whichever mode
+    is set.
+    """
+    try:
+        from litellm.integrations.otel.logger import fan_out_provider
+        from litellm.integrations.otel.plumbing.context import set_request_destinations
+        from litellm.integrations.otel.plumbing.providers import deliverable_destinations
+        from litellm.proxy.litellm_pre_call_utils import (
+            resolve_tenant_otel_destinations,
+        )
+
+        set_request_destinations(
+            deliverable_destinations(
+                resolve_tenant_otel_destinations(user_api_key_dict, _safe_get_request_headers(request)),
+                fan_out_provider(),
+            )
+        )
+    except Exception as exc:  # noqa: BLE001  # telemetry routing is best-effort and must never break authentication
+        verbose_proxy_logger.debug("OTel V2: tenant destination resolution failed: %s", exc)
+
+
 @tracer.wrap()
 async def user_api_key_auth(
     request: Request,
@@ -2926,6 +2950,7 @@ async def user_api_key_auth(
                 raise body_parse_exception
             raise
         user_api_key_auth_obj.budget_reservation = None
+        _seed_request_destinations(user_api_key_auth_obj, request)
 
         # A body that never parsed is authenticated (so the trace carries identity
         # and this ``auth`` span) but not authorized: there is no model to check it
