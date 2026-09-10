@@ -181,7 +181,7 @@ class ChatGPTRealtime(OpenAIRealtime):
             base.copy_with(
                 scheme="wss" if base.scheme in ("https", "wss") else "ws",
                 path=f"{base.path.rstrip('/')}/{endpoint}",
-                params=QueryParams(query_params).merge(
+                params=QueryParams(TypeAdapter(Mapping[str, str | None]).validate_python(query_params)).merge(
                     tuple((key, value) for key, value in self._extra_query.items() if key not in ("model", "call_id"))
                 ),
             )
