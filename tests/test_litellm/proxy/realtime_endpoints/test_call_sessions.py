@@ -209,7 +209,7 @@ async def test_realtime_endpoint_rejects_untrusted_call_ids(monkeypatch, call_id
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("multipart", [False, True])
-@pytest.mark.parametrize("credential", ["authorization", "api-key", "subprotocol"])
+@pytest.mark.parametrize("credential", ["authorization", "api-key", "subprotocol", "x-litellm-api-key", "custom"])
 @pytest.mark.parametrize("signaling_credential", ["authorization", "api-key", "x-litellm-api-key", "mixed"])
 async def test_offer_exchange_wraps_call_and_filters_client_headers(
     monkeypatch, multipart, credential, signaling_credential
@@ -258,6 +258,7 @@ async def test_offer_exchange_wraps_call_and_filters_client_headers(
             "headers": [
                 (b"content-type", body_request.headers["content-type"].encode()),
                 *signaling_headers,
+                *([(b"x-proxy-key", b"Bearer owner")] if credential == "custom" else []),
                 (b"openai-alpha", b"quicksilver=v2"),
                 (b"x-untrusted", b"bad"),
             ],
@@ -267,7 +268,9 @@ async def test_offer_exchange_wraps_call_and_filters_client_headers(
     auth = UserAPIKeyAuth()
     authorize = AsyncMock()
     monkeypatch.setattr(proxy_server, "master_key", "owner")
-    monkeypatch.setattr(proxy_server, "general_settings", {})
+    monkeypatch.setattr(
+        proxy_server, "general_settings", {"litellm_key_header_name": "x-proxy-key"} if credential == "custom" else {}
+    )
     monkeypatch.setattr(codex, "can_key_call_resolved_model", authorize)
 
     class Processor:
@@ -341,6 +344,8 @@ async def test_offer_exchange_wraps_call_and_filters_client_headers(
     credential_headers = {
         "authorization": [(b"authorization", b"Bearer owner")],
         "api-key": [(b"api-key", b"owner")],
+        "x-litellm-api-key": [(b"x-litellm-api-key", b"owner")],
+        "custom": [(b"x-proxy-key", b"Bearer owner")],
         "subprotocol": [(b"sec-websocket-protocol", b"realtime, openai-insecure-api-key.owner")],
     }
     websocket = WebSocket(
