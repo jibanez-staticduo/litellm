@@ -1,4 +1,13 @@
-from typing import TYPE_CHECKING, Any, Final
+from collections.abc import Mapping
+from copy import deepcopy
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Final,
+    cast,  # noqa: TID251  # SDK input union omits Codex extensions that must survive replay
+)
+
+from openai.types.responses.response_create_params import ResponseInputParam
 
 from litellm.exceptions import AuthenticationError
 from litellm.litellm_core_utils.core_helpers import process_response_headers
@@ -30,6 +39,18 @@ from ..common_utils import (
 
 if TYPE_CHECKING:
     from litellm.litellm_core_utils.litellm_logging import Logging as LiteLLMLoggingObj
+
+
+def _chatgpt_replay_item(item: object) -> object | None:
+    if not isinstance(item, Mapping):
+        return item
+    fields: Final = cast(Mapping[str, object], item)  # cast-ok: Responses input items have string JSON keys
+    if fields.get("type") != "reasoning" or not fields.get("content"):
+        return fields
+    encrypted: Final = fields.get("encrypted_content")
+    if not isinstance(encrypted, str) or not encrypted:
+        return None
+    return {key: value for key, value in fields.items() if key != "content"}  # mutable-ok: outbound JSON item
 
 
 class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
@@ -82,14 +103,24 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
     def transform_responses_api_request(
         self,
         model: str,
-        input: Any,
+        input: str | ResponseInputParam,
         response_api_optional_request_params: dict,
         litellm_params: GenericLiteLLMParams,
         headers: dict,
     ) -> dict:
+        # The hosted endpoint rejects plaintext reasoning from compatible providers.
+        # Work on a copy: the same stored history can later be replayed to its origin.
+        replay_input: Final = (
+            cast(  # cast-ok: preserve Responses input variants, removing incompatible reasoning fields/items only
+                ResponseInputParam,
+                [safe for item in deepcopy(input) if (safe := _chatgpt_replay_item(item)) is not None],
+            )
+            if isinstance(input, list)
+            else input
+        )
         request: Final = super().transform_responses_api_request(
             model,
-            input,
+            replay_input,
             response_api_optional_request_params,
             litellm_params,
             headers,

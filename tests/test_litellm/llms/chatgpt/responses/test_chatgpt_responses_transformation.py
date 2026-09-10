@@ -5,6 +5,7 @@ Source: litellm/llms/chatgpt/responses/transformation.py
 """
 
 import json
+from copy import deepcopy
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -22,6 +23,118 @@ from litellm.utils import ProviderConfigManager
 
 
 class TestChatGPTResponsesAPITransformation:
+    @pytest.mark.parametrize("encrypted_content", [None, "", 123])
+    def test_foreign_raw_reasoning_removed_without_changing_conversation(self, encrypted_content):
+        history = [
+            {"role": "user", "content": "Update the script"},
+            {
+                "type": "reasoning",
+                "id": "qwen_reasoning",
+                "summary": [],
+                "content": [{"type": "reasoning_text", "text": "Inspect then patch."}],
+                "encrypted_content": encrypted_content,
+            },
+            {"type": "function_call", "call_id": "call_exec", "name": "exec_command", "arguments": '{"cmd":"pwd"}'},
+            {"type": "function_call_output", "call_id": "call_exec", "output": "/workspace"},
+            {
+                "type": "custom_tool_call",
+                "call_id": "call_patch",
+                "name": "apply_patch",
+                "input": "*** Begin Patch\n*** End Patch",
+            },
+            {"type": "custom_tool_call_output", "call_id": "call_patch", "output": "Success"},
+            {
+                "type": "tool_search_call",
+                "call_id": "call_search",
+                "execution": "client",
+                "arguments": {"query": "read file"},
+            },
+            {"type": "tool_search_output", "call_id": "call_search", "execution": "client", "tools": []},
+            {"role": "assistant", "content": [{"type": "output_text", "text": "Patched."}]},
+        ]
+        original = deepcopy(history)
+        request = ChatGPTResponsesAPIConfig().transform_responses_api_request(
+            model="gpt-6-astra",
+            input=history,
+            response_api_optional_request_params={},
+            litellm_params=GenericLiteLLMParams(),
+            headers={},
+        )
+
+        assert request["input"] == [original[0], *original[2:]]
+        assert history == original
+
+    def test_encrypted_reasoning_preserved_without_raw_content(self):
+        history = [
+            {
+                "type": "reasoning",
+                "id": "rs_signed",
+                "status": "completed",
+                "encrypted_content": "opaque-signed-reasoning",
+                "summary": [{"type": "summary_text", "text": "Checked the script."}],
+                "content": [{"type": "reasoning_text", "text": "Raw reasoning."}],
+            }
+        ]
+        original = deepcopy(history)
+        request = ChatGPTResponsesAPIConfig().transform_responses_api_request(
+            model="gpt-6-astra",
+            input=history,
+            response_api_optional_request_params={},
+            litellm_params=GenericLiteLLMParams(),
+            headers={},
+        )
+
+        assert request["input"] == [{key: value for key, value in original[0].items() if key != "content"}]
+        assert history == original
+
+    @pytest.mark.parametrize("content_fields", [{}, {"content": []}])
+    def test_native_reasoning_without_raw_content_unchanged(self, content_fields):
+        history = [
+            {
+                "type": "reasoning",
+                "id": "rs_native",
+                "summary": [],
+                "encrypted_content": "native-signed-reasoning",
+                **content_fields,
+            }
+        ]
+        original = deepcopy(history)
+        request = ChatGPTResponsesAPIConfig().transform_responses_api_request(
+            model="gpt-6-astra",
+            input=history,
+            response_api_optional_request_params={},
+            litellm_params=GenericLiteLLMParams(),
+            headers={},
+        )
+
+        assert request["input"] == original
+        assert history == original
+
+    def test_reasoning_filter_preserves_caller_history_during_cache_cleanup(self):
+        history = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "input_text",
+                        "text": "Continue",
+                        "cache_control": {"type": "ephemeral"},
+                    }
+                ],
+            }
+        ]
+        original = deepcopy(history)
+        request = ChatGPTResponsesAPIConfig().transform_responses_api_request(
+            model="gpt-6-astra",
+            input=history,
+            response_api_optional_request_params={},
+            litellm_params=GenericLiteLLMParams(),
+            headers={},
+        )
+
+        assert "cache_control" not in request["input"][0]["content"][0]
+        assert history == original
+
     def test_guardian_preserves_strict_output_schema(self):
         text = {
             "format": {
