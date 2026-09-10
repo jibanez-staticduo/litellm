@@ -10,15 +10,15 @@ gpt-image-1 uses token-based pricing:
 - Image Output: $40.00/1M tokens
 """
 
-
+from typing import Final
 
 import pytest
 
 import litellm
 from litellm.types.utils import (
     CompletionTokensDetailsWrapper,
-    ImageResponse,
     ImageObject,
+    ImageResponse,
     ImageUsage,
     ImageUsageInputTokensDetails,
     PromptTokensDetailsWrapper,
@@ -41,6 +41,52 @@ def _use_local_model_cost_map(monkeypatch):
 
 class TestGPTImageCostCalculator:
     """Test the OpenAI gpt-image cost calculator"""
+
+    @pytest.mark.parametrize("provider", ["chatgpt", "openai", "azure"])
+    @pytest.mark.parametrize("cached_text,cached_image", [(0, 0), (50, 0), (0, 500), (50, 500)])
+    def test_custom_image_deployment_prices_cached_modalities(
+        self, provider: str, cached_text: int, cached_image: int
+    ) -> None:
+        deployment_id: Final = "0166df7f-44ee-4541-bbf1-ecc87570e1c0"
+        rates: Final = {
+            "input_cost_per_token": 5e-6,
+            "input_cost_per_image_token": 8e-6,
+            "cache_read_input_token_cost": 1.25e-6,
+            "cache_read_input_image_token_cost": 2e-6,
+            "output_cost_per_image_token": 30e-6,
+        }
+        litellm.register_model(model_cost={deployment_id: {**rates, "litellm_provider": provider}})
+        response: Final = ImageResponse(
+            created=1,
+            data=[],
+            usage={
+                "input_tokens": 1100,
+                "output_tokens": 100,
+                "total_tokens": 1200,
+                "input_tokens_details": {
+                    "text_tokens": 100,
+                    "image_tokens": 1000,
+                    "cached_tokens": cached_text + cached_image,
+                    "cached_tokens_details": {"text_tokens": cached_text, "image_tokens": cached_image},
+                },
+            },
+        )
+        cost: Final = litellm.completion_cost(
+            model=f"{provider}/gpt-image-2",
+            completion_response=response,
+            call_type="aimage_generation",
+            custom_llm_provider=provider,
+            custom_pricing=True,
+            router_model_id=deployment_id,
+        )
+        expected: Final = (
+            (100 - cached_text) * 5e-6
+            + cached_text * 1.25e-6
+            + (1000 - cached_image) * 8e-6
+            + cached_image * 2e-6
+            + 100 * 30e-6
+        )
+        assert cost == pytest.approx(expected)
 
     def test_gpt_image_1_cost_with_text_only(self):
         """Test cost calculation with only text input tokens"""
@@ -334,8 +380,7 @@ class TestGPTImage15OutputImageTokens:
         expected_cost = 169 * 5e-06 + 439 * 1e-05 + 4160 * 3.2e-05
 
         assert abs(cost - expected_cost) < 1e-6, (
-            f"Expected {expected_cost}, got {cost}. "
-            f"Image tokens may not be included in cost calculation."
+            f"Expected {expected_cost}, got {cost}. Image tokens may not be included in cost calculation."
         )
 
 
