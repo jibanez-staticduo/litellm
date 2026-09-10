@@ -4819,3 +4819,54 @@ def test_live_terminal_is_not_counted_twice(monkeypatch):
         )
         == 0
     )
+
+
+@pytest.mark.parametrize(
+    ("cached_modality", "cached_tokens", "expected_cost"),
+    [(None, 0, 0.04396), ("text_tokens", 50, 0.04378), ("audio_tokens", 500, 0.02816), ("image_tokens", 500, 0.04171)],
+)
+def test_realtime_cached_modalities_survive_aggregation_and_use_their_rates(
+    cached_modality, cached_tokens, expected_cost
+):
+    from litellm.litellm_core_utils.llm_cost_calc.utils import generic_cost_per_token
+
+    cached_details = {cached_modality: cached_tokens} if cached_modality else {}
+    events = [
+        {
+            "type": "response.done",
+            "response": {
+                "usage": {
+                    "input_tokens": 2100,
+                    "output_tokens": 110,
+                    "total_tokens": 2210,
+                    "input_token_details": {
+                        "text_tokens": 100,
+                        "audio_tokens": 1000,
+                        "image_tokens": 1000,
+                        "cached_tokens": cached_tokens,
+                        "cached_tokens_details": cached_details,
+                    },
+                    "output_token_details": {"text_tokens": 10, "audio_tokens": 100},
+                }
+            },
+        }
+    ] * 2
+    usage = RealtimeAPITokenUsageProcessor.collect_and_combine_usage_from_realtime_stream_results(events)
+    if cached_modality:
+        assert usage.prompt_tokens_details.cached_tokens_details == {cached_modality: cached_tokens * 2}
+    prompt_cost, output_cost = generic_cost_per_token(
+        model="gpt-realtime-1.5",
+        usage=usage,
+        custom_llm_provider="openai",
+        model_info={
+            "input_cost_per_token": 4e-6,
+            "output_cost_per_token": 16e-6,
+            "input_cost_per_audio_token": 32e-6,
+            "output_cost_per_audio_token": 64e-6,
+            "input_cost_per_image_token": 5e-6,
+            "cache_read_input_token_cost": 0.4e-6,
+            "cache_read_input_audio_token_cost": 0.4e-6,
+            "cache_read_input_image_token_cost": 0.5e-6,
+        },
+    )
+    assert prompt_cost + output_cost == pytest.approx(expected_cost * 2)
