@@ -13,7 +13,8 @@ from litellm.proxy.realtime_endpoints.call_sessions import decode_call, encode_c
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("route_type", ["arealtime_calls", "_arealtime"])
-async def test_codex_processing_merges_model_guardrails(monkeypatch, route_type):
+@pytest.mark.parametrize("observer", [False, True])
+async def test_codex_processing_merges_model_guardrails(monkeypatch, route_type, observer):
     from fastapi import Request
 
     from litellm import Router
@@ -22,7 +23,8 @@ async def test_codex_processing_merges_model_guardrails(monkeypatch, route_type)
     from litellm.proxy.realtime_endpoints.call_sessions import process_codex_request
 
     class PolicyHook:
-        async def pre_call_hook(self, user_api_key_dict, data, call_type):
+        async def pre_call_hook(self, user_api_key_dict, data, call_type, *, internal_realtime_observer=False):
+            assert internal_realtime_observer is observer
             if "model-policy" in data.get("metadata", {}).get("guardrails", []):
                 raise HTTPException(403, "Model policy rejected request")
             return data
@@ -53,7 +55,14 @@ async def test_codex_processing_merges_model_guardrails(monkeypatch, route_type)
         }
     )
     with pytest.raises(HTTPException) as error:
-        await process_codex_request(request, {"model": "voice-policy"}, UserAPIKeyAuth(), "voice-policy", route_type)
+        await process_codex_request(
+            request,
+            {"model": "voice-policy"},
+            UserAPIKeyAuth(),
+            "voice-policy",
+            route_type,
+            internal_realtime_observer=observer,
+        )
     assert error.value.status_code == 403
     assert error.value.detail == "Model policy rejected request"
 
