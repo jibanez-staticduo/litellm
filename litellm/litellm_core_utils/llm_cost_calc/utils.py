@@ -1655,9 +1655,9 @@ def calculate_image_response_cost_from_usage(
     model_info: Final = get_model_info(model=model, custom_llm_provider=custom_llm_provider)
     cached_text: Final = _get_token_detail_value(cached_details, "text_tokens") or 0
     cached_image: Final = _get_token_detail_value(cached_details, "image_tokens") or 0
-    text_tokens: Final = _get_token_detail_value(input_tokens_details, "text_tokens") or 0
-    image_tokens: Final = _get_token_detail_value(input_tokens_details, "image_tokens") or 0
-    if not (0 <= cached_text <= text_tokens and 0 <= cached_image <= image_tokens):
+    input_text_tokens: Final = _get_token_detail_value(input_tokens_details, "text_tokens") or 0
+    input_image_tokens: Final = _get_token_detail_value(input_tokens_details, "image_tokens") or 0
+    if not (0 <= cached_text <= input_text_tokens and 0 <= cached_image <= input_image_tokens):
         raise ValueError("Image cached token counts exceed their input modality counts")
     text_rate: Final = model_info.get("input_cost_per_token") or 0.0
     image_rate: Final = model_info.get("input_cost_per_image_token")
