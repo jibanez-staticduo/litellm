@@ -1236,13 +1236,14 @@ def generic_cost_per_token(
         cache_creation_cost_above_1hr=cache_creation_cost_above_1hr,
         service_tier=service_tier,
     )
-    for cached_count, rate_key in (
-        (cached_audio, "cache_read_input_audio_token_cost"),
-        (cached_image, "cache_read_input_image_token_cost"),
-    ):
-        modality_rate: Final = _get_cost_per_unit(model_info, rate_key, None)
-        if modality_rate is not None:
-            prompt_cost += cached_count * (modality_rate - cache_read_cost)
+    prompt_cost += sum(
+        cached_count * (modality_rate - cache_read_cost)
+        for cached_count, rate_key in (
+            (cached_audio, "cache_read_input_audio_token_cost"),
+            (cached_image, "cache_read_input_image_token_cost"),
+        )
+        if (modality_rate := _get_cost_per_unit(model_info, rate_key, None)) is not None
+    )
 
     ## CALCULATE OUTPUT COST
     text_tokens = 0
@@ -1727,6 +1728,19 @@ def calculate_image_response_web_search_cost(
     )
 
 
+def _uses_token_based_image_pricing(model: str, custom_llm_provider: str | None) -> bool:
+    if custom_llm_provider not in ("openai", "azure", "chatgpt"):
+        return False
+    registered_info: Final = (
+        litellm.model_cost.get(model)
+        or litellm.model_cost.get(f"{custom_llm_provider}/{model}")
+        or litellm.model_cost.get(model.removeprefix(f"{custom_llm_provider}/"), {})
+    )
+    return registered_info.get("output_cost_per_image_token") is not None or (
+        custom_llm_provider in ("openai", "azure") and "gpt-image" in model.lower()
+    )
+
+
 class CostCalculatorUtils:
     @staticmethod
     def _call_type_has_image_response(call_type: str) -> bool:
@@ -1779,18 +1793,12 @@ class CostCalculatorUtils:
         )
         resolved_n: Final = n if n is not None else (len(completion_response.data) if completion_response.data else 0)
 
-        if custom_llm_provider in ("openai", "azure", "chatgpt"):
-            registered_info: Final = (
-                litellm.model_cost.get(model)
-                or litellm.model_cost.get(f"{custom_llm_provider}/{model}")
-                or litellm.model_cost.get(model.removeprefix(f"{custom_llm_provider}/"), {})
-            )
-            if registered_info.get("output_cost_per_image_token") is not None:
-                from litellm.llms.openai.image_generation.cost_calculator import cost_calculator
+        if _uses_token_based_image_pricing(model, custom_llm_provider):
+            from litellm.llms.openai.image_generation.cost_calculator import cost_calculator
 
-                return cost_calculator(
-                    model=model, image_response=completion_response, custom_llm_provider=custom_llm_provider
-                )
+            return cost_calculator(
+                model=model, image_response=completion_response, custom_llm_provider=custom_llm_provider
+            )
 
         if custom_llm_provider == litellm.LlmProviders.VERTEX_AI.value:
             if isinstance(completion_response, ImageResponse):
@@ -1878,31 +1886,6 @@ class CostCalculatorUtils:
             return runwayml_image_cost_calculator(
                 model=model,
                 image_response=completion_response,
-            )
-        elif (
-            custom_llm_provider == litellm.LlmProviders.OPENAI.value
-            or custom_llm_provider == litellm.LlmProviders.AZURE.value
-        ):
-            # gpt-image models use token-based pricing.
-            model_lower: Final = model.lower()
-            if "gpt-image" in model_lower:
-                from litellm.llms.openai.image_generation.cost_calculator import (
-                    cost_calculator as openai_gpt_image_cost_calculator,
-                )
-
-                return openai_gpt_image_cost_calculator(
-                    model=model,
-                    image_response=completion_response,
-                    custom_llm_provider=custom_llm_provider,
-                )
-            # Fall through to default for DALL-E models
-            return default_image_cost_calculator(
-                model=model,
-                quality=resolved_quality,
-                custom_llm_provider=custom_llm_provider,
-                n=resolved_n,
-                size=resolved_size,
-                optional_params=optional_params,
             )
         else:
             return default_image_cost_calculator(

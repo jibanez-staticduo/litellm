@@ -2310,6 +2310,17 @@ def _summable_prompt_token_fields(prompt_tokens_details: BaseModel) -> list[str]
     return [attr for attr in field_names if attr != "cache_creation_tokens"]
 
 
+def _combine_cached_token_details(combined: PromptTokensDetailsWrapper, usage: PromptTokensDetailsWrapper) -> None:
+    cached_details: Final = usage.cached_tokens_details
+    if cached_details is None:
+        return
+    existing_details: Final = combined.cached_tokens_details or {}
+    combined.cached_tokens_details = {
+        key: existing_details.get(key, 0) + cached_details.get(key, 0)
+        for key in existing_details.keys() | cached_details.keys()
+    }
+
+
 class BaseTokenUsageProcessor:
     @staticmethod
     def combine_usage_objects(usage_objects: list[Usage]) -> Usage:
@@ -2359,13 +2370,7 @@ class BaseTokenUsageProcessor:
                                 current_val + new_val,
                             )
 
-                cached_details: Final = usage.prompt_tokens_details.cached_tokens_details
-                if cached_details is not None:
-                    existing_details: Final = combined.prompt_tokens_details.cached_tokens_details or {}
-                    combined.prompt_tokens_details.cached_tokens_details = {
-                        key: existing_details.get(key, 0) + cached_details.get(key, 0)
-                        for key in existing_details.keys() | cached_details.keys()
-                    }
+                _combine_cached_token_details(combined.prompt_tokens_details, usage.prompt_tokens_details)
 
             # Handle nested completion_tokens_details
             if hasattr(usage, "completion_tokens_details") and usage.completion_tokens_details:
