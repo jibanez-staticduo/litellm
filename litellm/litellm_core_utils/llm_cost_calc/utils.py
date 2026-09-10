@@ -1176,6 +1176,21 @@ def generic_cost_per_token(
     image_tokens = prompt_tokens_details["image_tokens"]
     video_tokens = prompt_tokens_details["video_tokens"]
 
+    cached_modalities: Final = (
+        usage.prompt_tokens_details.cached_tokens_details if usage.prompt_tokens_details is not None else None
+    )
+    cached_audio: Final = min(max((cached_modalities or {}).get("audio_tokens", 0), 0), audio_tokens, cache_hit)
+    cached_image: Final = min(
+        max((cached_modalities or {}).get("image_tokens", 0), 0), image_tokens, max(cache_hit - cached_audio, 0)
+    )
+    if cached_modalities:
+        audio_tokens -= cached_audio
+        image_tokens -= cached_image
+        text_tokens = max(text_tokens - max(cache_hit - cached_audio - cached_image, 0), 0)
+        prompt_tokens_details["audio_tokens"] = audio_tokens
+        prompt_tokens_details["image_tokens"] = image_tokens
+        prompt_tokens_details["text_tokens"] = text_tokens
+
     # Check for double-counting: sum of details > prompt_tokens means overlap
     total_details: Final = text_tokens + cache_hit + audio_tokens + cache_creation + image_tokens + video_tokens
     has_double_counting: Final = (cache_hit > 0 or cache_creation > 0) and total_details > usage.prompt_tokens
@@ -1221,6 +1236,13 @@ def generic_cost_per_token(
         cache_creation_cost_above_1hr=cache_creation_cost_above_1hr,
         service_tier=service_tier,
     )
+    for cached_count, rate_key in (
+        (cached_audio, "cache_read_input_audio_token_cost"),
+        (cached_image, "cache_read_input_image_token_cost"),
+    ):
+        modality_rate: Final = _get_cost_per_unit(model_info, rate_key, None)
+        if modality_rate is not None:
+            prompt_cost += cached_count * (modality_rate - cache_read_cost)
 
     ## CALCULATE OUTPUT COST
     text_tokens = 0

@@ -2359,6 +2359,14 @@ class BaseTokenUsageProcessor:
                                 current_val + new_val,
                             )
 
+                cached_details: Final = usage.prompt_tokens_details.cached_tokens_details
+                if cached_details is not None:
+                    existing_details: Final = combined.prompt_tokens_details.cached_tokens_details or {}
+                    combined.prompt_tokens_details.cached_tokens_details = {
+                        key: existing_details.get(key, 0) + cached_details.get(key, 0)
+                        for key in existing_details.keys() | cached_details.keys()
+                    }
+
             # Handle nested completion_tokens_details
             if hasattr(usage, "completion_tokens_details") and usage.completion_tokens_details:
                 if not hasattr(combined, "completion_tokens_details") or not combined.completion_tokens_details:
