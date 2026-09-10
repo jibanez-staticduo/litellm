@@ -30,9 +30,6 @@ from litellm.types.llms.openai import (
     OutputTextAnnotationAddedEvent,
     OutputTextDeltaEvent,
     OutputTextDoneEvent,
-    ReasoningSummaryPartDoneEvent,
-    ReasoningSummaryTextDeltaEvent,
-    ReasoningSummaryTextDoneEvent,
     ResponseCompletedEvent,
     ResponseCreatedEvent,
     ResponseInProgressEvent,
@@ -603,68 +600,38 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
             chunk_dict["usage"] = hidden_params["usage"]
         return chunk_dict
 
-    def create_reasoning_summary_text_done_event(
+    def create_reasoning_text_done_event(
         self,
         reasoning_item_id: str,
         reasoning_content: str,
         sequence_number: int,
-    ) -> ReasoningSummaryTextDoneEvent:
-        """
-        Create response.reasoning_summary_text.done event.
-
-        Example:
-        {
-            "type": "response.reasoning_summary_text.done",
-            "item_id": "rs_0c5dae30e53172980069708ba2f59c8197b71ca9820edad07c",
-            "output_index": 0,
-            "sequence_number": 97,
-            "summary_index": 0,
-            "text": "**Clarifying the first humans**\n\nThe  I'm addressing the user's specific interest."
-        }
-        """
-        return ReasoningSummaryTextDoneEvent(
-            type=ResponsesAPIStreamEvents.REASONING_SUMMARY_TEXT_DONE,
-            item_id=reasoning_item_id,
-            output_index=0,
-            sequence_number=sequence_number,
-            summary_index=0,
-            text=reasoning_content,
+    ) -> BaseLiteLLMOpenAIResponseObject:
+        return BaseLiteLLMOpenAIResponseObject.model_validate(
+            {
+                "type": "response.reasoning_text.done",
+                "item_id": reasoning_item_id,
+                "output_index": 0,
+                "sequence_number": sequence_number,
+                "content_index": 0,
+                "text": reasoning_content,
+            }
         )
 
-    def create_reasoning_summary_part_done_event(
+    def create_reasoning_part_done_event(
         self,
         reasoning_item_id: str,
         reasoning_content: str,
         sequence_number: int,
-    ) -> ReasoningSummaryPartDoneEvent:
-        """
-        Create response.reasoning_summary_part.done event.
-
-        Example:
-        {
-            "type": "response.reasoning_summary_part.done",
-            "item_id": "rs_0c5dae30e53172980069708ba2f59c8197b71ca9820edad07c",
-            "output_index": 0,
-            "part": {
-                "type": "summary_text",
-                "text": "**Clarifying the first humans**\n\nThe  earlier hominins. It feels important to ensure I'm addressing the user's specific interest."
-            },
-            "sequence_number": 98,
-            "summary_index": 0
-        }
-        """
-        return ReasoningSummaryPartDoneEvent(
-            type=ResponsesAPIStreamEvents.REASONING_SUMMARY_PART_DONE,
-            item_id=reasoning_item_id,
-            output_index=0,
-            sequence_number=sequence_number,
-            summary_index=0,
-            part=BaseLiteLLMOpenAIResponseObject(
-                **{
-                    "type": "summary_text",
-                    "text": reasoning_content,
-                }
-            ),
+    ) -> BaseLiteLLMOpenAIResponseObject:
+        return BaseLiteLLMOpenAIResponseObject.model_validate(
+            {
+                "type": "response.content_part.done",
+                "item_id": reasoning_item_id,
+                "output_index": 0,
+                "sequence_number": sequence_number,
+                "content_index": 0,
+                "part": {"type": "reasoning_text", "text": reasoning_content},
+            }
         )
 
     def create_output_text_done_event(self, litellm_complete_object: ModelResponse) -> OutputTextDoneEvent:
@@ -744,40 +711,17 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
         reasoning_content: str,
         sequence_number: int,
     ) -> OutputItemDoneEvent:
-        """
-        Create response.output_item.done event for reasoning items.
-
-        Example:
-        {
-            "type": "response.output_item.done",
-            "output_index": 0,
-            "sequence_number": 99,
-            "item": {
-                "id": "rs_0c5dae30e53172980069708ba2f59c8197b71ca9820edad07c",
-                "type": "reasoning",
-                "summary": [
-                    {
-                        "type": "summary_text",
-                        "text": "**Clarifying the first humans**..."
-                    }
-                ]
-            }
-        }
-        """
         return OutputItemDoneEvent(
             type=ResponsesAPIStreamEvents.OUTPUT_ITEM_DONE,
             output_index=0,
             sequence_number=sequence_number,
-            item=BaseLiteLLMOpenAIResponseObject(
-                **{
+            item=BaseLiteLLMOpenAIResponseObject.model_validate(
+                {
                     "id": reasoning_item_id,
                     "type": "reasoning",
-                    "summary": [
-                        {
-                            "type": "summary_text",
-                            "text": reasoning_content,
-                        }
-                    ],
+                    "status": "completed",
+                    "summary": [],
+                    "content": [{"type": "reasoning_text", "text": reasoning_content}],
                 }
             ),
         )
@@ -860,12 +804,8 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
         reasoning_content: Final = "".join(self._accumulated_reasoning_content_parts)
         self._pending_response_events.extend(
             (
-                self.create_reasoning_summary_text_done_event(
-                    reasoning_item_id, reasoning_content, self._sequence_number + 1
-                ),
-                self.create_reasoning_summary_part_done_event(
-                    reasoning_item_id, reasoning_content, self._sequence_number + 2
-                ),
+                self.create_reasoning_text_done_event(reasoning_item_id, reasoning_content, self._sequence_number + 1),
+                self.create_reasoning_part_done_event(reasoning_item_id, reasoning_content, self._sequence_number + 2),
                 self.create_reasoning_output_item_done_event(
                     reasoning_item_id, reasoning_content, self._sequence_number + 3
                 ),
@@ -905,12 +845,12 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
                 self._pending_response_events.append(
                     BaseLiteLLMOpenAIResponseObject.model_validate(
                         {
-                            "type": "response.reasoning_summary_part.added",
+                            "type": "response.content_part.added",
                             "item_id": self._cached_reasoning_item_id,
                             "output_index": 0,
-                            "summary_index": 0,
+                            "content_index": 0,
                             "sequence_number": self._sequence_number,
-                            "part": {"type": "summary_text", "text": ""},
+                            "part": {"type": "reasoning_text", "text": ""},
                         }
                     )
                 )
@@ -1051,7 +991,7 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
         Transform a chat completion chunk to a response API chunk.
 
         This currently handles emitting the OutputTextDeltaEvent, which is used by other tools using the responses API
-        and the ReasoningSummaryTextDeltaEvent, which is used by the responses API to emit reasoning content.
+        and reasoning text delta events carrying raw provider reasoning.
         It also handles emitting annotation.added events when annotations are detected in the chunk.
         """
         if self._cached_item_id is None:
@@ -1094,12 +1034,16 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
             if self._cached_reasoning_item_id is None:
                 self._cached_reasoning_item_id = f"rs_{uuid.uuid4()}"
 
-            return ReasoningSummaryTextDeltaEvent(
-                type=ResponsesAPIStreamEvents.REASONING_SUMMARY_TEXT_DELTA,
-                item_id=self._cached_reasoning_item_id,
-                output_index=0,
-                summary_index=0,
-                delta=reasoning_content,
+            self._sequence_number += 1
+            return BaseLiteLLMOpenAIResponseObject.model_validate(
+                {
+                    "type": "response.reasoning_text.delta",
+                    "item_id": self._cached_reasoning_item_id,
+                    "output_index": 0,
+                    "content_index": 0,
+                    "sequence_number": self._sequence_number,
+                    "delta": reasoning_content,
+                }
             )
 
         # Priority 2: Handle text deltas

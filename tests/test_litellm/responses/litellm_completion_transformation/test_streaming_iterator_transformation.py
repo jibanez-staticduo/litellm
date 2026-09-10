@@ -111,20 +111,34 @@ async def test_reasoning_lifecycle_survives_wire_serialization(sync, empty_prefi
     assert [event["item"]["type"] for event in added] == ["reasoning", "message"]
     assert [event["output_index"] for event in added] == [0, 1]
     reasoning_id = added[0]["item"]["id"]
-    delta = next(event for event in wire if event["type"] == "response.reasoning_summary_text.delta")
-    assert delta["summary_index"] == 0
+    delta = next(event for event in wire if event["type"] == "response.reasoning_text.delta")
+    assert delta["content_index"] == 0
     assert delta["item_id"] == reasoning_id
     assert delta["delta"] == "Check the sum."
-    part_added = next(event for event in wire if event["type"] == "response.reasoning_summary_part.added")
-    assert part_added["summary_index"] == 0
+    part_added = next(event for event in wire if event["type"] == "response.content_part.added")
+    assert part_added["content_index"] == 0
     assert wire.index(part_added) < wire.index(delta)
     done = [event for event in wire if event["type"] == "response.output_item.done"]
     assert [event["item"]["type"] for event in done] == ["reasoning", "message"]
     assert done[0]["item"]["id"] == reasoning_id
-    assert done[0]["item"]["summary"][0]["text"] == "Check the sum."
+    assert done[0]["item"]["content"][0]["text"] == "Check the sum."
     assert wire.index(done[0]) < wire.index(added[1])
     assert done[1]["item"]["content"][0]["text"] == "42"
-    content_done = next(event for event in wire if event["type"] == "response.content_part.done")
+    assert done[0]["item"]["summary"] == []
+    assert done[0]["item"]["content"][0]["type"] == "reasoning_text"
+    assert not any("reasoning_summary" in event["type"] for event in wire)
+    completed = next(event["response"] for event in wire if event["type"] == "response.completed")
+    saved = next(item for item in completed["output"] if item["type"] == "reasoning")
+    assert saved["summary"] == []
+    assert saved["content"] == done[0]["item"]["content"]
+    from litellm.responses.litellm_completion_transformation.transformation import LiteLLMCompletionResponsesConfig
+    replayed = LiteLLMCompletionResponsesConfig.transform_responses_api_input_to_messages(
+        [saved, {"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": "42"}]}],
+        responses_api_request={}, replay_reasoning=True,
+    )
+    assert replayed[0]["reasoning_content"] == "Check the sum."
+    assert replayed[0]["content"] == [{"type": "text", "text": "42"}]
+    content_done = next(event for event in wire if event["type"] == "response.content_part.done" and event["output_index"] == 1)
     assert content_done["part"]["type"] == "output_text"
     assert content_done["output_index"] == 1
 

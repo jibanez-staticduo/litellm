@@ -330,9 +330,9 @@ class TestLiteLLMCompletionResponsesConfig:
                 "rs_"
             ), f"Expected ID to start with 'rs_', got: {reasoning_item.id}"
         assert reasoning_item.status == "completed"
-        assert reasoning_item.role == "assistant"
+        assert reasoning_item.summary == []
         assert len(reasoning_item.content) == 1
-        assert reasoning_item.content[0].type == "output_text"
+        assert reasoning_item.content[0].type == "reasoning_text"
         assert "step by step" in reasoning_item.content[0].text
         assert "42" in reasoning_item.content[0].text
 
@@ -3784,8 +3784,7 @@ class TestEnsureOutputItemContentPartAdded:
         assert completed_event.response.status == "incomplete"
         assert completed_event.response.output[0].status == "incomplete"
 
-    def test_reasoning_item_does_not_emit_content_part_added(self):
-        """Reasoning items should not get a content_part.added event."""
+    def test_reasoning_item_opens_raw_content_part(self):
         from litellm.types.llms.openai import OutputItemAddedEvent
 
         iterator = self._make_iterator()
@@ -3795,7 +3794,8 @@ class TestEnsureOutputItemContentPartAdded:
 
         events = iterator._pending_response_events
         assert len(events) == 2
-        assert events[1].type == "response.reasoning_summary_part.added"
+        assert events[1].type == "response.content_part.added"
+        assert events[1].part == {"type": "reasoning_text", "text": ""}
         assert isinstance(events[0], OutputItemAddedEvent)
         assert iterator.sent_content_part_added_event is False
 

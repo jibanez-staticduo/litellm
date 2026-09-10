@@ -25,8 +25,9 @@ from openai.types.chat.chat_completion_named_tool_choice_param import (
 from openai.types.chat.chat_completion_named_tool_choice_param import (
     Function as NamedToolChoiceFunction,
 )
-from openai.types.responses import ResponseFunctionToolCall
+from openai.types.responses import ResponseFunctionToolCall, ResponseReasoningItem
 from openai.types.responses.response_create_params import ResponseInputParam
+from openai.types.responses.response_reasoning_item import Content as ReasoningContent
 from openai.types.responses.tool_param import FunctionToolParam
 from pydantic import TypeAdapter
 from typing_extensions import ReadOnly, TypedDict
@@ -68,7 +69,6 @@ from litellm.types.llms.openai import (
     ResponseAPIUsage,
     ResponsesAPIOptionalRequestParams,
     ResponsesAPIResponse,
-    ResponsesAPIStatus,
     ValidChatCompletionMessageContentTypes,
     ValidChatCompletionMessageContentTypesLiteral,
 )
@@ -2176,7 +2176,7 @@ class LiteLLMCompletionResponsesConfig:
     @staticmethod
     def _map_chat_completion_finish_reason_to_responses_status(
         finish_reason: str | None,
-    ) -> ResponsesAPIStatus:
+    ) -> Literal["completed", "incomplete"]:
         """
         Map chat completion finish_reason to responses API status.
 
@@ -2367,6 +2367,7 @@ class LiteLLMCompletionResponsesConfig:
         request_input: str | ResponseInputParam = "",
     ) -> list[
         GenericResponseOutputItem
+        | ResponseReasoningItem
         | OutputCodeInterpreterCall
         | OutputFunctionToolCall
         | OutputImageGenerationCall
@@ -2375,6 +2376,7 @@ class LiteLLMCompletionResponsesConfig:
     ]:
         responses_output: list[
             GenericResponseOutputItem
+            | ResponseReasoningItem
             | OutputCodeInterpreterCall
             | OutputFunctionToolCall
             | OutputImageGenerationCall
@@ -2458,7 +2460,7 @@ class LiteLLMCompletionResponsesConfig:
     def _extract_reasoning_output_items(
         chat_completion_response: ModelResponse,
         choices: list[Choices],
-    ) -> list[GenericResponseOutputItem]:
+    ) -> list[ResponseReasoningItem]:
         for choice in choices:
             if hasattr(choice, "message") and choice.message:
                 message = choice.message
@@ -2467,18 +2469,17 @@ class LiteLLMCompletionResponsesConfig:
                 if reasoning_content or encrypted_content:
                     # Only check the first choice for reasoning content
                     return [
-                        GenericResponseOutputItem(
+                        ResponseReasoningItem(
                             type="reasoning",
                             id=f"rs_{uuid.uuid4()}",
                             status=LiteLLMCompletionResponsesConfig._map_chat_completion_finish_reason_to_responses_status(
                                 choice.finish_reason
                             ),
-                            role="assistant",
+                            summary=[],
                             content=[
-                                OutputText(
-                                    type="output_text",
+                                ReasoningContent(
+                                    type="reasoning_text",
                                     text=text,
-                                    annotations=[],
                                 )
                                 for text in (reasoning_content,)
                                 if text

@@ -35,6 +35,7 @@ from openai.types.chat.chat_completion_prediction_content_param import (
 )
 from openai.types.embedding import Embedding as OpenAIEmbedding
 from openai.types.fine_tuning.fine_tuning_job import FineTuningJob
+from openai.types.responses import ResponseReasoningItem
 from openai.types.responses.response import (
     IncompleteDetails,
     Response,
@@ -1354,6 +1355,7 @@ class ResponsesAPIResponse(BaseLiteLLMOpenAIResponseObject):
         list[ResponseOutputItem | dict]
         | list[
             GenericResponseOutputItem
+            | ResponseReasoningItem
             | OutputCodeInterpreterCall
             | OutputFunctionToolCall
             | OutputImageGenerationCall
