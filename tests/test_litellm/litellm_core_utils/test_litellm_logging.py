@@ -4,7 +4,7 @@ import datetime
 import os
 import sys
 import time
-from typing import Literal
+from typing import Final, Literal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -2638,6 +2638,31 @@ def test_get_final_response_obj_with_empty_response_obj_and_list_init():
     assert len(result) == 2
     assert result[0].name == "Object1"
     assert result[1].name == "Object2"
+
+
+@pytest.mark.parametrize(
+    "meta,expected_tokens",
+    [
+        ({"billed_units": {"total_tokens": 83}}, 83),
+        ({"tokens": {"input_tokens": 83}}, 83),
+        ({"tokens": {"input_tokens": 0}, "billed_units": {"total_tokens": 83}}, 0),
+        ({"billed_units": {"search_units": 1}}, 0),
+        ({"billed_units": {"total_tokens": None}}, 0),
+        ({}, 0),
+    ],
+)
+def test_rerank_usage_is_preserved_in_logging(meta: dict, expected_tokens: int) -> None:
+    from litellm.litellm_core_utils.litellm_logging import StandardLoggingPayloadSetup
+
+    response: Final = {"id": "rerank-test", "results": [], "meta": meta}
+    usage: Final = StandardLoggingPayloadSetup.get_usage_from_response_obj(response)
+    usage_dict: Final = StandardLoggingPayloadSetup.get_usage_as_dict(response)
+    assert usage.prompt_tokens == expected_tokens
+    assert usage.total_tokens == expected_tokens
+    assert usage.completion_tokens == 0
+    assert usage_dict["prompt_tokens"] == expected_tokens
+    assert usage_dict["total_tokens"] == expected_tokens
+    assert usage_dict["completion_tokens"] == 0
 
 
 def test_get_usage_as_dict():
