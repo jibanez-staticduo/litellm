@@ -22,7 +22,7 @@ class CodexRealtimeCall(BaseModel):
     profile: str | None = None
     api_base: str | None = None
     extra_headers: Mapping[str, str] | None = None
-    extra_query: Mapping[str, str] | None = None
+    extra_query: Mapping[str, str | tuple[str, ...]] | None = None
     usage_supervised: bool = False
     owner: str
     expires_at: float
@@ -34,7 +34,7 @@ class ChatGPTCallRouting(BaseModel):
     profile: str | None = None
     api_base: str | None = None
     extra_headers: Mapping[str, str] | None = None
-    extra_query: Mapping[str, str] | None = None
+    extra_query: Mapping[str, str | tuple[str, ...]] | None = None
 
 
 class CodexSidebandRequest(TypedDict):
@@ -44,7 +44,7 @@ class CodexSidebandRequest(TypedDict):
     query_params: ReadOnly[RealtimeQueryParams]
     chatgpt_auth_profile: ReadOnly[str | None]
     extra_headers: ReadOnly[Mapping[str, str] | None]
-    extra_query: ReadOnly[Mapping[str, str] | None]
+    extra_query: ReadOnly[Mapping[str, str | tuple[str, ...]] | None]
 
 
 def build_call_request(
