@@ -91,6 +91,44 @@ def _response_ids(events) -> list[str]:
     ]
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("sync", [False, True])
+@pytest.mark.parametrize("empty_prefix", [False, True])
+async def test_reasoning_lifecycle_survives_wire_serialization(sync, empty_prefix):
+    reasoning = ModelResponseStream(
+        id=CHAT_COMPLETION_ID,
+        model="claude-haiku-4-5",
+        created=1748575031,
+        choices=[StreamingChoices(index=0, delta=Delta(reasoning_content="Check the sum."))],
+    )
+    iterator = _build_iterator(
+        ([_chunk("")] if empty_prefix else [])
+        + [reasoning, _chunk("42"), _chunk("", finish_reason="stop")]
+    )
+    events = list(iterator) if sync else [event async for event in iterator]
+    wire = [json.loads(event.model_dump_json(exclude_none=True, exclude_unset=True)) for event in events]
+    added = [event for event in wire if event["type"] == "response.output_item.added"]
+    assert [event["item"]["type"] for event in added] == ["reasoning", "message"]
+    assert [event["output_index"] for event in added] == [0, 1]
+    reasoning_id = added[0]["item"]["id"]
+    delta = next(event for event in wire if event["type"] == "response.reasoning_summary_text.delta")
+    assert delta["summary_index"] == 0
+    assert delta["item_id"] == reasoning_id
+    assert delta["delta"] == "Check the sum."
+    part_added = next(event for event in wire if event["type"] == "response.reasoning_summary_part.added")
+    assert part_added["summary_index"] == 0
+    assert wire.index(part_added) < wire.index(delta)
+    done = [event for event in wire if event["type"] == "response.output_item.done"]
+    assert [event["item"]["type"] for event in done] == ["reasoning", "message"]
+    assert done[0]["item"]["id"] == reasoning_id
+    assert done[0]["item"]["summary"][0]["text"] == "Check the sum."
+    assert wire.index(done[0]) < wire.index(added[1])
+    assert done[1]["item"]["content"][0]["text"] == "42"
+    content_done = next(event for event in wire if event["type"] == "response.content_part.done")
+    assert content_done["part"]["type"] == "output_text"
+    assert content_done["output_index"] == 1
+
+
 def test_tool_call_delta_is_emitted_as_responses_events():
     iterator = LiteLLMCompletionStreamingIterator(
         model="test-model",
