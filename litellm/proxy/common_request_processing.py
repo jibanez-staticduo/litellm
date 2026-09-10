@@ -1998,7 +1998,11 @@ class ProxyBaseLLMRequestProcessing:
             user_api_key_dict=user_api_key_dict,
             data=self.data,
             call_type=route_type,
-            **({"internal_realtime_observer": True} if internal_realtime_observer else {}),
+            **(
+                MappingProxyType({"internal_realtime_observer": True})
+                if internal_realtime_observer
+                else MappingProxyType({})
+            ),
         )
         if route_type == "aget_responses":
             attach_post_call_pipelines_to_retrieval(

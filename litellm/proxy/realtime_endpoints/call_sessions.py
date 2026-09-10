@@ -218,7 +218,11 @@ async def process_codex_request(
         model=model,
         route_type=route_type,
         llm_router=server.llm_router,
-        **({"internal_realtime_observer": True} if internal_realtime_observer else {}),
+        **(
+            MappingProxyType({"internal_realtime_observer": True})
+            if internal_realtime_observer
+            else MappingProxyType({})
+        ),
     )
     if internal_realtime_observer:
         logging_obj.model_call_details["internal_request_origin"] = InternalRequestOrigin.REALTIME_OBSERVER
