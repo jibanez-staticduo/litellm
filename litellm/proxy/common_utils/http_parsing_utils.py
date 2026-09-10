@@ -5,6 +5,7 @@ from typing import Any, Final
 
 import orjson
 from fastapi import Request, UploadFile, status
+from starlette.requests import ClientDisconnect
 
 from litellm._logging import verbose_proxy_logger
 from litellm.constants import MAX_REQUEST_BODY_SIZE_TO_REPAIR_MB
@@ -65,6 +66,8 @@ async def _read_request_body(request: Request | None) -> dict:
         if _is_form_content_type(content_type):
             try:
                 form_data: Final = await request.form()
+            except ClientDisconnect:
+                raise
             except Exception as e:
                 # ``request.form()`` raises on malformed multipart (missing
                 # boundary, malformed chunk encoding, …). Surface as 400 so
@@ -132,6 +135,13 @@ async def _read_request_body(request: Request | None) -> dict:
         _safe_set_request_parsed_body(request=request, parsed_body=parsed_body)
         return parsed_body
 
+    except ClientDisconnect:
+        raise ProxyException(
+            message="Client disconnected while reading request body",
+            type="request_cancelled",
+            param="request_body",
+            code=499,
+        ) from None
     except (json.JSONDecodeError, orjson.JSONDecodeError, ProxyException) as e:
         # Re-raise ProxyException as-is
         verbose_proxy_logger.error("Invalid JSON payload received: %s", e)

@@ -39,6 +39,57 @@ def logging_obj():
     )
 
 
+@pytest.fixture(scope="module")
+def signaling_prometheus_logger():
+    from prometheus_client import REGISTRY
+    from litellm.integrations.prometheus import PrometheusLogger
+
+    existing = frozenset(REGISTRY._collector_to_names)
+    try:
+        yield PrometheusLogger()
+    finally:
+        for collector in frozenset(REGISTRY._collector_to_names) - existing:
+            REGISTRY.unregister(collector)
+
+
+@pytest.mark.parametrize("provider", ["chatgpt", "openai"])
+@pytest.mark.asyncio
+async def test_realtime_signaling_has_zero_usage_standard_logging(provider, signaling_prometheus_logger, caplog):
+    import datetime as dt
+    import json
+
+    logger = LitellmLogging(
+        model="gpt-live-1-codex", messages=[], stream=False,
+        call_type="arealtime_calls", start_time=time.time(),
+        litellm_call_id="signaling-call", function_id="signaling-function",
+    )
+    logger.update_environment_variables(
+        litellm_params={}, optional_params={}, model="gpt-live-1-codex",
+        custom_llm_provider=provider, input="",
+    )
+    response = httpx.Response(201, text="v=0\r\nprivate-sdp", headers={"location": "/calls/rtc_private"})
+    logger._success_handler_helper_fn(
+        result=response, start_time=dt.datetime.now(), end_time=dt.datetime.now(), cache_hit=False,
+    )
+    payload = logger.model_call_details.get("standard_logging_object")
+    assert payload is not None
+    assert payload["response_cost"] == 0
+    assert payload["total_tokens"] == 0
+    assert "private-sdp" not in json.dumps(payload)
+    assert "rtc_private" not in json.dumps(payload)
+    assert response.text == "v=0\r\nprivate-sdp"
+
+    from litellm.proxy.hooks.proxy_track_cost_callback import _ProxyDBLogger
+
+    await signaling_prometheus_logger.async_log_success_event(
+        logger.model_call_details, response, dt.datetime.now(), dt.datetime.now()
+    )
+    await _ProxyDBLogger()._PROXY_track_cost_callback(
+        logger.model_call_details, response, dt.datetime.now(), dt.datetime.now()
+    )
+    assert "Error in tracking cost callback" not in caplog.text
+
+
 def test_get_combined_callback_list_preserves_insertion_order(logging_obj):
     assert logging_obj.get_combined_callback_list(
         dynamic_success_callbacks=["prometheus", "langfuse", "datadog", "otel", "s3"],

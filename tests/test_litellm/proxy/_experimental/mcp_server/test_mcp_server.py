@@ -31,6 +31,33 @@ def _rendered_log_message(call):
     return message % values if values else message
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("timeout,expected_status", [(0.01, "listing_failed"), (0.5, "not_required")])
+async def test_lazymcp_catalog_honors_listing_timeout(timeout, expected_status):
+    import litellm.proxy._experimental.mcp_server.server as server_module
+
+    async def delayed_tools(**kwargs):
+        await asyncio.sleep(0.05)
+        return []
+
+    server = MCPServer(server_id="slow-tools", name="slow-tools", transport="http")
+    with (
+        patch.object(server_module, "MCP_TOOL_LISTING_TIMEOUT", timeout),  # test-quality-ok: vary the import-time setting without reloading MCP global state
+        patch.object(server_module, "_get_lazymcp_server_tools", side_effect=delayed_tools),  # test-quality-ok: simulate upstream latency while exercising the real deadline and cancellation
+    ):
+        _, result_status = await server_module._get_bounded_lazymcp_server_tools(
+            server=server,
+            user_api_key_auth=None,
+            mcp_auth_header=None,
+            mcp_server_auth_headers=None,
+            oauth2_headers=None,
+            raw_headers=None,
+            scope_servers=[server],
+        )
+        await asyncio.sleep(0)
+    assert result_status == expected_status
+
+
 @pytest.fixture(autouse=True)
 def cleanup_mcp_global_state():
     """Clean up MCP global state before and after each test.

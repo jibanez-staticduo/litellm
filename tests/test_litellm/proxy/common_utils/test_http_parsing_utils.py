@@ -26,6 +26,22 @@ from litellm.proxy.common_utils.http_parsing_utils import (
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("content_type", ["application/json", "multipart/form-data; boundary=test"])
+async def test_disconnected_body_stops_request_without_empty_payload(content_type):
+    async def disconnected_receive():
+        return {"type": "http.disconnect"}
+
+    request = Request(
+        {"type": "http", "headers": [(b"content-type", content_type.encode())]},
+        receive=disconnected_receive,
+    )
+    with pytest.raises(ProxyException) as error:
+        await _read_request_body(request)
+    assert error.value.code == "499"
+    assert "parsed_body" not in request.scope
+
+
+@pytest.mark.asyncio
 async def test_request_body_caching():
     """
     Test that the request body is cached after the first read and subsequent

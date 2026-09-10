@@ -1962,6 +1962,15 @@ class Logging(LiteLLMLoggingBaseClass):
         Some endpoints return a different type of result than what is expected by the logging system.
         This function is used to normalize the result to the expected type.
         """
+        if self.call_type == "arealtime_calls" and isinstance(result, Response) and result.is_success:
+            return ModelResponse(
+                id=self.litellm_call_id,
+                model=self.model,
+                choices=[],  # mutable-ok: ModelResponse accepts a list of completion choices
+                usage=Usage(prompt_tokens=0, completion_tokens=0, total_tokens=0),
+                hidden_params={"response_cost": 0.0},  # mutable-ok: response owns its logging metadata
+            )
+
         logging_result = result
         if self.call_type == CallTypes.arealtime.value and isinstance(result, list):
             combined_usage_object: Final = (

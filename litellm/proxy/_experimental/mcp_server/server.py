@@ -2489,9 +2489,6 @@ if MCP_AVAILABLE:
         "mcp_status",
     )  # rebind-ok: framework flow intentionally updates request or lifecycle state
     LAZYMCP_CACHE_TTL_SECONDS = 300  # rebind-ok: framework flow intentionally updates request or lifecycle state
-    LAZYMCP_CATALOG_SERVER_TIMEOUT_SECONDS = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
-        5.0  # rebind-ok: framework flow intentionally updates request or lifecycle state
-    )
     LAZYMCP_UNAVAILABLE_SERVER_ERROR: Final = {  # mutable-ok: framework contract requires mutable request or response containers
         "error": "MCP server is not available for this request."
     }  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
@@ -2833,7 +2830,7 @@ if MCP_AVAILABLE:
         )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         done, _ = await asyncio.wait(
             (listing_task,),
-            timeout=LAZYMCP_CATALOG_SERVER_TIMEOUT_SECONDS,
+            timeout=MCP_TOOL_LISTING_TIMEOUT,
         )
         if not done:
             listing_task.cancel()
