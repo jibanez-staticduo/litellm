@@ -156,18 +156,22 @@ def test_additional_tool_round_trip_preserves_identity(tool, backend_name, expec
 
     completion = ModelResponse(
         model="qwen3.8-flash-next",
-        choices=[{
-            "index": 0,
-            "finish_reason": "tool_calls",
-            "message": {
-                "role": "assistant",
-                "tool_calls": [{
-                    "id": "call_exec",
-                    "type": "function",
-                    "function": {"name": backend_name, "arguments": '{"content":"print(1)"}'},
-                }],
-            },
-        }],
+        choices=[
+            {
+                "index": 0,
+                "finish_reason": "tool_calls",
+                "message": {
+                    "role": "assistant",
+                    "tool_calls": [
+                        {
+                            "id": "call_exec",
+                            "type": "function",
+                            "function": {"name": backend_name, "arguments": '{"content":"print(1)"}'},
+                        }
+                    ],
+                },
+            }
+        ],
     )
     response = LiteLLMCompletionResponsesConfig.transform_chat_completion_response_to_responses_api_response(
         request_input=request_input,
@@ -183,3 +187,18 @@ def test_additional_tool_round_trip_preserves_identity(tool, backend_name, expec
     if expected_type == "custom_tool_call":
         assert calls[0].input == "print(1)"
     assert request_input == original
+
+
+def test_reasoning_context_replays_history_without_becoming_effort():
+    request = LiteLLMCompletionResponsesConfig.transform_responses_api_request_to_chat_completion_request(
+        model="qwen3.8-flash-next",
+        custom_llm_provider="hosted_vllm",
+        input=[
+            {"type": "reasoning", "content": [{"type": "text", "text": "Check the previous calculation"}]},
+            {"role": "assistant", "content": "The sum is 42"},
+            {"role": "user", "content": "Verify it"},
+        ],
+        responses_api_request={"reasoning": {"context": "all_turns"}},
+    )
+    assert "reasoning_effort" not in request
+    assert "Check the previous calculation" in json.dumps(request["messages"])

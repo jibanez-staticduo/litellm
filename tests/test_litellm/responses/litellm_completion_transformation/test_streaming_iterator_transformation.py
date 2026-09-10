@@ -628,3 +628,97 @@ def test_streamed_anthropic_tool_call_events_correlate_on_normalized_item_id():
     assert item_dones[0].item.call_id == "toolu_01AbCdEf"
     for evt in deltas + dones:
         assert evt.item_id == added[0].item.id
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("custom", [False, True])
+async def test_additional_namespace_tool_stream_preserves_call_identity(custom):
+    from copy import deepcopy
+
+    arguments = json.dumps({"content": "print('hello')"}) if custom else '{"value":7}'
+    tool = {"type": "custom" if custom else "function", "name": "exec", "description": "Run code"}
+    request_input = [
+        {
+            "type": "additional_tools",
+            "role": "developer",
+            "tools": [
+                {"type": "namespace", "name": "functions", "tools": [tool]},
+            ],
+        },
+        {"role": "user", "content": "Run the code"},
+    ]
+    original = deepcopy(request_input)
+    chunks = [
+        ModelResponseStream(
+            id=CHAT_COMPLETION_ID,
+            model="qwen3.8-flash-next",
+            created=1748575031,
+            choices=[
+                StreamingChoices(
+                    index=0,
+                    delta=Delta(
+                        role="assistant",
+                        tool_calls=[
+                            {
+                                "index": 0,
+                                "id": "call_exec",
+                                "type": "function",
+                                "function": {"name": "functions__exec", "arguments": arguments[:8]},
+                            }
+                        ],
+                    ),
+                )
+            ],
+        ),
+        ModelResponseStream(
+            id=CHAT_COMPLETION_ID,
+            model="qwen3.8-flash-next",
+            created=1748575031,
+            choices=[
+                StreamingChoices(
+                    index=0,
+                    delta=Delta(
+                        tool_calls=[
+                            {
+                                "index": 0,
+                                "function": {"arguments": arguments[8:]},
+                            }
+                        ]
+                    ),
+                )
+            ],
+        ),
+        ModelResponseStream(
+            id=CHAT_COMPLETION_ID,
+            model="qwen3.8-flash-next",
+            created=1748575031,
+            choices=[StreamingChoices(index=0, delta=Delta(), finish_reason="tool_calls")],
+        ),
+    ]
+    iterator = LiteLLMCompletionStreamingIterator(
+        model="qwen3.8-flash-next",
+        litellm_custom_stream_wrapper=_FakeStreamWrapper(chunks),
+        request_input=request_input,
+        responses_api_request={},
+        custom_llm_provider="hosted_vllm",
+    )
+    events = [event async for event in iterator]
+    item_type = "custom_tool_call" if custom else "function_call"
+    added = [e.item for e in events if e.type == "response.output_item.added" and e.item.type == item_type]
+    done = [e.item for e in events if e.type == "response.output_item.done" and e.item.type == item_type]
+    completed = next(e.response for e in events if e.type == "response.completed")
+    final = [item for item in completed.output if item.type == item_type]
+    assert len(added) == len(done) == len(final) == 1
+    for item in (*added, *done, *final):
+        assert item.name == "exec"
+        assert item.namespace == "functions"
+        assert item.call_id == "call_exec"
+        assert item.id == added[0].id
+    if custom:
+        assert done[0].input == final[0].input == "print('hello')"
+        deltas = [e.delta for e in events if e.type == "response.custom_tool_call_input.delta"]
+        assert "".join(deltas) == "print('hello')"
+        assert not any(e.type == "response.function_call_arguments.delta" for e in events)
+    else:
+        assert done[0].arguments == final[0].arguments == arguments
+    assert request_input == original

@@ -16,7 +16,7 @@ logic.
 """
 
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, Sequence, Set
 from types import MappingProxyType
 from typing import Final
 
@@ -39,18 +39,26 @@ def openai_shaped_tool_call_item_id(item_type: str, tool_id: str) -> str:
     return f"{prefix}_{tool_id}"
 
 
-def extract_custom_tool_names(tools: Sequence[object] | None) -> set[str]:
+def extract_custom_tool_names(tools: Sequence[object] | None) -> frozenset[str]:
     """Extract names of tools originally defined as ``type: "custom"``."""
     if not tools:
-        return set()
-    names: Final[set[str]] = set()
-    for tool in tools:
-        if isinstance(tool, dict) and tool.get("type") == "custom" and "name" in tool:
-            names.add(tool["name"])
-    return names
+        return frozenset()
+    return frozenset(
+        str(tool["name"])
+        for tool in tools
+        if isinstance(tool, Mapping) and tool.get("type") == "custom" and "name" in tool
+    ) | frozenset(
+        f"{tool.get('name', '')}__{nested['name']}"
+        for tool in tools
+        if isinstance(tool, Mapping) and tool.get("type") == "namespace"
+        for children in (tool.get("tools"),)
+        if isinstance(children, Sequence) and not isinstance(children, (str, bytes))
+        for nested in children
+        if isinstance(nested, Mapping) and nested.get("type") == "custom" and "name" in nested
+    )
 
 
-def is_custom_tool_call(tool_name: str, custom_tool_names: set[str]) -> bool:
+def is_custom_tool_call(tool_name: str, custom_tool_names: Set[str]) -> bool:
     """Check if a tool call name corresponds to a custom tool."""
     return tool_name in custom_tool_names
 
@@ -97,7 +105,7 @@ def build_tool_call_item_kwargs(
     name: str,
     arguments_or_input: str,
     status: str,
-    custom_tool_names: set[str],
+    custom_tool_names: Set[str],
 ) -> dict[str, str]:
     """Build kwargs for an output item dict that is either a ``function_call``
     or a ``custom_tool_call`` depending on whether *name* is in

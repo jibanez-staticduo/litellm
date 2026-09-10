@@ -165,6 +165,8 @@ def _attribute_fields(value: object) -> dict[str, object]:
 
 
 def _input_item_role(input_item: Mapping[str, object]) -> str:
+    if input_item.get("type") == "agent_message":
+        return "assistant"
     return cast(str, input_item.get("role") or "user")  # cast-ok: client-supplied role forwarded verbatim, unvalidated
 
 
@@ -307,6 +309,18 @@ class LiteLLMCompletionResponsesConfig:
         return kept, lifted
 
     @staticmethod
+    def effective_tools(
+        input: str | ResponseInputParam,
+        responses_api_request: ResponsesAPIOptionalRequestParams,
+    ) -> ResponseTools:
+        _, lifted = LiteLLMCompletionResponsesConfig._lift_additional_tools(input)
+        if not lifted:
+            return responses_api_request.get("tools")
+        return cast(  # cast-ok: additional_tools extends the SDK input union with Responses tool definitions
+            ResponseTools, (*(responses_api_request.get("tools") or ()), *lifted)
+        )
+
+    @staticmethod
     def transform_responses_api_request_to_chat_completion_request(
         model: str,
         input: str | ResponseInputParam,
@@ -354,6 +368,8 @@ class LiteLLMCompletionResponsesConfig:
                     reasoning_effort = reasoning_param
                 elif "effort" in reasoning_param:
                     reasoning_effort = reasoning_param.get("effort")
+                elif reasoning_param == {"context": "all_turns"}:
+                    reasoning_effort = None
                 else:
                     reasoning_effort = reasoning_param
             elif isinstance(reasoning_param, str):
@@ -1313,6 +1329,19 @@ class LiteLLMCompletionResponsesConfig:
                     thinking_blocks=thinking_blocks,
                 )
             ]
+        elif input_item.get("type") == "agent_message":
+            return [  # mutable-ok: message conversion contract returns a list
+                GenericChatCompletionMessage(
+                    role="assistant",
+                    content=json.dumps(
+                        {  # mutable-ok: JSON serialization rejects MappingProxyType
+                            "author": input_item.get("author"),
+                            "recipient": input_item.get("recipient"),
+                            "content": input_item.get("content"),
+                        }
+                    ),
+                )
+            ]
         else:
             content: Final[object] = input_item.get("content")
             # Handle None content: Responses API allows None content, but GenericChatCompletionMessage requires content
@@ -1624,7 +1653,7 @@ class LiteLLMCompletionResponsesConfig:
             raw_arguments = json.dumps({"content": raw_input}) if raw_input else ""
         raw_name: Final = function_call.get("name") or ""
         namespace: Final = function_call.get("namespace") or ""
-        qualify: Final = bool(namespace) and function_call.get("type") != "custom_tool_call"
+        qualify: Final = bool(namespace)
         tool_call: Final = ChatCompletionToolCallChunk(
             id=function_call.get("call_id") or function_call.get("id") or "",
             type="function",
@@ -1797,7 +1826,7 @@ class LiteLLMCompletionResponsesConfig:
         namespace_tool: NamespaceTool,
         nested: bool,
     ) -> ChatCompletionToolParam | None:
-        if nested and namespace_tool.get("type") != "function":
+        if nested and namespace_tool.get("type") not in ("function", "custom"):
             return None
 
         raw_parameters: Final = namespace_tool.get("parameters")
@@ -1817,6 +1846,10 @@ class LiteLLMCompletionResponsesConfig:
             else raw_description
         )
         chat_tool_name: Final = f"{namespace}__{tool_name}" if nested else tool_name
+        if namespace_tool.get("type") == "custom":
+            return convert_custom_tool_to_function_tool(
+                MappingProxyType({**namespace_tool, "name": chat_tool_name, "description": description})
+            )
         function: Final = ChatCompletionToolParamFunctionChunk(
             name=chat_tool_name,
             description=description,
@@ -1858,7 +1891,7 @@ class LiteLLMCompletionResponsesConfig:
     @staticmethod
     def _validate_namespace_name_collisions(tools: ResponseTools) -> None:
         top_level_function_names: Final = frozenset(
-            str(tool.get("name") or "") for tool in tools or () if tool.get("type") == "function"
+            str(tool.get("name") or "") for tool in tools or () if tool.get("type") in ("function", "custom")
         )
         flattened_namespace_names: Final = frozenset(
             f"{(tool.get('name') or '')!s}__{(namespace_tool.get('name') or '')!s}"
@@ -1867,7 +1900,7 @@ class LiteLLMCompletionResponsesConfig:
             for namespace_tools in (tool.get("tools"),)
             if isinstance(namespace_tools, Sequence) and not isinstance(namespace_tools, (str, bytes))
             for namespace_tool in namespace_tools
-            if isinstance(namespace_tool, Mapping) and namespace_tool.get("type") == "function"
+            if isinstance(namespace_tool, Mapping) and namespace_tool.get("type") in ("function", "custom")
         )
         conflicting_tool_names: Final = top_level_function_names & flattened_namespace_names
         if conflicting_tool_names:
@@ -2012,10 +2045,10 @@ class LiteLLMCompletionResponsesConfig:
             for namespace_tools in (tool.get("tools"),)
             if isinstance(namespace_tools, Sequence) and not isinstance(namespace_tools, (str, bytes))
             for namespace_tool in namespace_tools
-            if isinstance(namespace_tool, Mapping) and namespace_tool.get("type") == "function"
+            if isinstance(namespace_tool, Mapping) and namespace_tool.get("type") in ("function", "custom")
         )
         top_level_function_names: Final = frozenset(
-            str(tool.get("name") or "") for tool in tools or () if tool.get("type") == "function"
+            str(tool.get("name") or "") for tool in tools or () if tool.get("type") in ("function", "custom")
         )
         unqualified_counts: Final = MappingProxyType(
             {
@@ -2045,6 +2078,7 @@ class LiteLLMCompletionResponsesConfig:
     def transform_chat_completion_tools_to_responses_tools(
         chat_completion_response: ModelResponse,
         responses_api_request: ResponsesAPIOptionalRequestParams | None = None,
+        request_input: str | ResponseInputParam = "",
     ) -> list[ResponseFunctionToolCall | CustomToolCallOutputItem]:
         """
         Transform a Chat Completion tools into a Responses API tools.
@@ -2064,7 +2098,9 @@ class LiteLLMCompletionResponsesConfig:
                             value=tool_call,
                         )
 
-        request_tools: Final = responses_api_request.get("tools") if responses_api_request is not None else None
+        request_tools: Final = LiteLLMCompletionResponsesConfig.effective_tools(
+            request_input, responses_api_request or {}
+        )
         custom_tool_names: Final = extract_custom_tool_names(request_tools)
         namespace_tool_names: Final = LiteLLMCompletionResponsesConfig.namespace_tool_name_map(request_tools)
 
@@ -2078,16 +2114,21 @@ class LiteLLMCompletionResponsesConfig:
 
                 # Check if this is a custom tool
                 if is_custom_tool_call(tool_name, custom_tool_names):
+                    restored_name, custom_namespace = LiteLLMCompletionResponsesConfig._restore_namespace_tool_name(
+                        tool_name, namespace_tool_names
+                    )
                     # Build custom_tool_call output item
                     input_str = unwrap_custom_tool_arguments(tool_arguments)
                     custom_item = CustomToolCallOutputItem(
                         type="custom_tool_call",
                         call_id=tool_id,
                         id=openai_shaped_tool_call_item_id("custom_tool_call", tool_id),
-                        name=tool_name,
+                        name=restored_name,
                         input=input_str,
                         status=function_definition.get("status") or "completed",
                     )
+                    if custom_namespace:
+                        custom_item.namespace = custom_namespace
                     responses_tools.append(custom_item)
                 else:
                     # Build regular function_call output item
@@ -2289,6 +2330,7 @@ class LiteLLMCompletionResponsesConfig:
                 chat_completion_response=chat_completion_response,
                 choices=getattr(chat_completion_response, "choices", []),
                 responses_api_request=responses_api_request,
+                request_input=request_input,
             ),
             parallel_tool_calls=getattr(chat_completion_response, "parallel_tool_calls", False),
             temperature=getattr(chat_completion_response, "temperature", 0),
@@ -2322,6 +2364,7 @@ class LiteLLMCompletionResponsesConfig:
         chat_completion_response: ModelResponse,
         choices: list[Choices],
         responses_api_request: ResponsesAPIOptionalRequestParams | None = None,
+        request_input: str | ResponseInputParam = "",
     ) -> list[
         GenericResponseOutputItem
         | OutputCodeInterpreterCall
@@ -2349,6 +2392,7 @@ class LiteLLMCompletionResponsesConfig:
             LiteLLMCompletionResponsesConfig.transform_chat_completion_tools_to_responses_tools(
                 chat_completion_response=chat_completion_response,
                 responses_api_request=responses_api_request,
+                request_input=request_input,
             )
         )
 

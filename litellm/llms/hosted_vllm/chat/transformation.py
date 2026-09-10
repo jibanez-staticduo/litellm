@@ -3,8 +3,10 @@ Translate from OpenAI's `/v1/chat/completions` to VLLM's `/v1/chat/completions`
 """
 
 import json
-from collections.abc import Coroutine
+from collections.abc import Coroutine, Mapping
 from typing import Any, Final, Literal, cast, overload
+
+from pydantic import BaseModel, TypeAdapter
 
 from litellm.litellm_core_utils.prompt_templates.common_utils import (
     _get_image_mime_type_from_url,
@@ -18,6 +20,7 @@ from litellm.types.llms.openai import (
     AllMessageValues,
     ChatCompletionAssistantToolCall,
     ChatCompletionFileObject,
+    ChatCompletionSystemMessage,
     ChatCompletionToolCallFunctionChunk,
     ChatCompletionVideoObject,
     ChatCompletionVideoUrlObject,
@@ -28,6 +31,35 @@ from ...openai.chat.gpt_transformation import OpenAIGPTConfig
 from ..reasoning_policy import get_model_group, normalize_deepseek_v4_reasoning_effort
 
 _THINKING_DISABLED_MARKER: Final = "_hosted_vllm_thinking_disabled"
+
+_MESSAGES_ADAPTER: Final = TypeAdapter(list[dict[str, object]])
+
+
+class _SystemTextBlock(BaseModel):
+    type: Literal["text"]
+    text: str
+
+
+_SYSTEM_CONTENT_ADAPTER: Final = TypeAdapter(str | list[_SystemTextBlock])
+
+
+def _system_message_text(content: object) -> str:
+    parsed: Final = _SYSTEM_CONTENT_ADAPTER.validate_python(content)
+    return parsed if isinstance(parsed, str) else "\n".join(block.text for block in parsed)
+
+
+def _merge_system_messages(messages: object) -> tuple[Mapping[str, object], ...]:
+    parsed: Final = _MESSAGES_ADAPTER.validate_python(messages)
+    instructions: Final = tuple(message for message in parsed if message.get("role") in ("system", "developer"))
+    if not instructions:
+        return tuple(parsed)
+    merged: Final = ChatCompletionSystemMessage(
+        role="system", content="\n\n".join(_system_message_text(message.get("content")) for message in instructions)
+    )
+    return (
+        merged,
+        *(message for message in parsed if message.get("role") not in ("system", "developer")),
+    )
 
 
 class HostedVLLMChatConfig(OpenAIGPTConfig):
@@ -143,6 +175,14 @@ class HostedVLLMChatConfig(OpenAIGPTConfig):
         request_data: dict,  # mutable-ok: framework contract requires mutable request or response containers
         litellm_params: object,
     ) -> dict:  # mutable-ok: framework contract requires mutable request or response containers
+        normalized_request: Final = (
+            {  # mutable-ok: HTTP request serialization requires a dict
+                **dict((key, value) for key, value in request_data.items() if key != "merge_system_messages"),
+                "messages": _merge_system_messages(request_data.get("messages")),
+            }
+            if request_data.get("merge_system_messages") is True
+            else request_data
+        )
         supplied: Final = "reasoning_effort" in request_data
         normalized_effort: Final = normalize_deepseek_v4_reasoning_effort(
             model=model,
@@ -152,11 +192,11 @@ class HostedVLLMChatConfig(OpenAIGPTConfig):
         )
         return (
             {
-                **request_data,
+                **normalized_request,
                 "reasoning_effort": normalized_effort,
             }  # mutable-ok: framework contract requires mutable request or response containers
             if supplied
-            else request_data  # mutable-ok: framework contract requires mutable request or response containers
+            else normalized_request  # mutable-ok: framework contract requires mutable request or response containers
         )  # mutable-ok: framework contract requires mutable request or response containers
 
     def _get_openai_compatible_provider_info(

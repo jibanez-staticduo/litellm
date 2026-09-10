@@ -9,6 +9,7 @@ from litellm.responses.litellm_completion_transformation.custom_tools import (
     build_tool_call_item_kwargs,
     extract_custom_tool_names,
     serialize_tool_call_arguments,
+    unwrap_custom_tool_arguments,
 )
 from litellm.responses.litellm_completion_transformation.transformation import (
     LiteLLMCompletionResponsesConfig,
@@ -22,6 +23,8 @@ from litellm.types.llms.openai import (
     ContentPartDoneEvent,
     ContentPartDonePartOutputText,
     ContentPartDonePartReasoningText,
+    CustomToolCallInputDeltaEvent,
+    CustomToolCallInputDoneEvent,
     FunctionCallArgumentsDeltaEvent,
     FunctionCallArgumentsDoneEvent,
     OutputItemAddedEvent,
@@ -131,10 +134,9 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
         self._reasoning_item_id: str | None = None
         self._accumulated_reasoning_content_parts: list[str] = []
         self._accumulated_provider_specific_fields: dict[str, object] = {}
-        self._custom_tool_names: set[str] = extract_custom_tool_names(self.responses_api_request.get("tools"))
-        self._namespace_tool_names = LiteLLMCompletionResponsesConfig.namespace_tool_name_map(
-            self.responses_api_request.get("tools")
-        )
+        effective_tools: Final = LiteLLMCompletionResponsesConfig.effective_tools(request_input, responses_api_request)
+        self._custom_tool_names: frozenset[str] = extract_custom_tool_names(effective_tools)
+        self._namespace_tool_names = LiteLLMCompletionResponsesConfig.namespace_tool_name_map(effective_tools)
 
     def _get_or_assign_tool_output_index(self, call_id: str) -> int:
         existing: Final = self._tool_output_index_by_call_id.get(call_id)
@@ -203,9 +205,7 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
             elif tc_index is not None:
                 if tc_index in self._ambiguous_tool_call_indexes:
                     continue
-                mapped_call_id = self._tool_call_id_by_index.get(tc_index)
-                if mapped_call_id:
-                    call_id = mapped_call_id
+                call_id = self._tool_call_id_by_index.get(tc_index, "")
 
             if not call_id:
                 continue
@@ -227,7 +227,8 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
                 self._tool_args_by_call_id[call_id] = ""
                 self._sequence_number += 1
                 names = self._custom_tool_names
-                item_kwargs = build_tool_call_item_kwargs(call_id, tool_name, "", "in_progress", names)
+                item_kwargs = build_tool_call_item_kwargs(call_id, fn_name, "", "in_progress", names)
+                item_kwargs["name"] = tool_name
                 self._tool_item_id_by_call_id[call_id] = item_kwargs["id"]
                 if tool_namespace:
                     item_kwargs["namespace"] = tool_namespace
@@ -241,6 +242,8 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
 
             if fn_args_delta:
                 self._tool_args_by_call_id[call_id] += fn_args_delta
+                if self._tool_item_id_by_call_id.get(call_id, "").startswith("ctc"):
+                    continue
 
                 # Split large argument deltas into smaller chunks to match OpenAI's streaming behavior
                 # This is especially important for providers like Bedrock that send complete arguments at once
@@ -301,7 +304,8 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
                 self._tool_args_by_call_id[call_id] = ""
                 self._sequence_number += 1
                 names = self._custom_tool_names
-                item_kwargs = build_tool_call_item_kwargs(call_id, tool_name, "", "in_progress", names)
+                item_kwargs = build_tool_call_item_kwargs(call_id, fn_name, "", "in_progress", names)
+                item_kwargs["name"] = tool_name
                 self._tool_item_id_by_call_id[call_id] = item_kwargs["id"]
                 if tool_namespace:
                     item_kwargs["namespace"] = tool_namespace
@@ -314,11 +318,15 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
                 self._pending_tool_events.append(event)
 
             final_args = fn_args or self._tool_args_by_call_id.get(call_id, "")
+            if fn_name in self._custom_tool_names:
+                self._queue_custom_tool_input_events(call_id, output_index, final_args)
 
             # Emit delta events for arguments that weren't streamed yet
             # This handles cases where Bedrock sends the complete tool call at the end
             already_streamed = self._tool_args_by_call_id.get(call_id, "")
-            remaining_args = final_args[len(already_streamed) :] if final_args else ""
+            remaining_args = (
+                final_args[len(already_streamed) :] if final_args and fn_name not in self._custom_tool_names else ""
+            )
 
             if remaining_args:
                 # Split into smaller chunks to match OpenAI's streaming behavior
@@ -343,11 +351,13 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
                 arguments=final_args,
             )
             done_event.__dict__["sequence_number"] = self._sequence_number
-            self._pending_tool_events.append(done_event)
+            if fn_name not in self._custom_tool_names:
+                self._pending_tool_events.append(done_event)
 
             self._sequence_number += 1
             names = self._custom_tool_names
-            item_kwargs = build_tool_call_item_kwargs(call_id, tool_name, final_args, "completed", names)
+            item_kwargs = build_tool_call_item_kwargs(call_id, fn_name, final_args, "completed", names)
+            item_kwargs["name"] = tool_name
             item_kwargs["id"] = self._tool_item_id_by_call_id.setdefault(call_id, item_kwargs["id"])
             if tool_namespace:
                 item_kwargs["namespace"] = tool_namespace
@@ -358,6 +368,30 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
                 item=BaseLiteLLMOpenAIResponseObject(**item_kwargs),
             )
             self._pending_tool_events.append(item_done_event)
+
+    def _queue_custom_tool_input_events(self, call_id: str, output_index: int, arguments: str) -> None:
+        raw_input: Final = unwrap_custom_tool_arguments(arguments)
+        item_id: Final = self._tool_item_id_by_call_id.get(call_id, call_id)
+        self._sequence_number += 1
+        self._pending_tool_events.append(
+            CustomToolCallInputDeltaEvent(
+                type=ResponsesAPIStreamEvents.CUSTOM_TOOL_CALL_INPUT_DELTA,
+                sequence_number=self._sequence_number,
+                item_id=item_id,
+                output_index=output_index,
+                delta=raw_input,
+            )
+        )
+        self._sequence_number += 1
+        self._pending_tool_events.append(
+            CustomToolCallInputDoneEvent(
+                type=ResponsesAPIStreamEvents.CUSTOM_TOOL_CALL_INPUT_DONE,
+                sequence_number=self._sequence_number,
+                item_id=item_id,
+                output_index=output_index,
+                input=raw_input,
+            )
+        )
 
     def _adopt_response_id_from_chunk(self, chunk: ModelResponseStream) -> None:
         if self._cached_response_id is not None:

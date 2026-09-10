@@ -1714,6 +1714,22 @@ class FunctionCallArgumentsDoneEvent(BaseLiteLLMOpenAIResponseObject):
     arguments: str
 
 
+class CustomToolCallInputDeltaEvent(BaseLiteLLMOpenAIResponseObject):
+    type: Literal[ResponsesAPIStreamEvents.CUSTOM_TOOL_CALL_INPUT_DELTA]
+    item_id: str
+    output_index: int
+    sequence_number: int
+    delta: str
+
+
+class CustomToolCallInputDoneEvent(BaseLiteLLMOpenAIResponseObject):
+    type: Literal[ResponsesAPIStreamEvents.CUSTOM_TOOL_CALL_INPUT_DONE]
+    item_id: str
+    output_index: int
+    sequence_number: int
+    input: str
+
+
 class FileSearchCallInProgressEvent(BaseLiteLLMOpenAIResponseObject):
     type: Literal[ResponsesAPIStreamEvents.FILE_SEARCH_CALL_IN_PROGRESS]
     output_index: int
@@ -1859,6 +1875,8 @@ ResponsesAPIStreamingResponse = Annotated[
     | RefusalDoneEvent
     | FunctionCallArgumentsDeltaEvent
     | FunctionCallArgumentsDoneEvent
+    | CustomToolCallInputDeltaEvent
+    | CustomToolCallInputDoneEvent
     | FileSearchCallInProgressEvent
     | FileSearchCallSearchingEvent
     | FileSearchCallCompletedEvent
