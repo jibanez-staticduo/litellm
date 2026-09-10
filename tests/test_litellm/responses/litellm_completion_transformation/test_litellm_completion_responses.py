@@ -2,7 +2,6 @@ import json
 
 import pytest
 
-
 from litellm.responses.litellm_completion_transformation.transformation import (
     TOOL_CALLS_CACHE,
     LiteLLMCompletionResponsesConfig,
@@ -17,6 +16,132 @@ from litellm.types.utils import (
     PromptTokensDetailsWrapper,
     Usage,
 )
+
+
+class TestClientToolSearch:
+    @staticmethod
+    def descriptor():
+        return {
+            "type": "tool_search",
+            "execution": "client",
+            "description": "Find tools by capability",
+            "parameters": {
+                "type": "object",
+                "properties": {"query": {"type": "string"}, "limit": {"type": "integer"}},
+                "required": ["query"],
+                "additionalProperties": False,
+            },
+        }
+
+    @pytest.mark.parametrize("lifted", [False, True])
+    def test_client_search_is_a_callable_function(self, lifted):
+        descriptor = self.descriptor()
+        request = {"tool_choice": {"type": "tool_search"}, "tools": [] if lifted else [descriptor]}
+        request_input = ([{"type": "additional_tools", "role": "developer", "tools": [descriptor]}] if lifted else []) + [
+            {"role": "user", "content": "Find calendar tools"}
+        ]
+        result = LiteLLMCompletionResponsesConfig.transform_responses_api_request_to_chat_completion_request(
+            model="qwen3.8-flash-next", input=request_input, responses_api_request=request
+        )
+        assert len(result["tools"]) == 1
+        assert result["tools"][0]["type"] == "function"
+        assert result["tools"][0]["function"]["name"] == "tool_search"
+        assert result["tools"][0]["function"]["description"] == descriptor["description"]
+        assert result["tools"][0]["function"]["parameters"] == descriptor["parameters"]
+        assert result["tool_choice"] == {"type": "function", "function": {"name": "tool_search"}}
+        assert result["messages"] == [{"role": "user", "content": "Find calendar tools"}]
+
+    @pytest.mark.parametrize("execution", [None, "server"])
+    def test_search_does_not_silently_change_execution_owner(self, execution):
+        descriptor = {key: value for key, value in self.descriptor().items() if key != "execution"}
+        tool = descriptor if execution is None else {**descriptor, "execution": execution}
+        with pytest.raises(ValueError, match="client"):
+            LiteLLMCompletionResponsesConfig.transform_responses_api_tools_to_chat_completion_tools([tool])
+
+    @pytest.mark.parametrize("collision_type", ["function", "custom"])
+    def test_search_rejects_ambiguous_function_name(self, collision_type):
+        with pytest.raises(ValueError, match="tool_search"):
+            LiteLLMCompletionResponsesConfig.transform_responses_api_tools_to_chat_completion_tools([
+                self.descriptor(), {"type": collision_type, "name": "tool_search"}
+            ])
+
+    def test_search_response_and_discovered_tools_survive_replay(self):
+        from copy import deepcopy
+
+        arguments = {"query": "calendar create", "limit": 1}
+        request = {"tools": [self.descriptor()]}
+        response = LiteLLMCompletionResponsesConfig.transform_chat_completion_response_to_responses_api_response(
+            request_input="Find calendar tools",
+            responses_api_request=request,
+            chat_completion_response=ModelResponse(
+                model="qwen3.8-flash-next",
+                choices=[Choices(finish_reason="tool_calls", message=Message(role="assistant", content="Finding tools", tool_calls=[{
+                    "id": "call_search", "type": "function",
+                    "function": {"name": "tool_search", "arguments": json.dumps(arguments)}
+                }]))],
+            ),
+        )
+        call = next(item for item in response.output if item.type == "tool_search_call").model_dump(exclude_none=True)
+        message = next(item for item in response.output if item.type == "message")
+        assert message.content[0].text == "Finding tools"
+        assert call["type"] == "tool_search_call"
+        assert call["call_id"] == "call_search"
+        assert call["execution"] == "client"
+        assert call["arguments"] == arguments
+        assert call["status"] == "completed"
+        discovered = {"type": "function", "name": "calendar_create", "description": "Create an event",
+                      "parameters": {"type": "object", "properties": {"title": {"type": "string"}}}}
+        output = {"type": "tool_search_output", "call_id": "call_search", "execution": "client",
+                  "status": "completed", "tools": [discovered]}
+        history = [{"role": "user", "content": "Find calendar tools"}, call, output,
+                   {"type": "additional_tools", "role": "developer", "tools": [discovered]}]
+        original = deepcopy(history)
+        replay = LiteLLMCompletionResponsesConfig.transform_responses_api_request_to_chat_completion_request(
+            model="qwen3.8-flash-next", input=history, responses_api_request=request
+        )
+        assert history == original
+        assert [tool["function"]["name"] for tool in replay["tools"]].count("calendar_create") == 1
+        assistant = next(message for message in replay["messages"] if message["role"] == "assistant")
+        echoed_call = assistant["tool_calls"][0]
+        assert echoed_call["id"] == "call_search"
+        assert echoed_call["function"]["name"] == "tool_search"
+        assert json.loads(echoed_call["function"]["arguments"]) == arguments
+        result = next(message for message in replay["messages"] if message["role"] == "tool")
+        assert result["tool_call_id"] == "call_search"
+        assert json.loads(result["content"]) == {"tools": [discovered], "status": "completed", "execution": "client"}
+
+    def test_discovered_namespace_keeps_siblings_and_current_schema(self):
+        from copy import deepcopy
+
+        old_lookup = {"type": "function", "name": "lookup", "description": "Legacy lookup",
+                      "parameters": {"type": "object", "properties": {"legacy_id": {"type": "integer"}}}}
+        current_lookup = {"type": "function", "name": "lookup", "description": "Current lookup",
+                          "parameters": {"type": "object", "properties": {"query": {"type": "string"}},
+                                         "required": ["query"]}}
+        historical_sibling = {"type": "function", "name": "list_events",
+                              "parameters": {"type": "object", "properties": {}}}
+        current_sibling = {"type": "function", "name": "create_event",
+                           "parameters": {"type": "object", "properties": {"title": {"type": "string"}}}}
+        history = [
+            {"type": "tool_search_call", "call_id": "call_search", "execution": "client",
+             "arguments": {"query": "calendar"}},
+            {"type": "tool_search_output", "call_id": "call_search", "execution": "client", "status": "completed",
+             "tools": [{"type": "namespace", "name": "calendar", "tools": [old_lookup, historical_sibling]}]},
+        ]
+        request = {"tools": [self.descriptor(),
+                             {"type": "namespace", "name": "calendar", "tools": [current_lookup, current_sibling]}]}
+        original = deepcopy((history, request))
+        result = LiteLLMCompletionResponsesConfig.transform_responses_api_request_to_chat_completion_request(
+            model="qwen3.8-flash-next", input=history, responses_api_request=request
+        )
+        functions = {tool["function"]["name"]: tool["function"] for tool in result["tools"]}
+        assert len(result["tools"]) == len(functions) == 4
+        assert set(functions) == {"tool_search", "calendar__lookup", "calendar__list_events", "calendar__create_event"}
+        assert functions["calendar__lookup"]["parameters"] == current_lookup["parameters"]
+        assert functions["calendar__lookup"]["description"] == "Current lookup"
+        assert functions["calendar__list_events"]["parameters"] == historical_sibling["parameters"]
+        assert functions["calendar__create_event"]["parameters"] == current_sibling["parameters"]
+        assert (history, request) == original
 
 
 class TestLiteLLMCompletionResponsesConfig:
@@ -3403,11 +3528,11 @@ class TestEnsureOutputItemContentPartAdded:
 
     def _make_iterator(self):
         """Create a minimal LiteLLMCompletionStreamingIterator for testing."""
+        from unittest.mock import MagicMock
+
         from litellm.responses.litellm_completion_transformation.streaming_iterator import (
             LiteLLMCompletionStreamingIterator,
         )
-
-        from unittest.mock import MagicMock
 
         return LiteLLMCompletionStreamingIterator(
             model="test-model",

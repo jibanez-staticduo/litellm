@@ -62,6 +62,7 @@ from openai.types.responses.response_create_params import (
     ToolParam,
 )
 from openai.types.responses.response_function_tool_call import ResponseFunctionToolCall
+from openai.types.responses.response_tool_search_call import ResponseToolSearchCall
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -1342,6 +1343,10 @@ One of: completed, failed, in_progress, cancelled, queued, or incomplete.
 """
 
 
+class ClientToolSearchChoice(TypedDict):
+    type: Literal["tool_search"]  # writable-ok: Pydantic warns on ReadOnly TypedDict fields
+
+
 class ResponsesAPIResponse(BaseLiteLLMOpenAIResponseObject):
     id: str
     created_at: int
@@ -1361,11 +1366,12 @@ class ResponsesAPIResponse(BaseLiteLLMOpenAIResponseObject):
             | OutputImageGenerationCall
             | ResponseFunctionToolCall
             | CustomToolCallOutputItem
+            | ResponseToolSearchCall
         ]
     )
     parallel_tool_calls: bool | None = None
     temperature: float | None = None
-    tool_choice: ToolChoice | None = None
+    tool_choice: ToolChoice | ClientToolSearchChoice | None = None
     tools: list[Tool] | list[ResponseFunctionToolCall] | list[dict[str, Any]] | None = None
     top_p: float | None = None
     max_output_tokens: int | None = None

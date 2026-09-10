@@ -28,6 +28,7 @@ from openai.types.chat.chat_completion_named_tool_choice_param import (
 from openai.types.responses import ResponseFunctionToolCall, ResponseReasoningItem
 from openai.types.responses.response_create_params import ResponseInputParam
 from openai.types.responses.response_reasoning_item import Content as ReasoningContent
+from openai.types.responses.response_tool_search_call import ResponseToolSearchCall
 from openai.types.responses.tool_param import FunctionToolParam
 from pydantic import TypeAdapter
 from typing_extensions import ReadOnly, TypedDict
@@ -100,6 +101,7 @@ from .custom_tools import (
     unwrap_custom_tool_arguments,
     validated_allowed_callers,
 )
+from .tool_search import TOOL_SEARCH_NAME, build_tool_search_call, has_client_tool_search, merge_discovered_tools
 
 NamespaceNameMap: TypeAlias = Mapping[str, tuple[str, str]]
 NamespaceTool: TypeAlias = Mapping[str, object]
@@ -258,6 +260,10 @@ class LiteLLMCompletionResponsesConfig:
                         type="function", function=NamedToolChoiceFunction(name=function_name)
                     )
                 return "required"
+            elif tool_choice_type == "tool_search":
+                return ChatCompletionNamedToolChoiceParam(
+                    type="function", function=NamedToolChoiceFunction(name=TOOL_SEARCH_NAME)
+                )
             elif tool_choice_type == "custom":
                 custom: Final = tool_choice.get("custom")
                 custom_name = tool_choice.get("name") or (custom.get("name") if isinstance(custom, dict) else None)
@@ -299,13 +305,22 @@ class LiteLLMCompletionResponsesConfig:
             return input, ()
 
         nested_per_item: Final = tuple(additional_tools_of(item) for item in input)
-        if all(nested is None for nested in nested_per_item):
+        discovered: Final = tuple(
+            tool
+            for item in input
+            if isinstance(item, Mapping) and item.get("type") == "tool_search_output"
+            for definitions in (item.get("tools"),)
+            if isinstance(definitions, list)
+            for tool in definitions
+            if isinstance(tool, Mapping)
+        )
+        if all(nested is None for nested in nested_per_item) and not discovered:
             return input, ()
 
         # mutable-ok: the input->messages conversion narrows on isinstance(input, list),
         # so handing it a tuple silently yields no messages at all.
         kept: Final = [item for item, nested in zip(input, nested_per_item) if nested is None]
-        lifted: Final = tuple(tool for nested in nested_per_item if nested is not None for tool in nested)
+        lifted: Final = (*discovered, *(tool for nested in nested_per_item if nested is not None for tool in nested))
         return kept, lifted
 
     @staticmethod
@@ -316,6 +331,14 @@ class LiteLLMCompletionResponsesConfig:
         _, lifted = LiteLLMCompletionResponsesConfig._lift_additional_tools(input)
         if not lifted:
             return responses_api_request.get("tools")
+        if isinstance(input, list) and any(
+            isinstance(item, Mapping) and item.get("type") == "tool_search_output" for item in input
+        ):
+            return merge_discovered_tools(
+                cast(  # cast-ok: lifted tool definitions extend the SDK Responses input union
+                    Sequence[Mapping[str, object]], (*lifted, *(responses_api_request.get("tools") or ()))
+                )
+            )
         return cast(  # cast-ok: additional_tools extends the SDK input union with Responses tool definitions
             ResponseTools, (*(responses_api_request.get("tools") or ()), *lifted)
         )
@@ -334,17 +357,13 @@ class LiteLLMCompletionResponsesConfig:
         Transform a Responses API request into a Chat Completion request
         """
         _cfg = LiteLLMCompletionResponsesConfig
-        input, lifted_tools = _cfg._lift_additional_tools(input)  # rebind-ok: lifted items must skip msg conversion
+        effective_tools: Final = _cfg.effective_tools(input, responses_api_request)
+        input, _ = _cfg._lift_additional_tools(input)  # rebind-ok: lifted items must skip msg conversion
 
         (
             tools,
             web_search_options,
-        ) = LiteLLMCompletionResponsesConfig.transform_responses_api_tools_to_chat_completion_tools(
-            cast(  # cast-ok: additional_tools sits outside the input-item union, so lifted entries are untyped
-                "list[FunctionToolParam | OpenAIMcpServerTool]",
-                (*(responses_api_request.get("tools") or ()), *lifted_tools),
-            )
-        )
+        ) = LiteLLMCompletionResponsesConfig.transform_responses_api_tools_to_chat_completion_tools(effective_tools)
 
         if web_search_options is not None and LiteLLMCompletionResponsesConfig._should_drop_derived_web_search_options(
             model=model, custom_llm_provider=custom_llm_provider
@@ -1471,6 +1490,7 @@ class LiteLLMCompletionResponsesConfig:
         return input_item.get("type") in [
             "function_call_output",
             "custom_tool_call_output",
+            "tool_search_output",
             "web_search_call",
             "computer_call_output",
             "tool_result",  # Anthropic/MCP format
@@ -1483,7 +1503,7 @@ class LiteLLMCompletionResponsesConfig:
         Both need to be reconstructed as assistant tool_calls for Chat
         Completions providers.
         """
-        return input_item.get("type") in ("function_call", "custom_tool_call")
+        return input_item.get("type") in ("function_call", "custom_tool_call", "tool_search_call")
 
     @staticmethod
     def _transform_responses_api_tool_call_output_to_chat_completion_message(
@@ -1571,7 +1591,15 @@ class LiteLLMCompletionResponsesConfig:
 
         tool_output_message: Final = ChatCompletionToolMessage(
             role="tool",
-            content=_normalize_function_call_output_to_tool_content(tool_call_output.get("output")),
+            content=_normalize_function_call_output_to_tool_content(
+                {
+                    "tools": tool_call_output.get("tools", []),
+                    "status": tool_call_output.get("status"),
+                    "execution": tool_call_output.get("execution"),
+                }
+                if tool_call_output.get("type") == "tool_search_output"
+                else tool_call_output.get("output")
+            ),
             tool_call_id=str(call_id),
         )
 
@@ -1651,7 +1679,9 @@ class LiteLLMCompletionResponsesConfig:
         if not raw_arguments and function_call.get("type") == "custom_tool_call":
             raw_input: Final = function_call.get("input") or ""
             raw_arguments = json.dumps({"content": raw_input}) if raw_input else ""
-        raw_name: Final = function_call.get("name") or ""
+        raw_name: Final = (
+            TOOL_SEARCH_NAME if function_call.get("type") == "tool_search_call" else function_call.get("name") or ""
+        )
         namespace: Final = function_call.get("namespace") or ""
         qualify: Final = bool(namespace)
         tool_call: Final = ChatCompletionToolCallChunk(
@@ -1912,6 +1942,12 @@ class LiteLLMCompletionResponsesConfig:
     @staticmethod
     def _responses_tool_to_chat_form(tool: Mapping[str, object]) -> ResponsesToolChatForm:
         tool_type: Final = tool.get("type")
+        if tool_type == "tool_search":
+            if tool.get("execution") != "client":
+                raise ValueError("Only client-executed tool_search can be bridged to Chat Completions")
+            return LiteLLMCompletionResponsesConfig._responses_tool_to_chat_form(
+                {**tool, "type": "function", "name": TOOL_SEARCH_NAME}
+            )
         if tool_type == "mcp":
             return ResponsesToolChatForm(chat_tools=(cast(OpenAIMcpServerTool, tool),), web_search_options=None)
         if tool_type == "web_search_preview" or tool_type == "web_search":
@@ -1976,6 +2012,10 @@ class LiteLLMCompletionResponsesConfig:
     @staticmethod
     def responses_tools_to_chat_forms(tools: ResponseTools) -> tuple[ResponsesToolChatForm, ...]:
         LiteLLMCompletionResponsesConfig._validate_namespace_name_collisions(tools)
+        if has_client_tool_search(tools) and any(
+            tool.get("type") in ("function", "custom") and tool.get("name") == TOOL_SEARCH_NAME for tool in tools or ()
+        ):
+            raise ValueError("Client tool_search conflicts with a function/custom tool named tool_search")
         return tuple(LiteLLMCompletionResponsesConfig._responses_tool_to_chat_form(tool) for tool in tools or ())
 
     @staticmethod
@@ -2079,7 +2119,7 @@ class LiteLLMCompletionResponsesConfig:
         chat_completion_response: ModelResponse,
         responses_api_request: ResponsesAPIOptionalRequestParams | None = None,
         request_input: str | ResponseInputParam = "",
-    ) -> list[ResponseFunctionToolCall | CustomToolCallOutputItem]:
+    ) -> list[ResponseFunctionToolCall | CustomToolCallOutputItem | ResponseToolSearchCall]:
         """
         Transform a Chat Completion tools into a Responses API tools.
 
@@ -2087,16 +2127,14 @@ class LiteLLMCompletionResponsesConfig:
         with ``type="custom_tool_call"``. For regular function tools, returns
         ``ResponseFunctionToolCall`` with ``type="function_call"``.
         """
-        all_chat_completion_tools: Final[list[ChatCompletionMessageToolCall]] = []
-        for choice in chat_completion_response.choices:
-            if isinstance(choice, Choices):
-                if choice.message.tool_calls:
-                    all_chat_completion_tools.extend(choice.message.tool_calls)
-                    for tool_call in choice.message.tool_calls:
-                        TOOL_CALLS_CACHE.set_cache(
-                            key=tool_call.id,
-                            value=tool_call,
-                        )
+        all_chat_completion_tools: Final = tuple(
+            tool
+            for choice in chat_completion_response.choices
+            if isinstance(choice, Choices)
+            for tool in choice.message.tool_calls or ()
+        )
+        for tool_call in all_chat_completion_tools:
+            TOOL_CALLS_CACHE.set_cache(key=tool_call.id, value=tool_call)
 
         request_tools: Final = LiteLLMCompletionResponsesConfig.effective_tools(
             request_input, responses_api_request or {}
@@ -2104,7 +2142,8 @@ class LiteLLMCompletionResponsesConfig:
         custom_tool_names: Final = extract_custom_tool_names(request_tools)
         namespace_tool_names: Final = LiteLLMCompletionResponsesConfig.namespace_tool_name_map(request_tools)
 
-        responses_tools: Final[list[ResponseFunctionToolCall | CustomToolCallOutputItem]] = []
+        client_tool_search: Final = has_client_tool_search(request_tools)
+        responses_tools: Final[list[ResponseFunctionToolCall | CustomToolCallOutputItem | ResponseToolSearchCall]] = []
         for tool in all_chat_completion_tools:
             if tool.type == "function":
                 function_definition = tool.function
@@ -2113,7 +2152,9 @@ class LiteLLMCompletionResponsesConfig:
                 tool_arguments = serialize_tool_call_arguments(function_definition.get("arguments"))
 
                 # Check if this is a custom tool
-                if is_custom_tool_call(tool_name, custom_tool_names):
+                if client_tool_search and tool_name == TOOL_SEARCH_NAME:
+                    responses_tools.append(build_tool_search_call(tool_id, tool_arguments, "completed"))
+                elif is_custom_tool_call(tool_name, custom_tool_names):
                     restored_name, custom_namespace = LiteLLMCompletionResponsesConfig._restore_namespace_tool_name(
                         tool_name, namespace_tool_names
                     )
@@ -2373,6 +2414,7 @@ class LiteLLMCompletionResponsesConfig:
         | OutputImageGenerationCall
         | ResponseFunctionToolCall
         | CustomToolCallOutputItem
+        | ResponseToolSearchCall
     ]:
         responses_output: list[
             GenericResponseOutputItem
@@ -2382,6 +2424,7 @@ class LiteLLMCompletionResponsesConfig:
             | OutputImageGenerationCall
             | ResponseFunctionToolCall
             | CustomToolCallOutputItem
+            | ResponseToolSearchCall
         ] = []
 
         responses_output.extend(

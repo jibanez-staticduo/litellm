@@ -34,6 +34,69 @@ RESPONSE_ID_EVENT_TYPES = frozenset(
 )
 
 
+@pytest.mark.asyncio
+async def test_client_tool_search_stream_is_dispatched_as_search_not_function():
+    arguments = {"query": "calendar create", "limit": 1}
+    encoded = json.dumps(arguments)
+    chunks = [
+        ModelResponseStream(
+            id=CHAT_COMPLETION_ID, model="qwen3.8-flash-next", created=1748575031,
+            choices=[StreamingChoices(index=0, delta=Delta(role="assistant", tool_calls=[{
+                "index": 0, "id": "call_search", "type": "function",
+                "function": {"name": "tool_search", "arguments": encoded[:10]},
+            }]))],
+        ),
+        ModelResponseStream(
+            id=CHAT_COMPLETION_ID, model="qwen3.8-flash-next", created=1748575031,
+            choices=[StreamingChoices(index=0, delta=Delta(tool_calls=[{
+                "index": 0, "function": {"arguments": encoded[10:]},
+            }]))],
+        ),
+        ModelResponseStream(
+            id=CHAT_COMPLETION_ID, model="qwen3.8-flash-next", created=1748575031,
+            choices=[StreamingChoices(index=0, delta=Delta(), finish_reason="tool_calls")],
+        ),
+    ]
+    iterator = LiteLLMCompletionStreamingIterator(
+        model="qwen3.8-flash-next", litellm_custom_stream_wrapper=_FakeStreamWrapper(chunks),
+        request_input="Find calendar tools", custom_llm_provider="hosted_vllm",
+        responses_api_request={"tool_choice": {"type": "tool_search"}, "tools": [{
+            "type": "tool_search", "execution": "client", "description": "Find tools",
+            "parameters": {"type": "object", "properties": {"query": {"type": "string"}}},
+        }]},
+    )
+    events = [event async for event in iterator]
+    added = [e.item for e in events if e.type == "response.output_item.added" and e.item.type == "tool_search_call"]
+    done = [e.item for e in events if e.type == "response.output_item.done" and e.item.type == "tool_search_call"]
+    completed = next(e.response for e in events if e.type == "response.completed")
+    final = [item for item in completed.output if item.type == "tool_search_call"]
+    assert len(added) == len(done) == len(final) == 1
+    for item in (*added, *done, *final):
+        assert item.type == "tool_search_call"
+        assert item.call_id == "call_search"
+        assert item.execution == "client"
+        assert item.id == added[0].id
+    assert added[0].arguments == {}
+    assert done[0].arguments == final[0].arguments == arguments
+    assert done[0].status == final[0].status == "completed"
+    assert not any(item.type == "function_call" for item in completed.output)
+    assert not any(e.type.startswith("response.function_call_arguments.") for e in events)
+
+
+@pytest.mark.parametrize("choice", [
+    {"type": "tool_search"},
+    {"type": "function", "name": "lookup_probe"},
+    {"type": "custom", "name": "apply_patch"},
+])
+def test_created_event_preserves_responses_tool_choice(choice):
+    iterator = LiteLLMCompletionStreamingIterator(
+        model="qwen3.8-flash-next", litellm_custom_stream_wrapper=_FakeStreamWrapper([]),
+        request_input="Use the tool", responses_api_request={"tool_choice": choice},
+    )
+    event = iterator.create_response_created_event()
+    assert event.model_dump()["response"]["tool_choice"] == choice
+
+
 def _chunk(content: str, finish_reason: str | None = None) -> ModelResponseStream:
     return ModelResponseStream(
         id=CHAT_COMPLETION_ID,
