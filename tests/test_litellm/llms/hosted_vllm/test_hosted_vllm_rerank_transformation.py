@@ -8,6 +8,7 @@ import httpx
 import pytest
 
 import litellm
+from litellm.types.utils import ModelInfo
 from litellm.llms.custom_httpx.http_handler import HTTPHandler
 from litellm.llms.hosted_vllm.rerank.transformation import HostedVLLMRerankConfig
 from litellm.rerank_api.rerank_utils import get_optional_rerank_params
@@ -23,6 +24,37 @@ from litellm.types.rerank import (
 
 
 class TestHostedVLLMRerankTransform:
+    @pytest.mark.parametrize(
+        "model_info,billed_units,expected",
+        [
+            ({"input_cost_per_token": 0.00000005}, {"total_tokens": 2000}, 0.0001),
+            ({"input_cost_per_token": 0.00000005}, {"total_tokens": 0}, 0.0),
+            ({"input_cost_per_token": 0.00000005}, {}, 0.0),
+            ({"input_cost_per_token": 0.00000005}, None, 0.0),
+            ({"input_cost_per_query": 0.002}, {"search_units": 3}, 0.006),
+            (
+                {"input_cost_per_token": 0.00000005, "input_cost_per_query": 0.002},
+                {"total_tokens": 2000, "search_units": 3},
+                0.0001,
+            ),
+            (
+                {"input_cost_per_token": 0.00000005, "input_cost_per_query": 0.002},
+                {"search_units": 3},
+                0.006,
+            ),
+        ],
+    )
+    def test_rerank_cost_uses_reported_billing_units(
+        self, model_info: ModelInfo, billed_units: RerankBilledUnits | None, expected: float
+    ) -> None:
+        cost: Final = HostedVLLMRerankConfig().calculate_rerank_cost(
+            model="qwen3-reranker",
+            custom_llm_provider="hosted_vllm",
+            model_info=model_info,
+            billed_units=billed_units,
+        )
+        assert cost == pytest.approx((expected, 0.0))
+
     def setup_method(self):
         self.config = HostedVLLMRerankConfig()
         self.model = "hosted-vllm-model"

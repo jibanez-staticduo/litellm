@@ -118,12 +118,15 @@ class BaseRerankConfig(ABC):
             Tuple[float, float] - prompt_cost_in_usd, completion_cost_in_usd
         """
 
-        if (
-            model_info is None
-            or "input_cost_per_query" not in model_info
-            or model_info["input_cost_per_query"] is None
-            or billed_units is None
-        ):
+        if model_info is None or billed_units is None:
+            return 0.0, 0.0
+
+        token_rate: Final = model_info.get("input_cost_per_token")
+        total_tokens: Final = billed_units.get("total_tokens")
+        if token_rate is not None and total_tokens is not None:
+            return token_rate * total_tokens, 0.0
+
+        if model_info.get("input_cost_per_query") is None:
             return 0.0, 0.0
 
         search_units: Final = billed_units.get("search_units")
