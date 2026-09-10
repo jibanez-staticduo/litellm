@@ -2049,6 +2049,11 @@ class OpenAIRealtimeStreamResponseBaseObject(TypedDict):
     type: str
 
 
+class OpenAIRealtimeSessionClosed(TypedDict):
+    type: ReadOnly[Literal["session.closed"]]
+    usage: ReadOnly[Mapping[str, object]]
+
+
 class OpenAIRealtimeConversationObject(TypedDict, total=False):
     id: str
     object: Required[Literal["realtime.conversation"]]
@@ -2254,6 +2259,7 @@ class OpenAIRealtimeEventTypes(Enum):
 
 OpenAIRealtimeEvents = (
     OpenAIRealtimeStreamResponseBaseObject
+    | OpenAIRealtimeSessionClosed
     | OpenAIRealtimeStreamSessionEvents
     | OpenAIRealtimeStreamResponseOutputItemAdded
     | OpenAIRealtimeResponseContentPartAdded
