@@ -78,6 +78,7 @@ async def process_codex_request(
         user_api_base=server.user_api_base,
         model=model,
         route_type=route_type,
+        llm_router=server.llm_router,
     )
     return processed
 
