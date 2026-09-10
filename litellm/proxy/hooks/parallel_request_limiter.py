@@ -91,20 +91,23 @@ class _PROXY_MaxParallelRequestsHandler(CustomLogger):
                 litellm_parent_otel_span=user_api_key_dict.parent_otel_span,
             )
         for key in keys:
-            raw: Final[object] = await self.internal_usage_cache.async_get_cache(
-                key=key,
-                local_only=True,
-                litellm_parent_otel_span=user_api_key_dict.parent_otel_span,
-            )
-            if raw is None:
-                continue
-            current: Final = TypeAdapter(Mapping[str, int]).validate_python(raw)
-            await self.internal_usage_cache.async_set_cache(
-                key=key,
-                value={**current, "current_requests": max(current["current_requests"] - 1, 0)},
-                ttl=60,
-                litellm_parent_otel_span=user_api_key_dict.parent_otel_span,
-            )
+            await self._release_realtime_counter(key, user_api_key_dict)
+
+    async def _release_realtime_counter(self, key: str, user_api_key_dict: UserAPIKeyAuth) -> None:
+        raw: Final[object] = await self.internal_usage_cache.async_get_cache(
+            key=key,
+            local_only=True,
+            litellm_parent_otel_span=user_api_key_dict.parent_otel_span,
+        )
+        if raw is None:
+            return
+        current: Final = TypeAdapter(Mapping[str, int]).validate_python(raw)
+        await self.internal_usage_cache.async_set_cache(
+            key=key,
+            value={**current, "current_requests": max(current["current_requests"] - 1, 0)},
+            ttl=60,
+            litellm_parent_otel_span=user_api_key_dict.parent_otel_span,
+        )
 
     def print_verbose(self, print_statement):
         try:

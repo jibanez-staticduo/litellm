@@ -38,8 +38,12 @@ from litellm.proxy.auth.user_api_key_auth import (
     user_api_key_auth,
 )
 from litellm.proxy.common_utils.encrypt_decrypt_utils import decrypt_value_helper, encrypt_value_helper
-from litellm.proxy.hooks.parallel_request_limiter import _PROXY_MaxParallelRequestsHandler
-from litellm.proxy.hooks.parallel_request_limiter_v3 import _PROXY_MaxParallelRequestsHandler_v3
+from litellm.proxy.hooks.parallel_request_limiter import (
+    _PROXY_MaxParallelRequestsHandler,  # pyright: ignore[reportPrivateUsage]  # existing built-in limiter has no public alias
+)
+from litellm.proxy.hooks.parallel_request_limiter_v3 import (
+    _PROXY_MaxParallelRequestsHandler_v3,  # pyright: ignore[reportPrivateUsage]  # existing built-in limiter has no public alias
+)
 from litellm.proxy.spend_tracking.budget_reservation import (
     invalidate_budget_reservation_counters,
     release_or_invalidate_budget_reservation,
