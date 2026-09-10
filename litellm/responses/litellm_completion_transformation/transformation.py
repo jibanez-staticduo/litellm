@@ -29,8 +29,10 @@ from openai.types.responses import ResponseFunctionToolCall, ResponseReasoningIt
 from openai.types.responses.response_create_params import ResponseInputParam
 from openai.types.responses.response_reasoning_item import Content as ReasoningContent
 from openai.types.responses.response_tool_search_call import ResponseToolSearchCall
+from openai.types.responses.tool_choice_custom_param import ToolChoiceCustomParam
+from openai.types.responses.tool_choice_function_param import ToolChoiceFunctionParam
 from openai.types.responses.tool_param import FunctionToolParam
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 from typing_extensions import ReadOnly, TypedDict
 
 from litellm._logging import verbose_logger
@@ -59,6 +61,7 @@ from litellm.types.llms.openai import (
     ChatCompletionToolParam,
     ChatCompletionToolParamFunctionChunk,
     ChatCompletionUserMessage,
+    ClientToolSearchChoice,
     GenericChatCompletionMessage,
     InputTokensDetails,
     OpenAIChatCompletionTextObject,
@@ -70,6 +73,7 @@ from litellm.types.llms.openai import (
     ResponseAPIUsage,
     ResponsesAPIOptionalRequestParams,
     ResponsesAPIResponse,
+    ToolChoice,
     ValidChatCompletionMessageContentTypes,
     ValidChatCompletionMessageContentTypesLiteral,
 )
@@ -129,6 +133,7 @@ _STR_KEY_DICT_ADAPTER: Final = TypeAdapter(dict[str, object])
 _OBJECT_LIST_ADAPTER: Final = TypeAdapter(list[object])
 _DICT_ITEMS_LIST_ADAPTER: Final = TypeAdapter(list[dict[object, object]])
 _TEXT_ADAPTER: Final = TypeAdapter(str)
+_RESPONSES_API_TOOL_CHOICE_ADAPTER: Final = TypeAdapter(ToolChoice | ClientToolSearchChoice)
 
 
 @runtime_checkable
@@ -275,6 +280,31 @@ class LiteLLMCompletionResponsesConfig:
 
         # Return as-is for unknown formats
         return tool_choice
+
+    @staticmethod
+    def transform_tool_choice_for_responses_api_response(tool_choice: object) -> ToolChoice | ClientToolSearchChoice:
+        if tool_choice is None:
+            return "auto"
+        try:
+            normalized: Final = _RESPONSES_API_TOOL_CHOICE_ADAPTER.validate_python(tool_choice)
+            if isinstance(tool_choice, Mapping) and isinstance(normalized, dict):
+                # SDK TypedDict validation drops Codex namespace/extension metadata.
+                return cast(ToolChoice | ClientToolSearchChoice, {**tool_choice, **normalized})
+            return normalized
+        except ValidationError:
+            return LiteLLMCompletionResponsesConfig._chat_tool_choice_as_responses_api_tool_choice(tool_choice)
+
+    @staticmethod
+    def _chat_tool_choice_as_responses_api_tool_choice(tool_choice: object) -> ToolChoice:
+        match tool_choice, LiteLLMCompletionResponsesConfig._transform_tool_choice(tool_choice):
+            case {"type": "custom"}, {"function": {"name": str(custom_name)}}:
+                return ToolChoiceCustomParam(type="custom", name=custom_name)
+            case _, {"type": "function", "function": {"name": str(function_name)}}:
+                return ToolChoiceFunctionParam(type="function", name=function_name)
+            case _, "none" | "auto" | "required" as normalized:
+                return normalized
+            case _, _:
+                return "auto"
 
     @staticmethod
     def _should_drop_derived_web_search_options(model: str, custom_llm_provider: str | None) -> bool:
@@ -2375,7 +2405,9 @@ class LiteLLMCompletionResponsesConfig:
             ),
             parallel_tool_calls=getattr(chat_completion_response, "parallel_tool_calls", False),
             temperature=getattr(chat_completion_response, "temperature", 0),
-            tool_choice=getattr(chat_completion_response, "tool_choice", "auto"),
+            tool_choice=LiteLLMCompletionResponsesConfig.transform_tool_choice_for_responses_api_response(
+                responses_api_request.get("tool_choice")
+            ),
             tools=getattr(chat_completion_response, "tools", []),
             top_p=getattr(chat_completion_response, "top_p", None),
             max_output_tokens=getattr(chat_completion_response, "max_output_tokens", None),

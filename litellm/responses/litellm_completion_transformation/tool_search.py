@@ -11,19 +11,6 @@ _ARGUMENTS_ADAPTER: Final = TypeAdapter(dict[str, object])
 _TOOLS_ADAPTER: Final = TypeAdapter(list[dict[str, object]])
 
 
-def response_tool_choice(choice: object) -> object:
-    """Normalize legacy scalar-choice dictionaries while preserving named choices."""
-    if isinstance(choice, Mapping):
-        parsed: Final = _ARGUMENTS_ADAPTER.validate_python(choice)
-        kind: Final = parsed.get("type")
-        if kind in ("auto", "none", "required"):
-            return kind
-        if kind in ("tool", "any"):
-            return "required"
-        return parsed
-    return choice or "auto"
-
-
 def has_client_tool_search(tools: Sequence[Mapping[str, object]] | None) -> bool:
     return any(tool.get("type") == "tool_search" and tool.get("execution") == "client" for tool in tools or ())
 
