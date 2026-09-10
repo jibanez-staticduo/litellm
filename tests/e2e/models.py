@@ -84,6 +84,7 @@ class KeyGenerateBody(BaseModel):
 
 class KeyGenerateResponse(BaseModel):
     key: str
+    token: str | None = None
     key_alias: str | None = None
     models: list[str] = []
     max_budget: float | None = None
@@ -680,6 +681,7 @@ class GuardrailRunRecord(BaseModel):
 
 
 class SpendLogMetadata(BaseModel):
+    user_api_key_alias: str | None = None
     applied_guardrails: list[str] | None = None
     guardrail_information: list[GuardrailRunRecord] | None = None
 

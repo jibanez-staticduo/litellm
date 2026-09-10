@@ -15,7 +15,6 @@ from litellm.responses.litellm_completion_transformation.tool_search import (
     TOOL_SEARCH_NAME,
     build_tool_search_call,
     has_client_tool_search,
-    response_tool_choice,
 )
 from litellm.responses.litellm_completion_transformation.transformation import (
     LiteLLMCompletionResponsesConfig,
@@ -490,12 +489,11 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
             response_created_event_data["temperature"] = self.responses_api_request["temperature"]
         if "text" in self.responses_api_request:
             response_created_event_data["text"] = self.responses_api_request["text"]
-        if "tool_choice" in self.responses_api_request:
-            # Echo the Responses choice; converting it to Chat format here breaks
-            # named function/custom choices and client tool_search on the return path.
-            response_created_event_data["tool_choice"] = response_tool_choice(self.responses_api_request["tool_choice"])
-        else:
-            response_created_event_data["tool_choice"] = "auto"
+        response_created_event_data["tool_choice"] = (
+            LiteLLMCompletionResponsesConfig.transform_tool_choice_for_responses_api_response(
+                self.responses_api_request.get("tool_choice")
+            )
+        )
         if "tools" in self.responses_api_request:
             response_created_event_data["tools"] = self.responses_api_request["tools"]
         else:

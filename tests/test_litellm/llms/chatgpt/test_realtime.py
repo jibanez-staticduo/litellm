@@ -94,7 +94,7 @@ async def test_realtime_session_urls_honor_gateway(endpoint, source, chatgpt_tok
 @pytest.mark.parametrize("inbound_headers", [{}, {"openai-alpha": "quicksilver=v2"}])
 @pytest.mark.parametrize("model, endpoint", [("gpt-live-1-codex", "live"), ("gpt-realtime-1.5", "realtime")])
 async def test_routed_call_preserves_deployment_gateway_headers(
-    inbound_headers, model, endpoint, chatgpt_tokens, monkeypatch
+    inbound_headers, model, endpoint, chatgpt_tokens, monkeypatch, local_model_cost_map
 ):
     from litellm.llms.chatgpt.codex import (
         CodexRealtimeCall,
@@ -364,7 +364,7 @@ def test_realtime_routes_use_configured_gateway(monkeypatch, env_name, api_base,
 
 
 @pytest.mark.parametrize("model,endpoint", [("gpt-live-1-codex", "live"), ("gpt-realtime-1.5", "realtime")])
-def test_sideband_restores_gateway_query_without_overriding_call(model, endpoint, chatgpt_tokens):
+def test_sideband_restores_gateway_query_without_overriding_call(model, endpoint, chatgpt_tokens, local_model_cost_map):
     handler = ChatGPTRealtime(
         GenericLiteLLMParams(
             chatgpt_realtime_call_id="rtc_selected",
@@ -393,7 +393,7 @@ def test_client_cannot_forge_supervised_call_accounting(chatgpt_tokens):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("model", ["gpt-live-1-codex", "gpt-realtime-1.5"])
-async def test_supervisor_connection_preserves_call_routing(model, chatgpt_tokens):
+async def test_supervisor_connection_preserves_call_routing(model, chatgpt_tokens, local_model_cost_map):
     handler = ChatGPTRealtime(
         GenericLiteLLMParams(
             chatgpt_token_dir=chatgpt_tokens,
