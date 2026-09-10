@@ -43,18 +43,36 @@ def extract_custom_tool_names(tools: Sequence[object] | None) -> frozenset[str]:
     """Extract names of tools originally defined as ``type: "custom"``."""
     if not tools:
         return frozenset()
-    return frozenset(
-        str(tool["name"])
+    top_level_names: Final = frozenset(
+        str(tool.get("name") or "")
         for tool in tools
-        if isinstance(tool, Mapping) and tool.get("type") == "custom" and "name" in tool
-    ) | frozenset(
-        f"{tool.get('name', '')}__{nested['name']}"
+        if isinstance(tool, Mapping) and tool.get("type") in ("function", "custom")
+    )
+    namespace_entries: Final = tuple(
+        (str(tool.get("name") or ""), str(nested.get("name") or ""), nested.get("type"))
         for tool in tools
         if isinstance(tool, Mapping) and tool.get("type") == "namespace"
         for children in (tool.get("tools"),)
         if isinstance(children, Sequence) and not isinstance(children, (str, bytes))
         for nested in children
-        if isinstance(nested, Mapping) and nested.get("type") == "custom" and "name" in nested
+        if isinstance(nested, Mapping) and nested.get("type") in ("function", "custom")
+    )
+    # Match namespace restoration: accept a bare name only when it identifies one tool.
+    unambiguous_custom_names: Final = frozenset(
+        name
+        for _, name, kind in namespace_entries
+        if kind == "custom"
+        and name not in top_level_names
+        and sum(1 for _, candidate, _ in namespace_entries if candidate == name) == 1
+    )
+    return (
+        frozenset(
+            str(tool["name"])
+            for tool in tools
+            if isinstance(tool, Mapping) and tool.get("type") == "custom" and "name" in tool
+        )
+        | frozenset(f"{namespace}__{name}" for namespace, name, kind in namespace_entries if kind == "custom")
+        | unambiguous_custom_names
     )
 
 
