@@ -210,7 +210,10 @@ async def test_realtime_endpoint_rejects_untrusted_call_ids(monkeypatch, call_id
 @pytest.mark.asyncio
 @pytest.mark.parametrize("multipart", [False, True])
 @pytest.mark.parametrize("credential", ["authorization", "api-key", "subprotocol"])
-async def test_offer_exchange_wraps_call_and_filters_client_headers(monkeypatch, multipart, credential):
+@pytest.mark.parametrize("signaling_credential", ["authorization", "api-key", "x-litellm-api-key", "mixed"])
+async def test_offer_exchange_wraps_call_and_filters_client_headers(
+    monkeypatch, multipart, credential, signaling_credential
+):
     import json
     from unittest.mock import AsyncMock
 
@@ -239,15 +242,22 @@ async def test_offer_exchange_wraps_call_and_filters_client_headers(monkeypatch,
     async def receive():
         return {"type": "http.request", "body": body, "more_body": False}
 
+    signaling_headers = (
+        [(b"authorization", b"Bearer other-owner"), (b"x-litellm-api-key", b"owner")]
+        if signaling_credential == "mixed"
+        else [(signaling_credential.encode(), b"Bearer owner" if signaling_credential == "authorization" else b"owner")]
+    )
     request = Request(
         {
             "type": "http",
             "method": "POST",
             "path": "/v1/realtime/calls",
+            "scheme": "http",
+            "server": ("localhost", 80),
             "query_string": b"intent=quicksilver&architecture=avas&untrusted=bad",
             "headers": [
                 (b"content-type", body_request.headers["content-type"].encode()),
-                (b"authorization", b"Bearer owner"),
+                *signaling_headers,
                 (b"openai-alpha", b"quicksilver=v2"),
                 (b"x-untrusted", b"bad"),
             ],
@@ -255,9 +265,9 @@ async def test_offer_exchange_wraps_call_and_filters_client_headers(monkeypatch,
         receive,
     )
     auth = UserAPIKeyAuth()
-    authenticate = AsyncMock(return_value=auth)
     authorize = AsyncMock()
-    monkeypatch.setattr(codex, "user_api_key_auth", authenticate)
+    monkeypatch.setattr(proxy_server, "master_key", "owner")
+    monkeypatch.setattr(proxy_server, "general_settings", {})
     monkeypatch.setattr(codex, "can_key_call_resolved_model", authorize)
 
     class Processor:
@@ -265,13 +275,18 @@ async def test_offer_exchange_wraps_call_and_filters_client_headers(monkeypatch,
             self.data = data
 
         async def common_processing_pre_call_logic(self, **kwargs):
-            assert kwargs["user_api_key_dict"] is auth
+            assert isinstance(kwargs["user_api_key_dict"], UserAPIKeyAuth)
             if kwargs["route_type"] == "_arealtime":
                 assert self.data["model"] == "voice-alias"
                 assert self.data["guardrails"] == ["query-guardrail"]
                 assert await kwargs["request"].json() == {"model": "voice-alias"}
                 return {
                     **self.data,
+                    "extra_headers": {
+                        "X-Hook-Required": "policy-value",
+                        "x-gateway-token": "untrusted-override",
+                        "Authorization": "Bearer untrusted",
+                    },
                     "metadata": {"guardrails": ["policy-guardrail"], "user_api_key_team_id": "team"},
                 }, None
             return self.data, None
@@ -292,7 +307,11 @@ async def test_offer_exchange_wraps_call_and_filters_client_headers(monkeypatch,
                 content=b"v=0\r\nanswer",
                 headers={"Location": "/v1/realtime/calls/rtc_private"},
                 extensions={
-                    "chatgpt_realtime": {"model": "gpt-live-1-codex", "api_base": "https://voice.example/codex"}
+                    "chatgpt_realtime": {
+                        "model": "gpt-live-1-codex",
+                        "api_base": "https://voice.example/codex",
+                        "extra_headers": {"X-Gateway-Token": "pinned-value"},
+                    }
                 },
             )
 
@@ -340,6 +359,10 @@ async def test_offer_exchange_wraps_call_and_filters_client_headers(monkeypatch,
     assert sent[0]["type"] == "websocket.accept"
     if credential == "subprotocol":
         assert sent[0]["subprotocol"] == "realtime"
+    assert forward.await_args.kwargs["extra_headers"] == {
+        "x-hook-required": "policy-value",
+        "x-gateway-token": "pinned-value",
+    }
     assert forward.await_args.kwargs["metadata"] == {"guardrails": ["policy-guardrail"], "user_api_key_team_id": "team"}
     assert forward.await_args.kwargs["chatgpt_realtime_call_id"] == "rtc_private"
     assert forward.await_args.kwargs["model"] == "chatgpt/gpt-live-1-codex"
