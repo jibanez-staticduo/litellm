@@ -5513,6 +5513,32 @@ class StandardLoggingPayloadSetup:
         return clean_metadata
 
     @staticmethod
+    def _get_rerank_usage(response_obj: Mapping[str, object]) -> Usage | None:
+        if "results" not in response_obj:
+            return None
+        meta: Final = response_obj.get("meta")
+        if not isinstance(meta, dict):
+            return None
+        tokens: Final = meta.get("tokens")
+        billed_units: Final = meta.get("billed_units")
+        input_tokens: Final = tokens.get("input_tokens") if isinstance(tokens, dict) else None
+        total_tokens: Final = billed_units.get("total_tokens") if isinstance(billed_units, dict) else None
+        prompt_tokens: Final = input_tokens if input_tokens is not None else total_tokens
+        if not isinstance(prompt_tokens, int) or isinstance(prompt_tokens, bool) or prompt_tokens < 0:
+            return None
+        output_tokens: Final = tokens.get("output_tokens") if isinstance(tokens, dict) else None
+        completion_tokens: Final = (
+            output_tokens
+            if isinstance(output_tokens, int) and not isinstance(output_tokens, bool) and output_tokens >= 0
+            else 0
+        )
+        return Usage(
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=prompt_tokens + completion_tokens,
+        )
+
+    @staticmethod
     def get_usage_from_response_obj(response_obj: dict | None, combined_usage_object: Usage | None = None) -> Usage:
         ## BASE CASE ##
         if combined_usage_object is not None:
@@ -5524,6 +5550,10 @@ class StandardLoggingPayloadSetup:
                 total_tokens=0,
             )
 
+        if response_obj.get("usage") is None:
+            rerank_usage: Final = StandardLoggingPayloadSetup._get_rerank_usage(response_obj)
+            if rerank_usage is not None:
+                return rerank_usage
         usage: Final = response_obj.get("usage", None) or {}
         if usage is None or (not isinstance(usage, dict) and not isinstance(usage, Usage)):
             return Usage(
@@ -5560,7 +5590,8 @@ class StandardLoggingPayloadSetup:
             return _empty
         _raw: Final = response_obj.get("usage", None)
         if _raw is None:
-            return _empty
+            rerank_usage: Final = StandardLoggingPayloadSetup._get_rerank_usage(response_obj)
+            return rerank_usage.model_dump() if rerank_usage is not None else _empty
         if isinstance(_raw, ResponseAPIUsage):
             return ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(_raw).model_dump()
         if isinstance(_raw, dict):
