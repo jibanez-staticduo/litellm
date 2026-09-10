@@ -34,8 +34,7 @@ def merge_discovered_tools(tools: Sequence[Mapping[str, object]]) -> tuple[Mappi
     A namespace may be discovered in separate searches with different children.
     Merge those children too, instead of losing an earlier search's tools.
     """
-    # mutable-ok: incremental indexed merge preserves first discovery order and latest schema
-    merged: Final[dict[tuple[object, object], Mapping[str, object]]] = {}
+    merged: Final[dict[tuple[object, object], Mapping[str, object]]] = {}  # mutable-ok: ordered merge
     for tool in tools:
         key = (tool.get("type"), tool.get("name"))
         previous = merged.get(key)
