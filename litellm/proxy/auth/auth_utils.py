@@ -1879,7 +1879,8 @@ def _extract_model_candidates_from_request(
         and isinstance(session_model, str)
         and session_model
     ):
-        return [session_model]
+        candidates.append(session_model)
+        return candidates
 
     body_model: Final = request_data.get("model")
     _append_model_candidates(candidates, body_model)

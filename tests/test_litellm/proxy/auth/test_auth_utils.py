@@ -918,6 +918,11 @@ def test_realtime_calls_auth_uses_executed_session_model_despite_decoys(session)
     )
 
 
+@pytest.mark.parametrize("model", ["voice,alias", " voice "])
+def test_realtime_calls_auth_preserves_exact_session_model(model):
+    assert get_model_from_request(request_data={"session": {"model": model}}, route="/v1/realtime/calls") == model
+
+
 @pytest.mark.parametrize("session", ["invalid", "null", "[]", "12", '"text"', "{}"])
 def test_realtime_model_extraction_ignores_invalid_serialized_session(session):
     assert get_model_from_request(request_data={"session": session}, route="/v1/realtime/calls") is None

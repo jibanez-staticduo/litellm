@@ -1626,7 +1626,9 @@ class _PROXY_MaxParallelRequestsHandler_v3(CustomLogger):
                     await self._rollback_cluster_parallel_slots(tuple(attempted), slot_id, parent_otel_span)
                     return RateLimitResponse(
                         overall_code="OVER_LIMIT",
-                        statuses=[self._gauge_status(by_key[keys[int(raw[1]) - 1]], int(raw[2]), "OVER_LIMIT")],
+                        statuses=[  # mutable-ok: response contract requires a list
+                            self._gauge_status(by_key[keys[int(raw[1]) - 1]], int(raw[2]), "OVER_LIMIT")
+                        ],
                     )
                 counts.update((key, int(count)) for key, count in zip(keys, raw[1:], strict=True))
                 for key in keys:
@@ -1651,7 +1653,7 @@ class _PROXY_MaxParallelRequestsHandler_v3(CustomLogger):
         )
         return RateLimitResponse(
             overall_code="OVER_LIMIT" if any(item["code"] == "OVER_LIMIT" for item in statuses) else "OK",
-            statuses=list(statuses),
+            statuses=list(statuses),  # mutable-ok: RateLimitResponse contract requires a list
         )
 
     async def _rollback_cluster_parallel_slots(
@@ -1825,7 +1827,7 @@ class _PROXY_MaxParallelRequestsHandler_v3(CustomLogger):
                     return False
                 await self.internal_usage_cache.async_set_cache(
                     key=counter_key,
-                    value={**value, slot_id: now},
+                    value={**value, slot_id: now},  # mutable-ok: slot registry readers require a concrete dict
                     ttl=PARALLEL_REQUEST_SLOT_TTL_SECONDS,
                     local_only=True,
                     litellm_parent_otel_span=None,
