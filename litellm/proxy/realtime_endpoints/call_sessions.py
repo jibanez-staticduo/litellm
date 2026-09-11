@@ -56,6 +56,7 @@ from litellm.proxy.spend_tracking.budget_reservation import (
     invalidate_budget_reservation_counters,
     release_or_invalidate_budget_reservation,
 )
+from litellm.types.realtime import RealtimeQueryParams
 from litellm.types.router import GenericLiteLLMParams
 
 
@@ -73,11 +74,13 @@ async def _start_codex_supervisor(
     from litellm.proxy.realtime_endpoints.call_supervision import CALL_SUPERVISORS, CallSupervisor
 
     async def receive() -> Message:
-        return {
+        body: Final[RealtimeQueryParams] = {"model": call.alias}
+        message: Final[Message] = {
             "type": "http.request",
-            "body": json.dumps({"model": call.alias}).encode(),
+            "body": json.dumps(body).encode(),
             "more_body": False,
-        }  # mutable-ok: ASGI message
+        }
+        return message
 
     async def send(_message: Message) -> None:
         return None

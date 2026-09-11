@@ -115,7 +115,7 @@ class _PROXY_MaxParallelRequestsHandler(CustomLogger):
             local.set_cache(key, updated, ttl=60)
         if remote is not None:
             release: Final = remote.async_register_script(_RELEASE_REALTIME_COUNTER_LUA)
-            await release(keys=[key], args=[])
+            await release(keys=(key,), args=())
             if local.get_cache(key) is updated:
                 local.delete_cache(key)
 

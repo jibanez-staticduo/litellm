@@ -13,6 +13,7 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import datetime
+from types import MappingProxyType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -433,6 +434,14 @@ class ParallelRequestGauge(TypedDict):
     counter_key: str
     limit: int
     descriptor_key: str
+
+
+def _without_parallel_limit(descriptor: RateLimitDescriptor) -> RateLimitDescriptor:
+    rate_limit: Final[RateLimitDescriptorRateLimitObject] = {
+        **(descriptor.get("rate_limit") or MappingProxyType({})),
+        "max_parallel_requests": None,
+    }
+    return RateLimitDescriptor(key=descriptor["key"], value=descriptor["value"], rate_limit=rate_limit)
 
 
 class ParallelSlotAcquisition(TypedDict):
@@ -1656,9 +1665,9 @@ class _PROXY_MaxParallelRequestsHandler_v3(CustomLogger):
         if self.parallel_renew_script is not None:
             try:
                 result: Final = await self.parallel_renew_script(
-                    keys=list(counter_keys), args=[slot_id, PARALLEL_REQUEST_SLOT_TTL_SECONDS]
+                    keys=counter_keys, args=(slot_id, PARALLEL_REQUEST_SLOT_TTL_SECONDS)
                 )
-                return result == [1]
+                return tuple(result) == (1,)
             except Exception:  # noqa: BLE001  # Redis ownership cannot be established by a local count mirror
                 return False
         async with self._check_and_increment_lock:
@@ -3571,14 +3580,7 @@ class _PROXY_MaxParallelRequestsHandler_v3(CustomLogger):
         descriptors.extend(self.create_organization_rate_limit_descriptor(user_api_key_dict, requested_model))
 
         effective_descriptors: Final = (
-            [
-                RateLimitDescriptor(
-                    key=descriptor["key"],
-                    value=descriptor["value"],
-                    rate_limit={**(descriptor.get("rate_limit") or {}), "max_parallel_requests": None},
-                )
-                for descriptor in descriptors
-            ]
+            tuple(_without_parallel_limit(descriptor) for descriptor in descriptors)
             if call_type == "_arealtime" and is_realtime_call_attachment(data.get("websocket"))
             else descriptors
         )
