@@ -446,7 +446,7 @@ def _without_parallel_limit(descriptor: RateLimitDescriptor) -> RateLimitDescrip
 
 class ParallelSlotAcquisition(TypedDict):
     slot_id: str
-    counter_keys: list[str]
+    counter_keys: Sequence[str]
 
 
 class RateLimitStatus(TypedDict):
@@ -1038,7 +1038,7 @@ class _PROXY_MaxParallelRequestsHandler_v3(CustomLogger):
 
     async def in_memory_cache_sliding_window(
         self,
-        keys: list[str],
+        keys: Sequence[str],
         now_int: int,
         window_size: int,
     ) -> CacheCounterValues:
@@ -1192,7 +1192,7 @@ class _PROXY_MaxParallelRequestsHandler_v3(CustomLogger):
         crc: Final = binascii.crc_hqx(key.encode("utf-8"), 0)
         return crc % REDIS_CLUSTER_SLOTS
 
-    def _group_keys_by_hash_tag(self, keys: list[str]) -> dict[str, list[str]]:
+    def _group_keys_by_hash_tag(self, keys: Sequence[str]) -> Mapping[str, Sequence[str]]:
         """
         Group keys by their Redis hash tag to ensure cluster compatibility.
 
@@ -1212,7 +1212,7 @@ class _PROXY_MaxParallelRequestsHandler_v3(CustomLogger):
                 groups[slot_key].append(key)
         else:
             # For regular Redis, no grouping needed - process all keys together
-            groups[REDIS_NODE_HASHTAG_NAME] = keys
+            return MappingProxyType({REDIS_NODE_HASHTAG_NAME: keys})
 
         return groups
 
@@ -1516,7 +1516,7 @@ class _PROXY_MaxParallelRequestsHandler_v3(CustomLogger):
                 try:
                     raw_counts: Final[list[CacheCounterValue]] = await self.parallel_count_script(
                         keys=gauge_keys,
-                        args=[PARALLEL_REQUEST_SLOT_TTL_SECONDS for _ in gauges],
+                        args=tuple(PARALLEL_REQUEST_SLOT_TTL_SECONDS for _ in gauges),
                     )
                     counts = [max(0, int(value)) for value in raw_counts]
                 except Exception as e:  # noqa: BLE001 - any Redis/Lua failure degrades to the local mirror, never a 500
@@ -1590,7 +1590,7 @@ class _PROXY_MaxParallelRequestsHandler_v3(CustomLogger):
                 for gauge in gauges
             }
         )
-        groups: Final = self._group_keys_by_hash_tag(list(by_key))
+        groups: Final = self._group_keys_by_hash_tag(tuple(by_key))
         counts: Final[dict[str, int]] = {}  # mutable-ok: gather independent Redis-slot results
         attempted: Final[list[str]] = []  # mutable-ok: rollback includes requests whose responses were lost
         try:
@@ -1679,7 +1679,7 @@ class _PROXY_MaxParallelRequestsHandler_v3(CustomLogger):
         self, counter_keys: tuple[str, ...], slot_id: str, parent_otel_span: Span | None
     ) -> None:
         first_error: Exception | None = None  # rebind-ok: finish every shard before reporting the first failure
-        for keys in self._group_keys_by_hash_tag(list(counter_keys)).values():
+        for keys in self._group_keys_by_hash_tag(counter_keys).values():
             try:
                 if self.parallel_release_script is None:
                     raise RuntimeError("Redis cluster parallel release script is unavailable")
@@ -1786,7 +1786,7 @@ class _PROXY_MaxParallelRequestsHandler_v3(CustomLogger):
 
         async def release() -> None:
             await self._release_parallel_request_slots(
-                ParallelSlotAcquisition(slot_id=slot_id, counter_keys=list(counter_keys))
+                ParallelSlotAcquisition(slot_id=slot_id, counter_keys=counter_keys)
             )
 
         return RealtimeCallLease(renew=renew, release=release)
@@ -1794,7 +1794,7 @@ class _PROXY_MaxParallelRequestsHandler_v3(CustomLogger):
     async def _renew_realtime_call_slot(self, slot_id: str, counter_keys: tuple[str, ...]) -> bool:
         if self.parallel_renew_script is not None:
             try:
-                for keys in self._group_keys_by_hash_tag(list(counter_keys)).values():
+                for keys in self._group_keys_by_hash_tag(counter_keys).values():
                     if tuple(
                         await self.parallel_renew_script(keys=keys, args=(slot_id, PARALLEL_REQUEST_SLOT_TTL_SECONDS))
                     ) != (1,):
@@ -1856,7 +1856,7 @@ class _PROXY_MaxParallelRequestsHandler_v3(CustomLogger):
             try:
                 raw: Final[list[CacheCounterValue]] = await self.parallel_release_script(
                     keys=counter_keys,
-                    args=[slot_id for _ in counter_keys],
+                    args=tuple(slot_id for _ in counter_keys),
                 )
                 for counter_key, remaining in zip(counter_keys, raw):
                     await self.internal_usage_cache.async_set_cache(

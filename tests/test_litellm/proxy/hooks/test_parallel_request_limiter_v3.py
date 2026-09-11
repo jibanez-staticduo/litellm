@@ -6532,4 +6532,4 @@ async def test_standalone_realtime_renewal_keeps_single_atomic_batch(monkeypatch
     monkeypatch.setattr(handler, "parallel_renew_script", renew)
     keys = ("{api_key:owner}:max_parallel_requests", "{team:group}:max_parallel_requests")
     assert await handler._renew_realtime_call_slot("owner", keys)
-    renew.assert_awaited_once_with(keys=list(keys), args=("owner", PARALLEL_REQUEST_SLOT_TTL_SECONDS))
+    renew.assert_awaited_once_with(keys=keys, args=("owner", PARALLEL_REQUEST_SLOT_TTL_SECONDS))
