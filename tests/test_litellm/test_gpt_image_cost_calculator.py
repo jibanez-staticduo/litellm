@@ -42,6 +42,41 @@ def _use_local_model_cost_map(monkeypatch):
 class TestGPTImageCostCalculator:
     """Test the OpenAI gpt-image cost calculator"""
 
+    @pytest.mark.parametrize("family", ["flare", "sunburst"])
+    @pytest.mark.parametrize("snapshot", ["", "-2026-09-08"])
+    @pytest.mark.parametrize("call_type", ["image_generation", "image_edit"])
+    @pytest.mark.parametrize("cached_text,cached_image", [(0, 0), (50, 500)])
+    def test_image_25_official_prices(self, family, snapshot, call_type, cached_text, cached_image):
+        response: Final = ImageResponse(
+            created=1,
+            data=[],
+            usage={
+                "input_tokens": 1100,
+                "output_tokens": 100,
+                "total_tokens": 1200,
+                "input_tokens_details": {
+                    "text_tokens": 100,
+                    "image_tokens": 1000,
+                    "cached_tokens": cached_text + cached_image,
+                    "cached_tokens_details": {"text_tokens": cached_text, "image_tokens": cached_image},
+                },
+            },
+        )
+        cost: Final = litellm.completion_cost(
+            model="gpt-image-2.5-" + family + snapshot,
+            completion_response=response,
+            call_type=call_type,
+            custom_llm_provider="openai",
+        )
+        expected: Final = (
+            (100 - cached_text) * 5e-6
+            + cached_text * 1.25e-6
+            + (1000 - cached_image) * 8e-6
+            + cached_image * 2e-6
+            + 100 * 30e-6
+        )
+        assert cost == pytest.approx(expected)
+
     @pytest.mark.parametrize("provider", ["chatgpt", "openai", "azure"])
     @pytest.mark.parametrize("cached_text,cached_image", [(0, 0), (50, 0), (0, 500), (50, 500)])
     def test_custom_image_deployment_prices_cached_modalities(
