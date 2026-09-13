@@ -227,17 +227,102 @@ async def test_ordinary_responses_request_on_enabled_alias_does_not_require_repl
         [{"type": "compaction", "encrypted_content": "opaque"}],
     ],
 )
-async def test_existing_native_task_stays_legacy_without_changing_any_provider_payload(history):
+async def test_existing_native_task_preserves_history_and_advertises_portable_tools(history):
     store = MemoryStore()
     callback = PortableCodexAgents(frozenset({"native", "external"}), store, frozenset({"native"}))
     auth = UserAPIKeyAuth(api_key="identity", request_route="/v1/responses")
     request = {"model": "native", "tools": tools(), "input": history, "client_metadata": {"thread_id": "old_thread"}}
-    assert await callback.async_pre_call_hook(auth, DualCache(), request, "aresponses") == request
+    transformed = await callback.async_pre_call_hook(auth, DualCache(), request, "aresponses")
+    assert transformed["input"] == history
+    assert transformed["tools"][0]["name"] == "portable_collaboration"
+    assert request["tools"][0]["name"] == "collaboration"
     later = {**request, "input": [{"role": "user", "content": "Continue"}]}
-    assert await callback.async_pre_call_hook(auth, DualCache(), later, "aresponses") == later
+    assert (await callback.async_pre_call_hook(auth, DualCache(), later, "aresponses"))["tools"][0][
+        "name"
+    ] == "portable_collaboration"
     with pytest.raises(HTTPException):
         await callback.async_pre_call_hook(auth, DualCache(), {**request, "model": "external"}, "aresponses")
     assert set(store.modes.values()) == {"legacy"}
+
+
+@pytest.mark.asyncio
+async def test_legacy_mixed_replay_preserves_native_items_and_restores_portable_provenance():
+    store = MemoryStore()
+    native_call = {**call(), "namespace": "collaboration", "encrypted_function_args": ["message"]}
+    native_control = {**call("list_agents"), "namespace": "collaboration", "arguments": "{}"}
+    encrypted_assignment = {
+        "type": "agent_message",
+        "author": "/root",
+        "recipient": "/root/old",
+        "content": [{"type": "encrypted_content", "encrypted_content": "opaque"}],
+    }
+    checkpoint = {"type": "compaction", "encrypted_content": "opaque"}
+    portable = await transform_response(
+        {
+            "output": [
+                {**call(), "call_id": "call_new"},
+                {**call("list_agents"), "call_id": "call_control", "arguments": "{}"},
+            ]
+        },
+        RequestContext("owner", frozenset({"spawn_agent", "list_agents"})),
+        store,
+    )
+    replay = [
+        {key: value for key, value in item.items() if key != "encrypted_function_args"} for item in portable["output"]
+    ]
+    history = [
+        native_call,
+        native_control,
+        encrypted_assignment,
+        checkpoint,
+        *replay,
+        {"type": "function_call_output", "call_id": "call_new", "output": "child started"},
+    ]
+    request = {
+        "input": history,
+        "tools": tools(),
+        "tool_choice": {"type": "function", "namespace": "collaboration", "name": "spawn_agent"},
+    }
+    result, _ = await transform_request(request, "owner", store, native_history=True)
+    assert result["input"][:4] == history[:4]
+    assert [item["namespace"] for item in result["input"][4:6]] == ["portable_collaboration", "portable_collaboration"]
+    assert result["input"][-1] == history[-1]
+    assert result["tool_choice"]["namespace"] == "portable_collaboration"
+    assert request["input"] == history
+    assert len(store.records) == 2
+
+
+@pytest.mark.asyncio
+async def test_persisted_legacy_mode_rewrites_discovered_tools_and_streams_new_plaintext_calls():
+    store = MemoryStore()
+    callback = PortableCodexAgents(frozenset({"native", "external"}), store, frozenset({"native"}))
+    auth = UserAPIKeyAuth(api_key="identity", request_route="/v1/responses")
+    base = {"model": "native", "client_metadata": {"thread_id": "legacy_thread"}}
+    await callback.async_pre_call_hook(
+        auth,
+        DualCache(),
+        {**base, "tools": tools(), "input": [{"type": "compaction", "encrypted_content": "opaque"}]},
+        "aresponses",
+    )
+    request = await callback.async_pre_call_hook(
+        auth, DualCache(), {**base, "input": [{"type": "additional_tools", "tools": tools()}]}, "aresponses"
+    )
+    assert request["input"][0]["tools"][0]["name"] == "portable_collaboration"
+    assert "encrypted" not in request["input"][0]["tools"][0]["tools"][0]["parameters"]["properties"]["message"]
+
+    async def source():
+        yield {"type": "response.output_item.added", "item": {**call(), "arguments": ""}}
+        yield {"type": "response.output_item.done", "item": call()}
+
+    events = [event async for event in callback.async_post_call_streaming_iterator_hook(auth, source(), request)]
+    assert all(event["item"]["namespace"] == "collaboration" for event in events)
+    assert all(event["item"]["encrypted_function_args"] == [] for event in events)
+    assert len(store.records) == 1
+    assert set(store.modes.values()) == {"legacy"}
+    with pytest.raises(HTTPException):
+        await callback.async_pre_call_hook(
+            auth, DualCache(), {**base, "model": "external", "tools": tools()}, "aresponses"
+        )
 
 
 @pytest.mark.asyncio
@@ -310,3 +395,52 @@ async def test_completed_snapshot_with_plaintext_tool_and_nullable_message_prese
     assert result.output[0].namespace == "collaboration"
     assert result.output[0].encrypted_function_args == []
     assert result.output[1].content[0].logprobs is None
+
+
+@pytest.mark.asyncio
+async def test_legacy_replay_does_not_relabel_unknown_or_other_owner_calls():
+    store = MemoryStore()
+    response = await transform_response(
+        {"output": [call()]}, RequestContext("owner", frozenset({"spawn_agent"})), store
+    )
+    replay = {key: value for key, value in response["output"][0].items() if key != "encrypted_function_args"}
+    unknown = {**replay, "call_id": "unknown"}
+    for item, owner in ((unknown, "owner"), (replay, "other_owner")):
+        transformed, _ = await transform_request({"input": [item]}, owner, store, native_history=True)
+        assert transformed["input"] == [item]
+        assert transformed["input"][0]["namespace"] == "collaboration"
+
+
+@pytest.mark.asyncio
+async def test_legacy_markerless_replay_storage_failure_is_not_native_fallback():
+    class UnavailableStore(MemoryStore):
+        async def contains(self, key: str) -> bool:
+            raise HTTPException(503, "Replay storage unavailable")
+
+    with pytest.raises(HTTPException) as exc:
+        await transform_request(
+            {"input": [{**call(), "namespace": "collaboration"}]}, "owner", UnavailableStore(), native_history=True
+        )
+    assert exc.value.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_stream_delta_and_completed_snapshot_preserve_call_identity():
+    store = MemoryStore()
+    context = RequestContext("owner", frozenset({"spawn_agent"}))
+    delta = {
+        "type": "response.function_call_arguments.delta",
+        "item_id": "fc_probe",
+        "output_index": 0,
+        "delta": '{"message":',
+    }
+    assert await transform_response(delta, context, store) == delta
+    assert not store.records
+    completed = await transform_response(
+        {"type": "response.completed", "response": {"id": "resp_test", "output": [call()]}}, context, store
+    )
+    item = completed["response"]["output"][0]
+    assert (item["id"], item["call_id"], item["arguments"]) == (call()["id"], call()["call_id"], call()["arguments"])
+    assert item["namespace"] == "collaboration"
+    assert item["encrypted_function_args"] == []
+    assert len(store.records) == 1

@@ -185,7 +185,7 @@ def _plaintext_schema(function: dict[str, object]) -> dict[str, object]:
 
 
 async def transform_request(
-    original: Mapping[str, object], owner: str, store: ReplayStore
+    original: Mapping[str, object], owner: str, store: ReplayStore, *, native_history: bool = False
 ) -> tuple[dict[str, object], RequestContext]:
     if original.get("previous_response_id"):
         raise HTTPException(400, "Portable agent transport requires full history; previous_response_id is unsupported.")
@@ -196,7 +196,9 @@ async def transform_request(
         if _object(item).get("type") == "additional_tools"
         for _, names in (_rewrite_tool(tool) for tool in _items(_object(item).get("tools")))
     )
-    input_items: Final = [await _request_item(item, owner, store) for item in _items(original.get("input"))]
+    input_items: Final = [
+        await _request_item(item, owner, store, native_history=native_history) for item in _items(original.get("input"))
+    ]
     choice: Final = _object(original.get("tool_choice"))
     rewritten_choice: Final = (
         {**choice, "namespace": _NAMESPACE} if choice.get("namespace") == "collaboration" else choice
@@ -211,11 +213,17 @@ async def transform_request(
     )
 
 
-async def _request_item(value: object, owner: str, store: ReplayStore) -> object:
+async def _request_item(value: object, owner: str, store: ReplayStore, *, native_history: bool = False) -> object:
     item: Final = _object(value)
     if item.get("type") == "additional_tools":
         return {**item, "tools": [_rewrite_tool(tool)[0] for tool in _items(item.get("tools"))]}
     if item.get("type") == "function_call" and item.get("namespace") == "collaboration":
+        if native_history:
+            native_marker: Final = item.get("encrypted_function_args")
+            if native_marker not in (None, []):
+                return value
+            if native_marker is None and not await store.contains(_replay_key(owner, item)):
+                return value
         if item.get("name") in _MESSAGE_TOOLS:
             marker: Final = item.get("encrypted_function_args")
             if marker not in (None, []):
@@ -228,6 +236,8 @@ async def _request_item(value: object, owner: str, store: ReplayStore) -> object
     content: Final = item.get("content")
     blocks: Final = ({"type": "input_text", "text": content},) if isinstance(content, str) else _items(content)
     if not blocks or any(_object(block).get("type") != "input_text" for block in blocks):
+        if native_history:
+            return value
         raise HTTPException(400, "Encrypted agent assignments require a fresh task using portable transport.")
     return {
         "type": "message",
@@ -249,6 +259,8 @@ async def _response_item(value: object, context: RequestContext, store: ReplaySt
     if item.get("name") not in context.tools:
         raise HTTPException(502, "Upstream returned an unadvertised portable collaboration tool.")
     if item.get("name") not in _MESSAGE_TOOLS:
+        if complete:
+            await store.record(_replay_key(context.owner, item))
         return {**item, "namespace": "collaboration"}
     if item.get("encrypted_function_args") not in (None, []):
         raise HTTPException(502, "Upstream returned encrypted portable collaboration arguments.")
@@ -330,12 +342,7 @@ class PortableCodexAgents(CustomLogger):
                 raise HTTPException(
                     400, "This legacy task requires a native Responses provider. Start a fresh portable task."
                 )
-            return {
-                **data,
-                **({"metadata": clean_metadata} if "metadata" in data else {}),
-                **({"litellm_metadata": clean_internal} if "litellm_metadata" in data else {}),
-            }
-        transformed, context = await transform_request(data, owner, self.store)
+        transformed, context = await transform_request(data, owner, self.store, native_history=mode == "legacy")
         return {
             **transformed,
             **({"metadata": clean_metadata} if "metadata" in data else {}),
