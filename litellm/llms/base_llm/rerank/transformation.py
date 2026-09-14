@@ -126,7 +126,8 @@ class BaseRerankConfig(ABC):
         if token_rate is not None and total_tokens is not None:
             return token_rate * total_tokens, 0.0
 
-        if model_info.get("input_cost_per_query") is None:
+        query_rate: Final = model_info.get("input_cost_per_query")
+        if query_rate is None:
             return 0.0, 0.0
 
         search_units: Final = billed_units.get("search_units")
@@ -134,6 +135,6 @@ class BaseRerankConfig(ABC):
         if search_units is None:
             return 0.0, 0.0
 
-        prompt_cost: Final = model_info["input_cost_per_query"] * search_units
+        prompt_cost: Final = query_rate * search_units
 
         return prompt_cost, 0.0
