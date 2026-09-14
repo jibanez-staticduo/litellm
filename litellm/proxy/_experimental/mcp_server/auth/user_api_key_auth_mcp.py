@@ -402,7 +402,7 @@ class MCPRequestHandler:
     LITELLM_MCP_ACCESS_GROUPS_HEADER_NAME = SpecialHeaders.mcp_access_groups.value
 
     @staticmethod
-    async def process_mcp_request(  # noqa: C901  # admission intentionally separates every MCP authentication mode
+    async def process_mcp_request(
         scope: Scope,
     ) -> tuple[
         UserAPIKeyAuth,

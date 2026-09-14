@@ -30,6 +30,7 @@ from datetime import datetime, timedelta, timezone
 from types import MappingProxyType, UnionType
 from typing import (
     TYPE_CHECKING,
+    Annotated,
     Any,
     Final,
     Literal,
@@ -11967,7 +11968,7 @@ async def _reject_realtime_session(
 async def codex_live_sideband_endpoint(
     websocket: WebSocket,
     call_id: str,
-    user_api_key_dict: UserAPIKeyAuth = Depends(user_api_key_auth_websocket),
+    user_api_key_dict: Annotated[UserAPIKeyAuth, Depends(user_api_key_auth_websocket)],
 ) -> None:
     from litellm.proxy.realtime_endpoints.call_sessions import codex_realtime_sideband
 

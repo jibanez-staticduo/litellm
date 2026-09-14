@@ -2272,7 +2272,9 @@ class LiteLLMCompletionResponsesConfig:
             chat_completion_response
         )
         responses_tools: Final[
-            list[ResponseToolSearchCall | ResponseFunctionToolCall | ResponseFunctionWebSearch | CustomToolCallOutputItem]
+            list[
+                ResponseToolSearchCall | ResponseFunctionToolCall | ResponseFunctionWebSearch | CustomToolCallOutputItem
+            ]
         ] = []  # mutable-ok: preserves provider tool-call order
         for tool in all_chat_completion_tools:
             if tool.type == "function":
