@@ -157,3 +157,7 @@ ui/litellm-dashboard/out/
 .staticeng/**/*token*
 .staticeng/**/*credential*
 .staticeng/**/*credentials*
+litellm.log
+
+.coverage-rust
+coverage-rust.xml

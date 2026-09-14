@@ -3,7 +3,8 @@
 The gateway exposes the LLM data-plane surface: chat/completions, embeddings,
 audio, batches, files, fine-tuning, rerank, ocr, rag, video, search, image,
 responses, vector stores, passthrough providers, realtime websockets, MCP
-tool-call endpoints, and operational endpoints (/health, /metrics).
+tool-call endpoints, and operational endpoints (/health, /metrics, and the
+/debug/memory/summary read of the serving worker's RSS).
 
 Any path not listed here is dropped from the gateway process so management/UI
 endpoints don't ride on the same pods.
@@ -135,6 +136,7 @@ GATEWAY_EXACT_PATHS: frozenset[str] = frozenset(
         "/register",
         "/revoke",
         "/introspect",
+        "/debug/memory/summary",
     }
 )
 

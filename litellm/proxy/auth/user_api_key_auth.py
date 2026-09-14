@@ -25,6 +25,7 @@ from starlette.exceptions import WebSocketException
 import litellm
 from litellm._logging import verbose_logger, verbose_proxy_logger
 from litellm._service_logger import ServiceLogging
+from litellm.caching.redis_cache import RedisCache
 from litellm.constants import (
     GLOBAL_PROXY_SPEND_CACHE_KEY,
     INVALID_VIRTUAL_KEY_ERROR_MARKER,
@@ -56,6 +57,7 @@ from litellm.proxy.auth.auth_checks import (
     get_jwt_key_mapping_object,
     get_object_permission,
     get_project_object,
+    get_team_membership,
     get_team_object,
     get_user_object,
     is_valid_fallback_model,
@@ -64,6 +66,7 @@ from litellm.proxy.auth.auth_checks import (
 )
 from litellm.proxy.auth.auth_exception_handler import UserAPIKeyAuthExceptionHandler
 from litellm.proxy.auth.auth_method import AuthMethod
+from litellm.proxy.auth.auth_object_prefetch import AuthObjectRefs, prefetch_auth_objects
 from litellm.proxy.auth.auth_utils import (
     abbreviate_api_key,
     get_end_user_id_from_request_body,
@@ -81,6 +84,14 @@ from litellm.proxy.auth.network import TrustedProxyConfig, resolve_network_conte
 from litellm.proxy.auth.oauth2_check import Oauth2Handler
 from litellm.proxy.auth.oauth2_proxy_hook import handle_oauth2_proxy_request
 from litellm.proxy.auth.resolvers import CredentialRef, Principal
+from litellm.proxy.auth.resolvers.grants import (
+    GrantResolver,
+    LookupDegraded,
+    ResolvedGrants,
+    UserLookup,
+    raise_public,
+    user_models,
+)
 from litellm.proxy.auth.resolvers.store import IdentityStore
 from litellm.proxy.auth.route_checks import RouteChecks
 from litellm.proxy.auth.team_grants import team_grants
@@ -92,7 +103,9 @@ from litellm.proxy.common_utils.http_parsing_utils import (
     _safe_get_request_query_params,
     _safe_set_request_parsed_body,
     populate_request_with_path_params,
+    read_raw_json_body,
 )
+from litellm.proxy.common_utils.model_listing_utils import claude_code_requested_group
 from litellm.proxy.common_utils.realtime_utils import _realtime_request_body
 from litellm.proxy.common_utils.user_api_key_cache import (
     UserApiKeyCache,
@@ -100,6 +113,12 @@ from litellm.proxy.common_utils.user_api_key_cache import (
 )
 from litellm.proxy.db.exception_handler import PrismaDBExceptionHandler
 from litellm.proxy.litellm_pre_call_utils import LiteLLMProxyRequestSetup
+from litellm.proxy.spend_tracking.carried_budget_state import carry_team_and_user_budget_state
+from litellm.proxy.spend_tracking.spend_counter_batch import (
+    bind_admission_counter_keys,
+    release_spend_counter_batch,
+    spend_counter_batch_scope,
+)
 from litellm.proxy.utils import (
     PrismaClient,
     ProxyLogging,
@@ -186,6 +205,44 @@ def _get_model_from_request_context(
         llm_router=llm_router,
         request=request,
     )
+
+
+_CLAUDE_MODEL_ROUTES: Final = frozenset(
+    f"/{prefix}{endpoint}" for prefix in ("", "v1/") for endpoint in ("messages", "chat/completions", "responses")
+)
+_CLAUDE_MODEL_NORMALIZED: Final = "litellm.claude_model_normalized"
+
+
+async def _normalize_claude_model(
+    request_data: dict, valid_token: UserAPIKeyAuth, request: Request | None, route: str
+) -> None:
+    from litellm.proxy.proxy_server import llm_router, prisma_client, proxy_config, proxy_logging_obj
+
+    if route not in _CLAUDE_MODEL_ROUTES or llm_router is None:
+        return
+    if request is not None and request.scope.get(_CLAUDE_MODEL_NORMALIZED) is True:
+        return
+    requested: Final = _get_model_from_request_context(request_data, route, request, llm_router)
+    if not isinstance(requested, str) or requested != request_data.get("model"):
+        return
+    if not requested.startswith("claude-router-") and not requested.lower().endswith("[1m]"):
+        return
+    settings: Final = await proxy_config.get_hierarchical_router_settings(
+        user_api_key_dict=valid_token, prisma_client=prisma_client, proxy_logging_obj=proxy_logging_obj
+    )
+    aliases: Final = settings.get("model_group_alias") if isinstance(settings, Mapping) else None
+    source: Final = claude_code_requested_group(
+        requested, llm_router, valid_token.team_id, (valid_token.aliases, valid_token.team_model_aliases, aliases)
+    )
+    if request is not None:
+        request.scope[_CLAUDE_MODEL_NORMALIZED] = True
+    if source is None:
+        return
+    request_data["model"] = source
+    _safe_set_request_parsed_body(request=request, parsed_body=request_data)
+    if request is not None:
+        request._json = request_data
+        request._body = orjson.dumps(request_data)
 
 
 def _get_model_names_for_budget_checks(
@@ -1227,6 +1284,52 @@ async def _record_unparsable_body_failure(
         verbose_proxy_logger.exception("Failed to log the request rejected for an unparsable body: %s", e)
 
 
+async def _refresh_session_token_grants(
+    valid_token: UserAPIKeyAuth,
+    prisma_client: PrismaClient,
+    user_api_key_cache: UserApiKeyCache,
+    parent_otel_span: Span | None,
+    proxy_logging_obj: ProxyLogging,
+) -> UserAPIKeyAuth:
+    """Rebuild a ``lite login`` session token's grants from the live user and team rows.
+
+    The blob only proves who logged in and which team they picked. Team models, aliases, the user's own model
+    list, and their role are re-read every request, so a `/team/update` or a demotion shows up without a
+    re-login, and a user removed from the team or deleted outright is refused. When a row cannot be read for
+    a reason unrelated to the caller, the minted grants stand in exactly as they did before this refresh.
+    """
+    outcome: Final = await GrantResolver(
+        prisma_client,
+        user_api_key_cache,
+        parent_otel_span=parent_otel_span,
+        proxy_logging_obj=proxy_logging_obj,
+        load_user=get_user_object,
+        load_team=get_team_object,
+        load_membership=get_team_membership,
+    ).resolve(UserLookup(user_id=valid_token.user_id), team_id=valid_token.team_id)
+    match outcome:
+        case ResolvedGrants(
+            user_object=LiteLLM_UserTable() as user_object, team_object=team_object, team_membership=team_membership
+        ):
+            return UserAPIKeyAuth.model_validate(
+                MappingProxyType(
+                    {
+                        **valid_token.model_dump(exclude_none=True),
+                        **team_grants(team_object, team_membership, user_object.user_id),
+                        "user_role": _get_user_role(user_object),
+                        "models": () if team_object is not None else user_models(user_object),
+                    }
+                )
+            )
+        case ResolvedGrants():
+            return valid_token
+        case LookupDegraded(error=error):
+            verbose_proxy_logger.debug("Session token grants not refreshed, keeping minted grants: %s", error)
+            return valid_token
+        case _:
+            raise_public(outcome)
+
+
 async def _resolve_object_permission_for_unresolvable_team(
     object_permission_id: str | None,
     prisma_client: PrismaClient | None,
@@ -1785,6 +1888,15 @@ async def _user_api_key_auth_builder(
             ):
                 valid_token = ExperimentalUIJWTToken.get_key_object_from_ui_hash_key(api_key)
 
+        if valid_token is not None and valid_token.is_session_token and prisma_client is not None:
+            valid_token = await _refresh_session_token_grants(  # rebind-ok: later checks read this name
+                valid_token=valid_token,
+                prisma_client=prisma_client,
+                user_api_key_cache=user_api_key_cache,
+                parent_otel_span=parent_otel_span,
+                proxy_logging_obj=proxy_logging_obj,
+            )
+
         if (
             valid_token is not None
             and isinstance(valid_token, UserAPIKeyAuth)
@@ -1988,6 +2100,9 @@ async def _user_api_key_auth_builder(
                 request=request,
                 llm_model_list=llm_model_list,
                 llm_router=llm_router,
+            )
+            await _prefetch_referenced_auth_objects(
+                valid_token, end_user_id=end_user_id, user_api_key_cache=user_api_key_cache, prisma_client=prisma_client
             )
 
             # Check 2. If user_id for this token is in budget - done in common_checks()
@@ -2645,6 +2760,11 @@ async def _run_centralized_common_checks(
         None if isinstance(end_user_result, BaseException) else end_user_result
     )
     global_proxy_spend: float | None = None if isinstance(global_spend_result, BaseException) else global_spend_result
+    carry_team_and_user_budget_state(
+        valid_token=user_api_key_auth_obj,
+        team_object=team_object,
+        user_object=user_object,
+    )
 
     if user_api_key_auth_obj.org_id is None and team_object is not None and team_object.organization_id is not None:
         user_api_key_auth_obj.org_id = team_object.organization_id
@@ -2697,24 +2817,29 @@ async def _run_centralized_common_checks(
         user_api_key_dict=user_api_key_auth_obj,
     )
 
-    _ = await common_checks(
-        request=request,
-        request_body=request_data,
-        team_object=team_object,
-        user_object=user_object,
-        end_user_object=end_user_object,
-        general_settings=general_settings,
-        global_proxy_spend=global_proxy_spend,
-        route=route,
-        llm_router=llm_router,
-        proxy_logging_obj=proxy_logging_obj,
-        valid_token=user_api_key_auth_obj,
-        skip_budget_checks=skip_budget_checks,
-        project_object=project_object,
-    )
+    bind_admission_counter_keys(user_api_key_auth_obj, end_user_id=end_user_id)
+    try:
+        _ = await common_checks(
+            request=request,
+            request_body=request_data,
+            team_object=team_object,
+            user_object=user_object,
+            end_user_object=end_user_object,
+            general_settings=general_settings,
+            global_proxy_spend=global_proxy_spend,
+            route=route,
+            llm_router=llm_router,
+            proxy_logging_obj=proxy_logging_obj,
+            valid_token=user_api_key_auth_obj,
+            skip_budget_checks=skip_budget_checks,
+            project_object=project_object,
+        )
+    finally:
+        release_spend_counter_batch()
 
     await _reserve_budget_after_common_checks(
         user_api_key_auth_obj=user_api_key_auth_obj,
+        request=request,
         request_data=request_data,
         route=route,
         llm_router=llm_router,
@@ -2750,6 +2875,7 @@ async def _reserve_budget_after_common_checks(
     general_settings: dict,
     end_user_id: str | None = None,
     end_user_object: LiteLLM_EndUserTable | None = None,
+    request: Request | None = None,
 ) -> None:
     user_api_key_auth_obj.budget_reservation = None
     if skip_budget_checks:
@@ -2775,6 +2901,7 @@ async def _reserve_budget_after_common_checks(
         end_user_object=end_user_object,
         apply_user_budget_to_team_keys=general_settings.get("apply_user_budget_to_team_keys") is True,
         fail_closed_budget_enforcement=general_settings.get("fail_closed_budget_enforcement") is True,
+        raw_body=await read_raw_json_body(request=request),
     )
 
 
@@ -2833,6 +2960,7 @@ async def _authorize_authenticated_request(
     """
     ## ENSURE DISABLE ROUTE WORKS ACROSS ALL USER AUTH FLOWS ##
     RouteChecks.should_call_route(route=route, valid_token=user_api_key_auth_obj, request=request)
+    await _normalize_claude_model(request_data, user_api_key_auth_obj, request, route)
 
     # Single authorization point. Builder paths MUST NOT call common_checks.
     # Route through the same exception handler the builder uses so
@@ -2883,6 +3011,28 @@ async def _authorize_authenticated_request(
             if resolved_end_user_id is not None:
                 user_api_key_auth_obj.end_user_id = resolved_end_user_id
     return None
+
+
+def _spend_counter_redis_cache() -> RedisCache | None:
+    from litellm.proxy.proxy_server import spend_counter_cache
+
+    return spend_counter_cache.redis_cache
+
+
+async def _prefetch_referenced_auth_objects(
+    valid_token: UserAPIKeyAuth,
+    end_user_id: str | None,
+    user_api_key_cache: UserApiKeyCache,
+    prisma_client: PrismaClient | None,
+) -> None:
+    """Warm every object and spend counter the checks below will read, in one MGET each (one DB query when cold).
+    Runs after the key's model access check so a denied request costs no more than it did before."""
+    bind_admission_counter_keys(valid_token, end_user_id=end_user_id or None)
+    await prefetch_auth_objects(
+        refs=AuthObjectRefs.from_token(valid_token),
+        user_api_key_cache=user_api_key_cache,
+        prisma_client=prisma_client,
+    )
 
 
 def _seed_request_destinations(user_api_key_dict: UserAPIKeyAuth, request: Request | None = None) -> None:
@@ -2949,7 +3099,7 @@ async def user_api_key_auth(
     # Run the whole auth phase inside a live ``auth`` span so the DB lookups it
     # triggers (key/user/team object reads) nest under it instead of flattening
     # onto the server span. No-op when OTel V2 isn't active.
-    with phase_span(f"auth {route}"):
+    with phase_span(f"auth {route}"), spend_counter_batch_scope(_spend_counter_redis_cache()):
         try:
             user_api_key_auth_obj: Final = await _user_api_key_auth_builder(
                 request=request,
@@ -3198,6 +3348,7 @@ async def _enforce_key_and_fallback_model_access(
     Key-level model allowlist and client fallbacks (same as standard auth).
     Not included in common_checks — common_checks enforces team/user/project model access only.
     """
+    await _normalize_claude_model(request_data, valid_token, request, route)
     config: Final = valid_token.config
 
     if config != {}:
