@@ -197,12 +197,13 @@ export const useUserMcpOAuthFlow = ({
       if (!clientId) {
         // Attempt dynamic client registration against the server's registration endpoint.
         try {
-          const reg = await registerMcpOAuthClient(accessToken, serverId, {
+          const registrationOptions = {
             client_name: serverAlias || serverId,
             grant_types: ["authorization_code", "refresh_token"],
             response_types: ["code"],
             token_endpoint_auth_method: "none",
-          });
+          };
+          const reg = await registerMcpOAuthClient(accessToken, serverId, registrationOptions);
           clientId = reg?.client_id;
           clientSecret = reg?.client_secret;
         } catch (_) {
@@ -216,14 +217,15 @@ export const useUserMcpOAuthFlow = ({
       const redirectUri = buildCallbackUrl();
       const scopeString = scopes?.filter((s) => s.trim()).join(" ");
 
-      const authorizeUrl = buildMcpOAuthAuthorizeUrl({
+      const authorizeOptions = {
         serverId,
         clientId,
         redirectUri,
         state,
         codeChallenge: challenge,
         scope: scopeString,
-      });
+      };
+      const authorizeUrl = buildMcpOAuthAuthorizeUrl(authorizeOptions);
 
       const flowState: StoredFlowState = {
         state,
