@@ -909,11 +909,11 @@ def _sanitize_request_body_for_spend_logs_payload(
         max_string_length_prompt_in_db = _get_max_string_length_prompt_in_db()
 
     def _sanitize_value(value: object, depth: int) -> object:
-        if isinstance(value, (dict, list, tuple, BaseModel)):
+        if isinstance(value, (Mapping, list, tuple, BaseModel)):
             if id(value) in seen or depth >= _MAX_SPEND_PAYLOAD_DEPTH:
                 return [] if isinstance(value, (list, tuple)) else {}
             seen.add(id(value))
-            if isinstance(value, dict):
+            if isinstance(value, Mapping):
                 return {
                     k: _sanitize_value(v, depth + 1)
                     for k, v in value.items()
