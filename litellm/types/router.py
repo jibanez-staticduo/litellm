@@ -360,6 +360,7 @@ class GenericLiteLLMParams(CredentialLiteLLMParams, CustomPricingLiteLLMParams):
     chatgpt_auth_file: str | None = None
     model_config = ConfigDict(extra="allow", arbitrary_types_allowed=True)
     merge_reasoning_content_in_choices: bool | None = False
+    forward_reasoning_content: bool | None = False
     model_info: dict | None = None
     mock_response: str | ModelResponse | Exception | Any | None = None
 

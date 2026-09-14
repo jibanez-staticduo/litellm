@@ -4,6 +4,7 @@ Translate from OpenAI's `/v1/chat/completions` to VLLM's `/v1/chat/completions`
 
 import json
 from collections.abc import Coroutine, Mapping
+from copy import deepcopy
 from typing import Any, Final, Literal, cast, overload
 
 from pydantic import BaseModel, TypeAdapter
@@ -166,7 +167,24 @@ class HostedVLLMChatConfig(OpenAIGPTConfig):
             if thinking_disabled
             else optional_params  # mutable-ok: framework contract requires mutable request or response containers
         )
-        return super().transform_request(model, messages, request_optional_params, litellm_params, headers)
+        request_messages: Final = deepcopy(messages)
+        if litellm_params.get("forward_reasoning_content") is not True:
+            for message in request_messages:
+                if message["role"] == "assistant":
+                    message.pop("reasoning_content", None)
+        return super().transform_request(model, request_messages, request_optional_params, litellm_params, headers)
+
+    async def async_transform_request(
+        self,
+        model: str,
+        messages: list[AllMessageValues],  # mutable-ok: provider request contract
+        optional_params: dict,  # mutable-ok: provider request contract
+        litellm_params: dict,  # mutable-ok: provider request contract
+        headers: dict,  # mutable-ok: provider request contract
+    ) -> dict:  # mutable-ok: provider request contract
+        return await super().async_transform_request(
+            model, deepcopy(messages), optional_params, litellm_params, headers
+        )
 
     def finalize_request(
         self,
@@ -255,13 +273,12 @@ class HostedVLLMChatConfig(OpenAIGPTConfig):
         """
         Support translating:
         - video files from file_id or file_data to video_url
-        - thinking_blocks and reasoning_content on assistant messages are removed,
+        - thinking_blocks on assistant messages are removed,
           and content lists are converted to strings for vLLM compatibility
         """
         for message in messages:
             if message["role"] == "assistant":
                 message.pop("thinking_blocks", None)
-                message.pop("reasoning_content", None)
                 existing_content = message.get("content")
                 if isinstance(existing_content, list):
                     text_parts = []
