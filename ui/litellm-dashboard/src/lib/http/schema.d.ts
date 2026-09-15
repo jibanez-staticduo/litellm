@@ -30261,6 +30261,12 @@ export interface components {
             } | null;
             /** Quality Router Default Model */
             quality_router_default_model?: string | null;
+            /**
+             * Reasoning Content Field
+             * @default reasoning_content
+             * @enum {string}
+             */
+            reasoning_content_field: "reasoning_content" | "reasoning";
             /** Region Name */
             region_name?: string | null;
             /** Regional Endpoint Uplift Multiplier */
@@ -40533,6 +40539,12 @@ export interface components {
             } | null;
             /** Quality Router Default Model */
             quality_router_default_model?: string | null;
+            /**
+             * Reasoning Content Field
+             * @default reasoning_content
+             * @enum {string}
+             */
+            reasoning_content_field: "reasoning_content" | "reasoning";
             /** Region Name */
             region_name?: string | null;
             /** Regional Endpoint Uplift Multiplier */
