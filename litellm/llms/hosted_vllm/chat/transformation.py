@@ -158,12 +158,8 @@ class HostedVLLMChatConfig(OpenAIGPTConfig):
         messages: list[  # mutable-ok: framework contract requires mutable request or response containers
             AllMessageValues
         ],  # mutable-ok: framework contract requires mutable request or response containers
-        optional_params: dict[
-            str, object
-        ],  # mutable-ok: framework contract requires mutable request or response containers
-        litellm_params: dict[
-            str, object
-        ],  # mutable-ok: framework contract requires mutable request or response containers
+        optional_params: dict[str, object],  # mutable-ok: provider request contract
+        litellm_params: dict[str, object],  # mutable-ok: provider request contract
         headers: dict[str, str],  # mutable-ok: framework contract requires mutable request or response containers
     ) -> dict[str, object]:  # mutable-ok: framework contract requires mutable request or response containers
         thinking_disabled: Final = optional_params.pop(_THINKING_DISABLED_MARKER, False) is True
