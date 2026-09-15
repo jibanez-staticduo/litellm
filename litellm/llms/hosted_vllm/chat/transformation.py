@@ -168,15 +168,11 @@ class HostedVLLMChatConfig(OpenAIGPTConfig):
             if thinking_disabled
             else optional_params  # mutable-ok: framework contract requires mutable request or response containers
         )
-        request_messages: Final = (
-            normalize_reasoning_content(messages, forward=litellm_params.get("forward_reasoning_content") is True)
-            if litellm_params.get("reasoning_content_field") == "reasoning"
-            else deepcopy(messages)
+        request_messages: Final = normalize_reasoning_content(
+            messages,
+            forward=litellm_params.get("forward_reasoning_content") is True,
+            normalize=litellm_params.get("reasoning_content_field") == "reasoning",
         )
-        if litellm_params.get("forward_reasoning_content") is not True:
-            for message in request_messages:
-                if message["role"] == "assistant":
-                    message.pop("reasoning_content", None)
         return super().transform_request(model, request_messages, request_optional_params, litellm_params, headers)
 
     async def async_transform_request(

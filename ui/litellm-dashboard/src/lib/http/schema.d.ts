@@ -30258,8 +30258,11 @@ export interface components {
             } | null;
             /** Quality Router Default Model */
             quality_router_default_model?: string | null;
-            /** Reasoning Content Field */
-            reasoning_content_field?: ("reasoning_content" | "reasoning") | null;
+            /**
+             * Reasoning Content Field
+             * @description Historical assistant reasoning field: reasoning_content (default) or reasoning.
+             */
+            reasoning_content_field?: string | null;
             /** Region Name */
             region_name?: string | null;
             /** Regional Endpoint Uplift Multiplier */
@@ -40529,8 +40532,11 @@ export interface components {
             } | null;
             /** Quality Router Default Model */
             quality_router_default_model?: string | null;
-            /** Reasoning Content Field */
-            reasoning_content_field?: ("reasoning_content" | "reasoning") | null;
+            /**
+             * Reasoning Content Field
+             * @description Historical assistant reasoning field: reasoning_content (default) or reasoning.
+             */
+            reasoning_content_field?: string | null;
             /** Region Name */
             region_name?: string | null;
             /** Regional Endpoint Uplift Multiplier */
