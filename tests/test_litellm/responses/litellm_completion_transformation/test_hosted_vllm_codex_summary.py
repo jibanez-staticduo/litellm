@@ -116,21 +116,33 @@ async def test_concurrent_summary_preserves_raw_reasoning_tools_ids_and_usage(mo
             chunk(reasoning="two"),
             chunk(
                 tools=[
-                    {"index": 0, "id": "call_1", "type": "function", "function": {"name": "lookup", "arguments": "{}"}}
+                    {
+                        "index": 0,
+                        "id": "call_codex_summary_concurrency",
+                        "type": "function",
+                        "function": {"name": "lookup", "arguments": "{}"},
+                    }
                 ]
             ),
             chunk(finish="tool_calls"),
         ]
     )
     wrapped = summary.HostedVLLMCodexSummaryStream(source, {"model": "test"})
-    events = []
-    async for event in wrapped:
-        events.append(event)
-        if event.type == "response.function_call_arguments.delta":
-            await started.wait()
-            assert not release.is_set()
-            release.set()
-    assert release.is_set(), "Primary tools must flow while summary is pending"
+
+    class SignalPrimary(Stream):
+        async def __anext__(self):
+            event = await super().__anext__()
+            if event.choices[0].finish_reason:
+                await started.wait()
+                release.set()
+            return event
+
+    source.litellm_custom_stream_wrapper = SignalPrimary(source.litellm_custom_stream_wrapper.chunks)
+    events = [event async for event in wrapped]
+    assert release.is_set(), "Primary must be consumed while summary delivery is pending"
+    summary_end = next(i for i, event in enumerate(events) if event.type == "response.reasoning_summary_part.done")
+    tool_start = next(i for i, event in enumerate(events) if event.type == "response.function_call_arguments.delta")
+    assert summary_end < tool_start
     assert [e.sequence_number for e in events] == list(range(len(events)))
     completed = events[-1].response
     reasoning = next(item for item in completed.output if item.type == "reasoning")
@@ -184,7 +196,7 @@ async def test_disconnect_cancels_auxiliary_and_closes_primary(monkeypatch):
     source = bridge([chunk(reasoning="raw"), chunk(content="answer"), chunk(finish="stop")])
     wrapped = summary.HostedVLLMCodexSummaryStream(source, {"model": "test"})
     async for event in wrapped:
-        if event.type == "response.output_text.delta":
+        if event.type == "response.reasoning_text.done":
             await started.wait()
             await wrapped.aclose()
             break
@@ -406,3 +418,178 @@ async def test_completed_snapshot_preserves_primary_hidden_metadata_and_identity
     reasoning = next(item for item in events[-1].response.output if item.type == "reasoning")
     assert reasoning.content[0].text == "raw"
     assert reasoning.summary[0].text == "Brief"
+
+
+@pytest.mark.asyncio
+async def test_disconnect_while_primary_delivery_is_buffered_closes_both_streams(monkeypatch):
+    primary_waiting = asyncio.Event()
+    auxiliary_started = asyncio.Event()
+    auxiliary_cancelled = asyncio.Event()
+
+    class PausedPrimary(Stream):
+        async def __anext__(self):
+            event = await super().__anext__()
+            if event.choices[0].finish_reason:
+                primary_waiting.set()
+                await asyncio.Event().wait()
+            return event
+
+    async def request(**kwargs):
+        async def response():
+            auxiliary_started.set()
+            try:
+                await asyncio.Event().wait()
+                yield chunk(content="Never delivered")
+            finally:
+                auxiliary_cancelled.set()
+
+        return response()
+
+    monkeypatch.setattr(litellm, "acompletion", request)
+    source = bridge([])
+    primary = PausedPrimary([chunk(reasoning="raw"), chunk(content="buffered"), chunk(finish="stop")])
+    source.litellm_custom_stream_wrapper = primary
+    delivered = []
+    wrapper = summary.HostedVLLMCodexSummaryStream(source, {"model": "test"})
+
+    async def consume():
+        async for event in wrapper:
+            delivered.append(event)
+
+    consumer = asyncio.create_task(consume())
+    async with asyncio.timeout(3):
+        await primary_waiting.wait()
+        await auxiliary_started.wait()
+        consumer.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await consumer
+    assert auxiliary_cancelled.is_set() and primary.closed
+    assert not any(event.type == "response.output_text.delta" for event in delivered)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("partial_summary", [False, True])
+async def test_primary_failure_drains_received_events_then_preserves_original_error(monkeypatch, partial_summary):
+    injected_error = RuntimeError("synthetic primary failure")
+    allow_error = asyncio.Event()
+    auxiliary_started = asyncio.Event()
+    auxiliary_closed = asyncio.Event()
+    received = []
+
+    class BrokenPrimary(Stream):
+        async def __anext__(self):
+            try:
+                return next(self.chunks)
+            except StopIteration:
+                await allow_error.wait()
+                raise injected_error
+
+    class RecordingBridge(LiteLLMCompletionStreamingIterator):
+        async def __anext__(self):
+            event = await super().__anext__()
+            received.append(event)
+            return event
+
+    async def request(**kwargs):
+        async def response():
+            auxiliary_started.set()
+            try:
+                if partial_summary:
+                    yield chunk(content="Partial before failure")
+                await asyncio.Event().wait()
+            finally:
+                auxiliary_closed.set()
+
+        return response()
+
+    monkeypatch.setattr(litellm, "acompletion", request)
+    primary = BrokenPrimary([chunk(reasoning="raw"), chunk(content="visible-before-failure")])
+    source = RecordingBridge(
+        model="test",
+        litellm_custom_stream_wrapper=primary,
+        request_input="Synthetic failure check",
+        responses_api_request={},
+        custom_llm_provider="hosted_vllm_codex",
+    )
+    wrapper = summary.HostedVLLMCodexSummaryStream(source, {"model": "test"})
+    delivered = []
+
+    async def drain():
+        async for event in wrapper:
+            delivered.append(event)
+            if event.type == (
+                "response.reasoning_summary_text.delta" if partial_summary else "response.reasoning_text.done"
+            ):
+                await auxiliary_started.wait()
+                allow_error.set()
+
+    async with asyncio.timeout(3):
+        with pytest.raises(RuntimeError) as failure:
+            await drain()
+    assert failure.value is injected_error
+    assert [id(event) for event in delivered if not event.type.startswith("response.reasoning_summary_")] == [
+        id(event) for event in received
+    ], "Already received primary events must survive the upstream error in original FIFO order"
+    assert (
+        "".join(event.delta for event in delivered if event.type == "response.output_text.delta")
+        == "visible-before-failure"
+    )
+    assert not any(event.type == "response.completed" for event in delivered)
+    assert wrapper.completed_response is None
+    assert auxiliary_closed.is_set() and primary.closed
+    assert [event.sequence_number for event in delivered] == list(range(len(delivered)))
+    terminals = [event for event in delivered if event.type == "response.reasoning_summary_text.done"]
+    assert len(terminals) == int(partial_summary)
+    reasoning_done = next(
+        event for event in delivered if event.type == "response.output_item.done" and event.item.type == "reasoning"
+    )
+    if partial_summary:
+        assert terminals[0].text == "Partial before failure"
+        assert reasoning_done.item.summary[0].text == "Partial before failure"
+        assert delivered.index(terminals[0]) < delivered.index(reasoning_done)
+    else:
+        assert reasoning_done.item.summary == []
+
+
+@pytest.mark.asyncio
+async def test_consumer_cancellation_during_overflow_auxiliary_cleanup_propagates(monkeypatch):
+    closing = asyncio.Event()
+    started = asyncio.Event()
+    primary = Stream([chunk(reasoning="raw"), chunk(content="buffered"), chunk(finish="stop")])
+
+    class SlowClosingSummary:
+        def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            started.set()
+            await asyncio.Event().wait()
+
+        async def aclose(self):
+            closing.set()
+            await asyncio.Event().wait()
+
+    async def request(**kwargs):
+        return SlowClosingSummary()
+
+    monkeypatch.setattr(litellm, "acompletion", request)
+    monkeypatch.setattr(summary, "SUMMARY_BUFFER_MAX_EVENTS", 1)
+    source = bridge([])
+    source.litellm_custom_stream_wrapper = primary
+    wrapper = summary.HostedVLLMCodexSummaryStream(source, {"model": "test"})
+    delivered = []
+
+    async def consume():
+        async for event in wrapper:
+            delivered.append(event)
+            if event.type == "response.reasoning_text.done":
+                await started.wait()
+
+    consumer = asyncio.create_task(consume())
+    async with asyncio.timeout(3):
+        await closing.wait()
+        consumer.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await consumer
+    assert primary.closed
+    assert not any(event.type in ("response.output_text.delta", "response.completed") for event in delivered)
