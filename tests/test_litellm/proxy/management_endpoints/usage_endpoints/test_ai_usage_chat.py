@@ -7,15 +7,27 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from litellm.constants import DEFAULT_COMPETITOR_DISCOVERY_MODEL
+from litellm.proxy.management_endpoints.usage_endpoints import ai_usage_chat
 from litellm.proxy.management_endpoints.usage_endpoints.ai_usage_chat import (
     TOOL_HANDLERS,
     TOOLS_ADMIN,
     TOOLS_BASE,
+    USAGE_AI_MODEL_ENV,
+    _create_completion,
     _build_system_prompt,
     _summarise_entity_data,
+    _resolve_default_model,
     _summarise_usage_data,
     stream_usage_ai_chat,
 )
+
+
+@pytest.fixture(autouse=True)
+def _unit_tests_start_without_proxy_router():
+    """Keep the module-level fallback deterministic; router preference is tested explicitly."""
+    with patch("litellm.proxy.proxy_server.llm_router", None):
+        yield
 
 
 SAMPLE_AGGREGATED_RESPONSE = {
@@ -491,8 +503,8 @@ class TestUsageAiChatKeepalive:
             response.choices[0].message.content = "Total spend is $50.25"
             return response
 
-        with patch(  # test-quality-ok: the stream calls the module-level litellm.acompletion directly; no injection seam
-            "litellm.proxy.management_endpoints.usage_endpoints.ai_usage_chat.litellm.acompletion",
+        with patch(
+            "litellm.proxy.management_endpoints.usage_endpoints.ai_usage_chat._create_completion",
             new=AsyncMock(side_effect=slow_acompletion),
         ):
             response = await usage_ai_chat(
@@ -524,3 +536,136 @@ class TestUsageAiChatKeepalive:
         assert b": ping\n\n" not in chunks
         assert chunks[0].startswith(b'data: {"type": "status"')
         assert chunks[-1] == b'data: {"type": "done"}\n\n'
+
+
+def _planning_response(content="Total spend is $50.25"):
+    """Build a completion response with no tool calls, i.e. the direct-answer path."""
+    response = MagicMock()
+    response.choices = [MagicMock()]
+    response.choices[0].message.tool_calls = None
+    response.choices[0].message.content = content
+    return response
+
+
+class TestAskAiModelResolution:
+    def test_default_model_follows_env_override(self, monkeypatch):
+        monkeypatch.setenv(USAGE_AI_MODEL_ENV, "qwen3.8-flash-next-codex")
+
+        assert _resolve_default_model() == "qwen3.8-flash-next-codex"
+
+    def test_default_model_falls_back_to_constant_without_env(self, monkeypatch):
+        monkeypatch.setenv(USAGE_AI_MODEL_ENV, "   ")
+        assert _resolve_default_model() == DEFAULT_COMPETITOR_DISCOVERY_MODEL
+
+        monkeypatch.delenv(USAGE_AI_MODEL_ENV, raising=False)
+        assert _resolve_default_model() == DEFAULT_COMPETITOR_DISCOVERY_MODEL
+
+    @pytest.mark.asyncio
+    async def test_completion_goes_through_router_when_configured(self, monkeypatch):
+        router = MagicMock()
+        router.acompletion = AsyncMock(return_value="routed")
+        direct = AsyncMock(return_value="direct")
+        monkeypatch.setattr("litellm.proxy.proxy_server.llm_router", router)
+        monkeypatch.setattr(ai_usage_chat.litellm, "acompletion", direct)
+
+        result = await _create_completion(
+            model="qwen3.8-flash-next-codex", messages=[{"role": "user", "content": "hi"}]
+        )
+
+        assert result == "routed"
+        router.acompletion.assert_awaited_once_with(
+            model="qwen3.8-flash-next-codex", messages=[{"role": "user", "content": "hi"}]
+        )
+        direct.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_completion_falls_back_to_direct_call_without_router(self, monkeypatch):
+        direct = AsyncMock(return_value="direct")
+        monkeypatch.setattr(ai_usage_chat.litellm, "acompletion", direct)
+
+        result = await _create_completion(model="gpt-4o-mini", messages=[{"role": "user", "content": "hi"}])
+
+        assert result == "direct"
+        direct.assert_awaited_once_with(model="gpt-4o-mini", messages=[{"role": "user", "content": "hi"}])
+
+    @pytest.mark.asyncio
+    async def test_stream_sends_env_model_and_role_tools_to_router(self, monkeypatch):
+        monkeypatch.setenv(USAGE_AI_MODEL_ENV, "qwen3.8-flash-next-codex")
+        router = MagicMock()
+        router.acompletion = AsyncMock(return_value=_planning_response())
+        monkeypatch.setattr("litellm.proxy.proxy_server.llm_router", router)
+
+        events = []
+        async for event in stream_usage_ai_chat(
+            messages=[{"role": "user", "content": "Reply only OK."}],
+            model=None,
+            user_id="user-123",
+            is_admin=False,
+        ):
+            events.append(json.loads(event.replace("data: ", "").strip()))
+
+        assert [e["type"] for e in events] == ["status", "chunk", "done"]
+        assert events[1]["content"] == "Total spend is $50.25"
+        kwargs = router.acompletion.await_args.kwargs
+        assert kwargs["model"] == "qwen3.8-flash-next-codex"
+        assert [t["function"]["name"] for t in kwargs["tools"]] == [t["function"]["name"] for t in TOOLS_BASE]
+
+    @pytest.mark.asyncio
+    async def test_explicit_model_still_wins_over_env_default(self, monkeypatch):
+        monkeypatch.setenv(USAGE_AI_MODEL_ENV, "qwen3.8-flash-next-codex")
+        router = MagicMock()
+        router.acompletion = AsyncMock(return_value=_planning_response())
+        monkeypatch.setattr("litellm.proxy.proxy_server.llm_router", router)
+
+        async for _ in stream_usage_ai_chat(
+            messages=[{"role": "user", "content": "hi"}],
+            model="gpt-4o-mini",
+            user_id="user-123",
+            is_admin=True,
+        ):
+            pass
+
+        assert router.acompletion.await_args.kwargs["model"] == "gpt-4o-mini"
+
+    @pytest.mark.asyncio
+    async def test_final_stream_survives_framing_only_chunks(self, monkeypatch):
+        first = MagicMock()
+        first.choices = [MagicMock()]
+        first.choices[0].message.tool_calls = [MagicMock()]
+        first.choices[0].message.tool_calls[0].id = "call_1"
+        first.choices[0].message.tool_calls[0].function.name = "get_usage_data"
+        first.choices[0].message.tool_calls[0].function.arguments = json.dumps(
+            {"start_date": "2025-01-01", "end_date": "2025-01-31"}
+        )
+        first.choices[0].message.model_dump.return_value = {"role": "assistant", "content": None, "tool_calls": []}
+
+        empty_chunk = MagicMock(spec_set=["choices"])
+        empty_chunk.choices = []
+        text_chunk = MagicMock()
+        text_chunk.choices = [MagicMock()]
+        text_chunk.choices[0].delta.content = "done talking"
+
+        async def final_stream():
+            yield empty_chunk
+            yield text_chunk
+
+        router = MagicMock()
+        router.acompletion = AsyncMock(side_effect=[first, final_stream()])
+        monkeypatch.setattr("litellm.proxy.proxy_server.llm_router", router)
+
+        async def fake_fetch(**kwargs):
+            return SAMPLE_AGGREGATED_RESPONSE
+
+        monkeypatch.setitem(ai_usage_chat.TOOL_HANDLERS["get_usage_data"], "fetch", fake_fetch)
+
+        events = []
+        async for event in stream_usage_ai_chat(
+            messages=[{"role": "user", "content": "What is my total spend?"}],
+            model="qwen3.8-flash-next-codex",
+            user_id="admin",
+            is_admin=True,
+        ):
+            events.append(json.loads(event.replace("data: ", "").strip()))
+
+        assert [e["type"] for e in events if e["type"] in ("chunk", "done", "error")] == ["chunk", "done"]
+        assert [e["content"] for e in events if e["type"] == "chunk"] == ["done talking"]
