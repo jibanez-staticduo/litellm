@@ -344,7 +344,9 @@ class _SummaryMergeState:
                 item.summary = [  # mutable-ok: SDK summary list
                     Summary(type="summary_text", text="".join(self.parts))
                 ]
-                object.__setattr__(self.held_done, "item", item)
+                BaseModel.__setattr__(
+                    self.held_done, "item", BaseLiteLLMOpenAIResponseObject.model_validate(item.model_dump())
+                )
             events.extend(self.buffered[: self.held_done_index])
             events.append(self.held_done)
             events.extend(self.buffered[self.held_done_index :])
@@ -429,7 +431,10 @@ class HostedVLLMCodexSummaryStream(BaseResponsesAPIStreamingIterator):
         return event
 
     def _number(self, event: BaseLiteLLMOpenAIResponseObject) -> BaseLiteLLMOpenAIResponseObject:
-        object.__setattr__(event, "sequence_number", self._sequence)
+        # Legacy bridge writes shadow Pydantic extras without updating serialized values.
+        if "sequence_number" not in type(event).model_fields:
+            event.__dict__.pop("sequence_number", None)
+        BaseModel.__setattr__(event, "sequence_number", self._sequence)
         self._sequence += 1
         return event
 

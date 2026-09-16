@@ -545,7 +545,7 @@ async def test_primary_failure_drains_received_events_then_preserves_original_er
     )
     if partial_summary:
         assert terminals[0].text == "Partial before failure"
-        assert reasoning_done.item.summary[0].text == "Partial before failure"
+        assert reasoning_done.model_dump()["item"]["summary"][0]["text"] == "Partial before failure"
         assert delivered.index(terminals[0]) < delivered.index(reasoning_done)
     else:
         assert reasoning_done.item.summary == []
@@ -593,3 +593,40 @@ async def test_consumer_cancellation_during_overflow_auxiliary_cleanup_propagate
             await consumer
     assert primary.closed
     assert not any(event.type in ("response.output_text.delta", "response.completed") for event in delivered)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("tool_output", [False, True])
+async def test_proxy_json_serialization_preserves_sequence_and_reasoning_item(monkeypatch, tool_output):
+    import json
+
+    monkeypatch.setattr(litellm, "acompletion", AsyncMock(return_value=Stream([chunk(content="Wire summary")])))
+    output = (
+        chunk(
+            tools=[
+                {
+                    "index": 0,
+                    "id": "call_summary_wire",
+                    "type": "function",
+                    "function": {"name": "lookup", "arguments": "{}"},
+                }
+            ]
+        )
+        if tool_output
+        else chunk(content="Wire answer")
+    )
+    source = bridge([chunk(reasoning="Wire raw"), output, chunk(finish="tool_calls" if tool_output else "stop")])
+    wrapper = summary.HostedVLLMCodexSummaryStream(source, {"model": "test"})
+    events = [event async for event in wrapper]
+    wire = [json.loads(event.model_dump_json(exclude_none=True)) for event in events]
+    assert [event.get("sequence_number") for event in wire] == list(range(len(wire)))
+    completed = wire[-1]["response"]
+    reasoning = next(item for item in completed["output"] if item["type"] == "reasoning")
+    done_items = [event["item"] for event in wire if event["type"] == "response.output_item.done"]
+    reasoning_done = next(item for item in done_items if item.get("type") == "reasoning")
+    assert reasoning_done["id"] == reasoning["id"]
+    assert reasoning_done["content"] == [{"type": "reasoning_text", "text": "Wire raw"}]
+    assert reasoning_done["summary"] == [{"type": "summary_text", "text": "Wire summary"}]
+    summary_events = [event for event in wire if event["type"].startswith("response.reasoning_summary_")]
+    assert summary_events and all(event["item_id"] == reasoning["id"] for event in summary_events)
+    assert events[-1] is wrapper.completed_response is source.completed_response
