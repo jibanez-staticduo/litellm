@@ -4,6 +4,7 @@ usage/spend data by querying the aggregated daily activity endpoints.
 """
 
 import json
+import os
 from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable, Mapping, Sequence
 from datetime import date
 from typing import Any, Final, Literal, NamedTuple, Protocol, cast, overload
@@ -13,15 +14,21 @@ from typing_extensions import ReadOnly, TypedDict
 import litellm
 from litellm._logging import verbose_proxy_logger
 from litellm.constants import DEFAULT_COMPETITOR_DISCOVERY_MODEL
+from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
 from litellm.types.proxy.management_endpoints.common_daily_activity import (
     SpendAnalyticsPaginatedResponse,
 )
+from litellm.types.utils import ModelResponse
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
 USAGE_AI_TEMPERATURE: Final = 0.2
+
+# Ask AI runs on a proxy model group, so its fallback model must be configurable per
+# deployment; the shared competitor-discovery constant is only the last resort.
+USAGE_AI_MODEL_ENV: Final = "DEFAULT_COMPETITOR_DISCOVERY_MODEL"
 
 TABLE_DAILY_USER_SPEND: Final = "litellm_dailyuserspend"
 TABLE_DAILY_TEAM_SPEND: Final = "litellm_dailyteamspend"
@@ -442,6 +449,62 @@ def _sse(event: SSEEvent) -> str:
     return f"data: {json.dumps(event)}\n\n"
 
 
+def _resolve_default_model() -> str:
+    """Fallback model for Ask AI, overridable with the USAGE_AI_MODEL_ENV env var."""
+    env_model: Final = str(os.getenv(USAGE_AI_MODEL_ENV, "") or "").strip()
+    return env_model or DEFAULT_COMPETITOR_DISCOVERY_MODEL
+
+
+@overload
+async def _create_completion(
+    *,
+    model: str,
+    messages: Sequence[Mapping[str, object]],
+    stream: Literal[True],
+    tools: Sequence[_ToolDef] | None = None,
+    temperature: float | None = None,
+) -> CustomStreamWrapper: ...
+
+
+@overload
+async def _create_completion(
+    *,
+    model: str,
+    messages: Sequence[Mapping[str, object]],
+    stream: Literal[False] = False,
+    tools: Sequence[_ToolDef] | None = None,
+    temperature: float | None = None,
+) -> ModelResponse: ...
+
+
+async def _create_completion(
+    *,
+    model: str,
+    messages: Sequence[Mapping[str, object]],
+    stream: bool = False,
+    tools: Sequence[_ToolDef] | None = None,
+    temperature: float | None = None,
+) -> ModelResponse | CustomStreamWrapper:
+    """Resolve proxy model groups through the router, or use the standalone SDK."""
+    from litellm.proxy.proxy_server import llm_router
+
+    arguments: Final[dict[str, object]] = {  # mutable-ok: optional SDK kwargs are added only when present
+        "model": model,
+        "messages": list(messages),  # mutable-ok: SDK requires a JSON message list
+    }
+    if stream:
+        arguments["stream"] = True
+    if tools is not None:
+        arguments["tools"] = list(tools)  # mutable-ok: SDK requires a JSON tools list
+    if temperature is not None:
+        arguments["temperature"] = temperature
+    completion: Final = cast(  # cast-ok: both SDK callables implement the completion return contract
+        Callable[..., Awaitable[ModelResponse | CustomStreamWrapper]],
+        llm_router.acompletion if llm_router is not None else litellm.acompletion,
+    )
+    return await completion(**arguments)
+
+
 def _resolve_fetch_kwargs(
     fn_name: str,
     fn_args: Mapping[str, str],
@@ -534,14 +597,18 @@ async def _stream_final_response(model: str, chat_messages: list[Mapping[str, ob
     """Stream the final LLM response after tool results are appended."""
     yield _sse({"type": "status", "message": "Analyzing results..."})
 
-    response: Final = await litellm.acompletion(
+    response: Final = await _create_completion(
         model=model,
         messages=chat_messages,
         stream=True,
         temperature=USAGE_AI_TEMPERATURE,
     )
     async for chunk in response:
-        delta = chunk.choices[0].delta.content
+        choices = chunk.choices
+        if not choices:
+            # Providers can emit framing-only chunks (e.g. usage) before finishing.
+            continue
+        delta = choices[0].delta.content
         if delta:
             yield _sse({"type": "chunk", "content": delta})
 
@@ -553,7 +620,7 @@ async def stream_usage_ai_chat(
     is_admin: bool = False,
 ) -> AsyncGenerator[str, None]:
     """Stream SSE events: status → tool_call → chunk → done."""
-    resolved_model: Final = (model or "").strip() or DEFAULT_COMPETITOR_DISCOVERY_MODEL
+    resolved_model: Final = (model or "").strip() or _resolve_default_model()
     truncated: Final = messages[-MAX_CHAT_MESSAGES:] if len(messages) > MAX_CHAT_MESSAGES else messages
     chat_messages: Final[list[Mapping[str, object]]] = [
         {"role": "system", "content": _build_system_prompt(is_admin)},
@@ -563,7 +630,7 @@ async def stream_usage_ai_chat(
     try:
         yield _sse({"type": "status", "message": "Thinking..."})
         tools: Final = get_tools_for_role(is_admin)
-        response: Final = await litellm.acompletion(
+        response: Final = await _create_completion(
             model=resolved_model,
             messages=chat_messages,
             tools=tools,
