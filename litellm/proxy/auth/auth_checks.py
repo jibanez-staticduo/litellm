@@ -2185,6 +2185,7 @@ async def get_team_membership(
     user_api_key_cache: UserApiKeyCache,
     parent_otel_span: Span | None = None,
     proxy_logging_obj: ProxyLogging | None = None,
+    raise_on_error: bool = False,
 ) -> Optional["LiteLLM_TeamMembership"]:
     """
     Returns team membership object if user is member of team.
@@ -2238,6 +2239,8 @@ async def get_team_membership(
             user_id,
             team_id,
         )
+        if raise_on_error:
+            raise
         return None
 
 
@@ -4158,6 +4161,8 @@ async def _team_member_granted_models(
     prisma_client: PrismaClient,
     user_api_key_cache: UserApiKeyCache,
     proxy_logging_obj: ProxyLogging,
+    *,
+    strict_grant_lookup: bool = False,
 ) -> Sequence[str]:
     """The member's own ``allowed_models`` scope; empty when the member is not narrowed below the team."""
     if team_object is None or valid_token.user_id is None:
@@ -4169,6 +4174,7 @@ async def _team_member_granted_models(
         prisma_client=prisma_client,
         user_api_key_cache=user_api_key_cache,
         proxy_logging_obj=proxy_logging_obj,
+        raise_on_error=strict_grant_lookup,
     )
     return () if team_membership is None else _member_allowed_models(team_membership)
 
@@ -4179,6 +4185,8 @@ async def _org_granted_models(
     prisma_client: PrismaClient,
     user_api_key_cache: UserApiKeyCache,
     proxy_logging_obj: ProxyLogging,
+    *,
+    strict_grant_lookup: bool = False,
 ) -> Sequence[str]:
     """The org allowlist reached through the key, or through its team when the key names no org."""
     org_id: Final = valid_token.org_id or (team_object.organization_id if team_object is not None else None)
@@ -4194,6 +4202,8 @@ async def _org_granted_models(
         )
     except Exception as e:  # noqa: BLE001  # fail-safe: attribution degrades to "no org grant", it must never break auth
         verbose_proxy_logger.debug("access group attribution: org lookup failed: %s", e)
+        if strict_grant_lookup:
+            raise
         return ()
     return org_object.models if org_object is not None else ()
 
@@ -4205,6 +4215,8 @@ async def _granted_model_lists(
     prisma_client: PrismaClient,
     user_api_key_cache: UserApiKeyCache,
     proxy_logging_obj: ProxyLogging,
+    *,
+    strict_grant_lookup: bool = False,
 ) -> tuple[Sequence[str], ...]:
     """One model allowlist per level that participates in authorizing the request."""
     return (
@@ -4216,6 +4228,7 @@ async def _granted_model_lists(
             prisma_client=prisma_client,
             user_api_key_cache=user_api_key_cache,
             proxy_logging_obj=proxy_logging_obj,
+            strict_grant_lookup=strict_grant_lookup,
         ),
         project_object.models if project_object is not None else (),
         await _org_granted_models(
@@ -4224,6 +4237,7 @@ async def _granted_model_lists(
             prisma_client=prisma_client,
             user_api_key_cache=user_api_key_cache,
             proxy_logging_obj=proxy_logging_obj,
+            strict_grant_lookup=strict_grant_lookup,
         ),
     )
 
@@ -4310,6 +4324,8 @@ async def collect_matched_model_access_groups(
     prisma_client: PrismaClient | None,
     user_api_key_cache: UserApiKeyCache,
     proxy_logging_obj: ProxyLogging,
+    *,
+    strict_grant_lookup: bool = False,
 ) -> tuple[str, ...]:
     """
     The budgeted model access groups that authorized this request, sorted and deduplicated.
@@ -4325,7 +4341,9 @@ async def collect_matched_model_access_groups(
 
     The whole walk is gated on the budget registry, because collecting every match costs a full scan
     of each allowlist where the plain access check stops at the first hit. An empty registry means no
-    group carries a budget, so there is nothing to attribute and no work worth doing.
+    group carries a budget, so there is nothing to attribute and no work worth doing. The strict
+    lookup mode is reserved for enforcement paths that must not treat an unavailable inherited grant
+    as absent; the default remains fail-safe attribution for ordinary request telemetry.
     """
     if model is None or valid_token is None or llm_router is None or prisma_client is None:
         return ()
@@ -4355,6 +4373,7 @@ async def collect_matched_model_access_groups(
             prisma_client=prisma_client,
             user_api_key_cache=user_api_key_cache,
             proxy_logging_obj=proxy_logging_obj,
+            strict_grant_lookup=strict_grant_lookup,
         )
         for granted_model in granted_models
     )
