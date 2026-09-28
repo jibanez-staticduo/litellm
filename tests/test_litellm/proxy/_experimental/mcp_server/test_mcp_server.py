@@ -1,6 +1,8 @@
 import asyncio
 import contextvars
+import json
 import os
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 from typing import Final
@@ -25,6 +27,180 @@ from litellm.proxy._types import (
 )
 from litellm.types.mcp import MCPAuth
 from litellm.types.mcp_server.mcp_server_manager import MCPOAuthMetadata, MCPServer
+
+
+@asynccontextmanager
+async def stateless_transport_client():
+    import httpx
+    from fastapi import FastAPI
+    from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
+    from mcp.types import Tool
+    from starlette.routing import Mount
+
+    from litellm.proxy._experimental.mcp_server import server as gateway
+
+    manager: Final = gateway.global_mcp_server_manager
+    servers: Final = tuple(
+        MCPServer(server_id=f"server-{i}", name=f"server-{i}", alias=f"server-{i}", transport="http") for i in range(28)
+    )
+    manager.registry.update({server.server_id: server for server in servers})
+    stateful: Final = StreamableHTTPSessionManager(app=gateway.server, stateless=False)
+    stateless: Final = StreamableHTTPSessionManager(app=gateway.server, stateless=True)
+    auth: Final = UserAPIKeyAuth(api_key="test-shared-key", user_id="test-owner")
+
+    async def upstream_tools(server: MCPServer, **kwargs):
+        return [Tool(name=f"{server.alias}-tool", inputSchema={"type": "object"})]
+
+    with (
+        patch(
+            "litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp.user_api_key_auth",
+            new=AsyncMock(return_value=auth),
+        ) as admission,
+        patch.object(manager, "get_allowed_mcp_servers", new=AsyncMock(return_value=[s.server_id for s in servers])),
+        patch.object(manager, "_ensure_upstream_initialize_instructions_cached", new=AsyncMock()),
+        patch.object(manager, "_get_tools_from_server", new=upstream_tools),
+        patch.object(gateway, "session_manager_stateful", stateful),
+        patch.object(gateway, "session_manager_stateless", stateless),
+        patch.object(gateway, "_SESSION_MANAGERS_INITIALIZED", True),
+    ):
+        app: Final = FastAPI(routes=[Mount("/mcp", app=gateway.handle_streamable_http_mcp)])
+        async with (
+            stateful.run(),
+            stateless.run(),
+            httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app),
+                base_url="http://localhost",
+                headers={
+                    "Authorization": "Bearer test-shared-key",
+                    "Accept": "application/json, text/event-stream",
+                    "x-litellm-mcp-session-mode": "stateless",
+                    "mcp-protocol-version": "2025-03-26",
+                },
+            ) as client,
+        ):
+            yield client, gateway, stateful, admission
+        for session_id in tuple(gateway._stateful_session_owners):
+            if gateway._stateful_session_owners[session_id] == gateway._owner_fingerprint_for(auth):
+                gateway._remove_stateful_session_tracking(session_id)
+
+
+def _stateless_initialize_body():
+    return {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2025-03-26",
+            "capabilities": {},
+            "clientInfo": {"name": "transport-test", "version": "1"},
+        },
+    }
+
+
+def _transport_result(response):
+    assert response.status_code == 200, response.text
+    payload: Final = json.loads(next(line[6:] for line in response.text.splitlines() if line.startswith("data: ")))
+    assert "error" not in payload, payload
+    return payload["result"]
+
+
+@pytest.mark.asyncio
+async def test_stateless_opt_in_112_initializes_and_filtered_tools():
+    async with stateless_transport_client() as (client, gateway, stateful, admission):
+        tracking: Final = tuple(
+            dict(registry)
+            for registry in (
+                gateway._stateful_session_auth_contexts,
+                gateway._stateful_session_auth_context_last_seen,
+                gateway._stateful_session_owners,
+                gateway._stateful_session_locks,
+                gateway._stateful_session_active_request_counts,
+            )
+        )
+
+        async def initialize(index: int):
+            response: Final = await client.post(
+                "/mcp/", headers={"x-mcp-servers": f"server-{index % 28}"}, json=_stateless_initialize_body()
+            )
+            assert _transport_result(response)["protocolVersion"] == "2025-03-26"
+            assert "mcp-session-id" not in response.headers
+
+        with patch.object(gateway, "_enforce_stateful_session_cap_for_owner", new=AsyncMock(return_value=False)) as cap:
+            await asyncio.gather(*(initialize(index) for index in range(112)))
+            cap.assert_not_awaited()
+        assert not stateful._server_instances
+        assert tracking == tuple(
+            dict(registry)
+            for registry in (
+                gateway._stateful_session_auth_contexts,
+                gateway._stateful_session_auth_context_last_seen,
+                gateway._stateful_session_owners,
+                gateway._stateful_session_locks,
+                gateway._stateful_session_active_request_counts,
+            )
+        )
+        notification: Final = await client.post("/mcp/", json={"jsonrpc": "2.0", "method": "notifications/initialized"})
+        assert notification.status_code == 202
+        assert "mcp-session-id" not in notification.headers
+
+        async def list_tools(index: int):
+            response: Final = await client.post(
+                "/mcp/",
+                headers={"x-mcp-servers": f"server-{index}"},
+                json={"jsonrpc": "2.0", "id": index, "method": "tools/list"},
+            )
+            assert [tool["name"] for tool in _transport_result(response)["tools"]] == [f"server-{index}-tool"]
+            assert "mcp-session-id" not in response.headers
+
+        await asyncio.gather(*(list_tools(index) for index in range(28)))
+        assert admission.await_count == 141
+        assert not stateful._server_instances
+        with patch.object(
+            gateway.global_mcp_server_manager, "get_allowed_mcp_servers", new=AsyncMock(return_value=["server-0"])
+        ):
+            denied: Final = await client.post(
+                "/mcp/", headers={"x-mcp-servers": "server-1"}, json=_stateless_initialize_body()
+            )
+            assert denied.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_stateless_opt_in_protocol_and_legacy_session():
+    async with stateless_transport_client() as (client, gateway, stateful, admission):
+        for method in ("GET", "DELETE"):
+            response: Final = await client.request(method, "/mcp/")
+            assert response.status_code == 405
+            assert response.headers["allow"] == "POST"
+        for mode in ("", "stateful", "true", "stateless,stateless"):
+            invalid: Final = await client.post(
+                "/mcp/", headers={"x-litellm-mcp-session-mode": mode}, json=_stateless_initialize_body()
+            )
+            assert invalid.status_code == 400
+        duplicate: Final = await client.post(
+            "/mcp/", headers=[("x-litellm-mcp-session-mode", "stateless")] * 2, json=_stateless_initialize_body()
+        )
+        assert duplicate.status_code == 400
+        legacy_headers: Final = {
+            key: value for key, value in client.headers.items() if key != "x-litellm-mcp-session-mode"
+        }
+        request: Final = client.build_request("POST", "/mcp/", json=_stateless_initialize_body())
+        request.headers.clear()
+        request.headers.update({**legacy_headers, "Content-Type": "application/json"})
+        legacy: Final = await client.send(request)
+        _transport_result(legacy)
+        session_id: Final = legacy.headers["mcp-session-id"]
+        assert session_id in stateful._server_instances
+        assert session_id in gateway._stateful_session_owners
+        for conflicting_id in (session_id, "stale-session", ""):
+            conflict: Final = await client.post(
+                "/mcp/", headers={"mcp-session-id": conflicting_id}, json=_stateless_initialize_body()
+            )
+            assert conflict.status_code == 400
+        assert session_id in stateful._server_instances
+        assert session_id in gateway._stateful_session_owners
+        admission.side_effect = HTTPException(status_code=401, detail="Unauthorized")
+        denied: Final = await client.post("/mcp/", json=_stateless_initialize_body())
+        assert denied.status_code == 401
 
 
 def _rendered_log_message(call):

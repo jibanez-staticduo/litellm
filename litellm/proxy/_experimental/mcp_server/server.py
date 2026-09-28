@@ -5507,6 +5507,17 @@ if MCP_AVAILABLE:
                     send, _debug_headers, diagnostics.headers, request_method=scope.get("method")
                 )
 
+            session_modes: Final = tuple(
+                value for name, value in scope_headers if name.lower() == b"x-litellm-mcp-session-mode"
+            )
+            if session_modes and session_modes != (b"stateless",):
+                raise HTTPException(status_code=400, detail="x-litellm-mcp-session-mode must be stateless")
+            force_stateless: Final = bool(session_modes)
+            if force_stateless and any(name.lower() == b"mcp-session-id" for name, _ in scope_headers):
+                raise HTTPException(status_code=400, detail="stateless mode cannot be combined with mcp-session-id")
+            if force_stateless and scope.get("method") != "POST":
+                raise HTTPException(status_code=405, detail="stateless MCP only supports POST", headers={"Allow": "POST"})
+
             # Ensure session managers are initialized
             if not _SESSION_MANAGERS_INITIALIZED:
                 await initialize_session_managers()
@@ -5562,7 +5573,7 @@ if MCP_AVAILABLE:
                 consumed_messages, body = await _read_request_body_for_routing(receive)
                 is_initialize = _is_initialize_request(body)
 
-            use_stateful: Final = bool(session_id or is_initialize)
+            use_stateful: Final = not force_stateless and bool(session_id or is_initialize)
             target_manager: Final = session_manager_stateful if use_stateful else session_manager_stateless
 
             verbose_logger.debug(
@@ -5574,7 +5585,7 @@ if MCP_AVAILABLE:
             # A new `initialize` (no session id) is about to create a stateful
             # session. Cap how many a single caller can hold so an authenticated
             # client cannot spam `initialize` and exhaust memory.
-            if is_initialize and not session_id:
+            if use_stateful and is_initialize and not session_id:
                 request_owner = _owner_fingerprint_for(user_api_key_auth, oauth2_headers, _client_ip)
                 if not await _enforce_stateful_session_cap_for_owner(request_owner):
                     verbose_logger.warning(
