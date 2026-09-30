@@ -218,7 +218,10 @@ def decode_call(token: str, authorization: str) -> CodexRealtimeCall:
         call: Final = CodexRealtimeCall.model_validate_json(plaintext or "")
     except (ValueError, TypeError, UnicodeError) as exc:
         raise HTTPException(403, "Invalid realtime call") from exc
-    if call.expires_at < time.time() or call.owner != hashlib.sha256(authorization.encode()).hexdigest():
+    if (
+        call.expires_at < time.time()
+        or call.owner != hashlib.sha256(authorization.encode(), usedforsecurity=False).hexdigest()
+    ):
         raise HTTPException(403, "Invalid or expired realtime call")
     return call
 
@@ -227,11 +230,14 @@ MAX_REALTIME_OFFER_BYTES: Final = 8 * 1024 * 1024
 
 
 async def _cache_bounded_offer_body(request: Request) -> None:
+    content_length: int | None
     try:
-        if int(request.headers.get("content-length", "")) > MAX_REALTIME_OFFER_BYTES:
-            raise HTTPException(413, "Realtime offer exceeds the 8 MiB limit")
+        content_length = int(request.headers.get("content-length", ""))
     except ValueError:
-        pass
+        # A missing or non-numeric content length is checked while streaming below.
+        content_length = None
+    if content_length is not None and content_length > MAX_REALTIME_OFFER_BYTES:
+        raise HTTPException(413, "Realtime offer exceeds the 8 MiB limit")
     if hasattr(request, "_body"):
         if len(request._body) > MAX_REALTIME_OFFER_BYTES:  # pyright: ignore[reportPrivateUsage]  # validate Starlette's cached body without consuming it again
             raise HTTPException(413, "Realtime offer exceeds the 8 MiB limit")
@@ -283,6 +289,7 @@ async def process_codex_request(
         version=server.version,
         proxy_logging_obj=server.proxy_logging_obj,
         proxy_config=server.proxy_config,
+        llm_router=server.llm_router,
         user_model=server.user_model,
         user_temperature=server.user_temperature,
         user_request_timeout=server.user_request_timeout,
@@ -290,7 +297,6 @@ async def process_codex_request(
         user_api_base=server.user_api_base,
         model=model,
         route_type=route_type,
-        llm_router=server.llm_router,
         **(
             MappingProxyType({"internal_realtime_observer": True})
             if internal_realtime_observer
@@ -396,7 +402,7 @@ async def _create_codex_realtime_call(request: Request) -> Response:
             call: Final = parse_call_response(
                 response,
                 alias=model,
-                owner=hashlib.sha256(f"Bearer {owner_key}".encode()).hexdigest(),
+                owner=hashlib.sha256(f"Bearer {owner_key}".encode(), usedforsecurity=False).hexdigest(),
                 expires_at=time.time() + 3600,
             )
         except ValueError as exc:

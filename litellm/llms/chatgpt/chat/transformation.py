@@ -22,8 +22,8 @@ class ChatGPTConfig(OpenAIConfig):
     ) -> None:
         super().__init__()
 
-    def api_base_without_login(self) -> str:
-        return Authenticator.get_api_base()
+    def api_base_without_login(self, api_base: str | None = None) -> str:
+        return api_base or Authenticator.get_api_base()
 
     def _get_openai_compatible_provider_info(
         self,

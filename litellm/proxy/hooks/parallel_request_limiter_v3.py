@@ -2127,6 +2127,7 @@ class _PROXY_MaxParallelRequestsHandler_v3(CustomLogger):
                     litellm_parent_otel_span=None,
                 )
             return True
+
     async def _release_stashed_parallel_slot(
         self,
         stash: RequestRateLimiterStash | None,

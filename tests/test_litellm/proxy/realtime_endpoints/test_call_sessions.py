@@ -5,9 +5,9 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException, WebSocket
 
-from litellm.llms.chatgpt.codex import CodexRealtimeCall
 from litellm.proxy._types import ProxyException, UserAPIKeyAuth
 from litellm.proxy.realtime_endpoints import call_sessions as codex
+from litellm.llms.chatgpt.codex import CodexRealtimeCall
 from litellm.proxy.realtime_endpoints.call_sessions import decode_call, encode_call
 
 
@@ -280,8 +280,9 @@ async def test_offer_auth_enforces_session_model_policy_before_upstream(
     with pytest.raises(ProxyException) as denied:
         await proxy_realtime_calls(request, Response())
     if policy == "personal_models":
-        assert "user not allowed to access model" in str(denied.value)
-        assert "forbidden-voice" in str(denied.value)
+        internal_message = getattr(denied.value, "internal_message", str(denied.value))
+        assert "user not allowed to access model" in internal_message
+        assert "forbidden-voice" in internal_message
     custom.assert_awaited_once()
     upstream.assert_not_awaited()
     if policy == "budget":
@@ -294,44 +295,27 @@ async def test_offer_auth_enforces_session_model_policy_before_upstream(
 @pytest.mark.parametrize("observer", [False, True])
 async def test_codex_processing_merges_model_guardrails(monkeypatch, route_type, observer):
     from fastapi import Request
-
     from litellm import Router
     from litellm.proxy import proxy_server as server
     from litellm.proxy._types import UserAPIKeyAuth
     from litellm.proxy.realtime_endpoints.call_sessions import process_codex_request
 
     class PolicyHook:
-        async def pre_call_hook(self, user_api_key_dict, data, call_type, *, internal_realtime_observer=False):
+        async def pre_call_hook(
+            self, user_api_key_dict, data, call_type, *, skip_guardrails=False, internal_realtime_observer=False
+        ):
             assert internal_realtime_observer is observer
             if "model-policy" in data.get("metadata", {}).get("guardrails", []):
                 raise HTTPException(403, "Model policy rejected request")
             return data
 
-    router = Router(
-        model_list=[
-            {
-                "model_name": "voice-policy",
-                "litellm_params": {
-                    "model": "openai/gpt-realtime-1.5",
-                    "api_key": "test",
-                    "guardrails": ["model-policy"],
-                },
-            }
-        ]
-    )
+    router = Router(model_list=[{
+        "model_name": "voice-policy",
+        "litellm_params": {"model": "openai/gpt-realtime-1.5", "api_key": "test", "guardrails": ["model-policy"]},
+    }])
     monkeypatch.setattr(server, "llm_router", router)
     monkeypatch.setattr(server, "proxy_logging_obj", PolicyHook())
-    request = Request(
-        {
-            "type": "http",
-            "method": "POST",
-            "path": "/v1/realtime/calls",
-            "headers": [],
-            "query_string": b"",
-            "scheme": "http",
-            "server": ("localhost", 80),
-        }
-    )
+    request = Request({"type": "http", "method": "POST", "path": "/v1/realtime/calls", "headers": [], "query_string": b"", "scheme": "http", "server": ("localhost", 80)})
     with pytest.raises(HTTPException) as error:
         await process_codex_request(
             request,
@@ -345,22 +329,17 @@ async def test_codex_processing_merges_model_guardrails(monkeypatch, route_type,
     assert error.value.detail == "Model policy rejected request"
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("logged_success", [False, True])
 @pytest.mark.parametrize("disconnect_error", [False, True])
 async def test_sideband_preserves_pending_cost_reconciliation(monkeypatch, logged_success, disconnect_error):
-    from unittest.mock import AsyncMock
-
     import litellm
+    from unittest.mock import AsyncMock
     from litellm.litellm_core_utils.realtime_streaming import REALTIME_SESSION_SUCCESS_LOGGED_KEY
 
     monkeypatch.setenv("LITELLM_SALT_KEY", "test-only-salt-for-codex-realtime")
-    call = CodexRealtimeCall(
-        call_id="rtc_test",
-        model="gpt-live-1-codex",
-        alias="voice",
-        owner=hashlib.sha256(b"Bearer owner").hexdigest(),
-        expires_at=time.time() + 300,
-    )
+    call = CodexRealtimeCall(call_id="rtc_test", model="gpt-live-1-codex", alias="voice",
+        owner=hashlib.sha256(b"Bearer owner").hexdigest(), expires_at=time.time()+300)
     auth = UserAPIKeyAuth()
     auth.budget_reservation = {"reserved_cost": 0.55, "input_cost": 0.0, "finalized": False, "entries": []}
     logger = SimpleNamespace(model_call_details={})
@@ -374,16 +353,9 @@ async def test_sideband_preserves_pending_cost_reconciliation(monkeypatch, logge
             raise RuntimeError("Backend disconnected")
 
     monkeypatch.setattr(litellm, "_arealtime", forward)
-    websocket = WebSocket(
-        {
-            "type": "websocket",
-            "path": "/v1/live/opaque",
-            "query_string": b"",
-            "headers": [(b"authorization", b"Bearer owner")],
-        },
-        AsyncMock(return_value={"type": "websocket.connect"}),
-        AsyncMock(),
-    )
+    websocket = WebSocket({"type": "websocket", "path": "/v1/live/opaque", "query_string": b"",
+        "headers": [(b"authorization", b"Bearer owner")]},
+        AsyncMock(return_value={"type": "websocket.connect"}), AsyncMock())
     if disconnect_error:
         with pytest.raises(RuntimeError, match="Backend disconnected"):
             await codex.codex_realtime_sideband(websocket, encode_call(call), auth)
@@ -496,14 +468,12 @@ def test_sideband_token_binds_owner_and_model(monkeypatch):
         call_id="rtc_test",
         model="gpt-live-1-codex",
         alias="gpt-live-1-codex",
-        profile="account3",
         extra_headers={"x-gateway-secret": "configured-secret"},
         owner=hashlib.sha256(b"Bearer test-owner").hexdigest(),
         expires_at=time.time() + 300,
     )
     token = encode_call(call)
     assert "/" not in token
-    assert "account3" not in token
     assert "configured-secret" not in token
     assert decode_call(token, "Bearer test-owner") == call
     with pytest.raises(HTTPException) as error:
@@ -554,7 +524,9 @@ async def test_sideband_rejects_revoked_model_access(monkeypatch):
         raise ProxyException("Model access revoked", "auth_error", "model", 403)
 
     monkeypatch.setattr(codex, "can_key_call_resolved_model", deny_model)
-    websocket = WebSocket({"type": "websocket", "headers": [(b"authorization", b"Bearer test-owner")]}, receive, send)
+    websocket = WebSocket(
+        {"type": "websocket", "headers": [(b"authorization", b"Bearer test-owner")]}, receive, send
+    )
     await codex.codex_realtime_sideband(websocket, encode_call(call), UserAPIKeyAuth())
     assert sent == [{"type": "websocket.close", "code": 1008, "reason": "Invalid realtime call"}]
 
@@ -563,9 +535,7 @@ async def test_sideband_rejects_revoked_model_access(monkeypatch):
 @pytest.mark.parametrize("call_id", ["rtc_raw", "", "rtc_litellm_invalid"])
 async def test_realtime_endpoint_rejects_untrusted_call_ids(monkeypatch, call_id):
     from unittest.mock import AsyncMock
-
     from fastapi import WebSocket
-
     from litellm.proxy import proxy_server as server
     from litellm.proxy._types import UserAPIKeyAuth
 
@@ -581,12 +551,8 @@ async def test_realtime_endpoint_rejects_untrusted_call_ids(monkeypatch, call_id
     monkeypatch.setattr(server, "route_request", route)
     websocket = WebSocket({"type": "websocket", "headers": [], "query_string": b""}, receive, send)
     await server.realtime_websocket_endpoint(
-        websocket,
-        model="gpt-realtime-1.5",
-        call_id=call_id,
-        intent=None,
-        guardrails=None,
-        user_api_key_dict=UserAPIKeyAuth(),
+        websocket, model="gpt-realtime-1.5", call_id=call_id,
+        intent=None, guardrails=None, user_api_key_dict=UserAPIKeyAuth()
     )
     assert sent == [{"type": "websocket.close", "code": 1008, "reason": "Invalid realtime call"}]
     route.assert_not_called()
@@ -605,11 +571,10 @@ async def test_offer_exchange_wraps_call_and_filters_client_headers(
 
     import httpx
     from fastapi import Request, WebSocket
-
-    import litellm
     from litellm.proxy import common_request_processing, proxy_server
     from litellm.proxy._types import UserAPIKeyAuth
     from litellm.proxy.realtime_endpoints import call_sessions as codex
+    import litellm
 
     monkeypatch.setenv("LITELLM_SALT_KEY", "test-only-salt-for-codex-realtime")
     session = {"model": "voice-alias", "audio": {"output": {"voice": "sol"}}}
@@ -773,12 +738,10 @@ async def test_offer_exchange_wraps_call_and_filters_client_headers(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("body", [b"not json", b"{}", b'{"sdp":"v=0","session":{}}'])
+@pytest.mark.parametrize("body", [b"not json", b'{}', b'{"sdp":"v=0","session":{}}'])
 async def test_invalid_offers_fail_before_authentication(monkeypatch, body):
     from unittest.mock import AsyncMock
-
     from fastapi import Request
-
     from litellm.proxy.realtime_endpoints import call_sessions as codex
 
     async def receive():
@@ -796,22 +759,15 @@ async def test_invalid_offers_fail_before_authentication(monkeypatch, body):
 @pytest.mark.asyncio
 async def test_sideband_pre_call_block_prevents_upstream_connection(monkeypatch):
     from unittest.mock import AsyncMock
-
     from fastapi import WebSocket
-
     import litellm
     from litellm.proxy import common_request_processing
     from litellm.proxy._types import UserAPIKeyAuth
     from litellm.proxy.realtime_endpoints import call_sessions as codex
 
     monkeypatch.setenv("LITELLM_SALT_KEY", "test-only-salt-for-codex-realtime")
-    call = CodexRealtimeCall(
-        call_id="rtc_test",
-        model="gpt-live-1-codex",
-        alias="voice",
-        owner=hashlib.sha256(b"Bearer owner").hexdigest(),
-        expires_at=time.time() + 300,
-    )
+    call = CodexRealtimeCall(call_id="rtc_test", model="gpt-live-1-codex", alias="voice",
+        owner=hashlib.sha256(b"Bearer owner").hexdigest(), expires_at=time.time()+300)
     token = encode_call(call)
     sent = []
 
@@ -833,16 +789,8 @@ async def test_sideband_pre_call_block_prevents_upstream_connection(monkeypatch)
     monkeypatch.setattr(litellm, "_arealtime", forward)
     monkeypatch.setattr(codex, "can_key_call_resolved_model", AsyncMock())
     monkeypatch.setattr(common_request_processing, "ProxyBaseLLMRequestProcessing", BlockingProcessor)
-    websocket = WebSocket(
-        {
-            "type": "websocket",
-            "path": "/v1/live/opaque",
-            "query_string": b"",
-            "headers": [(b"authorization", b"Bearer owner")],
-        },
-        receive,
-        send,
-    )
+    websocket = WebSocket({"type": "websocket", "path": "/v1/live/opaque", "query_string": b"",
+        "headers": [(b"authorization", b"Bearer owner")]}, receive, send)
     await codex.codex_realtime_sideband(websocket, token, UserAPIKeyAuth())
     forward.assert_not_called()
     assert sent == [{"type": "websocket.close", "code": 1008, "reason": "Realtime pre-call rejected"}]
@@ -949,7 +897,11 @@ async def test_supervisor_policy_failure_hangs_up_before_releasing(monkeypatch):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("hangup_fails", [False, True])
-async def test_supervisor_constructor_failure_closes_effective_connection(monkeypatch, hangup_fails, caplog):
+@pytest.mark.parametrize("invalidate_fails", [False, True])
+@pytest.mark.parametrize("close_fails", [False, True])
+async def test_supervisor_constructor_failure_closes_effective_connection(
+    monkeypatch, hangup_fails, invalidate_fails, close_fails, caplog
+):
     from unittest.mock import AsyncMock, MagicMock
 
     from fastapi import Request
@@ -961,8 +913,12 @@ async def test_supervisor_constructor_failure_closes_effective_connection(monkey
     logger = MagicMock()
     logger.litellm_params = {}
     connection = AsyncMock()
+    if close_fails:
+        connection.close = AsyncMock(side_effect=RuntimeError("socket cleanup secret"))
     handlers = []
     invalidate = AsyncMock()
+    if invalidate_fails:
+        invalidate.side_effect = RuntimeError("counter cleanup secret")
     release = AsyncMock()
     monkeypatch.setattr(codex, "invalidate_budget_reservation_counters", invalidate, raising=False)
     monkeypatch.setattr(codex, "release_or_invalidate_budget_reservation", release)
@@ -1001,6 +957,14 @@ async def test_supervisor_constructor_failure_closes_effective_connection(monkey
         release.assert_awaited_once_with(budget_reservation=auth.budget_reservation)
         invalidate.assert_not_awaited()
     assert "private-cleanup-credential" not in caplog.text
+    if hangup_fails and invalidate_fails:
+        assert "Realtime startup cleanup could not invalidate budget counters" in caplog.text
+    elif invalidate_fails:
+        assert "Realtime startup cleanup could not invalidate budget counters" not in caplog.text
+    if close_fails:
+        assert "Realtime startup cleanup could not close observer socket" in caplog.text
+    assert "socket cleanup secret" not in caplog.text
+    assert "counter cleanup secret" not in caplog.text
 
 
 @pytest.mark.asyncio
@@ -1367,3 +1331,325 @@ async def test_signaling_settles_tokens_once_with_isolated_sdk_callbacks(monkeyp
     await asyncio.gather(*callbacks)
     assert await counter("tokens") == 0
     assert limiter._gauge_in_flight_from_cache_value(await counter("max_parallel_requests")) == 0
+
+
+@pytest.mark.asyncio
+async def test_observer_startup_owns_call_lifecycle_with_synthetic_sockets(monkeypatch):
+    import asyncio
+    import json
+    from unittest.mock import AsyncMock, MagicMock
+
+    from fastapi import Request
+    from starlette.websockets import WebSocketState
+
+    from litellm.proxy.realtime_endpoints import call_supervision
+
+    call = CodexRealtimeCall(
+        call_id="rtc_open",
+        model="gpt-live-1-codex",
+        alias="voice",
+        owner="owner",
+        api_base="https://voice.example/codex",
+        expires_at=time.time() + 60,
+    )
+    auth = UserAPIKeyAuth()
+    logger = MagicMock()
+    logger.litellm_params = {}
+    observer: dict = {}
+
+    async def process(request, data, _auth, _model, route_type, *, internal_realtime_observer=False):
+        observer["request"] = request
+        observer["data"] = data
+        observer["route_type"] = route_type
+        observer["internal_realtime_observer"] = internal_realtime_observer
+        return {"extra_headers": {}}, logger
+
+    monkeypatch.setattr(codex, "process_codex_request", process)
+
+    class Connection:
+        def __init__(self):
+            self.messages = asyncio.Queue()
+            self.close = AsyncMock()
+
+        def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            message = await self.messages.get()
+            if message is None:
+                raise StopAsyncIteration
+            return message
+
+    connection = Connection()
+    await connection.messages.put(json.dumps({"type": "session.started"}))
+    stream_instance = MagicMock()
+    stream_instance.log_messages = AsyncMock()
+    terminations: list = []
+
+    class Handler:
+        def __init__(self, params, headers, extra_headers):
+            pass
+
+        @staticmethod
+        def get_api_base(base):
+            return "https://gateway.test/v1"
+
+        async def open_call_connection(self, model, base):
+            return connection
+
+        async def close_call(self, opened, model, base):
+            terminations.append(("close", opened, model, base))
+
+        async def hangup_call(self, base):
+            terminations.append(("hangup", base))
+
+    monkeypatch.setattr(codex, "ChatGPTRealtime", Handler)
+    stream = MagicMock(return_value=stream_instance)
+    monkeypatch.setattr(codex, "RealTimeStreaming", stream)
+    started: list = []
+
+    original_start = call_supervision.CALL_SUPERVISORS.start
+
+    async def capture_start(supervisor):
+        started.append(supervisor)
+        await original_start(supervisor)
+
+    monkeypatch.setattr(call_supervision.CALL_SUPERVISORS, "start", capture_start)
+    request = Request({"type": "http", "headers": [], "method": "POST", "path": "/v1/realtime/calls"})
+
+    await codex.supervise_codex_call(request, call, auth)
+
+    # The observer request serves the synthetic aliased-model body through the ASGI receive closure.
+    assert await observer["request"].json() == {"model": "voice"}
+    assert observer["data"]["model"] == "voice"
+    assert observer["route_type"] == "_arealtime"
+    assert observer["internal_realtime_observer"] is True
+    # The synthetic frontend completes the raw ASGI handshake through the swallow-and-return send closure.
+    frontend = stream.call_args.args[0]
+    await frontend.send({"type": "websocket.accept"})
+    assert frontend.application_state is WebSocketState.CONNECTED
+    # The supervisor owns the opened connection: the startup socket stack released it without closing it.
+    assert len(started) == 1
+    supervisor = started[0]
+    assert isinstance(supervisor, call_supervision.CallSupervisor)
+    assert supervisor._lease is None
+    assert supervisor._terminal_usage_required is (codex.realtime_endpoint(call.model) == "live")
+    connection.close.assert_not_awaited()
+    await supervisor._close_call()
+    assert terminations == [("close", connection, "gpt-live-1-codex", "https://gateway.test/v1")]
+    await supervisor._force_close_call()
+    assert terminations[-1] == ("hangup", "https://gateway.test/v1")
+    await connection.messages.put(
+        json.dumps({"type": "session.closed", "usage": {"total_tokens": 1}})
+    )
+    await supervisor.wait()
+    await call_supervision.CALL_SUPERVISORS.shutdown()
+    connection.close.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_mixed_case_multipart_without_boundary_returns_400():
+    from fastapi import Request
+    from starlette.formparsers import MultiPartException
+
+    async def receive():
+        return {"type": "http.request", "body": b"sdp payload", "more_body": False}
+
+    request = Request(
+        {"type": "http", "headers": [(b"content-type", b"Multipart/Form-Data; charset=utf-8")]},
+        receive,
+    )
+    assert not await request.form()
+    with pytest.raises(HTTPException) as error:
+        await codex.read_codex_offer(request)
+    assert error.value.status_code == 400
+    assert error.value.detail == "Invalid realtime multipart offer"
+    assert isinstance(error.value.__cause__, MultiPartException)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("observer", [False, True])
+async def test_observer_processing_stamps_internal_request_origin(monkeypatch, observer):
+    from types import SimpleNamespace
+
+    from fastapi import Request
+
+    from litellm.proxy import common_request_processing
+    from litellm.proxy._types import InternalRequestOrigin
+    from litellm.proxy.realtime_endpoints.call_sessions import process_codex_request
+
+    recorded: dict = {}
+
+    class PassthroughProcessor:
+        def __init__(self, data):
+            self.data = data
+
+        async def common_processing_pre_call_logic(self, **kwargs):
+            recorded["observer"] = kwargs.get("internal_realtime_observer", False)
+            return {**self.data, "extra_headers": {}}, SimpleNamespace(model_call_details={})
+
+    monkeypatch.setattr(common_request_processing, "ProxyBaseLLMRequestProcessing", PassthroughProcessor)
+    request = Request({"type": "http", "method": "POST", "path": "/v1/realtime", "headers": []})
+    processed, logging_obj = await process_codex_request(
+        request,
+        {"model": "voice"},
+        UserAPIKeyAuth(),
+        "voice",
+        "_arealtime",
+        internal_realtime_observer=observer,
+    )
+    assert recorded["observer"] is observer
+    assert processed["model"] == "voice"
+    if observer:
+        assert logging_obj.model_call_details["internal_request_origin"] is InternalRequestOrigin.REALTIME_OBSERVER
+    else:
+        assert "internal_request_origin" not in logging_obj.model_call_details
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode", ["upstream_exception", "invalid_response", "upstream_error_status", "unroutable"])
+async def test_signaling_response_paths_map_upstream_outcomes_to_http(monkeypatch, mode):
+    import json
+    from unittest.mock import AsyncMock
+
+    import httpx
+    from fastapi import Request
+
+    from litellm.llms.base_llm.chat.transformation import BaseLLMException
+    from litellm.proxy import common_request_processing, proxy_server
+
+    monkeypatch.setenv("LITELLM_SALT_KEY", "test-only-salt-for-codex-realtime")
+    body = json.dumps({"sdp": "v=0\r\n", "session": {"model": "voice-alias"}}).encode()
+
+    async def receive():
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    request = Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/v1/realtime/calls",
+            "scheme": "http",
+            "server": ("localhost", 80),
+            "query_string": b"",
+            "headers": [(b"content-type", b"application/json"), (b"authorization", b"Bearer owner")],
+        },
+        receive,
+    )
+    monkeypatch.setattr(proxy_server, "master_key", "owner")
+    monkeypatch.setattr(proxy_server, "general_settings", {})
+    monkeypatch.setattr(codex, "can_key_call_resolved_model", AsyncMock())
+
+    class PassthroughProcessor:
+        def __init__(self, data):
+            self.data = data
+
+        async def common_processing_pre_call_logic(self, **kwargs):
+            return self.data, None
+
+    monkeypatch.setattr(common_request_processing, "ProxyBaseLLMRequestProcessing", PassthroughProcessor)
+    supervise = AsyncMock()
+    monkeypatch.setattr(codex, "supervise_codex_call", supervise)
+
+    def route_returning(value):
+        async def route(**kwargs):
+            async def respond():
+                return value
+
+            return respond()
+
+        return route
+
+    def route_raising(exc):
+        async def route(**kwargs):
+            async def boom():
+                raise exc
+
+            return boom()
+
+        return route
+
+    if mode == "upstream_exception":
+        monkeypatch.setattr(proxy_server, "route_request", route_raising(BaseLLMException(429, "provider saturated")))
+        with pytest.raises(HTTPException) as error:
+            await codex.create_codex_realtime_call(request)
+        assert error.value.status_code == 429
+        assert "provider saturated" in str(error.value.detail)
+    elif mode == "invalid_response":
+        monkeypatch.setattr(proxy_server, "route_request", route_returning("not-an-http-response"))
+        with pytest.raises(HTTPException) as error:
+            await codex.create_codex_realtime_call(request)
+        assert error.value.status_code == 502
+        assert error.value.detail == "Invalid realtime signaling response"
+    elif mode == "upstream_error_status":
+        monkeypatch.setattr(
+            proxy_server, "route_request", route_returning(httpx.Response(422, content=b'{"error":"invalid sdp"}'))
+        )
+        response = await codex.create_codex_realtime_call(request)
+        assert response.status_code == 422
+        assert response.body == b'{"error":"invalid sdp"}'
+        assert response.media_type == "application/json"
+    else:
+        monkeypatch.setattr(proxy_server, "route_request", route_returning(httpx.Response(201, content=b"v=0\r\n")))
+        with pytest.raises(HTTPException) as error:
+            await codex.create_codex_realtime_call(request)
+        assert error.value.status_code == 400
+        assert "ChatGPT deployment" in error.value.detail
+    supervise.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_sideband_begins_realtime_attachment_on_legacy_limiter(monkeypatch):
+    from unittest.mock import AsyncMock, MagicMock
+
+    import litellm
+    from litellm.caching.caching import DualCache
+    from litellm.proxy import proxy_server as server
+    from litellm.proxy.hooks.parallel_request_limiter import (
+        _PROXY_MaxParallelRequestsHandler,
+        _RealtimeAttachmentReservations,
+    )
+    from litellm.proxy.utils import InternalUsageCache
+
+    monkeypatch.setenv("LITELLM_SALT_KEY", "test-only-salt-for-codex-realtime")
+    call = CodexRealtimeCall(
+        call_id="rtc_test",
+        model="gpt-live-1-codex",
+        alias="voice",
+        usage_supervised=True,
+        owner=hashlib.sha256(b"Bearer owner").hexdigest(),
+        expires_at=time.time() + 300,
+    )
+    auth = UserAPIKeyAuth()
+    logger = SimpleNamespace(model_call_details={})
+    limiter = _PROXY_MaxParallelRequestsHandler(InternalUsageCache(DualCache()))
+    proxy_logging = MagicMock()
+    proxy_logging.get_proxy_hook.return_value = limiter
+    monkeypatch.setattr(server, "proxy_logging_obj", proxy_logging)
+    monkeypatch.setattr(codex, "can_key_call_resolved_model", AsyncMock())
+    captured: dict = {}
+
+    async def process(request, data, *_args, **_kwargs):
+        receipt = data.get("_legacy_realtime_attachment_reservations")
+        assert isinstance(receipt, _RealtimeAttachmentReservations)
+        assert receipt.cache_keys == () and receipt.global_acquired is False
+        captured["data"] = data
+        return {}, logger
+
+    monkeypatch.setattr(codex, "process_codex_request", process)
+    monkeypatch.setattr(litellm, "_arealtime", AsyncMock())
+    websocket = WebSocket(
+        {
+            "type": "websocket",
+            "path": "/v1/live/opaque",
+            "query_string": b"",
+            "headers": [(b"authorization", b"Bearer owner")],
+        },
+        AsyncMock(return_value={"type": "websocket.connect"}),
+        AsyncMock(),
+    )
+
+    await codex.codex_realtime_sideband(websocket, encode_call(call), auth)
+
+    # The release consumed the receipt opened by begin_realtime_attachment before pre-call processing.
+    assert captured["data"]["_legacy_realtime_attachment_reservations"].take() == ((), False)

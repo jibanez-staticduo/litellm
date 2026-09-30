@@ -58,3 +58,9 @@ def test_signaling_preserves_selected_model_for_sideband(extra_query):
     assert request["chatgpt_auth_profile"] == "account3"
     assert request["extra_headers"] == {"x-gateway-route": "voice"}
     assert request["extra_query"] == extra_query
+
+
+def test_signaling_requires_chatgpt_routing_extension():
+    response = httpx.Response(201, headers={"Location": "/v1/realtime/calls/rtc_unrouted"})
+    with pytest.raises(ValueError, match="Direct call signaling requires a ChatGPT deployment"):
+        parse_call_response(response, "voice", "owner", 1000)

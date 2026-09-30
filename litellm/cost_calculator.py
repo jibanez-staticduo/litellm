@@ -2987,7 +2987,9 @@ def handle_realtime_stream_cost_calculation(
         potential_model_names=potential_model_names,
         combined_usage_object=(
             RealtimeAPITokenUsageProcessor.collect_and_combine_usage_from_realtime_stream_results(
-                [event for event in results if event.get("type") != "response.event"]
+                [  # mutable-ok: collector requires a concrete event list
+                    event for event in results if event.get("type") != "response.event"
+                ]
             )
             if any(event.get("type") == "response.event" for event in results)
             else combined_usage_object
@@ -3052,7 +3054,7 @@ class _LiveBackendEnvelope(BaseModel):
 def _live_backend_responses(
     results: OpenAIRealtimeStreamList, logging_obj: LitellmLoggingObject | None = None
 ) -> tuple[ResponsesAPIResponse, ...]:
-    responses: Final = {
+    responses: Final = {  # mutable-ok: deduplicate terminal backend responses by response id
         response.id: response
         for result in results
         if result.get("type") == "response.event"
@@ -3122,7 +3124,7 @@ def handle_live_session_duration_cost(
     )
     try:
         model_info: Final = litellm.get_model_info(model=litellm_model_name, custom_llm_provider=custom_llm_provider)
-    except Exception:
+    except Exception:  # noqa: BLE001  # an unknown model simply has no per-second price to bill
         return 0.0
     return max(seconds, initialization_seconds) * (model_info.get("input_cost_per_second") or 0.0)
 
@@ -3134,7 +3136,9 @@ def _live_duration_seconds(event: Mapping[str, object]) -> float | None:
         usage: Final = LiveSessionUsageEvent.model_validate(event).usage
     except ValidationError:
         return None
-    raw_usage: Final = cast(Mapping[str, object], event.get("usage"))
+    raw_usage: Final = cast(  # cast-ok: LiveSessionUsageEvent validated the usage mapping above
+        Mapping[str, object], event.get("usage")
+    )
     return usage.duration / (1 if "seconds" in raw_usage else 1000)
 
 

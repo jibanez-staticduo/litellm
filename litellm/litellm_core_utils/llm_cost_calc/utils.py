@@ -1356,24 +1356,24 @@ def generic_cost_per_token(
     image_tokens = prompt_tokens_details["image_tokens"]
     video_tokens = prompt_tokens_details["video_tokens"]
 
+    # The wrapper deletes absent optional fields for minimal serialization, so read tolerantly.
+    # The wrapper deletes absent optional fields for minimal serialization, so read tolerantly.
     cached_modalities: Final = (
-        usage.prompt_tokens_details.cached_tokens_details if usage.prompt_tokens_details is not None else None
+        getattr(usage.prompt_tokens_details, "cached_tokens_details", None)
+        if usage.prompt_tokens_details is not None
+        else None
     )
-    cached_audio: Final = min(
-        max(_get_token_detail_value(cached_modalities, "audio_tokens") or 0, 0), audio_tokens, cache_hit
+    # ``parse_prompt_tokens_details`` already nets the cached text/audio/image shares out of the
+    # modality counts and exposes the audio share for the cache-read biller, so the per-modality
+    # cache rates below only add the premium the generic cache rate cannot express.
+    cached_audio: Final = min(max(_get_token_detail_value(cached_modalities, "audio_tokens") or 0, 0), cache_hit)
+    cached_cached_text: Final = min(
+        max(_get_token_detail_value(cached_modalities, "text_tokens") or 0, 0), cache_hit - cached_audio
     )
     cached_image: Final = min(
         max(_get_token_detail_value(cached_modalities, "image_tokens") or 0, 0),
-        image_tokens,
-        max(cache_hit - cached_audio, 0),
+        cache_hit - cached_audio - cached_cached_text,
     )
-    if cached_modalities:
-        audio_tokens -= cached_audio
-        image_tokens -= cached_image
-        text_tokens = max(text_tokens - max(cache_hit - cached_audio - cached_image, 0), 0)
-        prompt_tokens_details["audio_tokens"] = audio_tokens
-        prompt_tokens_details["image_tokens"] = image_tokens
-        prompt_tokens_details["text_tokens"] = text_tokens
 
     # Check for double-counting: sum of details > prompt_tokens means overlap
     total_details: Final = text_tokens + cache_hit + audio_tokens + cache_creation + image_tokens + video_tokens
@@ -1420,14 +1420,15 @@ def generic_cost_per_token(
         cache_creation_cost_above_1hr=cache_creation_cost_above_1hr,
         service_tier=service_tier,
     )
-    prompt_cost += sum(
-        cached_count * (modality_rate - cache_read_cost)
-        for cached_count, rate_key in (
-            (cached_audio, "cache_read_input_audio_token_cost"),
-            (cached_image, "cache_read_input_image_token_cost"),
-        )
-        if (modality_rate := _get_cost_per_unit(model_info, rate_key, None)) is not None
+    # Cached audio already bills at its own rate inside ``_calculate_input_cost``; only the
+    # image cache rate is missing there, so add its premium over the generic cache rate.
+    image_cache_rate: Final = _get_cost_per_unit(
+        resolved_model_info,
+        _get_service_tier_cost_key("cache_read_input_image_token_cost", service_tier),
+        None,
     )
+    if image_cache_rate is not None:
+        prompt_cost += float(cached_image) * (image_cache_rate - cache_read_cost)
 
     ## CALCULATE OUTPUT COST
     text_tokens = 0
@@ -1888,17 +1889,17 @@ def calculate_image_response_cost_from_usage(
     )
     if cached_details is None:
         return prompt_cost + completion_cost
-    model_info: Final = get_model_info(model=model, custom_llm_provider=custom_llm_provider)
+    catalog_model_info: Final = get_model_info(model=model, custom_llm_provider=custom_llm_provider)
     cached_text: Final = _get_token_detail_value(cached_details, "text_tokens") or 0
     cached_image: Final = _get_token_detail_value(cached_details, "image_tokens") or 0
     input_text_tokens: Final = _get_token_detail_value(input_tokens_details, "text_tokens") or 0
     input_image_tokens: Final = _get_token_detail_value(input_tokens_details, "image_tokens") or 0
     if not (0 <= cached_text <= input_text_tokens and 0 <= cached_image <= input_image_tokens):
         raise ValueError("Image cached token counts exceed their input modality counts")
-    text_rate: Final = model_info.get("input_cost_per_token") or 0.0
-    image_rate: Final = model_info.get("input_cost_per_image_token")
-    cache_text_rate: Final = model_info.get("cache_read_input_token_cost")
-    cache_image_rate: Final = model_info.get("cache_read_input_image_token_cost")
+    text_rate: Final = catalog_model_info.get("input_cost_per_token") or 0.0
+    image_rate: Final = catalog_model_info.get("input_cost_per_image_token")
+    cache_text_rate: Final = catalog_model_info.get("cache_read_input_token_cost")
+    cache_image_rate: Final = catalog_model_info.get("cache_read_input_image_token_cost")
     text_savings: Final = cached_text * (text_rate - cache_text_rate) if cache_text_rate is not None else 0.0
     image_savings: Final = (
         cached_image * ((image_rate if image_rate is not None else text_rate) - cache_image_rate)

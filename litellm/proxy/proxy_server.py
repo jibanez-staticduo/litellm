@@ -1615,6 +1615,10 @@ async def proxy_startup_event(app: FastAPI) -> AsyncGenerator[None, None]:
         except Exception as e:
             verbose_proxy_logger.error("Error stopping the spend view setup task: %s", e)
 
+    from litellm.proxy.realtime_endpoints.call_supervision import CALL_SUPERVISORS
+
+    await CALL_SUPERVISORS.shutdown()
+
     await _drain_spend_event_producer_on_shutdown()
 
     # Shutdown event - finish or cancel in-flight scheduled jobs before the shutdown flushes and the DB disconnect
@@ -12892,6 +12896,8 @@ async def _reject_realtime_session(
         await _release_realtime_max_parallel_slot(user_api_key_dict)
 
 
+_CODEX_LIVE_AUTH_DEPENDENCY: Final = Depends(user_api_key_auth_websocket)
+
 reserve_lazy_slot(app, "live")
 reserve_lazy_slot(app, "realtime")
 
@@ -12902,7 +12908,7 @@ reserve_lazy_slot(app, "realtime")
 async def codex_live_sideband_endpoint(
     websocket: WebSocket,
     call_id: str,
-    user_api_key_dict: Annotated[UserAPIKeyAuth, Depends(user_api_key_auth_websocket)],
+    user_api_key_dict: UserAPIKeyAuth = _CODEX_LIVE_AUTH_DEPENDENCY,
 ) -> None:
     from litellm.proxy.realtime_endpoints.call_sessions import codex_realtime_sideband
 
@@ -12964,7 +12970,9 @@ async def realtime_websocket_endpoint(
     # Only use explicit parameters, not all query params
     query_params: Final = cast(
         RealtimeQueryParams,
-        dict(_realtime_query_params_template(model, intent) + ((("call_id", call_id),) if call_id is not None else ())),
+        dict(  # mutable-ok: FastAPI request query params must be materialized as a dict
+            _realtime_query_params_template(model, intent) + ((("call_id", call_id),) if call_id is not None else ())
+        ),
     )
 
     data: dict[str, object] = {

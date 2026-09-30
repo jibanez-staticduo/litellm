@@ -2015,8 +2015,8 @@ class ProxyBaseLLMRequestProcessing:
         model: str | None = None,
         llm_router: Router | None = None,
         rate_limited_model: str | None = None,
-        skip_guardrails: bool = False,
         *,
+        skip_guardrails: bool = False,
         internal_realtime_observer: bool = False,
     ) -> tuple[dict, LiteLLMLoggingObj]:
         start_time: Final = datetime.now()  # start before calling guardrail hooks

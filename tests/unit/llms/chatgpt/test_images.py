@@ -211,6 +211,28 @@ async def test_async_codex_edit_without_multipart_image(chatgpt_tokens):
     assert requests[0].headers["x-gateway-route"] == "images"
 
 
+@pytest.mark.parametrize(
+    "references",
+    [None, [{"image_url": "data:image/png;base64,aGVsbG8="}]],
+    ids=["uploaded-image", "reference-images"],
+)
+def test_edit_keeps_the_authenticated_model_over_passthrough_fields(tmp_path, references):
+    image = None
+    if references is None:
+        image = tmp_path / "reference.png"
+        image.write_bytes(b"reference image bytes")
+    data, _ = ChatGPTImageEditConfig().transform_image_edit_request(
+        "gpt-image-2",
+        "edit",
+        image,
+        {"model": "gpt-image-2.5-flare", "size": "1024x1024"},
+        GenericLiteLLMParams(images=references),
+        {},
+    )
+    assert data["model"] == "gpt-image-2"
+    assert data["size"] == "1024x1024"
+
+
 @pytest.mark.parametrize("as_tuple", [False, True])
 def test_edit_accepts_filesystem_path(tmp_path, as_tuple):
     image = tmp_path / "reference.png"
@@ -241,3 +263,57 @@ def test_image_routes_use_configured_gateway(monkeypatch, env_name, api_base, tm
         expected + "/images/generations"
     )
     assert ChatGPTImageEditConfig().get_complete_url("gpt-image-2", api_base, {}) == expected + "/images/edits"
+
+
+@pytest.mark.parametrize(
+    "reference",
+    [
+        b"GIF89a" + b"\x00" * 32,
+        ("reference.gif", b"hello", "image/gif"),
+    ],
+    ids=["detected-gif", "declared-gif"],
+)
+def test_edit_rejects_non_bitmap_reference_content_type(reference):
+    with pytest.raises(ValueError, match="Reference images must be PNG, JPEG, or WEBP"):
+        ChatGPTImageEditConfig().transform_image_edit_request(
+            "gpt-image-2", "edit", reference, {}, GenericLiteLLMParams(), {}
+        )
+
+
+def test_edit_rejects_mask_before_any_provider_call():
+    with pytest.raises(ValueError, match="ChatGPT image editing does not support masks"):
+        ChatGPTImageEditConfig().transform_image_edit_request(
+            "gpt-image-2",
+            "edit",
+            "data:image/png;base64,aGVsbG8=",
+            {"mask": "data:image/png;base64,aGVsbG8="},
+            GenericLiteLLMParams(),
+            {},
+        )
+
+
+def test_edit_rejects_image_and_images_together():
+    with pytest.raises(ValueError, match="Specify only one of image or images"):
+        ChatGPTImageEditConfig().transform_image_edit_request(
+            "gpt-image-2",
+            "edit",
+            "data:image/png;base64,aGVsbG8=",
+            {},
+            GenericLiteLLMParams(images=[{"image_url": "data:image/png;base64,aGVsbG8="}]),
+            {},
+        )
+
+
+@pytest.mark.parametrize(
+    "images",
+    [
+        [],
+        ["data:image/png;base64,aGVsbG8="] * 6,
+    ],
+    ids=["zero", "six"],
+)
+def test_edit_enforces_one_to_five_reference_images(images):
+    with pytest.raises(ValueError, match="images must contain between 1 and 5 reference images"):
+        ChatGPTImageEditConfig().transform_image_edit_request(
+            "gpt-image-2", "edit", images, {}, GenericLiteLLMParams(), {}
+        )

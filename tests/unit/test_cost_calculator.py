@@ -1500,6 +1500,32 @@ AZURE_GPT_5_6_MAP_KEYS = (
 )
 
 
+@pytest.mark.parametrize("model", AZURE_GPT_5_6_MAP_KEYS)
+def test_azure_gpt_5_6_rates_match_azure_price_page(_local_model_cost_map, model):
+    """
+    Per the Azure OpenAI price page (rendered 2026-08-26): cache writes cost
+    1.25x input on every gpt-5.6 tier, and Data Zone costs 1.1x Global for
+    standard and priority alike (us/eu priority rates previously sat at 1.25x).
+    """
+    entry = litellm.model_cost[model]
+    input_keys = [key for key in entry if key.startswith("input_cost_per_token")]
+    assert input_keys
+    for key in input_keys:
+        suffix = key[len("input_cost_per_token") :]
+        assert entry["cache_creation_input_token_cost" + suffix] == pytest.approx(entry[key] * 1.25)
+
+    zone = model.split("/")[1]
+    if zone in ("us", "eu"):
+        global_entry = litellm.model_cost["azure/" + model.split("/", 2)[2]]
+        prefixes = ("input_cost_per_token", "output_cost_per_token", "cache_read", "cache_creation")
+        token_cost_keys = [key for key in entry if key.startswith(prefixes)]
+        global_token_cost_keys = [key for key in global_entry if key.startswith(prefixes)]
+        assert len(token_cost_keys) >= 9
+        assert set(token_cost_keys) <= set(global_token_cost_keys)
+        for key in token_cost_keys:
+            assert entry[key] == pytest.approx(global_entry[key] * 1.1), key
+
+
 def test_azure_gpt_5_6_cache_write_tokens_are_billed(_local_model_cost_map):
     """
     Azure bills gpt-5.6 prompt cache writes at 1.25x the input rate on every
@@ -1516,6 +1542,13 @@ def test_azure_gpt_5_6_cache_write_tokens_are_billed(_local_model_cost_map):
         prompt_tokens_details=PromptTokensDetailsWrapper(cached_tokens=0, text_tokens=687),
         cache_creation_input_tokens=1313,
     )
+
+    input_cost, output_cost = generic_cost_per_token(
+        model="azure/gpt-5.6-luna", usage=usage, custom_llm_provider="azure"
+    )
+
+    assert input_cost == pytest.approx(687 * 2e-07 + 1313 * 2.5e-07)
+    assert output_cost == pytest.approx(100 * 1.2e-06)
 
 
 def test_vertex_regional_deployment_costs_uplift_over_global(monkeypatch):
@@ -5049,6 +5082,30 @@ def test_usage_without_cached_tokens_details_omits_key():
     dumped = usage.prompt_tokens_details.model_dump()
     assert "cached_tokens_details" not in dumped
     assert "cached_tokens_details" not in usage.prompt_tokens_details.model_dump_json()
+
+
+@pytest.mark.parametrize(
+    "envelope",
+    [
+        {"type": "response.event"},
+        {"type": "response.event", "event": {"response": {"id": "resp"}}},
+        {"type": "response.event", "event": "not-an-object"},
+    ],
+)
+def test_live_backend_malformed_envelope_is_dropped_without_accounting_flag(envelope):
+    """
+    Malformed event envelopes (missing event, missing event.type, wrong shape)
+    are skipped silently: unlike a terminal response.completed that fails
+    response validation, they must not mark the call's accounting incomplete.
+    """
+    from unittest.mock import MagicMock
+
+    from litellm.cost_calculator import _live_backend_response
+
+    logger = MagicMock(spec=Logging)
+    logger.model_call_details = {}
+    assert _live_backend_response(envelope, logger) is None
+    assert "realtime_backend_accounting_incomplete" not in logger.model_call_details
 
 
 def test_completion_cost_prices_responses_websocket_turns_per_service_tier():

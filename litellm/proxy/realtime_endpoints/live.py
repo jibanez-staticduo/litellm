@@ -3,15 +3,17 @@ import base64
 import hashlib
 import json
 import time
-from collections.abc import AsyncGenerator, Mapping
+from collections.abc import AsyncGenerator, Awaitable, Callable, Mapping
 from contextlib import asynccontextmanager, nullcontext
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, TypeVar
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request, Response, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field, JsonValue, TypeAdapter
 from starlette.types import Message
+
+from litellm._logging import verbose_proxy_logger
 
 if TYPE_CHECKING:
     from websockets.asyncio.client import ClientConnection
@@ -21,7 +23,6 @@ from litellm.litellm_core_utils.realtime_streaming import RealTimeStreaming
 from litellm.llms.chatgpt.live import LiveDeployment, LiveOperation, LiveTransport, live_session_path
 from litellm.models.budget import LiteLLM_BudgetTable
 from litellm.models.team import LiteLLM_TeamTable
-from litellm.models.team_membership import LiteLLM_TeamMembership
 from litellm.proxy._types import (
     LiteLLM_ProjectTableCachedObj,
     LiteLLM_TeamTableCachedObj,
@@ -29,21 +30,24 @@ from litellm.proxy._types import (
     UserAPIKeyAuth,
 )
 from litellm.proxy.auth.auth_checks import (
+    _cache_team_object,  # pyright: ignore[reportPrivateUsage]  # same cache write the chat path performs
+    _get_team_object_from_cache,  # pyright: ignore[reportPrivateUsage]  # same cache read the chat path performs
     can_key_call_resolved_model,  # pyright: ignore[reportUnknownVariableType]  # legacy authorization accepts untyped deployment lists
     can_org_access_model,
     can_user_call_model,
     collect_matched_model_access_groups,
+    get_object_permission,
     get_org_object,
+    get_project_object,
+    get_team_membership,
     get_team_object,
     get_user_object,
 )
 from litellm.proxy.auth.user_api_key_auth import get_websocket_api_key, user_api_key_auth
-from litellm.proxy.common_utils.cache_pydantic_utils import CacheCodec
 from litellm.proxy.common_utils.encrypt_decrypt_utils import decrypt_value_helper, encrypt_value_helper
 from litellm.proxy.common_utils.user_api_key_cache import (
-    NO_TEAM_MEMBERSHIP_SENTINEL,
-    model_access_group_cache_key,
-    team_membership_reservation_cache_key,
+    get_management_object_ttl,
+    live_model_access_group_limits_cache_key,
 )
 from litellm.proxy.hooks.parallel_request_limiter import (
     _PROXY_MaxParallelRequestsHandler,  # pyright: ignore[reportPrivateUsage]  # limiter class is the existing hook identity
@@ -59,14 +63,14 @@ from litellm.proxy.spend_tracking.budget_reservation import (
     release_or_invalidate_budget_reservation,  # pyright: ignore[reportUnknownVariableType]  # budget helper accepts legacy reservation dicts
 )
 from litellm.repositories.budget_repository import BudgetRepository
-from litellm.repositories.project_repository import ProjectRepository
-from litellm.repositories.table_repositories import ModelAccessGroupBudgetRepository, TeamMembershipRepository
+from litellm.repositories.chunked_in import IN_LIST_CHUNK_SIZE
+from litellm.repositories.table_repositories import ModelAccessGroupBudgetRepository
 from litellm.repositories.team_repository import TeamRepository
-from litellm.types.proxy.model_access_group_budget import ModelAccessGroupBudget
 
 _routes: Final = APIRouter()
 _JSON: Final = TypeAdapter[JsonValue](JsonValue)
 _EMPTY: Final[Mapping[str, JsonValue]] = MappingProxyType({})
+_CACHEABLE_MODEL = TypeVar("_CACHEABLE_MODEL", bound=BaseModel)
 _MAPPING: Final = TypeAdapter(Mapping[str, object])
 _OBJECT: Final = TypeAdapter(Mapping[str, JsonValue])
 _DEPLOYMENT: Final = TypeAdapter(LiveDeployment)
@@ -85,18 +89,14 @@ def _json_value(value: object) -> JsonValue:
         source, parent, key, depth = pending.pop()
         if depth > 256:
             raise ValueError("Live JSON nesting exceeds the supported depth")
-        converted: JsonValue  # rebind-ok: each visited input produces a new JSON value
+        converted: JsonValue
         if isinstance(source, Mapping):
-            entries: Mapping[str, object] = _MAPPING.validate_python(
-                source
-            )  # rebind-ok: entries belong to the current node
+            entries: Mapping[str, object] = _MAPPING.validate_python(source)
             converted = {name: None for name in entries}  # mutable-ok: JSON wire objects require dicts
             pending.extend((item, converted, name, depth + 1) for name, item in entries.items())
         elif isinstance(source, (tuple, list)):
-            items: tuple[object, ...] = TypeAdapter(tuple[object, ...]).validate_python(
-                source
-            )  # rebind-ok: items belong to the current node
-            array: list[JsonValue] = [None] * len(items)  # mutable-ok: JSON output; # rebind-ok: per-node buffer
+            items: tuple[object, ...] = TypeAdapter(tuple[object, ...]).validate_python(source)
+            array: list[JsonValue] = [None] * len(items)
             pending.extend((item, array, index, depth + 1) for index, item in enumerate(items))
             converted = array
         else:
@@ -185,7 +185,7 @@ def rewrite_session_ids(value: JsonValue | Mapping[str, JsonValue], raw_id: str,
 def _owner(auth: UserAPIKeyAuth) -> str:
     if not auth.api_key:
         raise HTTPException(403, "Live sessions require an authenticated API key")
-    return hashlib.sha256(auth.api_key.encode()).hexdigest()
+    return hashlib.sha256(auth.api_key.encode(), usedforsecurity=False).hexdigest()
 
 
 async def _auth(request: Request) -> UserAPIKeyAuth:
@@ -214,13 +214,26 @@ async def _body(request: Request) -> Mapping[str, JsonValue]:
         raise HTTPException(400, "Expected a JSON object") from exc
 
 
-def _request(source: Request | WebSocket, body: Mapping[str, JsonValue]) -> Request:
+def _request(source: Request | WebSocket, body: Mapping[str, JsonValue], pinned_model: str | None = None) -> Request:
+    """Build the synthetic POST request that authenticates one Live operation.
+
+    A copied scope can carry the body a previous authentication parsed, so the
+    cached ``parsed_body`` is dropped and the request parses ``body`` again.
+    ``litellm_pinned_realtime_model`` marks the requests whose model this endpoint
+    dispatches itself, so a key-level budget fallback cannot authorize a different
+    model than the one that is about to run.
+    """
+
     async def receive() -> Message:
         return _mutable(
             MappingProxyType({"type": "http.request", "body": _encode_json(body).encode(), "more_body": False})
         )
 
-    return Request(_mutable(MappingProxyType({**source.scope, "type": "http", "method": "POST"})), receive=receive)
+    scope: Final = _mutable(MappingProxyType({**source.scope, "type": "http", "method": "POST"}))
+    scope.pop("parsed_body", None)
+    if pinned_model is not None:
+        scope["litellm_pinned_realtime_model"] = pinned_model
+    return Request(scope, receive=receive)
 
 
 def _session_model(body: Mapping[str, JsonValue], fallback: str | None = None) -> str:
@@ -314,6 +327,12 @@ async def _deployment(model: str, processed: Mapping[str, object]) -> LiveDeploy
     prefix, _, suffix = qualified.partition("/")
     provider: Final = prefix if prefix in ("openai", "chatgpt") else "openai"
     upstream: Final = suffix if prefix in ("openai", "chatgpt") else qualified
+    if provider == "chatgpt" and any(
+        params.get(key) is not None for key in ("chatgpt_token_dir", "chatgpt_auth_file")
+    ):
+        raise HTTPException(
+            400, "ChatGPT Live selects accounts through chatgpt_auth_profile; token directory or file overrides are unsupported"
+        )
     if prefix not in ("openai", "chatgpt"):
         if "/" in qualified:
             raise HTTPException(400, "Live requires an OpenAI or ChatGPT deployment")
@@ -337,6 +356,53 @@ async def _deployment(model: str, processed: Mapping[str, object]) -> LiveDeploy
 
 def _pinned(handle: LiveHandle) -> LiveDeployment:
     return _DEPLOYMENT.validate_python(_mutable(handle.deployment))
+
+
+def _validate_pinned_deployment(handle: LiveHandle) -> LiveDeployment:
+    """Reject handles whose deployment was removed, blocked, or replaced."""
+    from litellm.proxy import proxy_server as server
+
+    deployment: Final = _pinned(handle)
+    router = server.llm_router
+    if router is None or deployment.model_id is None:
+        raise HTTPException(410, "Live session deployment is no longer available")
+    configured_raw = router.get_deployment(model_id=deployment.model_id)
+    if configured_raw is None:
+        raise HTTPException(410, "Live session deployment is no longer available")
+    configured_data: Final = (
+        configured_raw.model_dump()
+        if hasattr(configured_raw, "model_dump")
+        else vars(configured_raw)
+        if not isinstance(configured_raw, Mapping)
+        else configured_raw
+    )
+    configured: Final = _MAPPING.validate_python(configured_data)
+    model_info: Final = _MAPPING.validate_python(configured.get("model_info", _EMPTY))
+    if model_info.get("blocked") is True:
+        raise HTTPException(410, "Live session deployment is no longer available")
+    params: Final = _object(configured["litellm_params"])
+    qualified: Final = str(params.get("model", ""))
+    prefix, _, suffix = qualified.partition("/")
+    provider: Final = prefix if prefix in ("openai", "chatgpt") else "openai"
+    upstream: Final = suffix if prefix in ("openai", "chatgpt") else qualified
+    if provider == "chatgpt" and any(
+        params.get(key) is not None for key in ("chatgpt_token_dir", "chatgpt_auth_file")
+    ):
+        raise HTTPException(410, "Live session deployment is no longer available")
+    if any(
+        (
+            deployment.model != upstream,
+            deployment.provider != provider,
+            str(model_info.get("id")) != deployment.model_id,
+            params.get("api_base") != deployment.api_base,
+            params.get("api_key") != deployment.api_key,
+            params.get("chatgpt_auth_profile") != deployment.profile,
+            (params.get("extra_headers") or _EMPTY) != deployment.extra_headers,
+            (params.get("extra_query") or _EMPTY) != deployment.extra_query,
+        )
+    ):
+        raise HTTPException(410, "Live session deployment is no longer available")
+    return deployment
 
 
 def _new_handle(
@@ -403,7 +469,7 @@ async def _budget_scope(auth: UserAPIKeyAuth) -> AsyncGenerator[_BudgetOwnership
 
 async def _reauth(ownership: _BudgetOwnership, request: Request, body: Mapping[str, JsonValue], model: str) -> None:
     await release_or_invalidate_budget_reservation(budget_reservation=ownership.auth.budget_reservation)
-    ownership.replace_auth(await _auth(_request(request, MappingProxyType({**body, "model": model}))))
+    ownership.replace_auth(await _auth(_request(request, MappingProxyType({**body, "model": model}), model)))
 
 
 def _policy_object(value: object) -> Mapping[str, JsonValue]:
@@ -478,6 +544,8 @@ def _session_policy(body: Mapping[str, JsonValue], source: LiveHandle | None) ->
 
 
 def _managed_constraints(auth: UserAPIKeyAuth) -> bool:
+    from litellm.proxy import proxy_server as server
+
     if any(
         value is not None
         for value in (
@@ -493,12 +561,24 @@ def _managed_constraints(auth: UserAPIKeyAuth) -> bool:
             auth.team_member_tpm_limit,
             auth.end_user_rpm_limit,
             auth.end_user_tpm_limit,
+            auth.max_parallel_requests,
             auth.max_budget,
             auth.team_max_budget,
             auth.user_max_budget,
             auth.end_user_max_budget,
             auth.organization_max_budget,
         )
+    ):
+        return True
+
+    # An admin-configured proxy-wide concurrency cap admits every key through the limiter,
+    # and delegated backend invocations never reach that admission, so it constrains the key
+    # the same way a key-level `max_parallel_requests` does.
+    if (
+        _MAPPING.validate_python(getattr(server, "general_settings", None) or _EMPTY).get(
+            "global_max_parallel_requests"
+        )
+        is not None
     ):
         return True
 
@@ -523,18 +603,16 @@ def _managed_constraints(auth: UserAPIKeyAuth) -> bool:
         )
         if isinstance(value, (Mapping, list, tuple))
     ]
-    visited: Final[set[int]] = set()  # mutable-ok: cycle guard for hook-provided metadata
+    visited: Final[set[int]] = set()
     while pending:
-        current: object = pending.pop()  # rebind-ok: advance the explicit metadata traversal stack
+        current: object = pending.pop()
         if id(current) in visited:
             continue
         visited.add(id(current))
         if len(visited) > 4096:
             return True
         if isinstance(current, Mapping):
-            entries: Mapping[str, object] = _MAPPING.validate_python(
-                current
-            )  # rebind-ok: entries belong to the current metadata node
+            entries: Mapping[str, object] = _MAPPING.validate_python(current)
             for key, item in entries.items():
                 if key in (
                     "rpm_limit",
@@ -631,26 +709,44 @@ async def _live_team_membership(auth: UserAPIKeyAuth) -> object | None:
 
     if auth.team_id is None or auth.user_id is None:
         return None
-    membership_key: Final = team_membership_reservation_cache_key(user_id=auth.user_id, team_id=auth.team_id)
-    membership_cached_raw: Final[object] = _OBJECT_VALUE.validate_python(
-        await server.user_api_key_cache.async_get_cache(key=membership_key)
+    return await get_team_membership(
+        user_id=auth.user_id,
+        team_id=auth.team_id,
+        prisma_client=server.prisma_client,
+        user_api_key_cache=server.user_api_key_cache,
+        proxy_logging_obj=server.proxy_logging_obj,
     )
-    membership_cached: Final = (
-        CacheCodec.deserialize(membership_cached_raw, model_type=LiteLLM_TeamMembership)
-        if membership_cached_raw is not None and membership_cached_raw != NO_TEAM_MEMBERSHIP_SENTINEL
-        else None
-    )
-    if membership_cached is not None or membership_cached_raw == NO_TEAM_MEMBERSHIP_SENTINEL:
-        return membership_cached
-    return await TeamMembershipRepository(server.prisma_client).table.find_unique(
-        where={  # mutable-ok: Prisma serializes query filters from concrete dictionaries
-            "user_id_team_id": {  # mutable-ok: Prisma serializes nested filters from concrete dictionaries
-                "user_id": auth.user_id,
-                "team_id": auth.team_id,
-            }
-        },
-        include={"litellm_budget_table": True},  # mutable-ok: Prisma serializes concrete include dictionaries
-    )
+
+
+async def _live_cached_object(
+    *,
+    key: str,
+    model_type: type[_CACHEABLE_MODEL],
+    load: Callable[[], Awaitable[_CACHEABLE_MODEL | None]],
+) -> _CACHEABLE_MODEL | None:
+    """Read one management object through the proxy cache, storing the row when the read misses.
+
+    ``auth_checks`` already caches these rows for the chat path, but the two getters this gate
+    would use are unusable there: ``get_team_object`` reports every failed database read as an
+    HTTP 404, and ``get_team_member_default_budget`` returns ``None`` when its read raises. Both
+    turn an outage into "no limit configured", and this gate answers that question by allowing
+    managed delegation, so an unreadable limit has to stay an error. The cache key and TTL stay
+    the shared ones, so the entry is still written, read, and invalidated like any other.
+    """
+    from litellm.proxy import proxy_server as server
+
+    cached: Final = await server.user_api_key_cache.async_get_cache(key=key, model_type=model_type)
+    if cached is not None:
+        return cached
+    loaded: Final = await load()
+    if loaded is not None:
+        await server.user_api_key_cache.async_set_cache(
+            key=key,
+            value=loaded,
+            model_type=model_type,
+            ttl=get_management_object_ttl(server.user_api_key_cache),
+        )
+    return loaded
 
 
 async def _live_team(auth: UserAPIKeyAuth) -> LiteLLM_TeamTable | None:
@@ -658,12 +754,40 @@ async def _live_team(auth: UserAPIKeyAuth) -> LiteLLM_TeamTable | None:
 
     if auth.team_id is None:
         return None
-    team_from_cache: Final = await server.user_api_key_cache.async_get_cache(
-        key=f"team_id:{auth.team_id}", model_type=LiteLLM_TeamTableCachedObj
+    team_id: Final = auth.team_id
+    cached: Final = await _get_team_object_from_cache(
+        key=f"team_id:{team_id}",
+        user_api_key_cache=server.user_api_key_cache,
+        parent_otel_span=None,
     )
-    if team_from_cache is not None:
-        return team_from_cache
-    return await TeamRepository(server.prisma_client).find_by_id(auth.team_id, id_field="team_id")
+    if cached is not None:
+        return cached
+
+    row: Final = await TeamRepository(server.prisma_client).find_by_id(team_id, id_field="team_id")
+    if row is None:
+        return None
+    team: Final = LiteLLM_TeamTableCachedObj.model_validate(row.model_dump())
+    if team.object_permission_id and not team.object_permission:
+        # The entry is written under the key the chat path reads, so it has to carry the same
+        # permission relation the chat path caches; a cache hit elsewhere must not see a team
+        # stripped of the permissions it was about to enforce.
+        try:
+            team.object_permission = await get_object_permission(
+                object_permission_id=team.object_permission_id,
+                prisma_client=server.prisma_client,
+                user_api_key_cache=server.user_api_key_cache,
+                parent_otel_span=None,
+                proxy_logging_obj=server.proxy_logging_obj,
+            )
+        except Exception as exc:  # noqa: BLE001  # same degradation as the chat path: cache the team without permissions and log it
+            verbose_proxy_logger.debug("Failed to load object_permission for Live team %s: %s", team_id, exc)
+    await _cache_team_object(
+        team_id=team_id,
+        team_table=team,
+        user_api_key_cache=server.user_api_key_cache,
+        proxy_logging_obj=server.proxy_logging_obj,
+    )
+    return team
 
 
 def _live_team_budget_configured(auth: UserAPIKeyAuth, team: LiteLLM_TeamTable | None) -> bool:
@@ -694,12 +818,14 @@ async def _live_default_budget(auth: UserAPIKeyAuth, team: LiteLLM_TeamTable | N
         return None
     from litellm.proxy import proxy_server as server
 
-    default_cached: Final = await server.user_api_key_cache.async_get_cache(
-        key=f"team_member_default_budget:{default_id}", model_type=LiteLLM_BudgetTable
+    async def load() -> LiteLLM_BudgetTable | None:
+        return await BudgetRepository(server.prisma_client).find_by_id(default_id, id_field="budget_id")
+
+    return await _live_cached_object(
+        key=f"team_member_default_budget:{default_id}",
+        model_type=LiteLLM_BudgetTable,
+        load=load,
     )
-    if default_cached is not None:
-        return default_cached
-    return await BudgetRepository(server.prisma_client).find_by_id(default_id, id_field="budget_id")
 
 
 async def _live_project(auth: UserAPIKeyAuth) -> LiteLLM_ProjectTableCachedObj | None:
@@ -707,33 +833,19 @@ async def _live_project(auth: UserAPIKeyAuth) -> LiteLLM_ProjectTableCachedObj |
 
     if auth.project_id is None:
         return None
-    project_from_cache: Final = await server.user_api_key_cache.async_get_cache(
-        key=f"project_id:{auth.project_id}", model_type=LiteLLM_ProjectTableCachedObj
+    return await get_project_object(
+        project_id=auth.project_id,
+        prisma_client=server.prisma_client,
+        user_api_key_cache=server.user_api_key_cache,
+        proxy_logging_obj=server.proxy_logging_obj,
     )
-    if project_from_cache is not None:
-        return project_from_cache
-    project_row: Final = await ProjectRepository(server.prisma_client).table.find_unique(
-        where={"project_id": auth.project_id},  # mutable-ok: Prisma serializes concrete query dictionaries
-        include={"litellm_budget_table": True},  # mutable-ok: Prisma serializes concrete include dictionaries
-    )
-    if project_row is None:
-        return None
-    return LiteLLM_ProjectTableCachedObj.model_validate(project_row.model_dump())
 
 
 async def _live_project_budget_configured(auth: UserAPIKeyAuth, project: LiteLLM_ProjectTableCachedObj | None) -> bool:
     if project is None:
         return False
-    from litellm.proxy import proxy_server as server
-
     project_budget: Final = getattr(project, "litellm_budget_table", None)
-    project_budget_id: Final = getattr(project, "budget_id", None)
-    project_budget_from_db: Final = (
-        await BudgetRepository(server.prisma_client).find_by_id(project_budget_id, id_field="budget_id")
-        if project_budget is None and isinstance(project_budget_id, str)
-        else None
-    )
-    if _live_budget_configured(project_budget or project_budget_from_db, zero_is_limit=True):
+    if _live_budget_configured(project_budget, zero_is_limit=True):
         return True
     if _nonempty_limit_value(getattr(project, "model_rpm_limit", None)) or _nonempty_limit_value(
         getattr(project, "model_tpm_limit", None)
@@ -744,6 +856,83 @@ async def _live_project_budget_configured(auth: UserAPIKeyAuth, project: LiteLLM
         project_metadata_value if project_metadata_value is not None else getattr(auth, "project_metadata", None)
     )
     return _managed_constraints(auth.model_copy(update=MappingProxyType({"project_metadata": project_metadata})))
+
+
+def _live_group_limits(row: object) -> LiteLLM_BudgetTable:
+    """The limit fields of the budget linked to one model access group row.
+
+    The row arrives as a Prisma join, so the limits are read by name. A group with no linked
+    budget yields an empty budget table: it reads as no limit, which is what the gate needs, and
+    it stays cacheable so the group is not re-read on every request.
+    """
+    budget: Final = getattr(row, "litellm_budget_table", None)
+    if budget is None:
+        return LiteLLM_BudgetTable()
+    return LiteLLM_BudgetTable.model_validate(
+        {  # mutable-ok: field values are read from the joined row into a fresh validation mapping
+            field: getattr(budget, field, None)
+            for field in ("max_budget", "rpm_limit", "tpm_limit", "model_max_budget", "max_parallel_requests")
+        }
+    )
+
+
+async def _live_fetch_group_limits(groups: tuple[str, ...]) -> tuple[LiteLLM_BudgetTable, ...]:
+    """Fetch the linked budget of each group in chunked queries and cache one entry per group."""
+    if not groups:
+        return ()
+    from litellm.proxy import proxy_server as server
+
+    # `find_many_in` cannot carry the budget join, so the group names are sliced here by hand.
+    table: Final = ModelAccessGroupBudgetRepository(server.prisma_client).table
+    unique_groups: Final = tuple(dict.fromkeys(groups))
+    rows: Final = tuple(
+        [
+            row
+            # comprehension-ok: one iteration per IN_LIST_CHUNK_SIZE slice of group names
+            for start in range(0, len(unique_groups), IN_LIST_CHUNK_SIZE)
+            for row in await table.find_many(
+                where={  # mutable-ok: Prisma serializes query filters from concrete dictionaries
+                    "access_group_name": {  # mutable-ok: Prisma serializes nested filters from concrete dictionaries
+                        # bounded-ok: <= IN_LIST_CHUNK_SIZE (5,000) names, the loop slices groups by that size
+                        "in": list(unique_groups[start : start + IN_LIST_CHUNK_SIZE]),
+                    }
+                },
+                include={"litellm_budget_table": True},  # mutable-ok: Prisma serializes concrete include dictionaries
+            )
+        ]
+    )
+    linked: Final = MappingProxyType({getattr(row, "access_group_name", None): _live_group_limits(row) for row in rows})
+    limits: Final = tuple(linked.get(group) or LiteLLM_BudgetTable() for group in groups)
+    await asyncio.gather(
+        *(
+            server.user_api_key_cache.async_set_cache(
+                key=live_model_access_group_limits_cache_key(group),
+                value=limit,
+                model_type=LiteLLM_BudgetTable,
+                ttl=get_management_object_ttl(server.user_api_key_cache),
+            )
+            for group, limit in zip(groups, limits)
+        )
+    )
+    return limits
+
+
+async def _live_model_group_limits(groups: tuple[str, ...]) -> tuple[LiteLLM_BudgetTable, ...]:
+    """One cached budget entry per group, served from a single row batch on a cold miss."""
+    from litellm.proxy import proxy_server as server
+
+    cached: Final = await asyncio.gather(
+        *(
+            server.user_api_key_cache.async_get_cache(
+                key=live_model_access_group_limits_cache_key(group),
+                model_type=LiteLLM_BudgetTable,
+            )
+            for group in groups
+        )
+    )
+    uncached: Final = tuple(group for group, entry in zip(groups, cached) if entry is None)
+    fetched: Final = MappingProxyType(dict(zip(uncached, await _live_fetch_group_limits(uncached))))
+    return tuple(entry if entry is not None else fetched[group] for group, entry in zip(groups, cached))
 
 
 async def _live_model_group_budget_configured(
@@ -769,44 +958,10 @@ async def _live_model_group_budget_configured(
     )
     if not matched_groups:
         return False
-    cached_values: Final = await asyncio.gather(
-        *(
-            server.user_api_key_cache.async_get_cache(
-                key=model_access_group_cache_key(group), model_type=ModelAccessGroupBudget
-            )
-            for group in matched_groups
-        )
-    )
-    cached_groups: Final = tuple(zip(matched_groups, cached_values))
-    uncached_groups: Final = tuple(group for group, budget in cached_groups if budget is None)
-    named_group_rows: Final = (
-        await ModelAccessGroupBudgetRepository(server.prisma_client).table.find_many(
-            where={  # mutable-ok: Prisma serializes query filters from concrete dictionaries
-                "access_group_name": {  # mutable-ok: Prisma serializes nested filters from concrete dictionaries
-                    "in": uncached_groups,
-                }
-            },
-            include={"litellm_budget_table": True},  # mutable-ok: Prisma serializes concrete include dictionaries
-        )
-        if uncached_groups
-        else ()
-    )
-    return any(
-        _live_budget_configured(
-            budget
-            if budget is not None
-            else next(
-                (
-                    getattr(row, "litellm_budget_table", None)
-                    for row in named_group_rows
-                    if getattr(row, "access_group_name", None) == group
-                ),
-                None,
-            ),
-            zero_is_limit=False,
-        )
-        for group, budget in cached_groups
-    )
+    # The shared group-budget helper flattens the row down to spend and max_budget, which would
+    # drop the rpm and tpm limits this gate exists to refuse, so the linked row is read in full.
+    limits: Final = await _live_model_group_limits(matched_groups)
+    return any(_live_budget_configured(limit, zero_is_limit=False) for limit in limits)
 
 
 async def _managed_member_budget(auth: UserAPIKeyAuth, model: str | None = None) -> bool:
@@ -1102,7 +1257,7 @@ async def _start_supervisor(
         try:
             result: Final = await transport.request("POST", live_session_path(handle.session_id, "hangup"))
             result.raise_for_status()
-        except Exception:
+        except Exception:  # noqa: BLE001  # whatever hung up failed, the reservation must go back
             await invalidate_budget_reservation_counters(budget_reservation=auth.budget_reservation)
         finally:
             if state.connection is not None:
@@ -1154,9 +1309,9 @@ def _response(response: httpx.Response, handle: LiveHandle | None = None) -> Res
 
 async def _create(request: Request, token: str | None = None) -> Response:
     body: Final = await _body(request)
-    auth: Final = await _auth(
-        _request(request, _EMPTY if token else MappingProxyType({**body, "model": _session_model(body)}))
-    )
+    requested: Final = None if token else _session_model(body)
+    auth_body: Final = _EMPTY if token or requested is None else MappingProxyType({**body, "model": requested})
+    auth: Final = await _auth(_request(request, auth_body, requested))
     async with _budget_scope(auth) as ownership:
         source: Final = decode_session(token, _owner(auth)) if token else None
         model: Final = _session_model(body, source.alias if source else None)
@@ -1166,7 +1321,9 @@ async def _create(request: Request, token: str | None = None) -> Response:
             _request(request, MappingProxyType({**body, "model": model})), ownership.auth, model, ownership=ownership
         ) as prepared:
             await _authorize_fork_policy(_processed_body(body, prepared.processed), source, ownership.auth)
-            deployment: Final = _pinned(source) if source else await _deployment(model, prepared.processed)
+            deployment: Final = (
+                _validate_pinned_deployment(source) if source else await _deployment(model, prepared.processed)
+            )
             transport: Final = LiveTransport(deployment, request.headers)
             path: Final = live_session_path(source.session_id, "fork") if source else "live/sessions"
             response: Final = await transport.request(
@@ -1347,9 +1504,7 @@ async def _wait_started(
 ) -> Mapping[str, JsonValue]:
     async def receive_started() -> Mapping[str, JsonValue]:
         while True:
-            event: Mapping[str, JsonValue] = _OBJECT.validate_json(
-                await connection.recv()
-            )  # rebind-ok: each received event has a new value
+            event: Mapping[str, JsonValue] = _OBJECT.validate_json(await connection.recv())
             if event.get("type") == "session.started":
                 return event
             if startup is not None:
@@ -1408,7 +1563,9 @@ async def websocket_live_session(websocket: WebSocket, session_id: str | None = 
                     )
                 else:
                     await _authorize_fork_policy(_processed_body(first, prepared.processed), source, ownership.auth)
-                deployment: Final = _pinned(source) if source else await _deployment(model, prepared.processed)
+                deployment: Final = (
+                    _validate_pinned_deployment(source) if source else await _deployment(model, prepared.processed)
+                )
                 path: Final = (
                     live_session_path(source.session_id, "attach" if attached else "fork")
                     if source
@@ -1471,12 +1628,14 @@ async def websocket_live_session(websocket: WebSocket, session_id: str | None = 
         try:
             await websocket.close(code=1008, reason="Live session rejected")
         except RuntimeError:
-            pass
-    except Exception:
+            # The peer may have closed the socket before the rejection response.
+            return
+    except Exception:  # noqa: BLE001  # an unexpected failure still gets the client a 1011 close
         try:
             await websocket.close(code=1011, reason="Live upstream connection failed")
         except RuntimeError:
-            pass
+            # The peer may have closed the socket before the failure response.
+            return
     finally:
         if state.connection is not None:
             await state.connection.close()

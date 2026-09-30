@@ -2443,12 +2443,18 @@ async def get_team_membership(
     user_api_key_cache: UserApiKeyCache,
     parent_otel_span: Span | None = None,
     proxy_logging_obj: ProxyLogging | None = None,
-    raise_on_error: bool = False,
+    raise_on_error: bool = True,
 ) -> Optional["LiteLLM_TeamMembership"]:
     """
     Returns team membership object if user is member of team.
 
     Do a isolated check for team membership vs. doing a combined key + team + user + team-membership check, as key might come in frequently for different users/teams. Larger call will slowdown query time. This way we get to cache the constant (key/team/user info) and only update based on the changing value (team membership).
+
+    ``raise_on_error`` defaults to True because the callers that apply member-level limits -- the budget and
+    model-scope checks in ``common_checks``, the JWT team resolution, and the compact summary gate -- cannot
+    tell an absent row apart from a failed read, so swallowing an outage there hands the member whatever the
+    team allows. A caller that only attributes grants, and can proceed with the lists it already holds,
+    passes False and degrades to "no member-level scope".
     """
     if user_id is None or team_id is None:
         return None
@@ -4748,10 +4754,10 @@ async def _team_member_granted_models(
     prisma_client: PrismaClient,
     user_api_key_cache: UserApiKeyCache,
     proxy_logging_obj: ProxyLogging,
-    team_membership: LiteLLM_TeamMembership | None = None,
-    team_membership_loaded: bool = False,
     *,
     strict_grant_lookup: bool = False,
+    team_membership: LiteLLM_TeamMembership | None = None,
+    team_membership_loaded: bool = False,
 ) -> Sequence[str]:
     """The member's own ``allowed_models`` scope; empty when the member is not narrowed below the team."""
     if team_object is None or valid_token.user_id is None:
@@ -4764,6 +4770,9 @@ async def _team_member_granted_models(
             prisma_client=prisma_client,
             user_api_key_cache=user_api_key_cache,
             proxy_logging_obj=proxy_logging_obj,
+            # Spelled out because it is the one caller that wants the opposite of the default: outside
+            # strict mode this walk only attributes grants, so an unreadable member scope degrades to
+            # "no member-level scope" instead of failing the request.
             raise_on_error=strict_grant_lookup,
         )
     return () if team_membership is None else _member_allowed_models(team_membership)
@@ -4805,10 +4814,10 @@ async def _granted_model_lists(
     prisma_client: PrismaClient,
     user_api_key_cache: UserApiKeyCache,
     proxy_logging_obj: ProxyLogging,
-    team_membership: LiteLLM_TeamMembership | None = None,
-    team_membership_loaded: bool = False,
     *,
     strict_grant_lookup: bool = False,
+    team_membership: LiteLLM_TeamMembership | None = None,
+    team_membership_loaded: bool = False,
 ) -> tuple[Sequence[str], ...]:
     """One model allowlist per level that participates in authorizing the request."""
     return (
@@ -4918,10 +4927,10 @@ async def collect_matched_model_access_groups(
     prisma_client: PrismaClient | None,
     user_api_key_cache: UserApiKeyCache,
     proxy_logging_obj: ProxyLogging,
-    team_membership: LiteLLM_TeamMembership | None = None,
-    team_membership_loaded: bool = False,
     *,
     strict_grant_lookup: bool = False,
+    team_membership: LiteLLM_TeamMembership | None = None,
+    team_membership_loaded: bool = False,
 ) -> tuple[str, ...]:
     """
     The budgeted model access groups that authorized this request, sorted and deduplicated.
@@ -6621,7 +6630,9 @@ def is_model_allowed_by_pattern(model: str, allowed_model_pattern: str) -> bool:
         bool: True if model matches the pattern, False otherwise
     """
     if "*" in allowed_model_pattern:
-        pattern: Final = f"^{allowed_model_pattern.replace('*', '.*')}$"
+        # Treat the configured model pattern as a glob; only '*' is special.
+        escaped_pattern: Final = re.escape(allowed_model_pattern)
+        pattern: Final = "^" + escaped_pattern.replace("\\*", ".*") + "$"
         return bool(re.match(pattern, model))
 
     return False

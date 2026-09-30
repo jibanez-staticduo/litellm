@@ -235,7 +235,7 @@ class OpenAIGPT5Config(OpenAIGPTConfig):
             "verbosity",
         ]  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
         base_gpt_series_params.extend(gpt_5_only_params)
-        if _is_explicitly_disabled_factory(model=model, custom_llm_provider=None, key="supports_tool_choice"):
+        if is_explicitly_disabled_factory(model=model, custom_llm_provider=None, key="supports_tool_choice"):
             base_gpt_series_params.remove("tool_choice")
 
         non_supported_params: Final = [

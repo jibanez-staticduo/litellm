@@ -29,7 +29,7 @@ from litellm.types.router import GenericLiteLLMParams
 from litellm.types.utils import ModelResponse, ProviderField
 from litellm.utils import (
     _add_path_to_api_base,  # pyright: ignore[reportPrivateUsage]  # shared provider URL helper
-    _is_explicitly_disabled_factory,  # pyright: ignore[reportPrivateUsage]  # shared parameter helper
+    is_explicitly_disabled_factory,
 )
 
 if TYPE_CHECKING:
@@ -75,7 +75,7 @@ class AzureAIStudioConfig(OpenAIConfig):
         # model cost map explicitly sets supports_tool_choice=false. A missing
         # capability flag must be treated as supported so new or custom
         # deployments don't lose tool_choice unexpectedly.
-        model_supports_tool_choice = not _is_explicitly_disabled_factory(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        model_supports_tool_choice = not is_explicitly_disabled_factory(  # rebind-ok: framework flow intentionally updates request or lifecycle state
             model=f"azure_ai/{model}",
             custom_llm_provider=None,
             key="supports_tool_choice",

@@ -2352,8 +2352,8 @@ class ProxyLogging:
         data: None,
         call_type: CallTypesLiteral,
         guardrails_only: bool = False,
-        skip_guardrails: bool = False,
         *,
+        skip_guardrails: bool = False,
         internal_realtime_observer: bool = False,
     ) -> None:
         pass
@@ -2365,8 +2365,8 @@ class ProxyLogging:
         data: dict,
         call_type: CallTypesLiteral,
         guardrails_only: bool = False,
-        skip_guardrails: bool = False,
         *,
+        skip_guardrails: bool = False,
         internal_realtime_observer: bool = False,
     ) -> dict:
         pass
@@ -2377,8 +2377,8 @@ class ProxyLogging:
         data: dict | None,
         call_type: CallTypesLiteral,
         guardrails_only: bool = False,
-        skip_guardrails: bool = False,
         *,
+        skip_guardrails: bool = False,
         internal_realtime_observer: bool = False,
     ) -> dict | None:
         """
@@ -4621,7 +4621,7 @@ class PrismaClient:
 
     def hash_token(self, token: str):
         # Hash the string using SHA-256
-        hashed_token: Final = hashlib.sha256(token.encode()).hexdigest()
+        hashed_token: Final = hashlib.sha256(token.encode(), usedforsecurity=False).hexdigest()
 
         return hashed_token
 
@@ -7125,7 +7125,7 @@ def hash_token(token: str):
     import hashlib
 
     # Hash the string using SHA-256
-    hashed_token: Final = hashlib.sha256(token.encode()).hexdigest()
+    hashed_token: Final = hashlib.sha256(token.encode(), usedforsecurity=False).hexdigest()
 
     return hashed_token
 

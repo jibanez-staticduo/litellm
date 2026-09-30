@@ -2101,27 +2101,6 @@ async def test_auto_register_first_request_propagates_user_email(active: bool) -
             MagicMock(post_call_failure_hook=AsyncMock(return_value=None)),
         ),
         patch("litellm.proxy.proxy_server.jwt_handler", jwt_handler),
-        patch(
-            "litellm.proxy.proxy_server.general_settings", general_settings
-        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
-        patch(
-            "litellm.proxy.proxy_server.premium_user", True
-        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
-        patch(
-            "litellm.proxy.proxy_server.master_key", "sk-master"
-        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
-        patch(
-            "litellm.proxy.proxy_server.prisma_client", prisma_client
-        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
-        patch(
-            "litellm.proxy.proxy_server.user_api_key_cache", user_api_key_cache
-        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
-        patch(
-            "litellm.proxy.proxy_server.proxy_logging_obj", MagicMock()
-        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
-        patch(
-            "litellm.proxy.proxy_server.jwt_handler", jwt_handler
-        ),  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
         patch(  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
             "litellm.proxy.auth.user_api_key_auth._resolve_jwt_to_virtual_key",
             new_callable=AsyncMock,
@@ -8997,6 +8976,67 @@ async def test_claude_view_never_reinterprets_explicit_names(monkeypatch, layer)
     assert data["model"] == ("foo" if layer == "unclaimed" else encoded)
 
 
+def _malformed_authorization_websocket(send):
+    from unittest.mock import AsyncMock
+
+    from fastapi import WebSocket
+
+    return WebSocket(
+        {
+            "type": "websocket", "scheme": "ws", "server": ("localhost", 4000),
+            "path": "/v1/realtime", "query_string": b"",
+            "headers": [(b"authorization", b"Token malformed")],
+        },
+        AsyncMock(),
+        send,
+    )
+
+
+@pytest.mark.parametrize("authorization_value", ["Token malformed", "bearer lowercase"])
+def test_get_websocket_api_key_rejects_malformed_authorization(monkeypatch, authorization_value):
+    import importlib
+    from unittest.mock import AsyncMock
+
+    from fastapi import HTTPException, WebSocket
+
+    from litellm.proxy import proxy_server
+
+    auth_module = importlib.import_module("litellm.proxy.auth.user_api_key_auth")
+    monkeypatch.setattr(proxy_server, "general_settings", {})
+    websocket = WebSocket(
+        {
+            "type": "websocket", "scheme": "ws", "server": ("localhost", 4000),
+            "path": "/v1/realtime", "query_string": b"",
+            "headers": [(b"authorization", authorization_value.encode())],
+        },
+        AsyncMock(),
+        AsyncMock(),
+    )
+    with pytest.raises(HTTPException) as error:
+        auth_module.get_websocket_api_key(websocket)
+    assert error.value.status_code == 403
+    assert error.value.detail == "Invalid Authorization header format"
+
+
+@pytest.mark.asyncio
+async def test_websocket_auth_closes_policy_violation_on_malformed_authorization(monkeypatch):
+    import importlib
+    from unittest.mock import AsyncMock
+
+    from fastapi import HTTPException
+
+    from litellm.proxy import proxy_server
+
+    auth_module = importlib.import_module("litellm.proxy.auth.user_api_key_auth")
+    monkeypatch.setattr(proxy_server, "general_settings", {})
+    send = AsyncMock()
+    websocket = _malformed_authorization_websocket(send)
+    with pytest.raises(HTTPException) as error:
+        await auth_module.user_api_key_auth_websocket(websocket)
+    assert error.value.status_code == 403
+    assert error.value.detail == "Invalid Authorization header format"
+    send.assert_awaited_once_with({"type": "websocket.close", "code": 1008, "reason": ""})
+
 ISSUER_ONE = "https://issuer-one.example.com"
 ISSUER_TWO = "https://issuer-two.example.com"
 
@@ -9559,6 +9599,33 @@ async def test_router_settings_model_group_alias_authorizes_target_for_team(monk
     await authorize()
     assert (await request.json())["model"] == target
     assert get_client_requested_model(request) == "AgentX-LLM"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model", ["configured-voice", None])
+async def test_websocket_auth_explicit_model_overrides_query(monkeypatch, model):
+    import importlib
+    from fastapi import WebSocket
+
+    from litellm.proxy import proxy_server
+
+    auth_module = importlib.import_module("litellm.proxy.auth.user_api_key_auth")
+    monkeypatch.setattr(proxy_server, "general_settings", {})
+    seen = []
+
+    async def authenticate(request, api_key):
+        seen.append((await request.json(), api_key))
+        return "authenticated"
+
+    monkeypatch.setattr(auth_module, "user_api_key_auth", authenticate)
+    websocket = WebSocket({
+        "type": "websocket", "scheme": "ws", "server": ("localhost", 4000),
+        "path": "/v1/realtime", "path_params": {},
+        "query_string": b"model=untrusted-query",
+        "headers": [(b"x-litellm-api-key", b"owner")],
+    }, AsyncMock(), AsyncMock())
+    assert await auth_module.user_api_key_auth_websocket_for_model(websocket, model) == "authenticated"
+    assert seen == [({"model": model or ""}, "Bearer owner")]
 
 
 @pytest.mark.asyncio
@@ -10154,4 +10221,3 @@ async def test_sideband_custom_header_cannot_fall_back_to_other_credentials(monk
     assert error.value.status_code == 403
     authenticate.assert_not_awaited()
     send.assert_awaited_once_with({"type": "websocket.close", "code": 1008, "reason": ""})
-
