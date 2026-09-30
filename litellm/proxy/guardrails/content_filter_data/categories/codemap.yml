@@ -1,5 +1,5 @@
 scope: module
-parent: ../../../../../../.staticeng/codemap.yml
+parent: ../../../../../.staticeng/codemap.yml
 internals:
   - path: harm_toxic_abuse_es.json
   - path: gender_sexual_orientation.yaml

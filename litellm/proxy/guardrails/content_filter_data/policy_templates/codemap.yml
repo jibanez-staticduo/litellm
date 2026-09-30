@@ -1,5 +1,5 @@
 scope: module
-parent: ../../../../../../.staticeng/codemap.yml
+parent: ../../../../../.staticeng/codemap.yml
 internals:
   - path: sg_mas_transparency_explainability.yaml
   - path: eu_ai_act_art5_vulnerability.yaml
