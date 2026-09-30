@@ -7,7 +7,8 @@ llm-only key hitting a management route).
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
+import warnings
+from dataclasses import dataclass, field, replace
 
 import jwt
 from e2e_config import MASTER_KEY
@@ -21,9 +22,12 @@ from e2e_http import (
     StreamingResponse,
     Success,
     UnknownApiError,
+    retry_attempts,
     unwrap,
 )
 from models import (
+    AuditLogPage,
+    AuditLogParams,
     ChatBody,
     ChatMessage,
     ConnectionTestBody,
@@ -34,6 +38,7 @@ from models import (
     CustomerResponse,
     KeyBlockBody,
     KeyDeleteBody,
+    KeyDeleteByAliasBody,
     KeyGenerateBody,
     KeyGenerateResponse,
     KeyInfoParams,
@@ -82,7 +87,7 @@ from models import (
     UserNewResponse,
     UserUpdateBody,
 )
-from proxy_client import ProxyClient
+from proxy_client import Caller, ProxyClient
 
 MODEL_ACCESS_DENIED_MARKER = "key_model_access_denied"
 ROUTE_NOT_ALLOWED_MARKER = "not allowed to call this route"
@@ -99,7 +104,7 @@ class DashboardSession:
     its bearer on every subsequent call, the claims it renders the signed-in user
     from, and where it lands the browser."""
 
-    session_key: str
+    session_key: str = field(repr=False)
     claims: UiSessionClaims
     redirect_url: str
 
@@ -107,7 +112,10 @@ class DashboardSession:
 @dataclass(frozen=True, slots=True)
 class ManagementClient:
     proxy: ProxyClient
-    master_key: str
+    master_key: str = field(repr=False)
+
+    def with_caller(self, caller: Caller) -> ManagementClient:
+        return replace(self, proxy=self.proxy.with_caller(caller))
 
     def llm_only_key(self) -> str:
         return self.proxy.generate_key(KeyGenerateBody(models=[], allowed_routes=["llm_api_routes"]))
@@ -118,7 +126,7 @@ class ManagementClient:
         dashboard creates it under the session key their sign-in minted). Returns
         the outcome rather than unwrapping it, so a caller can poll a route that is
         only transiently refusing."""
-        headers = self.proxy.transport.master if caller_key is None else self.proxy.transport.bearer(caller_key)
+        headers = self.proxy.management_headers(caller_key)
         return self.proxy.transport.post(
             "/key/generate",
             headers=headers,
@@ -132,9 +140,9 @@ class ManagementClient:
         sign-in minted, never the master key). Returns the outcome rather than
         unwrapping it, so a caller can poll a route that is only transiently
         refusing; `update_key_models` is the unwrapping shorthand."""
-        headers = self.proxy.transport.master if caller_key is None else self.proxy.transport.bearer(caller_key)
+        headers = self.proxy.management_headers(caller_key)
         last: Result[NoBody] = NetworkError(message="/key/update was never attempted")
-        for attempt in range(_KEY_WRITE_ATTEMPTS):
+        for attempt in range(retry_attempts(_KEY_WRITE_ATTEMPTS)):
             last = self.proxy.transport.post(
                 "/key/update",
                 headers=headers,
@@ -145,6 +153,7 @@ class ManagementClient:
                 case UnknownApiError(body=error_body) if any(
                     marker in error_body.lower() for marker in _TRANSIENT_BACKEND_MARKERS
                 ):
+                    warnings.warn(f"Transient backend response on attempt {attempt + 1}", RuntimeWarning, stacklevel=2)
                     time.sleep(0.5 * (attempt + 1))
                     continue
                 case _:
@@ -154,25 +163,51 @@ class ManagementClient:
     def update_key_models(self, key: str, models: list[str]) -> None:
         _ = unwrap(self.update_key(KeyUpdateBody(key=key, models=models)))
 
-    def key_info_as(self, key: str, *, caller_key: str) -> Result[KeyInfoResponse]:
+    def delete_key_by_alias(self, key_alias: str) -> None:
+        _ = unwrap(
+            self.proxy.transport.post(
+                "/key/delete",
+                headers=self.proxy.management_headers(),
+                json=KeyDeleteByAliasBody(key_aliases=[key_alias]),
+                response_type=NoBody,
+            )
+        )
+
+    def key_deleted_audit_logs(self, token_hash: str) -> AuditLogPage:
+        return unwrap(
+            self.proxy.transport.get(
+                "/audit",
+                headers=self.proxy.management_headers(),
+                params=AuditLogParams(
+                    object_id=token_hash,
+                    action="deleted",
+                    table_name="LiteLLM_VerificationToken",
+                    page_size=100,
+                ),
+                response_type=AuditLogPage,
+            )
+        )
+
+    def key_info_as(self, key: str, *, caller_key: str | None = None) -> Result[KeyInfoResponse]:
         return self.proxy.transport.get(
             "/key/info",
-            headers=self.proxy.transport.bearer(caller_key),
+            headers=self.proxy.management_headers(caller_key),
             params=KeyInfoParams(key=key),
             response_type=KeyInfoResponse,
         )
 
-    def delete_key_strict(self, key: str, *, caller_key: str | None = None) -> None:
+    def delete_key_strict(self, key: str, *, caller_key: str | None = None, missing_ok: bool = False) -> None:
         """Strict delete for the act phase of a test: a failed delete is a hard
         failure, unlike the warn-only ProxyClient.delete_key used at teardown."""
-        _ = unwrap(
-            self.proxy.transport.post(
-                "/key/delete",
-                headers=self.proxy.transport.master if caller_key is None else self.proxy.transport.bearer(caller_key),
-                json=KeyDeleteBody(keys=[key]),
-                response_type=NoBody,
-            )
+        result = self.proxy.transport.post(
+            "/key/delete",
+            headers=self.proxy.management_headers(caller_key),
+            json=KeyDeleteBody(keys=[key]),
+            response_type=NoBody,
         )
+        if missing_ok and isinstance(result, UnknownApiError) and result.status_code == 404:
+            return
+        _ = unwrap(result)
 
     def delete_model_strict(self, model_id: str) -> None:
         """Strict delete for the act phase of a test: a failed delete is a hard
@@ -180,7 +215,7 @@ class ManagementClient:
         _ = unwrap(
             self.proxy.transport.post(
                 "/model/delete",
-                headers=self.proxy.transport.master,
+                headers=self.proxy.management_headers(),
                 json=ModelDeleteBody(id=model_id),
                 response_type=NoBody,
             )
@@ -191,7 +226,7 @@ class ManagementClient:
         Connection button, probing the live provider with the supplied params."""
         return self.proxy.transport.post(
             "/health/test_connection",
-            headers=self.proxy.transport.master,
+            headers=self.proxy.management_headers(),
             json=body,
             response_type=ConnectionTestResponse,
             timeout=120.0,
@@ -201,7 +236,7 @@ class ManagementClient:
         _ = unwrap(
             self.proxy.transport.post(
                 "/key/block",
-                headers=self.proxy.transport.master,
+                headers=self.proxy.management_headers(),
                 json=KeyBlockBody(key=key),
                 response_type=NoBody,
             )
@@ -210,7 +245,7 @@ class ManagementClient:
         return unwrap(
             self.proxy.transport.post(
                 "/key/regenerate",
-                headers=self.proxy.transport.master,
+                headers=self.proxy.management_headers(),
                 json=KeyRegenerateBody(key=key, grace_period=grace_period),
                 response_type=KeyGenerateResponse,
             )
@@ -220,7 +255,7 @@ class ManagementClient:
         return unwrap(
             self.proxy.transport.post(
                 f"/key/{key}/reset_spend",
-                headers=self.proxy.transport.master,
+                headers=self.proxy.management_headers(),
                 json=KeyResetSpendBody(reset_to=reset_to),
                 response_type=KeyResetSpendResponse,
             )
@@ -229,7 +264,7 @@ class ManagementClient:
     def key_list(self, key_alias: str, *, caller_key: str | None = None) -> Result[KeyListResponse]:
         """GET /key/list, the Virtual Keys page's own inventory call. `caller_key` is
         who is asking: the master key by default, or a virtual key."""
-        headers = self.proxy.transport.master if caller_key is None else self.proxy.transport.bearer(caller_key)
+        headers = self.proxy.management_headers(caller_key)
         return self.proxy.transport.get(
             "/key/list",
             headers=headers,
@@ -289,7 +324,7 @@ class ManagementClient:
         team_id = unwrap(
             self.proxy.transport.post(
                 "/team/new",
-                headers=self.proxy.transport.master,
+                headers=self.proxy.management_headers(),
                 json=body,
                 response_type=TeamNewResponse,
             )
@@ -299,10 +334,10 @@ class ManagementClient:
 
     def update_team(self, body: TeamUpdateBody) -> None:
         last: Result[NoBody] | None = None
-        for attempt in range(5):
+        for attempt in range(retry_attempts(5)):
             last = self.proxy.transport.post(
                 "/team/update",
-                headers=self.proxy.transport.master,
+                headers=self.proxy.management_headers(),
                 json=body,
                 response_type=NoBody,
             )
@@ -312,6 +347,7 @@ class ManagementClient:
                 case UnknownApiError(body=body_text) if (
                     "connecting to redis" in body_text.lower() or "name resolution" in body_text.lower()
                 ):
+                    warnings.warn(f"Transient backend response on attempt {attempt + 1}", RuntimeWarning, stacklevel=2)
                     time.sleep(0.5 * (attempt + 1))
                     continue
                 case _:
@@ -322,7 +358,7 @@ class ManagementClient:
     def delete_team(self, team_id: str) -> None:
         _ = self.proxy.transport.post(
             "/team/delete",
-            headers=self.proxy.transport.master,
+            headers=self.proxy.management_headers(),
             json=TeamDeleteBody(team_ids=[team_id]),
             response_type=NoBody,
         )
@@ -331,7 +367,7 @@ class ManagementClient:
         return unwrap(
             self.proxy.transport.get(
                 "/team/info",
-                headers=self.proxy.transport.master,
+                headers=self.proxy.management_headers(),
                 params=TeamInfoParams(team_id=team_id),
                 response_type=TeamInfoResponse,
             )
@@ -343,7 +379,7 @@ class ManagementClient:
             for entry in unwrap(
                 self.proxy.transport.get(
                     "/team/list",
-                    headers=self.proxy.transport.master,
+                    headers=self.proxy.management_headers(),
                     params=NoBody(),
                     response_type=TeamListResponse,
                 )
@@ -351,14 +387,16 @@ class ManagementClient:
         )
 
     def team_info_status(self, team_id: str) -> ProbeResult:
-        return self.proxy.transport.probe("/team/info", params=TeamInfoParams(team_id=team_id))
+        return self.proxy.transport.probe(
+            "/team/info", params=TeamInfoParams(team_id=team_id), headers=self.proxy.management_headers()
+        )
 
     def _wait_for_team(self, team_id: str) -> None:
         last: Result[TeamInfoResponse] | None = None
-        for _ in range(_TEAM_READY_ATTEMPTS):
+        for _ in range(retry_attempts(_TEAM_READY_ATTEMPTS)):
             last = self.proxy.transport.get(
                 "/team/info",
-                headers=self.proxy.transport.master,
+                headers=self.proxy.management_headers(),
                 params=TeamInfoParams(team_id=team_id),
                 response_type=TeamInfoResponse,
             )
@@ -366,25 +404,29 @@ class ManagementClient:
                 case Success():
                     return
                 case _:
+                    warnings.warn("Repeating team read while the team becomes available", RuntimeWarning, stacklevel=2)
                     time.sleep(_TEAM_READY_SLEEP_SECONDS)
         assert last is not None
         raise AssertionError(last)
 
     def add_team_member(self, team_id: str, user_id: str) -> None:
         last: Result[NoBody] | None = None
-        for attempt in range(_TEAM_READY_ATTEMPTS):
+        for attempt in range(retry_attempts(_TEAM_READY_ATTEMPTS)):
             last = self.proxy.transport.post(
                 "/team/member_add",
-                headers=self.proxy.transport.master,
+                headers=self.proxy.management_headers(),
                 json=TeamMemberAddBody(team_id=team_id, member=TeamMemberEntry(role="user", user_id=user_id)),
                 response_type=NoBody,
             )
             match last:
                 case Success():
                     return
-                case UnknownApiError(body=body) if (
-                    "doesn't exist" in body and attempt + 1 < _TEAM_READY_ATTEMPTS
+                case UnknownApiError(body=body) if "doesn't exist" in body and attempt + 1 < retry_attempts(
+                    _TEAM_READY_ATTEMPTS
                 ):
+                    warnings.warn(
+                        "Retrying team membership while the team becomes available", RuntimeWarning, stacklevel=2
+                    )
                     time.sleep(_TEAM_READY_SLEEP_SECONDS)
                     continue
                 case _:
@@ -392,11 +434,32 @@ class ManagementClient:
         assert last is not None
         raise AssertionError(last)
 
+    def add_team_members(self, team_id: str, members: list[TeamMemberEntry]) -> None:
+        """Bulk form of /team/member_add: `member` accepts a list, so one call
+        seeds a whole roster the way an admin import does."""
+        _ = unwrap(
+            self.proxy.transport.post(
+                "/team/member_add",
+                headers=self.proxy.management_headers(),
+                json=TeamMemberAddBody(team_id=team_id, member=members),
+                response_type=NoBody,
+            )
+        )
+
+    def delete_team_status(self, team_id: str) -> StreamingResponse:
+        """POST /team/delete judged by HTTP outcome: the raw status and body, so a
+        test can assert on what a caller actually sees when the delete fails."""
+        return self.proxy.transport.send(
+            "/team/delete",
+            headers=self.proxy.management_headers(),
+            json=TeamDeleteBody(team_ids=[team_id]),
+        )
+
     def delete_team_member(self, team_id: str, user_id: str) -> None:
         _ = unwrap(
             self.proxy.transport.post(
                 "/team/member_delete",
-                headers=self.proxy.transport.master,
+                headers=self.proxy.management_headers(),
                 json=TeamMemberDeleteBody(team_id=team_id, user_id=user_id),
                 response_type=NoBody,
             )
@@ -406,7 +469,7 @@ class ManagementClient:
         return unwrap(
             self.proxy.transport.post(
                 "/user/new",
-                headers=self.proxy.transport.master,
+                headers=self.proxy.management_headers(),
                 json=body,
                 response_type=UserNewResponse,
             )
@@ -416,7 +479,7 @@ class ManagementClient:
         _ = unwrap(
             self.proxy.transport.post(
                 "/customer/new",
-                headers=self.proxy.transport.master,
+                headers=self.proxy.management_headers(),
                 json=CustomerNewBody(user_id=user_id),
                 response_type=CustomerResponse,
             )
@@ -427,7 +490,7 @@ class ManagementClient:
         return unwrap(
             self.proxy.transport.get(
                 "/customer/info",
-                headers=self.proxy.transport.master,
+                headers=self.proxy.management_headers(),
                 params=CustomerInfoParams(end_user_id=end_user_id),
                 response_type=CustomerResponse,
             )
@@ -436,7 +499,7 @@ class ManagementClient:
     def delete_customer(self, user_id: str) -> None:
         _ = self.proxy.transport.post(
             "/customer/delete",
-            headers=self.proxy.transport.master,
+            headers=self.proxy.management_headers(),
             json=CustomerDeleteBody(user_ids=[user_id]),
             response_type=NoBody,
         )
@@ -445,7 +508,7 @@ class ManagementClient:
         _ = unwrap(
             self.proxy.transport.post(
                 "/user/update",
-                headers=self.proxy.transport.master,
+                headers=self.proxy.management_headers(),
                 json=body,
                 response_type=NoBody,
             )
@@ -454,7 +517,7 @@ class ManagementClient:
     def delete_user(self, user_id: str) -> None:
         _ = self.proxy.transport.post(
             "/user/delete",
-            headers=self.proxy.transport.master,
+            headers=self.proxy.management_headers(),
             json=UserDeleteBody(user_ids=[user_id]),
             response_type=NoBody,
         )
@@ -465,22 +528,22 @@ class ManagementClient:
         _ = unwrap(
             self.proxy.transport.post(
                 "/user/delete",
-                headers=self.proxy.transport.master,
+                headers=self.proxy.management_headers(),
                 json=UserDeleteBody(user_ids=[user_id]),
                 response_type=UserDeleteResponse,
             )
         )
 
-    def user_info(self, user_id: str) -> UserInfoResponse:
+    def user_info(self, user_id: str | None = None) -> UserInfoResponse:
         return unwrap(
             self.user_info_status(user_id=user_id)
         )
 
     def user_info_status(
-        self, user_id: str, *, caller_key: str | None = None
+        self, user_id: str | None, *, caller_key: str | None = None
     ) -> Result[UserInfoResponse]:
         headers = (
-            self.proxy.transport.master
+            self.proxy.management_headers()
             if caller_key is None
             else self.proxy.transport.bearer(caller_key)
         )
@@ -500,7 +563,7 @@ class ManagementClient:
         self, user_id: str, *, caller_key: str | None = None
     ) -> Result[UserListResponse]:
         headers = (
-            self.proxy.transport.master
+            self.proxy.management_headers()
             if caller_key is None
             else self.proxy.transport.bearer(caller_key)
         )
@@ -514,7 +577,7 @@ class ManagementClient:
     def key_info_status(self, key: str) -> Result[KeyInfoResponse]:
         return self.proxy.transport.get(
             "/key/info",
-            headers=self.proxy.transport.master,
+            headers=self.proxy.management_headers(),
             params=KeyInfoParams(key=key),
             response_type=KeyInfoResponse,
         )
@@ -523,7 +586,7 @@ class ManagementClient:
         listing = unwrap(
             self.proxy.transport.get(
                 "/user/list",
-                headers=self.proxy.transport.master,
+                headers=self.proxy.management_headers(),
                 params=UserListParams(user_ids=user_id),
                 response_type=UserListResponse,
             )
@@ -534,7 +597,7 @@ class ManagementClient:
         return unwrap(
             self.proxy.transport.post(
                 "/organization/new",
-                headers=self.proxy.transport.master,
+                headers=self.proxy.management_headers(),
                 json=body,
                 response_type=OrgNewResponse,
             )
@@ -544,7 +607,7 @@ class ManagementClient:
         _ = unwrap(
             self.proxy.transport.patch(
                 "/organization/update",
-                headers=self.proxy.transport.master,
+                headers=self.proxy.management_headers(),
                 json=body,
                 response_type=NoBody,
             )
@@ -553,7 +616,7 @@ class ManagementClient:
     def delete_org(self, organization_id: str) -> None:
         _ = self.proxy.transport.delete(
             "/organization/delete",
-            headers=self.proxy.transport.master,
+            headers=self.proxy.management_headers(),
             json=OrgDeleteBody(organization_ids=[organization_id]),
             response_type=NoBody,
         )
@@ -562,19 +625,24 @@ class ManagementClient:
         return unwrap(
             self.proxy.transport.get(
                 "/organization/info",
-                headers=self.proxy.transport.master,
+                headers=self.proxy.management_headers(),
                 params=OrgInfoParams(organization_id=organization_id),
                 response_type=OrgInfoResponse,
             )
         )
 
     def org_info_status(self, organization_id: str) -> ProbeResult:
-        return self.proxy.transport.probe("/organization/info", params=OrgInfoParams(organization_id=organization_id))
+        return self.proxy.transport.probe(
+            "/organization/info",
+            params=OrgInfoParams(organization_id=organization_id),
+            headers=self.proxy.management_headers(),
+        )
+
     def create_tag(self, body: TagNewBody) -> None:
         _ = unwrap(
             self.proxy.transport.post(
                 "/tag/new",
-                headers=self.proxy.transport.master,
+                headers=self.proxy.management_headers(),
                 json=body,
                 response_type=NoBody,
             )
@@ -583,7 +651,7 @@ class ManagementClient:
     def delete_tag(self, name: str) -> None:
         _ = self.proxy.transport.post(
             "/tag/delete",
-            headers=self.proxy.transport.master,
+            headers=self.proxy.management_headers(),
             json=TagDeleteBody(name=name),
             response_type=NoBody,
         )
@@ -593,7 +661,7 @@ class ManagementClient:
             unwrap(
                 self.proxy.transport.get(
                     "/tag/list",
-                    headers=self.proxy.transport.master,
+                    headers=self.proxy.management_headers(),
                     params=NoBody(),
                     response_type=TagListResponse,
                 )
@@ -604,7 +672,7 @@ class ManagementClient:
         return unwrap(
             self.proxy.transport.post(
                 "/v1/mcp/server",
-                headers=self.proxy.transport.master,
+                headers=self.proxy.management_headers(),
                 json=body,
                 response_type=McpServerRow,
             )
@@ -616,7 +684,7 @@ class ManagementClient:
         return unwrap(
             self.proxy.transport.put(
                 "/v1/mcp/server",
-                headers=self.proxy.transport.master,
+                headers=self.proxy.management_headers(),
                 json=body,
                 response_type=McpServerRow,
             )
@@ -627,7 +695,7 @@ class ManagementClient:
         unwrap it while a deferred teardown can ignore an already-deleted server."""
         return self.proxy.transport.delete(
             f"/v1/mcp/server/{server_id}",
-            headers=self.proxy.transport.master,
+            headers=self.proxy.management_headers(),
             json=NoBody(),
             response_type=NoBody,
         )

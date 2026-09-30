@@ -33,7 +33,7 @@ from litellm.utils import (
 )
 
 if TYPE_CHECKING:
-    import tiktoken
+    from litellm.litellm_core_utils.tokenizer import Encoding as Tokenizer
 
 
 class AzureFoundryErrorStrings(str, enum.Enum):
@@ -314,7 +314,7 @@ class AzureAIStudioConfig(OpenAIConfig):
         messages: list[AllMessageValues],
         optional_params: dict,
         litellm_params: dict,
-        encoding: "tiktoken.Encoding | None",
+        encoding: "Tokenizer | None",
         api_key: str | None = None,
         json_mode: bool | None = None,
     ) -> ModelResponse:

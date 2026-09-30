@@ -7,7 +7,7 @@ resolver's constant registry URL fetch, and the mcp OAuth client, whose httpx
 client is the object the official mcp SDK's streamable_http_client requires and so
 cannot go through the sync requests transport). The maintenance DCR client is also
 allowlisted because its core invariant is one live cookie session through the complete
-login and OAuth lifecycle. Referenced by tests/e2e/CLAUDE.md."""
+login and OAuth lifecycle. Referenced by tests/e2e/AGENTS.md."""
 
 from __future__ import annotations
 

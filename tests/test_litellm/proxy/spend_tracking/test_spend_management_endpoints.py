@@ -4,6 +4,7 @@ import datetime
 import hashlib
 import json
 import re
+import sqlite3
 from datetime import timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -57,7 +58,7 @@ def _filter_logs_by_date_range(logs, where):
 _SEARCH_CLAUSE_RE = re.compile(
     r'\(request_id = \$(\d+) OR \("startTime" >= \(\$(\d+)::timestamptz AT TIME ZONE \'UTC\'\) '
     r'AND "startTime" <= \(\$(\d+)::timestamptz AT TIME ZONE \'UTC\'\) '
-    r'AND \(api_key = \$\1 OR team_id = \$\1 OR "user" = \$\1 OR end_user = \$\1 '
+    r'AND \(litellm_call_id = \$\1 OR api_key = \$\1 OR team_id = \$\1 OR "user" = \$\1 OR end_user = \$\1 '
     r"OR session_id = \$\1 OR model_id = \$\1\)\)\)"
 )
 
@@ -68,7 +69,7 @@ def _matches_spend_log_search(log, search):
         return True
     if not _filter_logs_by_date_range([log], {"startTime": {"gte": search["gte"], "lte": search["lte"]}}):
         return False
-    columns = ("api_key", "team_id", "user", "end_user", "session_id", "model_id")
+    columns = ("litellm_call_id", "api_key", "team_id", "user", "end_user", "session_id", "model_id")
     return any(log.get(col) == search["value"] for col in columns)
 
 
@@ -137,6 +138,15 @@ def _reconstruct_ui_where_from_sql(sql_query, params):
             where["cache_hit"] = "hit"
         elif cond == "(cache_hit IS NULL OR LOWER(cache_hit) != 'true')":
             where["cache_hit"] = "miss"
+        elif "call_type" in cond:
+            if "call_type NOT IN" in cond:
+                where["span_type"] = "llm"
+            elif "call_mcp_tool" in cond:
+                where["span_type"] = "mcp"
+            elif "call_type = 'asend_message'" in cond:
+                where["span_type"] = "agent"
+            elif "acreate_batch" in cond:
+                where["span_type"] = "batch"
         elif sess:
             where["session_id"] = {"contains": str(params[int(sess.group(1)) - 1]).strip("%")}
         elif status:
@@ -225,7 +235,9 @@ def make_ui_spend_logs_mock_prisma(mock_spend_logs, filter_fn, team_lookup_fn=No
             skip = params[-1] if len(params) >= 1 else 0
             exact_first = re.search(r"ORDER BY \(request_id = \$(\d+)\) DESC", sql_query)
             ordered = (
-                sorted(filtered, key=lambda row: row["request_id"] == params[int(exact_first.group(1)) - 1], reverse=True)
+                sorted(
+                    filtered, key=lambda row: row["request_id"] == params[int(exact_first.group(1)) - 1], reverse=True
+                )
                 if exact_first
                 else filtered
             )
@@ -246,6 +258,8 @@ from litellm.constants import LITTELM_INTERNAL_HEALTH_SERVICE_ACCOUNT_NAME
 from litellm.proxy._types import (
     LitellmUserRoles,
     Member,
+    ProxyException,
+    SpendCalculateRequest,
     SpendLogsPayload,
     UserAPIKeyAuth,
 )
@@ -467,9 +481,7 @@ async def test_assert_user_can_view_request_id_rejects_both_users_none():
 
     auth = UserAPIKeyAuth(user_role=LitellmUserRoles.INTERNAL_USER, user_id=None)
     with pytest.raises(HTTPException) as exc_info:
-        await spend_management_endpoints._assert_user_can_view_request_id(
-            prisma, auth, "req-none-user"
-        )
+        await spend_management_endpoints._assert_user_can_view_request_id(prisma, auth, "req-none-user")
     assert exc_info.value.status_code == 403
 
 
@@ -581,9 +593,7 @@ async def test_assert_user_can_view_request_id_allows_when_every_match_is_owned(
     )
 
     auth = UserAPIKeyAuth(user_role=LitellmUserRoles.INTERNAL_USER, user_id="caller")
-    result = await spend_management_endpoints._assert_user_can_view_request_id(
-        prisma, auth, "shared-request-id"
-    )
+    result = await spend_management_endpoints._assert_user_can_view_request_id(prisma, auth, "shared-request-id")
 
     assert result is None
 
@@ -661,6 +671,7 @@ ignored_keys = [
     "metadata.user_api_key_team_alias",
     "metadata.spend_logs_metadata",
     "metadata.requester_ip_address",
+    "metadata.user_agent",
     "metadata.status",
     "metadata.proxy_server_request",
     "metadata.error_information",
@@ -2348,9 +2359,7 @@ async def test_ui_view_spend_logs_request_id_lookup_ignores_date_window(client, 
 
 
 @pytest.mark.asyncio
-async def test_ui_view_spend_logs_request_id_lookup_matches_litellm_call_id(
-    client, monkeypatch
-):
+async def test_ui_view_spend_logs_request_id_lookup_matches_litellm_call_id(client, monkeypatch):
     """
     LIT-6302: success rows are keyed by the upstream provider response id, so a
     lookup with the x-litellm-call-id response header value found nothing. The id
@@ -2385,15 +2394,9 @@ async def test_ui_view_spend_logs_request_id_lookup_matches_litellm_call_id(
     def filter_fn(where):
         rid_either = where.get("request_id_or_call_id")
         if rid_either:
-            return [
-                r
-                for r in mock_spend_logs
-                if rid_either in (r["request_id"], r.get("litellm_call_id"))
-            ]
+            return [r for r in mock_spend_logs if rid_either in (r["request_id"], r.get("litellm_call_id"))]
         if where.get("request_id"):
-            return [
-                r for r in mock_spend_logs if r["request_id"] == where["request_id"]
-            ]
+            return [r for r in mock_spend_logs if r["request_id"] == where["request_id"]]
         return list(mock_spend_logs)
 
     monkeypatch.setattr(
@@ -2401,9 +2404,7 @@ async def test_ui_view_spend_logs_request_id_lookup_matches_litellm_call_id(
         make_ui_spend_logs_mock_prisma(mock_spend_logs, filter_fn),
     )
 
-    app.dependency_overrides[ps.user_api_key_auth] = lambda: UserAPIKeyAuth(
-        user_role=LitellmUserRoles.PROXY_ADMIN
-    )
+    app.dependency_overrides[ps.user_api_key_auth] = lambda: UserAPIKeyAuth(user_role=LitellmUserRoles.PROXY_ADMIN)
     try:
         response = client.get(
             "/spend/logs/ui",
@@ -2413,9 +2414,7 @@ async def test_ui_view_spend_logs_request_id_lookup_matches_litellm_call_id(
         assert response.status_code == 200
         data = response.json()
         assert data["total"] == 1
-        assert (
-            data["data"][0]["request_id"] == "chatcmpl-9ZKMURhVYSi9D6r6PJ9vLcayIK0Vm"
-        )
+        assert data["data"][0]["request_id"] == "chatcmpl-9ZKMURhVYSi9D6r6PJ9vLcayIK0Vm"
     finally:
         app.dependency_overrides.pop(ps.user_api_key_auth, None)
 
@@ -2914,9 +2913,7 @@ async def test_ui_view_spend_logs_id_lookup_lists_exact_request_id_row_first(cli
 
 
 @pytest.mark.asyncio
-async def test_ui_view_spend_logs_request_id_owner_lookup_drops_window_keeps_scope(
-    client, monkeypatch
-):
+async def test_ui_view_spend_logs_request_id_owner_lookup_drops_window_keeps_scope(client, monkeypatch):
     """A non-admin owner looking up their own request_id resolves across all time:
     the query drops the date window the dashboard sends, while the caller's own-user
     scope stays on the id lookup so a colliding foreign row can never be served."""
@@ -2990,7 +2987,7 @@ def test_build_spend_log_search_condition_windows_every_branch_except_request_id
     assert condition.sql == (
         "(request_id = $3 OR (\"startTime\" >= ($4::timestamptz AT TIME ZONE 'UTC') "
         "AND \"startTime\" <= ($5::timestamptz AT TIME ZONE 'UTC') "
-        'AND (api_key = $3 OR team_id = $3 OR "user" = $3 OR end_user = $3 OR session_id = $3 OR model_id = $3)))'
+        'AND (litellm_call_id = $3 OR api_key = $3 OR team_id = $3 OR "user" = $3 OR end_user = $3 OR session_id = $3 OR model_id = $3)))'
     )
     assert condition.params == ("key-hash-7", start, end)
 
@@ -3016,6 +3013,8 @@ def _search_fixture_logs(today):
         {**base, "request_id": "req-user", "user": "user-7", "startTime": recent},
         {**base, "request_id": "req-end-user", "end_user": "cust-7", "startTime": recent},
         {**base, "request_id": "req-model", "model_id": "mdl-7", "startTime": recent},
+        {**base, "request_id": "chatcmpl-x", "litellm_call_id": "call-recent", "startTime": recent},
+        {**base, "request_id": "chatcmpl-old", "litellm_call_id": "call-old", "startTime": old},
     ]
 
 
@@ -3050,6 +3049,8 @@ def _five_day_window(today):
         ("user-7", {"req-user"}),
         ("cust-7", {"req-end-user"}),
         ("mdl-7", {"req-model"}),
+        ("call-recent", {"chatcmpl-x"}),
+        ("call-old", set()),
         ("no-such-id", set()),
     ],
 )
@@ -3351,6 +3352,94 @@ async def test_ui_view_spend_logs_with_cache_hit_filter(client, monkeypatch):
             "/spend/logs/ui",
             params={
                 "cache_hit_filter": "invalid",
+                "start_date": start_date,
+                "end_date": end_date,
+            },
+            headers={"Authorization": "Bearer sk-test"},
+        )
+        assert response.status_code == 400
+    finally:
+        app.dependency_overrides.pop(ps.user_api_key_auth, None)
+
+
+@pytest.mark.asyncio
+async def test_ui_view_spend_logs_with_span_type_filter(client, monkeypatch):
+    base = {
+        "api_key": "sk-test-key",
+        "user": "test_user_1",
+        "team_id": "team1",
+        "spend": 0.05,
+        "startTime": datetime.datetime.now(timezone.utc).isoformat(),
+        "model": "gpt-4",
+        "status": "success",
+    }
+    mock_spend_logs = [
+        {**base, "id": "log1", "request_id": "req-llm", "call_type": "acompletion"},
+        {**base, "id": "log2", "request_id": "req-agent", "call_type": "asend_message"},
+        {**base, "id": "log3", "request_id": "req-mcp", "call_type": "call_mcp_tool"},
+        {**base, "id": "log4", "request_id": "req-batch", "call_type": "aretrieve_batch"},
+    ]
+
+    call_types_by_span = {
+        "llm": lambda ct: (
+            ct not in {"call_mcp_tool", "list_mcp_tools", "asend_message"}
+            and ct not in {"acreate_batch", "create_batch", "aretrieve_batch", "retrieve_batch"}
+        ),
+        "agent": lambda ct: ct == "asend_message",
+        "mcp": lambda ct: ct in {"call_mcp_tool", "list_mcp_tools"},
+        "batch": lambda ct: ct in {"acreate_batch", "create_batch", "aretrieve_batch", "retrieve_batch"},
+    }
+
+    def filter_by_span_type(where):
+        span_type = where.get("span_type")
+        if span_type is None:
+            return mock_spend_logs
+        return [log for log in mock_spend_logs if call_types_by_span[span_type](log["call_type"])]
+
+    monkeypatch.setattr(
+        "litellm.proxy.proxy_server.prisma_client",
+        make_ui_spend_logs_mock_prisma(mock_spend_logs, filter_by_span_type),
+    )
+
+    start_date, end_date = _default_date_range()
+
+    app.dependency_overrides[ps.user_api_key_auth] = lambda: UserAPIKeyAuth(user_role=LitellmUserRoles.PROXY_ADMIN)
+    try:
+        for span_type, expected_ids in [
+            ("batch", ["req-batch"]),
+            ("llm", ["req-llm"]),
+            ("mcp", ["req-mcp"]),
+            ("agent", ["req-agent"]),
+        ]:
+            response = client.get(
+                "/spend/logs/ui",
+                params={
+                    "span_type": span_type,
+                    "start_date": start_date,
+                    "end_date": end_date,
+                },
+                headers={"Authorization": "Bearer sk-test"},
+            )
+            assert response.status_code == 200, response.text
+            data = response.json()
+            assert data["total"] == len(expected_ids)
+            assert [row["request_id"] for row in data["data"]] == expected_ids
+
+        response = client.get(
+            "/spend/logs/ui",
+            params={
+                "start_date": start_date,
+                "end_date": end_date,
+            },
+            headers={"Authorization": "Bearer sk-test"},
+        )
+        assert response.status_code == 200
+        assert response.json()["total"] == 4
+
+        response = client.get(
+            "/spend/logs/ui",
+            params={
+                "span_type": "invalid",
                 "start_date": start_date,
                 "end_date": end_date,
             },
@@ -3678,7 +3767,7 @@ class TestSpendLogsPayload:
                     "model": "gpt-4o",
                     "user": "",
                     "team_id": "",
-                    "metadata": '{"applied_guardrails": [], "attempted_fallbacks": null, "original_model_group": null, "batch_models": null, "batch_successful_requests": null, "batch_failed_requests": null, "mcp_tool_call_metadata": null, "vector_store_request_metadata": null, "routing_decision": null, "internal_call_origin": null, "guardrail_information": null, "compression_savings": null, "litellm_gateway_injected_cache": null, "router_metadata": null, "usage_object": {"completion_tokens": 20, "prompt_tokens": 10, "total_tokens": 30, "completion_tokens_details": null, "prompt_tokens_details": null}, "model_map_information": {"model_map_key": "gpt-4o", "model_map_value": {"key": "gpt-4o", "max_tokens": 16384, "max_input_tokens": 128000, "max_output_tokens": 16384, "input_cost_per_token": 2.5e-06, "cache_creation_input_token_cost": null, "cache_read_input_token_cost": 1.25e-06, "input_cost_per_character": null, "input_cost_per_token_above_128k_tokens": null, "input_cost_per_token_above_200k_tokens": null, "input_cost_per_query": null, "input_cost_per_second": null, "input_cost_per_audio_token": null, "input_cost_per_token_batches": 1.25e-06, "output_cost_per_token_batches": 5e-06, "output_cost_per_token": 1e-05, "output_cost_per_audio_token": null, "output_cost_per_character": null, "output_cost_per_token_above_128k_tokens": null, "output_cost_per_character_above_128k_tokens": null, "output_cost_per_token_above_200k_tokens": null, "output_cost_per_second": null, "output_cost_per_reasoning_token": null, "output_cost_per_image": null, "output_vector_size": null, "litellm_provider": "openai", "mode": "chat", "supports_system_messages": true, "supports_response_schema": true, "supports_vision": true, "supports_function_calling": true, "supports_tool_choice": true, "supports_assistant_prefill": false, "supports_prompt_caching": true, "supports_audio_input": false, "supports_audio_output": false, "supports_pdf_input": false, "supports_embedding_image_input": false, "supports_native_streaming": null, "supports_web_search": true, "supports_reasoning": false, "search_context_cost_per_query": {"search_context_size_low": 0.03, "search_context_size_medium": 0.035, "search_context_size_high": 0.05}, "tpm": null, "rpm": null, "supported_openai_params": ["frequency_penalty", "logit_bias", "logprobs", "top_logprobs", "max_tokens", "max_completion_tokens", "modalities", "prediction", "n", "presence_penalty", "seed", "stop", "stream", "stream_options", "temperature", "top_p", "tools", "tool_choice", "function_call", "functions", "max_retries", "extra_headers", "parallel_tool_calls", "audio", "response_format", "user"]}}, "additional_usage_values": {"completion_tokens_details": null, "prompt_tokens_details": null}}',
+                    "metadata": '{"actor_agent_id": null, "target_agent_id": null, "billing_agent_id": null, "agent_execution_mode": null, "verified_human_user_id": null, "applied_guardrails": [], "attempted_fallbacks": null, "original_model_group": null, "batch_models": null, "batch_successful_requests": null, "batch_failed_requests": null, "mcp_tool_call_metadata": null, "vector_store_request_metadata": null, "routing_decision": null, "internal_call_origin": null, "guardrail_information": null, "compression_savings": null, "litellm_gateway_injected_cache": null, "router_metadata": null, "autorouter_savings_estimate": null, "autorouter_baseline_observation": null, "azure_spillover": null, "usage_object": {"completion_tokens": 20, "prompt_tokens": 10, "total_tokens": 30, "completion_tokens_details": null, "prompt_tokens_details": null}, "model_map_information": {"model_map_key": "gpt-4o", "model_map_value": {"key": "gpt-4o", "max_tokens": 16384, "max_input_tokens": 128000, "max_output_tokens": 16384, "input_cost_per_token": 2.5e-06, "cache_creation_input_token_cost": null, "cache_read_input_token_cost": 1.25e-06, "input_cost_per_character": null, "input_cost_per_token_above_128k_tokens": null, "input_cost_per_token_above_200k_tokens": null, "input_cost_per_query": null, "input_cost_per_second": null, "input_cost_per_audio_token": null, "input_cost_per_token_batches": 1.25e-06, "output_cost_per_token_batches": 5e-06, "output_cost_per_token": 1e-05, "output_cost_per_audio_token": null, "output_cost_per_character": null, "output_cost_per_token_above_128k_tokens": null, "output_cost_per_character_above_128k_tokens": null, "output_cost_per_token_above_200k_tokens": null, "output_cost_per_second": null, "output_cost_per_reasoning_token": null, "output_cost_per_image": null, "output_vector_size": null, "litellm_provider": "openai", "mode": "chat", "supports_system_messages": true, "supports_response_schema": true, "supports_vision": true, "supports_function_calling": true, "supports_tool_choice": true, "supports_assistant_prefill": false, "supports_prompt_caching": true, "supports_audio_input": false, "supports_audio_output": false, "supports_pdf_input": false, "supports_embedding_image_input": false, "supports_native_streaming": null, "supports_web_search": true, "supports_reasoning": false, "search_context_cost_per_query": {"search_context_size_low": 0.03, "search_context_size_medium": 0.035, "search_context_size_high": 0.05}, "tpm": null, "rpm": null, "supported_openai_params": ["frequency_penalty", "logit_bias", "logprobs", "top_logprobs", "max_tokens", "max_completion_tokens", "modalities", "prediction", "n", "presence_penalty", "seed", "stop", "stream", "stream_options", "temperature", "top_p", "tools", "tool_choice", "function_call", "functions", "max_retries", "extra_headers", "parallel_tool_calls", "audio", "response_format", "user"]}}, "additional_usage_values": {"completion_tokens_details": null, "prompt_tokens_details": null}}',
                     "cache_key": "Cache OFF",
                     "spend": 0.00022500000000000002,
                     "total_tokens": 30,
@@ -3697,6 +3786,7 @@ class TestSpendLogsPayload:
                     "status": "success",
                     "mcp_namespaced_tool_name": None,
                     "agent_id": None,
+                    "billing_agent_id": None,
                 }
             )
 
@@ -3719,168 +3809,6 @@ class TestSpendLogsPayload:
             "usage": {"input_tokens": 2095, "output_tokens": 503},
         }
         return mock_response
-
-    @pytest.mark.asyncio
-    async def test_spend_logs_payload_success_log_with_api_base(self, monkeypatch):
-        from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
-
-        # Clear any env overrides that would change the recorded api_base
-        monkeypatch.delenv("ANTHROPIC_BASE_URL", raising=False)
-        monkeypatch.delenv("ANTHROPIC_API_BASE", raising=False)
-
-        litellm.callbacks = [_ProxyDBLogger(message_logging=False)]
-        # litellm._turn_on_debug()
-
-        client = AsyncHTTPHandler()
-
-        with (
-            patch.object(
-                litellm.proxy.db.db_spend_update_writer.DBSpendUpdateWriter,
-                "_insert_spend_log_to_db",
-            ) as mock_client,
-            patch.object(litellm.proxy.proxy_server, "prisma_client"),
-            patch.object(client, "post", side_effect=self.mock_anthropic_response),
-        ):
-            response = await litellm.acompletion(
-                model="claude-4-sonnet-20250514",
-                messages=[{"role": "user", "content": "Hello, world!"}],
-                metadata={"user_api_key_end_user_id": "test_user_1"},
-                client=client,
-            )
-
-            assert response.choices[0].message.content == "Hi! My name is Claude."
-
-            await _wait_for_mock_call(mock_client)
-
-            kwargs = mock_client.call_args.kwargs
-            payload: SpendLogsPayload = kwargs["payload"]
-            expected_payload = SpendLogsPayload(
-                **{
-                    "request_id": "chatcmpl-34df56d5-4807-45c1-bb99-61e52586b802",
-                    "call_type": "acompletion",
-                    "api_key": "",
-                    "cache_hit": "None",
-                    "startTime": datetime.datetime(2025, 3, 24, 22, 2, 42, 975883, tzinfo=datetime.timezone.utc),
-                    "endTime": datetime.datetime(2025, 3, 24, 22, 2, 42, 989132, tzinfo=datetime.timezone.utc),
-                    "completionStartTime": datetime.datetime(
-                        2025, 3, 24, 22, 2, 42, 989132, tzinfo=datetime.timezone.utc
-                    ),
-                    "model": "claude-4-sonnet-20250514",
-                    "user": "",
-                    "team_id": "",
-                    "metadata": '{"applied_guardrails": [], "attempted_fallbacks": null, "original_model_group": null, "batch_models": null, "batch_successful_requests": null, "batch_failed_requests": null, "mcp_tool_call_metadata": null, "vector_store_request_metadata": null, "routing_decision": null, "internal_call_origin": null, "guardrail_information": null, "compression_savings": null, "litellm_gateway_injected_cache": null, "router_metadata": null, "usage_object": {"completion_tokens": 503, "prompt_tokens": 2095, "total_tokens": 2598, "completion_tokens_details": null, "prompt_tokens_details": {"audio_tokens": null, "cached_tokens": 0}, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}, "model_map_information": {"model_map_key": "claude-4-sonnet-20250514", "model_map_value": {"key": "claude-4-sonnet-20250514", "max_tokens": 128000, "max_input_tokens": 200000, "max_output_tokens": 128000, "input_cost_per_token": 3e-06, "cache_creation_input_token_cost": 3.75e-06, "cache_read_input_token_cost": 3e-07, "input_cost_per_character": null, "input_cost_per_token_above_128k_tokens": null, "input_cost_per_token_above_200k_tokens": null, "input_cost_per_query": null, "input_cost_per_second": null, "input_cost_per_audio_token": null, "input_cost_per_token_batches": null, "output_cost_per_token_batches": null, "output_cost_per_token": 1.5e-05, "output_cost_per_audio_token": null, "output_cost_per_character": null, "output_cost_per_token_above_128k_tokens": null, "output_cost_per_character_above_128k_tokens": null, "output_cost_per_token_above_200k_tokens": null, "output_cost_per_second": null, "output_cost_per_image": null, "output_vector_size": null, "litellm_provider": "anthropic", "mode": "chat", "supports_system_messages": null, "supports_response_schema": true, "supports_vision": true, "supports_function_calling": true, "supports_tool_choice": true, "supports_assistant_prefill": true, "supports_prompt_caching": true, "supports_audio_input": false, "supports_audio_output": false, "supports_pdf_input": true, "supports_embedding_image_input": false, "supports_native_streaming": null, "supports_web_search": false, "supports_reasoning": true, "search_context_cost_per_query": null, "tpm": null, "rpm": null, "supported_openai_params": ["stream", "stop", "temperature", "top_p", "max_tokens", "max_completion_tokens", "tools", "tool_choice", "extra_headers", "parallel_tool_calls", "response_format", "user", "reasoning_effort", "thinking"]}}, "additional_usage_values": {"completion_tokens_details": {"accepted_prediction_tokens": null, "audio_tokens": null, "reasoning_tokens": null, "rejected_prediction_tokens": null, "text_tokens": 503, "image_tokens": null}, "prompt_tokens_details": {"audio_tokens": null, "cached_tokens": 0, "text_tokens": null, "image_tokens": null}, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}}',
-                    "cache_key": "Cache OFF",
-                    "spend": 0.01383,
-                    "total_tokens": 2598,
-                    "prompt_tokens": 2095,
-                    "completion_tokens": 503,
-                    "request_tags": "[]",
-                    "end_user": "test_user_1",
-                    "api_base": "https://api.anthropic.com/v1/messages",
-                    "model_group": "",
-                    "model_id": "",
-                    "requester_ip_address": None,
-                    "custom_llm_provider": "anthropic",
-                    "messages": "{}",
-                    "response": "{}",
-                    "proxy_server_request": "{}",
-                    "status": "success",
-                    "mcp_namespaced_tool_name": None,
-                    "agent_id": None,
-                }
-            )
-
-            differences = _compare_nested_dicts(payload, expected_payload, ignore_keys=ignored_keys)
-            if differences:
-                pytest.fail(f"Dictionary mismatch: {differences}")
-
-    @pytest.mark.asyncio
-    async def test_spend_logs_payload_success_log_with_router(self, monkeypatch):
-        from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
-
-        # Clear any env overrides that would change the recorded api_base
-        monkeypatch.delenv("ANTHROPIC_BASE_URL", raising=False)
-        monkeypatch.delenv("ANTHROPIC_API_BASE", raising=False)
-
-        litellm.callbacks = [_ProxyDBLogger(message_logging=False)]
-        # litellm._turn_on_debug()
-
-        client = AsyncHTTPHandler()
-
-        router = Router(
-            model_list=[
-                {
-                    "model_name": "my-anthropic-model-group",
-                    "litellm_params": {
-                        "model": "claude-4-sonnet-20250514",
-                    },
-                    "model_info": {
-                        "id": "my-unique-model-id",
-                    },
-                }
-            ]
-        )
-
-        with (
-            patch.object(
-                litellm.proxy.db.db_spend_update_writer.DBSpendUpdateWriter,
-                "_insert_spend_log_to_db",
-            ) as mock_client,
-            patch.object(litellm.proxy.proxy_server, "prisma_client"),
-            patch.object(client, "post", side_effect=self.mock_anthropic_response),
-        ):
-            response = await router.acompletion(
-                model="my-anthropic-model-group",
-                messages=[{"role": "user", "content": "Hello, world!"}],
-                metadata={"user_api_key_end_user_id": "test_user_1"},
-                client=client,
-            )
-
-            assert response.choices[0].message.content == "Hi! My name is Claude."
-
-            await _wait_for_mock_call(mock_client)
-
-            kwargs = mock_client.call_args.kwargs
-            payload: SpendLogsPayload = kwargs["payload"]
-            expected_payload = SpendLogsPayload(
-                **{
-                    "request_id": "chatcmpl-34df56d5-4807-45c1-bb99-61e52586b802",
-                    "call_type": "acompletion",
-                    "api_key": "",
-                    "cache_hit": "None",
-                    "startTime": datetime.datetime(2025, 3, 24, 22, 2, 42, 975883, tzinfo=datetime.timezone.utc),
-                    "endTime": datetime.datetime(2025, 3, 24, 22, 2, 42, 989132, tzinfo=datetime.timezone.utc),
-                    "completionStartTime": datetime.datetime(
-                        2025, 3, 24, 22, 2, 42, 989132, tzinfo=datetime.timezone.utc
-                    ),
-                    "model": "claude-4-sonnet-20250514",
-                    "user": "",
-                    "team_id": "",
-                    "metadata": '{"applied_guardrails": [], "attempted_fallbacks": 0, "original_model_group": "my-anthropic-model-group", "batch_models": null, "batch_successful_requests": null, "batch_failed_requests": null, "mcp_tool_call_metadata": null, "vector_store_request_metadata": null, "routing_decision": null, "internal_call_origin": null, "guardrail_information": null, "compression_savings": null, "litellm_gateway_injected_cache": null, "router_metadata": null, "usage_object": {"completion_tokens": 503, "prompt_tokens": 2095, "total_tokens": 2598, "completion_tokens_details": null, "prompt_tokens_details": {"audio_tokens": null, "cached_tokens": 0}, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}, "model_map_information": {"model_map_key": "claude-4-sonnet-20250514", "model_map_value": {"key": "claude-4-sonnet-20250514", "max_tokens": 128000, "max_input_tokens": 200000, "max_output_tokens": 128000, "input_cost_per_token": 3e-06, "cache_creation_input_token_cost": 3.75e-06, "cache_read_input_token_cost": 3e-07, "input_cost_per_character": null, "input_cost_per_token_above_128k_tokens": null, "input_cost_per_token_above_200k_tokens": null, "input_cost_per_query": null, "input_cost_per_second": null, "input_cost_per_audio_token": null, "input_cost_per_token_batches": null, "output_cost_per_token_batches": null, "output_cost_per_token": 1.5e-05, "output_cost_per_audio_token": null, "output_cost_per_character": null, "output_cost_per_token_above_128k_tokens": null, "output_cost_per_character_above_128k_tokens": null, "output_cost_per_token_above_200k_tokens": null, "output_cost_per_second": null, "output_cost_per_image": null, "output_vector_size": null, "litellm_provider": "anthropic", "mode": "chat", "supports_system_messages": null, "supports_response_schema": true, "supports_vision": true, "supports_function_calling": true, "supports_tool_choice": true, "supports_assistant_prefill": true, "supports_prompt_caching": true, "supports_audio_input": false, "supports_audio_output": false, "supports_pdf_input": true, "supports_embedding_image_input": false, "supports_native_streaming": null, "supports_web_search": false, "supports_reasoning": true, "search_context_cost_per_query": null, "tpm": null, "rpm": null, "supported_openai_params": ["stream", "stop", "temperature", "top_p", "max_tokens", "max_completion_tokens", "tools", "tool_choice", "extra_headers", "parallel_tool_calls", "response_format", "user", "reasoning_effort", "thinking"]}}, "additional_usage_values": {"completion_tokens_details": {"accepted_prediction_tokens": null, "audio_tokens": null, "reasoning_tokens": null, "rejected_prediction_tokens": null, "text_tokens": 503, "image_tokens": null}, "prompt_tokens_details": {"audio_tokens": null, "cached_tokens": 0, "text_tokens": null, "image_tokens": null}, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}}',
-                    "cache_key": "Cache OFF",
-                    "spend": 0.01383,
-                    "total_tokens": 2598,
-                    "prompt_tokens": 2095,
-                    "completion_tokens": 503,
-                    "request_tags": "[]",
-                    "end_user": "test_user_1",
-                    "api_base": "https://api.anthropic.com/v1/messages",
-                    "model_group": "my-anthropic-model-group",
-                    "model_id": "my-unique-model-id",
-                    "requester_ip_address": None,
-                    "custom_llm_provider": "anthropic",
-                    "messages": "{}",
-                    "response": "{}",
-                    "proxy_server_request": "{}",
-                    "status": "success",
-                    "mcp_namespaced_tool_name": None,
-                    "agent_id": None,
-                }
-            )
-
-            differences = _compare_nested_dicts(payload, expected_payload, ignore_keys=ignored_keys)
-            if differences:
-                pytest.fail(f"Dictionary mismatch: {differences}")
 
 
 def _compare_nested_dicts(actual: dict, expected: dict, path: str = "", ignore_keys: list[str] = []) -> list[str]:
@@ -5222,6 +5150,86 @@ async def test_build_ui_spend_logs_response_sums_multi_round_session_tokens():
 
 
 @pytest.mark.asyncio
+async def test_build_ui_spend_logs_response_sums_multi_round_session_duration():
+    """
+    Regression test: a multi-round session collapses into a single UI row, so that row
+    must carry the duration of every round summed, not just the representative call's.
+    Rows written before request_duration_ms existed are NULL, so the aggregate falls back
+    to endTime - startTime for them.
+    """
+    from litellm.proxy.spend_tracking.spend_management_endpoints import (
+        _build_ui_spend_logs_response,
+    )
+
+    session_id = "sess-multi-round-duration"
+    api_key = "hashed-key-xyz"
+    dict_rows = [
+        {
+            "request_id": "req-1",
+            "session_id": session_id,
+            "call_type": "completion",
+            "api_key": api_key,
+            "spend": 0.01,
+            "request_duration_ms": 1200,
+        },
+        {
+            "request_id": "req-2",
+            "session_id": session_id,
+            "call_type": "completion",
+            "api_key": api_key,
+            "spend": 0.02,
+            "request_duration_ms": 4200,
+        },
+        {
+            "request_id": "req-3",
+            "session_id": None,
+            "call_type": "completion",
+            "api_key": api_key,
+            "spend": 0.03,
+            "request_duration_ms": 900,
+        },
+    ]
+
+    mock_prisma = MagicMock()
+    mock_prisma.db.query_raw = AsyncMock(
+        return_value=[
+            {
+                "session_id": session_id,
+                "api_key": api_key,
+                "session_total_count": 2,
+                "session_total_spend": 0.03,
+                "session_total_duration_ms": 5400,
+                "mcp_tool_call_count": 0,
+                "mcp_tool_call_spend": 0.0,
+            }
+        ]
+    )
+
+    result = await _build_ui_spend_logs_response(
+        prisma_client=mock_prisma,
+        data=dict_rows,
+        total_records=3,
+        page=1,
+        page_size=50,
+        total_pages=1,
+        enrich_session_counts=True,
+    )
+
+    rows = result["data"]
+    session_rows = rows[:2]
+    assert [row["session_total_duration_ms"] for row in session_rows] == [5400, 5400]
+    assert all(isinstance(row["session_total_duration_ms"], int) for row in session_rows)
+    assert [row["request_duration_ms"] for row in rows] == [1200, 4200, 900]
+    assert "session_total_duration_ms" not in rows[2]
+
+    _, call_args, _ = mock_prisma.db.query_raw.mock_calls[0]
+    sql = " ".join(call_args[0].split())
+    assert (
+        'SUM( COALESCE( request_duration_ms, (EXTRACT(EPOCH FROM ("endTime" - "startTime")) * 1000)::INTEGER ) )' in sql
+    )
+
+
+@pytest.mark.asyncio
 async def test_build_ui_spend_logs_response_session_cache_hit_count():
     """
     Each row of a session must carry session_cache_hit_count aggregated across
@@ -6165,12 +6173,17 @@ def _cold_storage_handler(payload):
 async def test_resolve_payload_recovers_truncated_classifier_audit_without_losing_existing_fields(cold_has_audit):
     full_audit = {"classifier_input": {"system": "full rubric"}, "originating_request_masked": {"input": "source"}}
     truncated_request = {"model": "classifier", "classifier_input": {"system": "litellm_truncated"}}
-    handler, logger = _cold_storage_handler({
-        "proxy_server_request": {"body": {}}, **(full_audit if cold_has_audit else {}),
-    })
+    handler, logger = _cold_storage_handler(
+        {
+            "proxy_server_request": {"body": {}},
+            **(full_audit if cold_has_audit else {}),
+        }
+    )
     row = {
-        "messages": '[{"role":"user","content":"ask"}]', "response": '{"tier":"SIMPLE"}',
-        "proxy_server_request": json.dumps(truncated_request), "metadata": {"cold_storage_object_key": "k/audit.json"},
+        "messages": '[{"role":"user","content":"ask"}]',
+        "response": '{"tier":"SIMPLE"}',
+        "proxy_server_request": json.dumps(truncated_request),
+        "metadata": {"cold_storage_object_key": "k/audit.json"},
     }
     resolved = await spend_management_endpoints._resolve_request_response_payload(row, cold_storage_handler=handler)
     assert logger.requested_object_keys == ["k/audit.json"]
@@ -6574,6 +6587,31 @@ def test_key_spend_report_scopes_to_caller_key(client, monkeypatch):
         assert scope_param == "hashed-caller-key"
         assert start_param == datetime.datetime(2026, 7, 1, tzinfo=timezone.utc)
         assert end_param == datetime.datetime(2026, 7, 31, tzinfo=timezone.utc)
+    finally:
+        app.dependency_overrides.pop(ps.user_api_key_auth, None)
+
+
+def test_key_spend_report_scopes_a_cli_session_to_the_per_user_alias_not_the_login_token(client, monkeypatch):
+    mock_prisma = _spend_report_mock_prisma(query_raw_returns=[{"api_key": "cli-session-alice", "total_cost": 1.5}])
+    monkeypatch.setattr("litellm.proxy.proxy_server.prisma_client", mock_prisma)
+    monkeypatch.setattr("litellm.proxy.proxy_server.premium_user", True)
+    app.dependency_overrides[ps.user_api_key_auth] = lambda: UserAPIKeyAuth(
+        user_role=LitellmUserRoles.INTERNAL_USER,
+        user_id="alice",
+        api_key="cli-session-Qm7xJ2kP9sLw4vT1nR8yAa",
+        key_alias="cli-session-alice",
+        is_session_token=True,
+    )
+    try:
+        response = client.get(
+            "/key/spend/report",
+            params={"start_date": "2026-07-01", "end_date": "2026-07-31", "api_key": "cli-session-alice"},
+            headers={"Authorization": "Bearer sk-test"},
+        )
+        assert response.status_code == 200, response.text
+        assert response.json() == [{"api_key": "cli-session-alice", "total_cost": 1.5}]
+        args, _ = mock_prisma.db.query_raw.await_args
+        assert args[3] == "cli-session-alice"
     finally:
         app.dependency_overrides.pop(ps.user_api_key_auth, None)
 
@@ -7104,9 +7142,8 @@ async def test_ui_view_spend_logs_group_by_session_first_page(client, monkeypatc
         rep_call = emitted[2]
         assert f"DISTINCT ON ({SESSION_GROUP_KEY_SQL})" in rep_call[0]
         assert (
-            f"ORDER BY {SESSION_GROUP_KEY_SQL}, call_type IN ('call_mcp_tool', 'list_mcp_tools'), \"startTime\" DESC"
-            in rep_call[0]
-        ), "the session representative must prefer the newest non-MCP call"
+            f"ORDER BY {SESSION_GROUP_KEY_SQL}, " + spend_management_endpoints._SESSION_REPRESENTATIVE_ORDER_SQL
+        ) in rep_call[0]
         assert rep_call[-2] == ["sess-1", "req-solo"]
         assert rep_call[-1] == ["hashed-key", "hashed-key"]
     finally:
@@ -7358,9 +7395,7 @@ async def test_ui_view_spend_logs_group_by_session_last_page_stops_at_the_capped
 
 
 @pytest.mark.asyncio
-async def test_ui_view_spend_logs_group_by_session_offset_for_non_starttime_sort(
-    client, monkeypatch
-):
+async def test_ui_view_spend_logs_group_by_session_offset_for_non_starttime_sort(client, monkeypatch):
     """Sorting by another column keeps session grouping but pages with OFFSET, without a keyset cursor."""
     mock_prisma = _session_grouped_mock_prisma([], 0, [])
 
@@ -7492,9 +7527,7 @@ def test_ui_view_request_response_internal_user_owner_gets_payload(client, monke
         assert response.status_code == 200
         body = response.json()
         assert json.loads(body["messages"]) == [{"role": "user", "content": "hi"}]
-        assert json.loads(body["response"]) == {
-            "choices": [{"message": {"content": "hello"}}]
-        }
+        assert json.loads(body["response"]) == {"choices": [{"message": {"content": "hello"}}]}
     finally:
         app.dependency_overrides.pop(ps.user_api_key_auth, None)
 
@@ -7598,3 +7631,194 @@ def test_ui_view_request_response_internal_user_missing_row_forbidden(client, mo
         assert custom_logger.requested_ids == []
     finally:
         app.dependency_overrides.pop(ps.user_api_key_auth, None)
+
+
+@pytest.mark.parametrize(
+    ("parent_status", "child_status", "expected"),
+    [("failure", "success", "failure"), ("success", "failure", "success")],
+)
+def test_session_representative_uses_completed_agent_outcome(parent_status, child_status, expected):
+    with sqlite3.connect(":memory:") as connection:
+        connection.execute(
+            'CREATE TABLE logs (request_id TEXT, call_type TEXT, status TEXT, "startTime" TEXT, "endTime" TEXT)'
+        )
+        connection.executemany(
+            "INSERT INTO logs VALUES (?, ?, ?, ?, ?)",
+            (
+                ("parent", "asend_message", parent_status, "10:00:00", "10:00:05"),
+                ("nested-agent", "asend_message", child_status, "10:00:01", "10:00:03"),
+                ("llm", "acompletion", "success", "10:00:02", "10:00:04"),
+                ("tool", "call_mcp_tool", child_status, "10:00:04", "10:00:04"),
+            ),
+        )
+        result = connection.execute(
+            "SELECT request_id, status FROM logs ORDER BY "
+            + spend_management_endpoints._SESSION_REPRESENTATIVE_ORDER_SQL
+            + " LIMIT 1"
+        ).fetchone()
+        assert result == ("parent", expected)
+        connection.execute("DELETE FROM logs WHERE call_type = 'asend_message'")
+        fallback = connection.execute(
+            "SELECT request_id, status FROM logs ORDER BY "
+            + spend_management_endpoints._SESSION_REPRESENTATIVE_ORDER_SQL
+            + " LIMIT 1"
+        ).fetchone()
+        assert fallback == ("llm", "success")
+
+
+@pytest.mark.asyncio
+async def test_calculate_spend_unpriced_model_returns_400():
+    model = "openrouter/unit-test-unpriced-model"
+    with patch("litellm.proxy.proxy_server.llm_router", None):
+        with pytest.raises(ProxyException) as exc_info:
+            await spend_management_endpoints.calculate_spend(
+                SpendCalculateRequest(model=model, messages=[{"role": "user", "content": "hi"}])
+            )
+
+    assert exc_info.value.code == "400"
+    assert exc_info.value.type == "invalid_request_error"
+    assert exc_info.value.param == "model"
+    assert model in exc_info.value.message
+
+
+def _admin_auth() -> UserAPIKeyAuth:
+    return UserAPIKeyAuth(user_role=LitellmUserRoles.PROXY_ADMIN, user_id="admin_user")
+
+
+def test_capture_rate_is_admin_only(client, monkeypatch):
+    monkeypatch.setattr("litellm.proxy.proxy_server.prisma_client", MagicMock())
+    app.dependency_overrides[ps.user_api_key_auth] = lambda: UserAPIKeyAuth(
+        user_role=LitellmUserRoles.INTERNAL_USER, user_id="user_1"
+    )
+    try:
+        response = client.get(
+            "/spend/capture_rate?start_date=2026-09-17&end_date=2026-09-23",
+            headers={"Authorization": "Bearer sk-test"},
+        )
+    finally:
+        app.dependency_overrides.pop(ps.user_api_key_auth, None)
+    assert response.status_code == 403
+
+
+def test_capture_rate_without_the_admin_key_is_503(client, monkeypatch):
+    monkeypatch.setattr("litellm.proxy.proxy_server.prisma_client", MagicMock())
+    monkeypatch.delenv("OPENAI_ADMIN_KEY", raising=False)
+    app.dependency_overrides[ps.user_api_key_auth] = _admin_auth
+    try:
+        response = client.get(
+            "/spend/capture_rate?start_date=2026-09-17&end_date=2026-09-23",
+            headers={"Authorization": "Bearer sk-test"},
+        )
+    finally:
+        app.dependency_overrides.pop(ps.user_api_key_auth, None)
+    assert response.status_code == 503
+    assert "OPENAI_ADMIN_KEY" in response.json()["detail"]
+
+
+def test_capture_rate_rejects_a_reversed_range(client, monkeypatch):
+    monkeypatch.setattr("litellm.proxy.proxy_server.prisma_client", MagicMock())
+    app.dependency_overrides[ps.user_api_key_auth] = _admin_auth
+    try:
+        response = client.get(
+            "/spend/capture_rate?start_date=2026-09-23&end_date=2026-09-17",
+            headers={"Authorization": "Bearer sk-test"},
+        )
+    finally:
+        app.dependency_overrides.pop(ps.user_api_key_auth, None)
+    assert response.status_code == 400
+
+
+def test_capture_rate_rejects_a_range_over_the_maximum(client, monkeypatch):
+    from litellm.constants import SPEND_CAPTURE_RATE_MAX_RANGE_DAYS
+    from litellm.proxy.spend_tracking.spend_capture_rate import compute_capture_rate
+
+    monkeypatch.setattr("litellm.proxy.proxy_server.prisma_client", MagicMock())
+    windows = []
+
+    async def fake_report(prisma_client, *, provider, start_date, end_date, threshold, openai_project_ids=()):
+        windows.append((start_date, end_date))
+        return compute_capture_rate(
+            provider=provider,
+            start_date=start_date,
+            end_date=end_date,
+            captured_by_day={},
+            billed_by_day={},
+            threshold=threshold,
+        )
+
+    monkeypatch.setattr(spend_management_endpoints, "capture_rate_report", fake_report)
+    start = datetime.date(2026, 1, 1)
+    widest_end = start + datetime.timedelta(days=SPEND_CAPTURE_RATE_MAX_RANGE_DAYS - 1)
+    app.dependency_overrides[ps.user_api_key_auth] = _admin_auth
+    try:
+        too_wide = client.get(
+            f"/spend/capture_rate?start_date={start}&end_date={widest_end + datetime.timedelta(days=1)}",
+            headers={"Authorization": "Bearer sk-test"},
+        )
+        widest = client.get(
+            f"/spend/capture_rate?start_date={start}&end_date={widest_end}",
+            headers={"Authorization": "Bearer sk-test"},
+        )
+    finally:
+        app.dependency_overrides.pop(ps.user_api_key_auth, None)
+    assert too_wide.status_code == 400
+    assert str(SPEND_CAPTURE_RATE_MAX_RANGE_DAYS) in too_wide.json()["detail"]
+    assert widest.status_code == 200
+    assert windows == [(start, widest_end)]
+    assert len(widest.json()["days"]) == SPEND_CAPTURE_RATE_MAX_RANGE_DAYS
+
+
+def test_capture_rate_returns_the_report_for_the_requested_window(client, monkeypatch):
+    from litellm.proxy.spend_tracking.spend_capture_rate import compute_capture_rate
+
+    monkeypatch.setattr("litellm.proxy.proxy_server.prisma_client", MagicMock())
+    seen = {}
+
+    async def fake_report(prisma_client, **kwargs):
+        seen.update(kwargs)
+        return compute_capture_rate(
+            provider=kwargs["provider"],
+            start_date=kwargs["start_date"],
+            end_date=kwargs["end_date"],
+            captured_by_day={"2026-09-17": 8.0},
+            billed_by_day={"2026-09-17": 10.0},
+            threshold=kwargs["threshold"],
+        )
+
+    monkeypatch.setattr(spend_management_endpoints, "capture_rate_report", fake_report)
+    app.dependency_overrides[ps.user_api_key_auth] = _admin_auth
+    try:
+        response = client.get(
+            "/spend/capture_rate?start_date=2026-09-17&end_date=2026-09-18&threshold=0.5&project_ids=p1&project_ids=p2",
+            headers={"Authorization": "Bearer sk-test"},
+        )
+    finally:
+        app.dependency_overrides.pop(ps.user_api_key_auth, None)
+    assert response.status_code == 200
+    body = response.json()
+    assert (body["provider"], body["start_date"], body["end_date"]) == ("openai", "2026-09-17", "2026-09-18")
+    assert (body["captured_spend"], body["provider_spend"], body["capture_rate"]) == (8.0, 10.0, 0.8)
+    assert (body["threshold"], body["below_threshold"]) == (0.5, False)
+    assert [d["date"] for d in body["days"]] == ["2026-09-17", "2026-09-18"]
+    assert seen["openai_project_ids"] == ("p1", "p2")
+
+
+def test_capture_rate_reports_an_unreadable_bill_as_502(client, monkeypatch):
+    from litellm.proxy.spend_tracking.spend_capture_rate import ProviderBillingRequestFailed
+
+    monkeypatch.setattr("litellm.proxy.proxy_server.prisma_client", MagicMock())
+
+    async def fake_report(prisma_client, **kwargs):
+        return ProviderBillingRequestFailed("openai", "HTTP 401: Incorrect API key provided")
+
+    monkeypatch.setattr(spend_management_endpoints, "capture_rate_report", fake_report)
+    app.dependency_overrides[ps.user_api_key_auth] = _admin_auth
+    try:
+        response = client.get(
+            "/spend/capture_rate?start_date=2026-09-17&end_date=2026-09-23",
+            headers={"Authorization": "Bearer sk-test"},
+        )
+    finally:
+        app.dependency_overrides.pop(ps.user_api_key_auth, None)
+    assert response.status_code == 502
+    assert "HTTP 401" in response.json()["detail"]

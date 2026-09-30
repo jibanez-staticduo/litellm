@@ -169,7 +169,7 @@ def validated_allowed_callers(value: object) -> list[str] | None:
         raise ValueError("allowed_callers must be a list of strings") from exc
 
 
-def _grammar_suffix(fmt: object) -> str:
+def custom_tool_grammar_suffix(fmt: object) -> str:
     try:
         parsed: Final = _CustomToolFormat.model_validate(fmt)
     except ValidationError:
@@ -193,7 +193,9 @@ def convert_custom_tool_to_function_tool(tool: Mapping[str, object]) -> ChatComp
     raw_name: Final = tool.get("name")
     name: Final = raw_name if isinstance(raw_name, str) else ""
     raw_description: Final = tool.get("description")
-    description = (raw_description if isinstance(raw_description, str) else "") + _grammar_suffix(tool.get("format"))
+    description: Final = (raw_description if isinstance(raw_description, str) else "") + custom_tool_grammar_suffix(
+        tool.get("format")
+    )
     allowed_callers: Final = validated_allowed_callers(tool.get("allowed_callers"))
     function_chunk: Final = ChatCompletionToolParamFunctionChunk(
         name=name,

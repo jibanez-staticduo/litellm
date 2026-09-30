@@ -199,6 +199,22 @@ class BaseResponsesAPIConfig(ABC):
     ) -> dict:
         pass
 
+    async def async_transform_responses_api_request(
+        self,
+        model: str,
+        input: str | ResponseInputParam,
+        response_api_optional_request_params: dict,
+        litellm_params: GenericLiteLLMParams,
+        headers: dict,
+    ) -> dict:
+        return self.transform_responses_api_request(
+            model=model,
+            input=input,
+            response_api_optional_request_params=response_api_optional_request_params,
+            litellm_params=litellm_params,
+            headers=headers,
+        )
+
     @abstractmethod
     def transform_response_api_response(
         self,
@@ -416,6 +432,15 @@ class BaseResponsesAPIConfig(ABC):
             else:
                 out.append(item)
         return cast(ResponseInputParam, out)
+
+    def transform_extra_body(
+        self,
+        extra_body: Mapping[str, object],
+        request: Mapping[str, object],
+        model: str,
+        litellm_params: GenericLiteLLMParams,
+    ) -> Mapping[str, object]:
+        return extra_body
 
     @staticmethod
     def normalize_responses_api_request_dict(data: dict[str, Any]) -> dict[str, Any]:
