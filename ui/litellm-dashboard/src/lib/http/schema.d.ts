@@ -237,6 +237,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/.well-known/oauth-protected-resource/lazymcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Oauth Protected Resource Lazymcp */
+        get: operations["oauth_protected_resource_lazymcp__well_known_oauth_protected_resource_lazymcp_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/.well-known/oauth-protected-resource/lazymcp/{scope}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Oauth Protected Resource Lazymcp Scope */
+        get: operations["oauth_protected_resource_lazymcp_scope__well_known_oauth_protected_resource_lazymcp__scope__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/.well-known/oauth-protected-resource/mcp": {
         parameters: {
             query?: never;
@@ -279,6 +313,23 @@ export interface paths {
          *     MCP clients like mcp-inspector and VSCode Copilot.
          */
         get: operations["oauth_protected_resource_mcp_standard__well_known_oauth_protected_resource_mcp__mcp_server_name__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/.well-known/oauth-protected-resource/toolset/{name}/lazymcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Oauth Protected Resource Lazymcp Toolset */
+        get: operations["oauth_protected_resource_lazymcp_toolset__well_known_oauth_protected_resource_toolset__name__lazymcp_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -8859,6 +8910,132 @@ export interface paths {
         put?: never;
         /** Warm */
         post: operations["warm_lazy_warm__name__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/lazymcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Root Lazymcp Route */
+        get: operations["root_lazymcp_route_lazymcp_get"];
+        /** Root Lazymcp Route */
+        put: operations["root_lazymcp_route_lazymcp_put"];
+        /** Root Lazymcp Route */
+        post: operations["root_lazymcp_route_lazymcp_post"];
+        /** Root Lazymcp Route */
+        delete: operations["root_lazymcp_route_lazymcp_delete"];
+        /** Root Lazymcp Route */
+        options: operations["root_lazymcp_route_lazymcp_options"];
+        /** Root Lazymcp Route */
+        head: operations["root_lazymcp_route_lazymcp_head"];
+        /** Root Lazymcp Route */
+        patch: operations["root_lazymcp_route_lazymcp_patch"];
+        trace?: never;
+    };
+    "/lazymcp/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Root Lazymcp Route */
+        get: operations["root_lazymcp_route_lazymcp__get"];
+        /** Root Lazymcp Route */
+        put: operations["root_lazymcp_route_lazymcp__put"];
+        /** Root Lazymcp Route */
+        post: operations["root_lazymcp_route_lazymcp__post"];
+        /** Root Lazymcp Route */
+        delete: operations["root_lazymcp_route_lazymcp__delete"];
+        /** Root Lazymcp Route */
+        options: operations["root_lazymcp_route_lazymcp__options"];
+        /** Root Lazymcp Route */
+        head: operations["root_lazymcp_route_lazymcp__head"];
+        /** Root Lazymcp Route */
+        patch: operations["root_lazymcp_route_lazymcp__patch"];
+        trace?: never;
+    };
+    "/lazymcp/.well-known/oauth-protected-resource": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Oauth Protected Resource Lazymcp */
+        get: operations["oauth_protected_resource_lazymcp_lazymcp__well_known_oauth_protected_resource_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/lazymcp/{scope_name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Scoped Lazymcp Route */
+        get: operations["scoped_lazymcp_route_lazymcp__scope_name__get"];
+        /** Scoped Lazymcp Route */
+        put: operations["scoped_lazymcp_route_lazymcp__scope_name__put"];
+        /** Scoped Lazymcp Route */
+        post: operations["scoped_lazymcp_route_lazymcp__scope_name__post"];
+        /** Scoped Lazymcp Route */
+        delete: operations["scoped_lazymcp_route_lazymcp__scope_name__delete"];
+        /** Scoped Lazymcp Route */
+        options: operations["scoped_lazymcp_route_lazymcp__scope_name__options"];
+        /** Scoped Lazymcp Route */
+        head: operations["scoped_lazymcp_route_lazymcp__scope_name__head"];
+        /** Scoped Lazymcp Route */
+        patch: operations["scoped_lazymcp_route_lazymcp__scope_name__patch"];
+        trace?: never;
+    };
+    "/lazymcp/{scope_name}/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Scoped Lazymcp Route */
+        get: operations["scoped_lazymcp_route_lazymcp__scope_name___get"];
+        /** Scoped Lazymcp Route */
+        put: operations["scoped_lazymcp_route_lazymcp__scope_name___put"];
+        /** Scoped Lazymcp Route */
+        post: operations["scoped_lazymcp_route_lazymcp__scope_name___post"];
+        /** Scoped Lazymcp Route */
+        delete: operations["scoped_lazymcp_route_lazymcp__scope_name___delete"];
+        /** Scoped Lazymcp Route */
+        options: operations["scoped_lazymcp_route_lazymcp__scope_name___options"];
+        /** Scoped Lazymcp Route */
+        head: operations["scoped_lazymcp_route_lazymcp__scope_name___head"];
+        /** Scoped Lazymcp Route */
+        patch: operations["scoped_lazymcp_route_lazymcp__scope_name___patch"];
+        trace?: never;
+    };
+    "/lazymcp/{scope}/.well-known/oauth-protected-resource": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Oauth Protected Resource Lazymcp Scope */
+        get: operations["oauth_protected_resource_lazymcp_scope_lazymcp__scope___well_known_oauth_protected_resource_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -17526,6 +17703,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/toolset/{name}/lazymcp/.well-known/oauth-protected-resource": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Oauth Protected Resource Lazymcp Toolset */
+        get: operations["oauth_protected_resource_lazymcp_toolset_toolset__name__lazymcp__well_known_oauth_protected_resource_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/toolset/{toolset_name}/lazymcp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Toolset Lazymcp Route */
+        get: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp_get"];
+        /** Toolset Lazymcp Route */
+        put: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp_put"];
+        /** Toolset Lazymcp Route */
+        post: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp_post"];
+        /** Toolset Lazymcp Route */
+        delete: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp_delete"];
+        /** Toolset Lazymcp Route */
+        options: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp_options"];
+        /** Toolset Lazymcp Route */
+        head: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp_head"];
+        /** Toolset Lazymcp Route */
+        patch: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp_patch"];
+        trace?: never;
+    };
+    "/toolset/{toolset_name}/lazymcp/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Toolset Lazymcp Route */
+        get: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp__get"];
+        /** Toolset Lazymcp Route */
+        put: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp__put"];
+        /** Toolset Lazymcp Route */
+        post: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp__post"];
+        /** Toolset Lazymcp Route */
+        delete: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp__delete"];
+        /** Toolset Lazymcp Route */
+        options: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp__options"];
+        /** Toolset Lazymcp Route */
+        head: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp__head"];
+        /** Toolset Lazymcp Route */
+        patch: operations["toolset_lazymcp_route_toolset__toolset_name__lazymcp__patch"];
+        trace?: never;
+    };
     "/toolset/{toolset_name}/mcp": {
         parameters: {
             query?: never;
@@ -20201,6 +20441,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/mcp/loopback-oauth/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete Mcp Loopback Oauth */
+        post: operations["complete_mcp_loopback_oauth_v1_mcp_loopback_oauth_complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/mcp/loopback-oauth/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ready Mcp Loopback Oauth */
+        post: operations["ready_mcp_loopback_oauth_v1_mcp_loopback_oauth_ready_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/mcp/make_public": {
         parameters: {
             query?: never;
@@ -20446,6 +20720,40 @@ export interface paths {
          * @description Approve a pending MCP server submission (admin only). Mirrors PUT /guardrails/{id}/approve.
          */
         put: operations["approve_mcp_server_submission_v1_mcp_server__server_id__approve_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/mcp/server/{server_id}/loopback-oauth/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Mcp Loopback Oauth */
+        post: operations["start_mcp_loopback_oauth_v1_mcp_server__server_id__loopback_oauth_start_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/mcp/server/{server_id}/loopback-oauth/status/{transaction_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Mcp Loopback Oauth Status */
+        get: operations["get_mcp_loopback_oauth_status_v1_mcp_server__server_id__loopback_oauth_status__transaction_id__get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -28609,6 +28917,16 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /** ClientToolSearchChoice */
+        ClientToolSearchChoice: {
+            /**
+             * Type
+             * @constant
+             */
+            type: "tool_search";
+        } & {
+            [key: string]: unknown;
+        };
         /**
          * CloudZeroExportRequest
          * @description Request model for CloudZero export operations
@@ -30481,6 +30799,8 @@ export interface components {
             input: string;
             /** Name */
             name: string;
+            /** Namespace */
+            namespace?: string | null;
             /** Status */
             status?: ("in_progress" | "completed" | "incomplete") | null;
             /**
@@ -34490,6 +34810,12 @@ export interface components {
             cache_read_input_token_cost_priority?: number | null;
             /** Cache Read Input Token Cost Ultrafast */
             cache_read_input_token_cost_ultrafast?: number | null;
+            /** Chatgpt Auth File */
+            chatgpt_auth_file?: string | null;
+            /** Chatgpt Auth Profile */
+            chatgpt_auth_profile?: string | null;
+            /** Chatgpt Token Dir */
+            chatgpt_token_dir?: string | null;
             /** Citation Cost Per Token */
             citation_cost_per_token?: number | null;
             /** Client Id */
@@ -36518,6 +36844,51 @@ export interface components {
             token: string;
         } & {
             [key: string]: unknown;
+        };
+        /** LoopbackOAuthCompletionRequest */
+        LoopbackOAuthCompletionRequest: {
+            /** Code */
+            code?: string | null;
+            /** Error */
+            error?: string | null;
+            /** Error Description */
+            error_description?: string | null;
+            /** State */
+            state: string;
+        };
+        /** LoopbackOAuthCompletionResponse */
+        LoopbackOAuthCompletionResponse: {
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "connected" | "denied";
+        };
+        /** LoopbackOAuthReadyRequest */
+        LoopbackOAuthReadyRequest: {
+            /** Transaction Id */
+            transaction_id: string;
+        };
+        /** LoopbackOAuthStartResponse */
+        LoopbackOAuthStartResponse: {
+            /** Authorization Url */
+            authorization_url: string;
+            /**
+             * Expires In
+             * @default 300
+             * @constant
+             */
+            expires_in: 300;
+            /** Transaction Id */
+            transaction_id: string;
+        };
+        /** LoopbackOAuthStatusResponse */
+        LoopbackOAuthStatusResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "ready" | "connected" | "denied" | "failed";
         };
         /**
          * MCPAllowedClient
@@ -43210,7 +43581,7 @@ export interface components {
             /** Output */
             output: (components["schemas"]["ResponseOutputMessage"] | components["schemas"]["ResponseFileSearchToolCall"] | components["schemas"]["ResponseFunctionToolCall"] | components["schemas"]["ResponseFunctionToolCallOutputItem"] | components["schemas"]["ResponseFunctionWebSearch"] | components["schemas"]["ResponseComputerToolCall"] | components["schemas"]["ResponseComputerToolCallOutputItem"] | components["schemas"]["ResponseReasoningItem"] | components["schemas"]["ResponseToolSearchCall"] | components["schemas"]["ResponseToolSearchOutputItem"] | components["schemas"]["ResponseCompactionItem"] | components["schemas"]["ImageGenerationCall"] | components["schemas"]["ResponseCodeInterpreterToolCall"] | components["schemas"]["LocalShellCall"] | components["schemas"]["LocalShellCallOutput"] | components["schemas"]["ResponseFunctionShellToolCall"] | components["schemas"]["ResponseFunctionShellToolCallOutput"] | components["schemas"]["ResponseApplyPatchToolCall"] | components["schemas"]["ResponseApplyPatchToolCallOutput"] | components["schemas"]["McpCall"] | components["schemas"]["McpListTools"] | components["schemas"]["McpApprovalRequest"] | components["schemas"]["McpApprovalResponse"] | components["schemas"]["ResponseCustomToolCall"] | components["schemas"]["ResponseCustomToolCallOutputItem"] | {
                 [key: string]: unknown;
-            })[] | (components["schemas"]["GenericResponseOutputItem"] | components["schemas"]["OutputCodeInterpreterCall"] | components["schemas"]["OutputFunctionToolCall"] | components["schemas"]["OutputImageGenerationCall"] | components["schemas"]["ResponseFunctionToolCall"] | components["schemas"]["ResponseFunctionWebSearch"] | components["schemas"]["CustomToolCallOutputItem"])[];
+            })[] | (components["schemas"]["GenericResponseOutputItem"] | components["schemas"]["ResponseReasoningItem"] | components["schemas"]["OutputCodeInterpreterCall"] | components["schemas"]["OutputFunctionToolCall"] | components["schemas"]["OutputImageGenerationCall"] | components["schemas"]["ResponseFunctionToolCall"] | components["schemas"]["ResponseFunctionWebSearch"] | components["schemas"]["CustomToolCallOutputItem"] | components["schemas"]["ResponseToolSearchCall"])[];
             /** Parallel Tool Calls */
             parallel_tool_calls?: boolean | null;
             /** Previous Response Id */
@@ -43230,7 +43601,7 @@ export interface components {
                 [key: string]: unknown;
             } | null;
             /** Tool Choice */
-            tool_choice?: ("none" | "auto" | "required") | components["schemas"]["ToolChoiceAllowedParam"] | components["schemas"]["ToolChoiceTypesParam"] | components["schemas"]["ToolChoiceFunctionParam"] | components["schemas"]["ToolChoiceMcpParam"] | components["schemas"]["ToolChoiceCustomParam"] | components["schemas"]["ToolChoiceApplyPatchParam"] | components["schemas"]["ToolChoiceShellParam"] | null;
+            tool_choice?: ("none" | "auto" | "required") | components["schemas"]["ToolChoiceAllowedParam"] | components["schemas"]["ToolChoiceTypesParam"] | components["schemas"]["ToolChoiceFunctionParam"] | components["schemas"]["ToolChoiceMcpParam"] | components["schemas"]["ToolChoiceCustomParam"] | components["schemas"]["ToolChoiceApplyPatchParam"] | components["schemas"]["ToolChoiceShellParam"] | components["schemas"]["ClientToolSearchChoice"] | null;
             /** Tools */
             tools?: (components["schemas"]["FunctionTool"] | components["schemas"]["FileSearchTool"] | components["schemas"]["ComputerTool"] | components["schemas"]["ComputerUsePreviewTool"] | components["schemas"]["WebSearchTool"] | components["schemas"]["Mcp"] | components["schemas"]["CodeInterpreter"] | components["schemas"]["ImageGeneration"] | components["schemas"]["LocalShell"] | components["schemas"]["FunctionShellTool"] | components["schemas"]["CustomTool"] | components["schemas"]["NamespaceTool"] | components["schemas"]["ToolSearchTool"] | components["schemas"]["WebSearchPreviewTool"] | components["schemas"]["ApplyPatchTool"])[] | components["schemas"]["ResponseFunctionToolCall"][] | {
                 [key: string]: unknown;
@@ -48812,6 +49183,12 @@ export interface components {
             cache_read_input_token_cost_priority?: number | null;
             /** Cache Read Input Token Cost Ultrafast */
             cache_read_input_token_cost_ultrafast?: number | null;
+            /** Chatgpt Auth File */
+            chatgpt_auth_file?: string | null;
+            /** Chatgpt Auth Profile */
+            chatgpt_auth_profile?: string | null;
+            /** Chatgpt Token Dir */
+            chatgpt_token_dir?: string | null;
             /** Citation Cost Per Token */
             citation_cost_per_token?: number | null;
             /** Client Id */
@@ -49414,6 +49791,61 @@ export interface operations {
             };
         };
     };
+    oauth_protected_resource_lazymcp__well_known_oauth_protected_resource_lazymcp_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    oauth_protected_resource_lazymcp_scope__well_known_oauth_protected_resource_lazymcp__scope__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scope: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     oauth_protected_resource_aggregate__well_known_oauth_protected_resource_mcp_get: {
         parameters: {
             query?: never;
@@ -49452,6 +49884,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    oauth_protected_resource_lazymcp_toolset__well_known_oauth_protected_resource_toolset__name__lazymcp_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -60962,6 +61427,775 @@ export interface operations {
             };
         };
     };
+    root_lazymcp_route_lazymcp_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp_options: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp_head: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp__options: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp__head: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    root_lazymcp_route_lazymcp__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    oauth_protected_resource_lazymcp_lazymcp__well_known_oauth_protected_resource_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    scoped_lazymcp_route_lazymcp__scope_name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scope_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scoped_lazymcp_route_lazymcp__scope_name__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scope_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scoped_lazymcp_route_lazymcp__scope_name__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scope_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scoped_lazymcp_route_lazymcp__scope_name__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scope_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scoped_lazymcp_route_lazymcp__scope_name__options: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scope_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scoped_lazymcp_route_lazymcp__scope_name__head: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scope_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scoped_lazymcp_route_lazymcp__scope_name__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scope_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scoped_lazymcp_route_lazymcp__scope_name___get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scope_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scoped_lazymcp_route_lazymcp__scope_name___put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scope_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scoped_lazymcp_route_lazymcp__scope_name___post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scope_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scoped_lazymcp_route_lazymcp__scope_name___delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scope_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scoped_lazymcp_route_lazymcp__scope_name___options: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scope_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scoped_lazymcp_route_lazymcp__scope_name___head: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scope_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    scoped_lazymcp_route_lazymcp__scope_name___patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scope_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    oauth_protected_resource_lazymcp_scope_lazymcp__scope___well_known_oauth_protected_resource_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scope: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_ui_config_litellm__well_known_litellm_ui_config_get: {
         parameters: {
             query?: never;
@@ -71586,6 +72820,473 @@ export interface operations {
             };
         };
     };
+    oauth_protected_resource_lazymcp_toolset_toolset__name__lazymcp__well_known_oauth_protected_resource_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp_options: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp_head: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp__options: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp__head: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toolset_lazymcp_route_toolset__toolset_name__lazymcp__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                toolset_name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     toolset_mcp_route_toolset__toolset_name__mcp_get: {
         parameters: {
             query?: never;
@@ -75547,6 +77248,76 @@ export interface operations {
             };
         };
     };
+    complete_mcp_loopback_oauth_v1_mcp_loopback_oauth_complete_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoopbackOAuthCompletionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoopbackOAuthCompletionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ready_mcp_loopback_oauth_v1_mcp_loopback_oauth_ready_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoopbackOAuthReadyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoopbackOAuthStatusResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     make_mcp_servers_public_v1_mcp_make_public_post: {
         parameters: {
             query?: never;
@@ -75988,6 +77759,69 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LiteLLM_MCPServerTable"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_mcp_loopback_oauth_v1_mcp_server__server_id__loopback_oauth_start_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoopbackOAuthStartResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_mcp_loopback_oauth_status_v1_mcp_server__server_id__loopback_oauth_status__transaction_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                server_id: string;
+                transaction_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoopbackOAuthStatusResponse"];
                 };
             };
             /** @description Validation Error */
