@@ -4,7 +4,6 @@ Translate from OpenAI's `/v1/chat/completions` to VLLM's `/v1/chat/completions`
 
 import json
 from collections.abc import Coroutine, Mapping
-from copy import deepcopy
 from typing import Final, Literal, cast, overload
 
 from pydantic import BaseModel, TypeAdapter
@@ -186,8 +185,25 @@ class HostedVLLMChatConfig(OpenAIGPTConfig):
         litellm_params: dict[str, object],  # mutable-ok: provider request contract
         headers: dict[str, str],  # mutable-ok: provider request contract
     ) -> dict[str, object]:  # mutable-ok: provider request contract
+        thinking_disabled: Final = optional_params.pop(_THINKING_DISABLED_MARKER, False) is True
+        request_optional_params: Final = (
+            {  # mutable-ok: framework contract requires mutable request containers
+                **optional_params,
+                "reasoning_effort": "off",
+            }  # mutable-ok: framework contract requires mutable request containers
+            if thinking_disabled
+            else optional_params  # mutable-ok: framework contract requires mutable request containers
+        )
+        request_messages: Final = normalize_reasoning_content(
+            messages,
+            forward=litellm_params.get("forward_reasoning_content") is not False,
+            strings_only=True,
+            normalize=should_normalize_reasoning_content(
+                litellm_params.get("reasoning_content_field"), model=model, provider="hosted_vllm"
+            ),
+        )
         return await super().async_transform_request(
-            model, deepcopy(messages), optional_params, litellm_params, headers
+            model, request_messages, request_optional_params, litellm_params, headers
         )
 
     def finalize_request(

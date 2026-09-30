@@ -21,7 +21,9 @@ from litellm.llms.hosted_vllm.chat.transformation import HostedVLLMChatConfig
 @pytest.mark.parametrize("params", [{}, {"forward_reasoning_content": False}, {"forward_reasoning_content": True}])
 @pytest.mark.parametrize("is_async", [False, True])
 @pytest.mark.asyncio
-async def test_forward_reasoning_content_preserves_only_explicit_history(params, is_async):
+async def test_forward_reasoning_content_preserves_only_explicit_history(
+    params: dict[str, bool], is_async: bool
+) -> None:
     config = HostedVLLMChatConfig()
     messages = [
         {"role": "user", "content": "Check the counter"},
@@ -49,7 +51,7 @@ async def test_forward_reasoning_content_preserves_only_explicit_history(params,
     expected = deepcopy(original)
     expected[1].pop("thinking_blocks")
     expected[3].pop("thinking_blocks")
-    if params.get("forward_reasoning_content") is not True:
+    if params.get("forward_reasoning_content") is False:
         expected[1].pop("reasoning_content")
     assert result["messages"] == expected
     assert messages == original
@@ -488,34 +490,6 @@ def test_hosted_vllm_custom_tools_use_top_level_input_schema():
     assert tools[0]["function"]["parameters"] == input_schema
 
 
-def test_merge_system_messages_is_opt_in_and_preserves_content():
-    from copy import deepcopy
-
-    messages = [
-        {"role": "system", "content": "Base instructions"},
-        {"role": "developer", "content": [{"type": "text", "text": "Tool policy"}]},
-        {"role": "user", "content": "First turn"},
-        {"role": "system", "content": "Updated instructions"},
-        {"role": "assistant", "content": "Working"},
-    ]
-    original = deepcopy(messages)
-    config = HostedVLLMChatConfig()
-    unchanged = config.finalize_request(
-        model="qwen3.8-flash-next", request_data={"messages": messages}, litellm_params={}
-    )
-    assert unchanged["messages"] == original
-    result = config.finalize_request(
-        model="qwen3.8-flash-next",
-        request_data={"messages": messages, "merge_system_messages": True},
-        litellm_params={},
-    )
-    assert "merge_system_messages" not in result
-    assert [m["role"] for m in result["messages"]] == ["system", "user", "assistant"]
-    assert result["messages"][0]["content"] == "Base instructions\n\nTool policy\n\nUpdated instructions"
-    assert list(result["messages"][1:]) == [original[2], original[4]]
-    assert messages == original
-
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize("provider", ["hosted_vllm", "openai"])
 @pytest.mark.parametrize("is_async", [False, True])
@@ -593,9 +567,7 @@ async def test_reasoning_field_sdk_router_final_wire(
                 "usage": {"prompt_tokens": 10, "completion_tokens": 1, "total_tokens": 11},
             },
         )
-        for alias, field in (
-            ("normalized", "reasoning"), ("legacy", None), ("explicit-default", "reasoning_content")
-        ):
+        for alias, field in (("normalized", "reasoning"), ("legacy", None), ("explicit-default", "reasoning_content")):
             kwargs: Final = (
                 {"model": alias, "messages": messages}
                 if via_router
@@ -609,7 +581,7 @@ async def test_reasoning_field_sdk_router_final_wire(
             response: Final = await client.acompletion(**kwargs) if is_async else client.completion(**kwargs)
             assert response.choices[0].message.content == "Done"
             payload: Final = json.loads(route.calls[-1].request.content)
-            forwarded: Final = provider == "openai" or forward is True
+            forwarded: Final = provider == "openai" or forward is not False
             expected_history: Final = (
                 ({"reasoning": expected} if expected is not None and forwarded else {})
                 if field == "reasoning"
@@ -663,21 +635,33 @@ async def test_reasoning_field_does_not_apply_to_inherited_provider(provider: st
 @pytest.mark.parametrize("field", ["reasonig", ""])
 @pytest.mark.parametrize("forward", [False, True])
 async def test_invalid_reasoning_field_fails_before_http(
-    provider, is_async, via_router, bridge, field, forward, monkeypatch
-):
+    provider: str,
+    is_async: bool,
+    via_router: bool,
+    bridge: bool,
+    field: str,
+    forward: bool,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(litellm, "disable_aiohttp_transport", True)
     messages = [{"role": "user", "content": "Hello"}]
     original = deepcopy(messages)
     params = {
-        "model": f"{provider}/reasoning-test", "api_key": "test-key",
+        "model": f"{provider}/reasoning-test",
+        "api_key": "test-key",
         "api_base": "https://invalid-reasoning-field.invalid/v1",
-        "reasoning_content_field": field, "forward_reasoning_content": forward,
+        "reasoning_content_field": field,
+        "forward_reasoning_content": forward,
         **({"use_chat_completions_api": True} if bridge else {}),
     }
     router = litellm.Router(model_list=[{"model_name": "invalid-field", "litellm_params": params}], num_retries=0)
     client = router if via_router else litellm
     kwargs = {**({"model": "invalid-field"} if via_router else params), "input" if bridge else "messages": messages}
-    method = (client.aresponses if is_async else client.responses) if bridge else (client.acompletion if is_async else client.completion)
+    method = (
+        (client.aresponses if is_async else client.responses)
+        if bridge
+        else (client.acompletion if is_async else client.completion)
+    )
     with respx.mock(assert_all_called=False) as mock:
         with pytest.raises(litellm.BadRequestError) as error:
             await method(**kwargs) if is_async else method(**kwargs)
@@ -686,3 +670,80 @@ async def test_invalid_reasoning_field_fails_before_http(
         assert "reasonig" not in str(error.value)
         assert len(mock.calls) == 0
     assert messages == original
+
+
+@pytest.mark.parametrize(
+    "history",
+    [
+        {"reasoning_content": 42},
+        {"reasoning_content": ["step"]},
+        {"reasoning_content": {"text": "step"}},
+        {"reasoning": 42},
+        {"reasoning_content": "source", "reasoning": 42},
+        {"reasoning_content": ""},
+        {"reasoning": ""},
+    ],
+)
+@pytest.mark.parametrize("is_async", [False, True])
+@pytest.mark.asyncio
+async def test_normalized_hosted_reasoning_only_forwards_strings(history, is_async):
+    config = HostedVLLMChatConfig()
+    messages = [{"role": "assistant", "content": "answer", **history}]
+    original = deepcopy(messages)
+    arguments = dict(
+        model="hosted_vllm/test",
+        messages=messages,
+        optional_params={},
+        litellm_params={"reasoning_content_field": "reasoning"},
+        headers={},
+    )
+    result = await config.async_transform_request(**arguments) if is_async else config.transform_request(**arguments)
+    value = history.get("reasoning", history.get("reasoning_content"))
+    expected = {"role": "assistant", "content": "answer", **({"reasoning": value} if isinstance(value, str) else {})}
+    assert result["messages"] == [expected]
+    assert messages == original
+
+
+def test_merge_system_messages_is_opt_in_and_preserves_content():
+    from copy import deepcopy
+
+    messages = [
+        {"role": "system", "content": "Base instructions"},
+        {"role": "developer", "content": [{"type": "text", "text": "Tool policy"}]},
+        {"role": "user", "content": "First turn"},
+        {"role": "system", "content": "Updated instructions"},
+        {"role": "assistant", "content": "Working"},
+    ]
+    original = deepcopy(messages)
+    config = HostedVLLMChatConfig()
+    unchanged = config.finalize_request(
+        model="qwen3.8-flash-next", request_data={"messages": messages}, litellm_params={}
+    )
+    assert unchanged["messages"] == original
+    result = config.finalize_request(
+        model="qwen3.8-flash-next",
+        request_data={"messages": messages, "merge_system_messages": True},
+        litellm_params={},
+    )
+    assert "merge_system_messages" not in result
+    assert [m["role"] for m in result["messages"]] == ["system", "user", "assistant"]
+    assert result["messages"][0]["content"] == "Base instructions\n\nTool policy\n\nUpdated instructions"
+    assert list(result["messages"][1:]) == [original[2], original[4]]
+    assert messages == original
+
+
+@pytest.mark.parametrize("is_async", [False, True])
+@pytest.mark.asyncio
+async def test_thinking_disabled_forces_reasoning_effort_off_on_both_paths(is_async):
+    config = HostedVLLMChatConfig()
+    mapped = config.map_openai_params({"thinking": {"type": "disabled"}}, {}, "deepseek/deepseek-v4", True)
+    arguments = dict(
+        model="deepseek/deepseek-v4",
+        messages=[{"role": "user", "content": "Hello"}],
+        optional_params=dict(mapped),
+        litellm_params={},
+        headers={},
+    )
+    result = await config.async_transform_request(**arguments) if is_async else config.transform_request(**arguments)
+    assert result["reasoning_effort"] == "off"
+    assert "_hosted_vllm_thinking_disabled" not in result

@@ -499,7 +499,9 @@ class OpenAIGPTConfig(BaseLLMModelInfo, BaseConfig):
             )
             else messages
         )
-        messages = self._transform_messages(messages=self._prompt_cache_ordered_messages(request_messages, litellm_params), model=model)
+        messages = self._transform_messages(
+            messages=self._prompt_cache_ordered_messages(request_messages, litellm_params), model=model
+        )
         if not self._should_preserve_cache_control_for_endpoint(
             litellm_params.get("custom_llm_provider"), litellm_params.get("api_base")
         ):
@@ -536,7 +538,9 @@ class OpenAIGPTConfig(BaseLLMModelInfo, BaseConfig):
             )
             else messages
         )
-        transformed_messages = await self._transform_messages(messages=self._prompt_cache_ordered_messages(request_messages, litellm_params), model=model, is_async=True)
+        transformed_messages = await self._transform_messages(
+            messages=self._prompt_cache_ordered_messages(request_messages, litellm_params), model=model, is_async=True
+        )
         if not self._should_preserve_cache_control_for_endpoint(
             litellm_params.get("custom_llm_provider"), litellm_params.get("api_base")
         ):
