@@ -2877,6 +2877,7 @@ def _complete_anthropic_text(
 
 
 def _complete_anthropic(ctx: _CompletionDispatchContext) -> _CompletionDispatchResult:
+    from litellm.llms.anthropic.native_transport import is_anthropic_native_sdk, native_sdk_connection
     from litellm.llms.anthropic.oauth_policy import (
         is_anthropic_oauth_managed,
         validate_anthropic_oauth_destination,
@@ -2899,6 +2900,7 @@ def _complete_anthropic(ctx: _CompletionDispatchContext) -> _CompletionDispatchR
     timeout: Final = ctx.timeout
 
     managed_oauth: Final = is_anthropic_oauth_managed(litellm_params)
+    native_connection: Final = native_sdk_connection(litellm_params) if is_anthropic_native_sdk(litellm_params) else None
     api_key = (
         None
         if managed_oauth
@@ -2908,7 +2910,9 @@ def _complete_anthropic(ctx: _CompletionDispatchContext) -> _CompletionDispatchR
     # call /messages
     # default route for all anthropic models
     api_base = (
-        validate_anthropic_oauth_destination(api_base)
+        native_connection.url()
+        if native_connection is not None
+        else validate_anthropic_oauth_destination(api_base)
         if managed_oauth
         else cast(
             str | None,
@@ -5703,6 +5707,8 @@ def completion(
             anthropic_auth_profile=kwargs.get("anthropic_auth_profile"),
             anthropic_token_dir=kwargs.get("anthropic_token_dir"),
             anthropic_oauth_compatibility=kwargs.get("anthropic_oauth_compatibility"),
+            anthropic_execution_mode=kwargs.get("anthropic_execution_mode"),
+            _anthropic_native_identity=kwargs.get("_anthropic_native_identity"),
             chatgpt_auth_profile=kwargs.get("chatgpt_auth_profile"),
             chatgpt_token_dir=kwargs.get("chatgpt_token_dir"),
             chatgpt_auth_file=kwargs.get("chatgpt_auth_file"),

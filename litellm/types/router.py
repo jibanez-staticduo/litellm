@@ -427,6 +427,7 @@ class GenericLiteLLMParams(CredentialLiteLLMParams, CustomPricingLiteLLMParams):
     anthropic_auth_profile: str | None = None
     anthropic_token_dir: str | None = None
     anthropic_oauth_compatibility: str | None = None
+    anthropic_execution_mode: str | None = None
     chatgpt_auth_profile: str | None = None
     chatgpt_token_dir: str | None = None
     chatgpt_auth_file: str | None = None
@@ -615,6 +616,7 @@ class LiteLLMParamsTypedDict(TypedDict, total=False):
     anthropic_auth_profile: ReadOnly[str | None]
     anthropic_token_dir: ReadOnly[str | None]
     anthropic_oauth_compatibility: ReadOnly[str | None]
+    anthropic_execution_mode: ReadOnly[str | None]
     chatgpt_auth_profile: str | None
     chatgpt_token_dir: str | None
     chatgpt_auth_file: str | None

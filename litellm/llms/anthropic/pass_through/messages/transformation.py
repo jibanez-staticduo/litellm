@@ -236,10 +236,14 @@ class AnthropicMessagesConfig(BaseAnthropicMessagesConfig):
         litellm_params: dict,
         stream: bool | None = None,
     ) -> str:
+        from litellm.llms.anthropic.native_transport import is_anthropic_native_sdk, native_sdk_connection
         from litellm.llms.anthropic.oauth_policy import (
             is_anthropic_oauth_managed,
             validate_anthropic_oauth_destination,
         )
+
+        if is_anthropic_native_sdk(litellm_params):
+            return native_sdk_connection(litellm_params).url()
 
         api_base = (
             validate_anthropic_oauth_destination(api_base)
@@ -260,12 +264,17 @@ class AnthropicMessagesConfig(BaseAnthropicMessagesConfig):
         api_key: str | None = None,
         api_base: str | None = None,
     ) -> tuple[dict, str | None]:
+        from litellm.llms.anthropic.native_transport import is_anthropic_native_sdk, native_sdk_connection
         from litellm.llms.anthropic.oauth_policy import (
             is_anthropic_oauth_managed,
             normalize_anthropic_oauth_headers,
             resolve_anthropic_oauth_access_token,
             validate_anthropic_oauth_destination,
         )
+
+        if is_anthropic_native_sdk(litellm_params):
+            connection: Final = native_sdk_connection(litellm_params)
+            return connection.request_headers(), connection.api_base
 
         managed_token: Final = resolve_anthropic_oauth_access_token(litellm_params, api_base, headers)
         managed_api_base: Final = (

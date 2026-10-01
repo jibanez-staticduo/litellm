@@ -59,6 +59,244 @@ from litellm.types.llms.openai import ChatCompletionRequest
 from litellm.types.router import Deployment, DeploymentTypedDict, LiteLLM_Params, ModelInfo, PreRoutingHookResponse, RetryPolicy
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("surface", ("chat", "messages", "responses", "messages_stream"))
+async def test_native_sdk_router_transports_preserve_identity_and_original_system(surface: str) -> None:
+    from litellm.caching.llm_caching_handler import LLMClientCache
+    from litellm.llms.anthropic.native_transport import AnthropicNativeIdentity
+    from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        assert str(request.url) == "http://native-broker/v1/messages"
+        assert request.headers["authorization"] == "Bearer private-broker-key"
+        assert request.headers["x-litellm-native-profile"] == "fixed-profile"
+        assert request.headers["x-litellm-native-owner"] == "authenticated-owner"
+        assert request.headers["x-litellm-native-deployment"] == "actual-selected-deployment"
+        assert "x-api-key" not in request.headers
+        body: Final = json.loads(request.content)
+        assert "original system" in str(body.get("system"))
+        assert "x-anthropic-billing-header" not in str(body)
+        assert "anthropic_execution_mode" not in body
+        assert "_anthropic_native_identity" not in body
+        if body.get("stream") is True:
+            events: Final = (
+                {
+                    "type": "message_start",
+                    "message": {
+                        "id": "msg_native",
+                        "type": "message",
+                        "role": "assistant",
+                        "model": "claude-test-model",
+                        "content": [],
+                        "stop_reason": None,
+                        "stop_sequence": None,
+                        "usage": {"input_tokens": 12, "output_tokens": 0},
+                    },
+                },
+                {"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": ""}},
+                {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "native reply"}},
+                {"type": "content_block_stop", "index": 0},
+                {"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {"output_tokens": 3}},
+                {"type": "message_stop"},
+            )
+            payload: Final = "".join(f"event: {event['type']}\ndata: {json.dumps(event)}\n\n" for event in events)
+            return httpx.Response(200, content=payload.encode(), headers={"content-type": "text/event-stream"})
+        return httpx.Response(
+            200,
+            json={
+                "id": "msg_native",
+                "type": "message",
+                "role": "assistant",
+                "model": "claude-test-model",
+                "content": [{"type": "text", "text": "native reply"}],
+                "stop_reason": "end_turn",
+                "stop_sequence": None,
+                "usage": {"input_tokens": 12, "output_tokens": 3},
+            },
+        )
+
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "native-alias",
+                "litellm_params": {
+                    "model": "anthropic/claude-test-model",
+                    "api_key": "unused-api-key",
+                    "use_anthropic_oauth": True,
+                    "anthropic_auth_profile": "fixed-profile",
+                    "anthropic_execution_mode": "native_sdk",
+                    "anthropic_token_dir": "/must-not-read",
+                    "anthropic_oauth_compatibility": "claude_code",
+                },
+                "model_info": {"id": "actual-selected-deployment"},
+            }
+        ],
+        num_retries=0,
+    )
+    client: Final = AsyncHTTPHandler(transport=httpx.MockTransport(upstream))
+    cache: Final = LLMClientCache()
+    cache.set_cache("async_httpx_clientanthropic", client)
+    identity: Final = AnthropicNativeIdentity("authenticated-owner", "caller-deployment-must-be-resealed")
+    try:
+        with (
+            patch("litellm.in_memory_llm_clients_cache", cache),
+            patch.dict(
+                "os.environ",
+                {
+                    "ANTHROPIC_NATIVE_SDK_BASE_URL": "http://native-broker",
+                    "ANTHROPIC_NATIVE_SDK_KEY": "private-broker-key",
+                    "ANTHROPIC_API_KEY": "global-api-key",
+                },
+            ),
+        ):
+            if surface == "messages_stream":
+                stream_result: Final = await router.aanthropic_messages(
+                    model="native-alias",
+                    messages=[{"role": "user", "content": "hello"}],
+                    system="original system",
+                    max_tokens=32,
+                    stream=True,
+                    _anthropic_native_identity=identity,
+                )
+                received: Final = "".join([str(chunk) async for chunk in stream_result])
+                assert "native reply" in received
+                assert '"input_tokens":12' in received.replace(" ", "")
+            elif surface == "messages":
+                message_result: Final = await router.aanthropic_messages(
+                    model="native-alias",
+                    messages=[{"role": "user", "content": "hello"}],
+                    system="original system",
+                    max_tokens=32,
+                    _anthropic_native_identity=identity,
+                )
+                assert message_result["content"][0]["text"] == "native reply"
+                assert message_result["usage"]["input_tokens"] == 12
+            elif surface == "responses":
+                response_result: Final = await router.aresponses(
+                    model="native-alias",
+                    input="hello",
+                    instructions="original system",
+                    max_output_tokens=32,
+                    _anthropic_native_identity=identity,
+                )
+                assert "native reply" in str(response_result.output)
+                assert response_result.usage.input_tokens == 12
+            else:
+                chat_result: Final = await router.acompletion(
+                    model="native-alias",
+                    messages=[{"role": "system", "content": "original system"}, {"role": "user", "content": "hello"}],
+                    max_tokens=32,
+                    _anthropic_native_identity=identity,
+                )
+                assert chat_result.choices[0].message.content == "native reply"
+                assert chat_result.usage.prompt_tokens == 12
+    finally:
+        await client.client.aclose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("direct", (False, True))
+async def test_native_sdk_router_bypasses_shared_response_cache_despite_caller_override(direct: bool) -> None:
+    from itertools import count
+
+    from litellm.caching.caching import Cache
+    from litellm.caching.llm_caching_handler import LLMClientCache
+    from litellm.llms.anthropic.native_transport import AnthropicNativeIdentity
+    from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
+
+    calls: Final = count(1)
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        sequence: Final = next(calls)
+        assert json.loads(request.content)["system"][0]["cache_control"] == {"type": "ephemeral"}
+        return httpx.Response(
+            200,
+            json={
+                "id": f"msg_native_{sequence}",
+                "type": "message",
+                "role": "assistant",
+                "model": "claude-test-model",
+                "content": [{"type": "text", "text": f"native reply {sequence}"}],
+                "stop_reason": "end_turn",
+                "stop_sequence": None,
+                "usage": {"input_tokens": 12, "output_tokens": 3},
+            },
+        )
+
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "native-alias",
+                "litellm_params": {
+                    "model": "anthropic/claude-test-model",
+                    "use_anthropic_oauth": True,
+                    "anthropic_auth_profile": "fixed",
+                    "anthropic_execution_mode": "native_sdk",
+                },
+                "model_info": {"id": "selected-deployment"},
+            }
+        ],
+        default_litellm_params={"caching": True},
+    )
+    client: Final = AsyncHTTPHandler(transport=httpx.MockTransport(upstream))
+    clients: Final = LLMClientCache()
+    clients.set_cache("async_httpx_clientanthropic", client)
+    response_cache: Final = Cache(type="local")
+    identity: Final = AnthropicNativeIdentity("server-owner", "selected-deployment")
+    invoke: Final = litellm.acompletion if direct else router.acompletion
+    selected_model: Final = "anthropic/claude-test-model" if direct else "native-alias"
+    try:
+        with (
+            patch("litellm.in_memory_llm_clients_cache", clients),
+            patch("litellm.cache", response_cache),
+            patch.dict(
+                "os.environ",
+                {
+                    "ANTHROPIC_NATIVE_SDK_BASE_URL": "http://native-broker",
+                    "ANTHROPIC_NATIVE_SDK_KEY": "broker-key",
+                },
+            ),
+        ):
+            first: Final = await invoke(
+                model=selected_model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": [{"type": "text", "text": "original", "cache_control": {"type": "ephemeral"}}],
+                    },
+                    {"role": "user", "content": "hello"},
+                ],
+                max_tokens=32,
+                caching=True,
+                cache={"no-cache": False, "no-store": False},
+                _anthropic_native_identity=identity,
+                use_anthropic_oauth=True,
+                anthropic_auth_profile="fixed",
+                anthropic_execution_mode="native_sdk",
+            )
+            second: Final = await invoke(
+                model=selected_model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": [{"type": "text", "text": "original", "cache_control": {"type": "ephemeral"}}],
+                    },
+                    {"role": "user", "content": "hello"},
+                ],
+                max_tokens=32,
+                caching=True,
+                cache={"no-cache": False, "no-store": False},
+                _anthropic_native_identity=identity,
+                use_anthropic_oauth=True,
+                anthropic_auth_profile="fixed",
+                anthropic_execution_mode="native_sdk",
+            )
+            assert first.choices[0].message.content == "native reply 1"
+            assert second.choices[0].message.content == "native reply 2"
+    finally:
+        await client.client.aclose()
+
+
 def test_update_kwargs_does_not_mutate_defaults_and_merges_metadata():
     # initialize a real Router (env‑vars can be empty)
     router = litellm.Router(

@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from openai import AsyncAzureOpenAI, AsyncOpenAI, AzureOpenAI, OpenAI
 
     from litellm.litellm_core_utils.litellm_logging import Logging
+    from litellm.llms.anthropic.native_transport import AnthropicNativeIdentity
     from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
     from litellm.router_strategy.complexity_router.context_compaction import CompactionState
     from litellm.router_utils.fallback_event_handlers import AttemptedFallbackTargets
@@ -93,6 +94,7 @@ class ProviderConnection:
     anthropic_auth_profile: str | None = None
     anthropic_token_dir: str | None = None
     anthropic_oauth_compatibility: str | None = None
+    anthropic_execution_mode: str | None = None
     chatgpt_auth_profile: str | None = None
     chatgpt_token_dir: str | None = None
     chatgpt_auth_file: str | None = None
@@ -360,6 +362,9 @@ class RouterState:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ProxyRequestState:
+    anthropic_native_identity: "AnthropicNativeIdentity | None" = field(
+        default=None, metadata=wire("_anthropic_native_identity")
+    )
     proxy_server_request: Mapping[str, object] | None = None
     secret_fields: "SecretFields | None" = None
     trusted_callback_vars: Mapping[str, str] | None = field(default=None, metadata=wire(TRUSTED_CALLBACK_VARS_FIELD))

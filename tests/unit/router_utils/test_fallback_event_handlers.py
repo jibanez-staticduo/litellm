@@ -39,6 +39,16 @@ from litellm.router_utils.fallback_event_handlers import (
             {"litellm_params": {"use_anthropic_oauth": True}},
             {"litellm_params": {"use_anthropic_oauth": True, "anthropic_token_dir": "/different/tokens"}},
         ),
+        (
+            {"litellm_params": {"use_anthropic_oauth": True, "anthropic_auth_profile": "fixed"}},
+            {
+                "litellm_params": {
+                    "use_anthropic_oauth": True,
+                    "anthropic_auth_profile": "fixed",
+                    "anthropic_execution_mode": "native_sdk",
+                }
+            },
+        ),
     ],
 )
 def test_anthropic_oauth_profile_validation_rejects_mixed_policy(rows: tuple[Mapping[str, object], ...]) -> None:

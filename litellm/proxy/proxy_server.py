@@ -13901,6 +13901,7 @@ from litellm.repositories.user_repository import UserRepository
 class _TokenCountOAuthDeployment(BaseModel):
     model_config = ConfigDict(frozen=True)
     litellm_params: Mapping[str, object]
+    model_info: Mapping[str, object] | None = None
 
 
 class _TokenCountCallerAliases(BaseModel):
@@ -13915,6 +13916,36 @@ class _TokenCountRoutingMetadata(TypedDict):
 
 _TOKEN_COUNT_PARAMS: Final = TypeAdapter(Mapping[str, object])
 _TOKEN_COUNT_ROUTING_KWARGS: Final = TypeAdapter(dict[str, object])
+
+
+def _native_token_count_transport_deployment(
+    deployment: _TokenCountOAuthDeployment | None, caller: UserAPIKeyAuth | None
+) -> Mapping[str, object] | None:
+    from litellm.llms.anthropic.native_transport import NATIVE_IDENTITY_FIELD, is_anthropic_native_sdk
+    from litellm.proxy.litellm_pre_call_utils import native_sdk_identity_for_authenticated_key
+
+    if deployment is None or not is_anthropic_native_sdk(deployment.litellm_params):
+        return None
+    deployment_id: Final = (deployment.model_info or MappingProxyType({})).get("id")
+    if caller is None or not isinstance(deployment_id, str):
+        raise ProxyException(
+            message="The native SDK requires an authenticated server owner and selected deployment",
+            type="token_counting_error",
+            param="model",
+            code=401,
+        )
+    try:
+        identity: Final = native_sdk_identity_for_authenticated_key(caller, deployment_id)
+    except AnthropicError as exc:
+        raise ProxyException(
+            message=exc.message, type="token_counting_error", param="model", code=exc.status_code
+        ) from exc
+    return MappingProxyType(
+        {
+            "litellm_params": MappingProxyType({**deployment.litellm_params, NATIVE_IDENTITY_FIELD: identity}),
+            "model_info": deployment.model_info,
+        }
+    )
 
 
 def _managed_anthropic_token_count_deployment(deployment: object) -> bool:
@@ -13974,6 +14005,14 @@ def _get_provider_token_counter(
     if deployment is None:
         return None
 
+    from litellm.llms.anthropic.native_transport import is_anthropic_native_sdk
+
+    native_deployment: Final = _TokenCountOAuthDeployment.model_validate(deployment)
+    if is_anthropic_native_sdk(native_deployment.litellm_params):
+        from litellm.llms.anthropic.common_utils import AnthropicModelInfo
+
+        return AnthropicModelInfo().get_token_counter(), model_to_use, "anthropic"
+
     from litellm.litellm_core_utils.get_llm_provider_logic import get_llm_provider
 
     full_model: Final = deployment.get("litellm_params", {}).get("model", "")
@@ -14025,7 +14064,7 @@ async def _try_provider_token_count(
     model_to_use: str,
     messages: list | None,
     contents: list | None,
-    deployment: dict[str, object] | None,
+    deployment: Mapping[str, object] | None,
     request_model: str,
     tools: list | None = None,
     system: str | None = None,
@@ -14173,6 +14212,10 @@ async def token_counter(
 
     _validate_managed_anthropic_token_count_request(request, parsed_deployment, provider_counter, custom_llm_provider)
 
+    native_count_deployment: Final = _native_token_count_transport_deployment(parsed_deployment, user_api_key_dict) or (
+        _TOKEN_COUNT_PARAMS.validate_python(deployment) if deployment is not None else None
+    )
+
     if provider_counter is not None:
         result: Final = await _try_provider_token_count(
             provider_counter=provider_counter,
@@ -14180,7 +14223,7 @@ async def token_counter(
             model_to_use=model_to_use,
             messages=messages,
             contents=contents,
-            deployment=deployment,
+            deployment=native_count_deployment,
             request_model=request.model,
             tools=tools,
             system=system,

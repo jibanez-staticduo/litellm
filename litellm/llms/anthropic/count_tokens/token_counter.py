@@ -78,17 +78,24 @@ class AnthropicTokenCounter(BaseTokenCounter):
             )
 
         try:
+            from litellm.llms.anthropic.native_transport import is_anthropic_native_sdk
+
+            native: Final = is_anthropic_native_sdk(litellm_params)
             api_base: Final = (
                 _COUNT_STRING.validate_python(litellm_params.get("api_base"), strict=True) if managed else None
             )
-            managed_token: Final = oauth_policy.resolve_anthropic_oauth_access_token(litellm_params, api_base=api_base)
+            managed_token: Final = (
+                None if native else oauth_policy.resolve_anthropic_oauth_access_token(litellm_params, api_base=api_base)
+            )
             api_key: Final = (
-                managed_token
+                ""
+                if native
+                else managed_token
                 if managed
                 else _COUNT_STRING.validate_python(litellm_params.get("api_key"), strict=True)
                 or os.getenv("ANTHROPIC_API_KEY")
             )
-            if not api_key:
+            if not api_key and not native:
                 if managed:
                     raise AnthropicError(401, "No managed Anthropic OAuth credential available for token counting")
                 verbose_logger.warning("No Anthropic API key found for token counting")
@@ -101,10 +108,11 @@ class AnthropicTokenCounter(BaseTokenCounter):
             result: Final = await anthropic_count_tokens_handler.handle_count_tokens_request(
                 model=model_to_use,
                 messages=_COUNT_MESSAGES.validate_python(messages),
-                api_key=api_key,
+                api_key=api_key or "",
                 tools=_COUNT_MESSAGES.validate_python(tools) if tools is not None else None,
                 system=oauth_policy.apply_anthropic_oauth_system(system, litellm_params),
                 optional_params=optional_params,
+                native_params=litellm_params if native else None,
             )
             return TokenCountResponse(
                 total_tokens=_COUNT_TOTAL.validate_python(result.get("input_tokens", 0), strict=True),

@@ -78,6 +78,8 @@ OPTIONAL_KWARGS_KEYS: Final = (
             "anthropic_auth_profile",
             "anthropic_token_dir",
             "anthropic_oauth_compatibility",
+            "anthropic_execution_mode",
+            "_anthropic_native_identity",
             "chatgpt_auth_profile",
             "chatgpt_token_dir",
             "chatgpt_auth_file",

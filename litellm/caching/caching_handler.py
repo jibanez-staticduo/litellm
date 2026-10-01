@@ -202,6 +202,10 @@ def _current_format_embedding_entry(entry: object) -> CachedEmbedding | None:
     return cached
 
 
+def _uses_anthropic_native_sdk(request_params: Mapping[str, object]) -> bool:
+    return request_params.get("anthropic_execution_mode") == "native_sdk"
+
+
 class LLMCachingHandler:
     def __init__(
         self,
@@ -257,9 +261,12 @@ class LLMCachingHandler:
         """
         # Check if caching should be performed BEFORE doing expensive operations
         if (
-            (kwargs.get("caching", None) is None and litellm.cache is not None) or kwargs.get("caching", False) is True
-        ) and (
-            kwargs.get("cache", {}).get("no-cache", False) is not True
+            (
+                (kwargs.get("caching", None) is None and litellm.cache is not None)
+                or kwargs.get("caching", False) is True
+            )
+            and (kwargs.get("cache", {}).get("no-cache", False) is not True)
+            and not _uses_anthropic_native_sdk(kwargs)
         ):  # allow users to control returning cached responses from the completion function
             args = args or ()
             final_embedding_cached_response: EmbeddingResponse | None = None
@@ -378,7 +385,11 @@ class LLMCachingHandler:
         cached_result: Any | None = None
 
         # Check if caching should be performed BEFORE doing expensive kwargs copy
-        if litellm.cache is not None and self._is_call_type_supported_by_cache(original_function=original_function):
+        if (
+            litellm.cache is not None
+            and self._is_call_type_supported_by_cache(original_function=original_function)
+            and not _uses_anthropic_native_sdk(kwargs)
+        ):
             args = args or ()
             # Now that we confirmed caching will happen, prepare kwargs
             new_kwargs: Final = kwargs.copy()
@@ -1132,8 +1143,10 @@ class LLMCachingHandler:
         Returns:
             bool: True if the result should be stored in the cache, False otherwise.
         """
-        return self._is_call_type_supported_by_cache(original_function=original_function) and (
-            kwargs.get("cache", {}).get("no-store", False) is not True
+        return (
+            self._is_call_type_supported_by_cache(original_function=original_function)
+            and (kwargs.get("cache", {}).get("no-store", False) is not True)
+            and not _uses_anthropic_native_sdk(kwargs)
         )
 
     def wrap_streaming_result_for_cache(

@@ -22,6 +22,7 @@ from litellm.litellm_core_utils.get_llm_provider_logic import get_llm_provider
 from litellm.llms.anthropic import oauth_policy
 from litellm.llms.anthropic.common_utils import AnthropicError, is_anthropic_oauth_key
 from litellm.llms.anthropic.count_tokens.token_counter import anthropic_count_tokens_handler
+from litellm.llms.anthropic.native_transport import NATIVE_IDENTITY_FIELD, is_anthropic_native_sdk
 from litellm.llms.anthropic.pass_through.context_management import (
     AnthropicContextManagementError,
 )
@@ -47,6 +48,7 @@ from litellm.proxy.common_utils.openai_error_payload import (
     openai_error_type,
     with_litellm_call_id,
 )
+from litellm.proxy.litellm_pre_call_utils import native_sdk_identity_for_authenticated_key
 from litellm.types.utils import TokenCountResponse
 
 router: Final = APIRouter()
@@ -71,11 +73,13 @@ class _OAuthCountTokensParams(BaseModel):
     anthropic_auth_profile: str | None = None
     anthropic_token_dir: str | None = None
     anthropic_oauth_compatibility: str | None = None
+    anthropic_execution_mode: str | None = None
 
 
 class _OAuthCountTokensDeployment(BaseModel):
     model_config = ConfigDict(frozen=True, strict=True)
     litellm_params: _OAuthCountTokensParams
+    model_info: Mapping[str, JsonValue] | None = None
 
 
 class _OAuthCountTokensAliases(BaseModel):
@@ -148,6 +152,23 @@ async def _count_tokens_with_oauth(
 
     try:
         oauth_policy.validate_anthropic_oauth_request_overrides(data, oauth_params)
+        if is_anthropic_native_sdk(oauth_params):
+            if oauth_header is not None:
+                raise AnthropicError(400, "Client credentials cannot override the native SDK engine")
+            deployment_id: Final = (deployment.model_info or MappingProxyType({})).get("id")
+            if not isinstance(deployment_id, str):
+                raise AnthropicError(400, "The native SDK requires a selected deployment ID")
+            identity: Final = native_sdk_identity_for_authenticated_key(user_api_key_dict, deployment_id)
+            native_params: Final = MappingProxyType({**oauth_params, NATIVE_IDENTITY_FIELD: identity})
+            return await anthropic_count_tokens_handler.handle_count_tokens_request(
+                model=upstream_model,
+                messages=_NATIVE_COUNT_MESSAGES.validate_python(body.messages),
+                api_key="",
+                tools=_NATIVE_COUNT_MESSAGES.validate_python(body.tools) if body.tools is not None else None,
+                system=body.system,
+                optional_params=MappingProxyType(data),
+                native_params=native_params,
+            )
         oauth_headers: Final = MappingProxyType({"authorization": oauth_header}) if oauth_header else None
         managed_token: Final = oauth_policy.resolve_anthropic_oauth_access_token(
             oauth_params, api_base=params.api_base, headers=oauth_headers

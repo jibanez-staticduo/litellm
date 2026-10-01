@@ -4127,6 +4127,25 @@ class Router:
         if oauth_effective_params is not kwargs:
             kwargs.clear()
             kwargs.update(oauth_effective_params)
+        from litellm.llms.anthropic.common_utils import AnthropicError
+        from litellm.llms.anthropic.native_transport import (
+            NATIVE_IDENTITY_FIELD,
+            AnthropicNativeIdentity,
+            is_anthropic_native_sdk,
+        )
+
+        if is_anthropic_native_sdk(oauth_effective_params):
+            native_identity: Final = Router._ANTHROPIC_OAUTH_MAPPING_ADAPTER.validate_python(kwargs).get(
+                NATIVE_IDENTITY_FIELD
+            )
+            native_deployment: Final = Router._ANTHROPIC_OAUTH_MAPPING_ADAPTER.validate_python(model_info).get("id")
+            if not isinstance(native_identity, AnthropicNativeIdentity) or not isinstance(native_deployment, str):
+                raise AnthropicError(401, "The native SDK requires an authenticated server owner and deployment")
+            kwargs[NATIVE_IDENTITY_FIELD] = (
+                AnthropicNativeIdentity(  # rebind-ok: kwargs is the router request out-param
+                    native_identity.owner, native_deployment
+                )
+            )
         client_oauth_metadata: Final = (
             MappingProxyType({"used_client_oauth_token": False}) if anthropic_oauth_managed else MappingProxyType({})
         )
@@ -4148,7 +4167,13 @@ class Router:
             record_disable_fallbacks(kwargs, True)
 
     _ANTHROPIC_OAUTH_PARAMS: Final[frozenset[str]] = frozenset(
-        {"use_anthropic_oauth", "anthropic_auth_profile", "anthropic_token_dir", "anthropic_oauth_compatibility"}
+        {
+            "use_anthropic_oauth",
+            "anthropic_auth_profile",
+            "anthropic_token_dir",
+            "anthropic_oauth_compatibility",
+            "anthropic_execution_mode",
+        }
     )
     _ANTHROPIC_OAUTH_CREDENTIAL_PARAMS: Final[frozenset[str]] = frozenset(
         {
@@ -4171,14 +4196,24 @@ class Router:
     def _anthropic_oauth_request_params(
         deployment_params: Mapping[str, object], request_params: Mapping[str, object]
     ) -> Mapping[str, object]:
+        from litellm.llms.anthropic.native_transport import NATIVE_IDENTITY_FIELD, is_anthropic_native_sdk
+
         managed: Final = deployment_params.get("use_anthropic_oauth") is True
         validate_anthropic_oauth_request_overrides(request_params, deployment_params)
+        native: Final = is_anthropic_native_sdk(deployment_params)
+        native_cache_controls: Final[Mapping[str, object]] = (
+            MappingProxyType({"caching": False, "cache": MappingProxyType({"no-cache": True, "no-store": True})})
+            if native
+            else MappingProxyType({})
+        )
         controls: Final[Mapping[str, object]] = MappingProxyType(
             {
                 "use_anthropic_oauth": managed,
                 "anthropic_auth_profile": deployment_params.get("anthropic_auth_profile") or "default",
                 "anthropic_token_dir": deployment_params.get("anthropic_token_dir"),
                 "anthropic_oauth_compatibility": deployment_params.get("anthropic_oauth_compatibility"),
+                "anthropic_execution_mode": deployment_params.get("anthropic_execution_mode"),
+                **native_cache_controls,
             }
         )
         extra_body: Final = request_params.get("extra_body")
@@ -4189,12 +4224,14 @@ class Router:
         )
         carriers: Final = (request_params, parsed_extra_body)
         if not managed and not any(
-            carrier is not None and not Router._ANTHROPIC_OAUTH_PARAMS.isdisjoint(carrier) for carrier in carriers
+            carrier is not None
+            and (not Router._ANTHROPIC_OAUTH_PARAMS.isdisjoint(carrier) or NATIVE_IDENTITY_FIELD in carrier)
+            for carrier in carriers
         ):
             return request_params
         stripped: Final[frozenset[str]] = Router._ANTHROPIC_OAUTH_PARAMS | (
             Router._ANTHROPIC_OAUTH_CREDENTIAL_PARAMS if managed else frozenset[str]()
-        )
+        ) | (frozenset({"cache", "caching"}) if native else frozenset({NATIVE_IDENTITY_FIELD}))
         sanitized: Final = Router._anthropic_oauth_strip_carrier(request_params, stripped, managed)
         nested: Final[Mapping[str, object]] = (
             MappingProxyType(

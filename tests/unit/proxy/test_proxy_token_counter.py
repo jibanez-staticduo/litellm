@@ -36,6 +36,84 @@ verbose_proxy_logger.setLevel(level=logging.DEBUG)
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("call_endpoint", (False, True))
+@pytest.mark.parametrize("broker_status", (200, 501))
+async def test_native_sdk_counter_seals_owner_and_deployment_and_preserves_backend_failure(
+    call_endpoint: bool, broker_status: int
+) -> None:
+    from litellm.llms.anthropic.count_tokens.handler import AnthropicCountTokensHandler
+    from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        assert str(request.url) == "http://native-broker/v1/messages/count_tokens"
+        assert request.headers["authorization"] == "Bearer private-broker-key"
+        assert request.headers["x-litellm-native-owner"] == "a" * 64
+        assert request.headers["x-litellm-native-deployment"] == "server-deployment"
+        assert request.headers["x-litellm-native-profile"] == "fixed-profile"
+        assert "x-api-key" not in request.headers
+        assert json.loads(request.content)["system"] == "original system"
+        return httpx.Response(
+            broker_status,
+            json={"input_tokens": 27} if broker_status == 200 else {"error": {"message": "count unavailable"}},
+        )
+
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "native-alias",
+                "litellm_params": {
+                    "model": "anthropic/claude-test-model",
+                    "api_key": "unused-api-key",
+                    "use_anthropic_oauth": True,
+                    "anthropic_auth_profile": "fixed-profile",
+                    "anthropic_execution_mode": "native_sdk",
+                    "anthropic_oauth_compatibility": "claude_code",
+                    "anthropic_token_dir": "/never-read",
+                },
+                "model_info": {"id": "server-deployment"},
+            }
+        ],
+    )
+    caller: Final = UserAPIKeyAuth(api_key="a" * 64, models=["native-alias"]).model_copy(
+        update={"via_virtual_key": True}
+    )
+    client: Final = AsyncHTTPHandler(transport=httpx.MockTransport(upstream))
+    request: Final = TokenCountRequest(
+        model="native-alias",
+        messages=[{"role": "user", "content": "hi"}],
+        system="original system",
+    )
+    try:
+        with (
+            patch("litellm.proxy.proxy_server.llm_router", router),
+            patch(
+                "litellm.llms.anthropic.count_tokens.token_counter.anthropic_count_tokens_handler",
+                AnthropicCountTokensHandler(http_client=client),
+            ),
+            patch.dict(
+                "os.environ",
+                {
+                    "ANTHROPIC_NATIVE_SDK_BASE_URL": "http://native-broker",
+                    "ANTHROPIC_NATIVE_SDK_KEY": "private-broker-key",
+                    "ANTHROPIC_API_KEY": "global-api-key",
+                },
+            ),
+        ):
+            if broker_status != 200:
+                with pytest.raises(ProxyException, match="count unavailable") as raised:
+                    await token_counter(request=request, call_endpoint=call_endpoint, user_api_key_dict=caller)
+                assert raised.value.code == str(broker_status)
+            else:
+                result: Final = await token_counter(
+                    request=request, call_endpoint=call_endpoint, user_api_key_dict=caller
+                )
+                assert result.total_tokens == 27
+                assert result.original_response == {"input_tokens": 27}
+    finally:
+        await client.client.aclose()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("allowed", (True, False))
 async def test_managed_token_count_authorizes_virtual_key_alias_before_reading_profile(allowed: bool):
     from fastapi import Depends, FastAPI

@@ -21,6 +21,82 @@ from litellm.proxy.common_request_processing import ProxyBaseLLMRequestProcessin
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("broker_status", (200, 501))
+async def test_native_sdk_count_tokens_uses_authenticated_key_and_selected_deployment(broker_status: int) -> None:
+    import litellm.proxy.anthropic_endpoints.endpoints as ep
+    from litellm import Router
+    from litellm.llms.anthropic.count_tokens.handler import AnthropicCountTokensHandler
+    from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
+    from litellm.proxy._types import UserAPIKeyAuth
+
+    async def authenticated() -> UserAPIKeyAuth:
+        return UserAPIKeyAuth(api_key="b" * 64, models=["native-alias"]).model_copy(update={"via_virtual_key": True})
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        assert str(request.url) == "http://native-broker/v1/messages/count_tokens"
+        assert request.headers["authorization"] == "Bearer private-broker-key"
+        assert request.headers["x-litellm-native-owner"] == "b" * 64
+        assert request.headers["x-litellm-native-profile"] == "fixed-profile"
+        assert request.headers["x-litellm-native-deployment"] == "selected-deployment"
+        assert json.loads(request.content)["system"] == "original system"
+        return httpx.Response(
+            broker_status, json={"input_tokens": 31} if broker_status == 200 else {"error": {"message": "unavailable"}}
+        )
+
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "native-alias",
+                "litellm_params": {
+                    "model": "anthropic/claude-test-model",
+                    "use_anthropic_oauth": True,
+                    "anthropic_auth_profile": "fixed-profile",
+                    "anthropic_execution_mode": "native_sdk",
+                    "anthropic_oauth_compatibility": "claude_code",
+                    "anthropic_token_dir": "/never-read",
+                },
+                "model_info": {"id": "selected-deployment"},
+            }
+        ]
+    )
+    app: Final = FastAPI()
+    app.include_router(ep.router)
+    app.dependency_overrides[ep.user_api_key_auth] = authenticated
+    client: Final = AsyncHTTPHandler(transport=httpx.MockTransport(upstream))
+    try:
+        with (
+            patch("litellm.proxy.proxy_server.llm_router", router),
+            patch(
+                "litellm.proxy.anthropic_endpoints.endpoints.anthropic_count_tokens_handler",
+                AnthropicCountTokensHandler(http_client=client),
+            ),
+            patch.dict(
+                "os.environ",
+                {
+                    "ANTHROPIC_NATIVE_SDK_BASE_URL": "http://native-broker",
+                    "ANTHROPIC_NATIVE_SDK_KEY": "private-broker-key",
+                },
+            ),
+        ):
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="http://proxy.test"
+            ) as frontend:
+                response: Final = await frontend.post(
+                    "/v1/messages/count_tokens",
+                    json={
+                        "model": "native-alias",
+                        "messages": [{"role": "user", "content": "hi"}],
+                        "system": "original system",
+                        "metadata": {"user_api_key_hash": "spoofed-owner"},
+                    },
+                )
+    finally:
+        await client.client.aclose()
+    assert response.status_code == broker_status, response.text
+    assert response.json() == ({"input_tokens": 31} if broker_status == 200 else {"error": {"message": "unavailable"}})
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("upstream_status", (200, 401, 429))
 @pytest.mark.parametrize("profile", ("first-profile", "second-profile"))
 async def test_count_tokens_managed_profile_is_selected_before_server_api_credentials(

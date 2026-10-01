@@ -44,6 +44,7 @@ class AnthropicCountTokensHandler(AnthropicCountTokensConfig):
         system: JsonValue = None,
         optional_params: Mapping[str, JsonValue] | None = None,
         extra_headers: Mapping[str, str] | None = None,
+        native_params: Mapping[str, object] | None = None,
     ) -> dict[str, JsonValue]:
         """
         Handle a CountTokens request using httpx.
@@ -79,12 +80,21 @@ class AnthropicCountTokensHandler(AnthropicCountTokensConfig):
             verbose_logger.debug("Transformed request: %s", request_body)
 
             # Get endpoint URL
-            endpoint_url: Final = api_base or self.get_anthropic_count_tokens_endpoint()
+            from litellm.llms.anthropic.native_transport import native_sdk_connection
+
+            native_connection: Final = native_sdk_connection(native_params) if native_params is not None else None
+            endpoint_url: Final = (
+                native_connection.url("count_tokens")
+                if native_connection is not None
+                else api_base or self.get_anthropic_count_tokens_endpoint()
+            )
 
             verbose_logger.debug("Making request to: %s", endpoint_url)
 
             # Get required headers
-            required_headers: Final = self.get_required_headers(api_key)
+            required_headers: Final = (
+                native_connection.headers if native_connection is not None else self.get_required_headers(api_key)
+            )
             client_beta: Final = next(
                 (
                     value
@@ -95,12 +105,16 @@ class AnthropicCountTokensHandler(AnthropicCountTokensConfig):
             )
             headers: Final = _COUNT_HEADERS.validate_python(
                 MappingProxyType(
-                    {
-                        **required_headers,
-                        "anthropic-beta": f"{required_headers['anthropic-beta']},{client_beta}"
-                        if client_beta
-                        else required_headers["anthropic-beta"],
-                    }
+                    required_headers
+                    if native_connection is not None
+                    else MappingProxyType(
+                        {
+                            **required_headers,
+                            "anthropic-beta": f"{required_headers['anthropic-beta']},{client_beta}"
+                            if client_beta
+                            else required_headers["anthropic-beta"],
+                        }
+                    )
                 )
             )
 

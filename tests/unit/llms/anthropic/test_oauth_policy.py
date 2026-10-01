@@ -113,3 +113,47 @@ def test_compatibility_requires_an_explicit_managed_deployment_preset() -> None:
     ) == ("Caller instructions")
     with pytest.raises(AnthropicError, match="Unsupported"):
         apply_anthropic_oauth_system(None, MappingProxyType({**_MANAGED, "anthropic_oauth_compatibility": "unknown"}))
+
+
+def test_native_sdk_preserves_original_system_and_never_resolves_subscription_token() -> None:
+    params: Final = MappingProxyType({**_MANAGED, "anthropic_execution_mode": "native_sdk"})
+    original: Final = [{"type": "text", "text": "Original caller instructions"}]
+
+    def unreadable_credentials(config: AnthropicOAuthConfig) -> str:
+        pytest.fail("Native SDK transport must not read the subscription token")
+
+    assert apply_anthropic_oauth_system(original, params) == original
+    with pytest.raises(AnthropicError, match="native SDK"):
+        resolve_anthropic_oauth_access_token(params, token_provider=unreadable_credentials)
+
+
+@pytest.mark.parametrize(
+    "override",
+    (
+        {"anthropic_execution_mode": "direct_http"},
+        {"anthropic_auth_profile": "foreign"},
+        {"api_key": "caller-key"},
+        {"api_base": "http://foreign"},
+        {"client": object()},
+        {"_anthropic_native_identity": {"owner": "spoof", "deployment": "spoof"}},
+        {"extra_headers": {"x-litellm-native-owner": "spoof"}},
+        {"extra_headers": {"x-litellm-native-deployment": "spoof"}},
+        {"anthropic_native_sdk_key": "caller-service-key"},
+        {"settings": {"env": {"ANTHROPIC_API_KEY": "caller-key"}}},
+    ),
+)
+def test_native_sdk_request_overrides_cannot_select_credentials_or_session_identity(
+    override: Mapping[str, object],
+) -> None:
+    from litellm.llms.anthropic.oauth_policy import validate_anthropic_oauth_request_overrides
+
+    params: Final = MappingProxyType({**_MANAGED, "anthropic_execution_mode": "native_sdk"})
+    with pytest.raises(AnthropicError, match="cannot override"):
+        validate_anthropic_oauth_request_overrides(override, params)
+
+
+def test_request_cannot_enable_native_sdk_for_an_api_deployment() -> None:
+    from litellm.llms.anthropic.oauth_policy import validate_anthropic_oauth_request_overrides
+
+    with pytest.raises(AnthropicError, match="cannot enable"):
+        validate_anthropic_oauth_request_overrides({"anthropic_execution_mode": "native_sdk"}, {})

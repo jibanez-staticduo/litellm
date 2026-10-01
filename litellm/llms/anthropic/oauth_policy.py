@@ -23,6 +23,7 @@ _OAUTH_FIELDS: Final = (
     "anthropic_auth_profile",
     "anthropic_token_dir",
     "anthropic_oauth_compatibility",
+    "anthropic_execution_mode",
 )
 
 
@@ -68,11 +69,16 @@ def validate_anthropic_oauth_request_overrides(
         (request_params, _OVERRIDES.validate_python(nested)) if isinstance(nested, Mapping) else (request_params,)
     )
     managed: Final = is_anthropic_oauth_managed(deployment_params)
+    from .native_transport import is_anthropic_native_sdk
+
+    native: Final = is_anthropic_native_sdk(deployment_params)
     for carrier in carriers:
         for name in _OAUTH_FIELDS:
             _validate_oauth_setting(name, carrier, deployment_params, managed)
         if not managed:
             continue
+        if native:
+            _validate_native_overrides(carrier)
         if any(
             carrier.get(name) is not None for name in ("api_key", "auth_token", "litellm_credential_name", "client")
         ):
@@ -84,6 +90,19 @@ def validate_anthropic_oauth_request_overrides(
             raise AnthropicError(400, "Request cannot override the Anthropic OAuth provider")
         for name in ("headers", "extra_headers"):
             _validate_oauth_headers(carrier.get(name))
+
+
+def _validate_native_overrides(carrier: Mapping[str, object]) -> None:
+    from .native_transport import NATIVE_IDENTITY_FIELD, AnthropicNativeIdentity
+
+    identity: Final = carrier.get(NATIVE_IDENTITY_FIELD)
+    if identity is not None and not isinstance(identity, AnthropicNativeIdentity):
+        raise AnthropicError(400, "Request cannot override the native SDK server identity")
+    if any(
+        carrier.get(name) is not None
+        for name in ("anthropic_native_sdk_base_url", "anthropic_native_sdk_key", "settings", "setting_sources")
+    ):
+        raise AnthropicError(400, "Request cannot override the native SDK engine configuration")
 
 
 def _validate_oauth_setting(
@@ -105,7 +124,8 @@ def _validate_oauth_setting(
 
 def _validate_oauth_headers(headers: object) -> None:
     if isinstance(headers, Mapping) and any(
-        header.lower() in ("authorization", "x-api-key") for header in _OVERRIDES.validate_python(headers)
+        header.lower() in ("authorization", "x-api-key") or header.lower().startswith("x-litellm-native-")
+        for header in _OVERRIDES.validate_python(headers)
     ):
         raise AnthropicError(400, "Client credentials cannot override central Anthropic OAuth")
 
@@ -145,6 +165,10 @@ def resolve_anthropic_oauth_access_token(
     *,
     token_provider: Callable[[AnthropicOAuthConfig], str] | None = None,
 ) -> str | None:
+    from .native_transport import is_anthropic_native_sdk
+
+    if is_anthropic_native_sdk(params):
+        raise AnthropicError(400, "Subscription credentials belong to the native SDK engine")
     config: Final = anthropic_oauth_config(params)
     if config is None:
         return None
@@ -155,6 +179,10 @@ def resolve_anthropic_oauth_access_token(
 
 
 def apply_anthropic_oauth_system(system: object, params: Mapping[str, object]) -> JsonValue:
+    from .native_transport import is_anthropic_native_sdk
+
+    if is_anthropic_native_sdk(params):
+        return _SYSTEM.validate_python(system)
     config: Final = anthropic_oauth_config(params)
     original: Final = _SYSTEM.validate_python(system)
     if config is None or params.get("anthropic_oauth_compatibility") != "claude_code":

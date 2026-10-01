@@ -1015,10 +1015,14 @@ class AnthropicModelInfo(BaseLLMModelInfo):
         api_key: str | None = None,
         api_base: str | None = None,
     ) -> dict:
+        from litellm.llms.anthropic.native_transport import is_anthropic_native_sdk, native_sdk_connection
         from litellm.llms.anthropic.oauth_policy import (
             normalize_anthropic_oauth_headers,
             resolve_anthropic_oauth_access_token,
         )
+
+        if is_anthropic_native_sdk(litellm_params):
+            return native_sdk_connection(litellm_params).request_headers()
 
         if api_base is None and isinstance(litellm_params, dict):
             api_base = litellm_params.get("api_base")
