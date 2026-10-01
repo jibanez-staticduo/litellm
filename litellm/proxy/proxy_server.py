@@ -51,7 +51,7 @@ from typing import (
 import anyio
 import websockets
 import websockets.exceptions
-from pydantic import BaseModel, Json, JsonValue, TypeAdapter, ValidationError
+from pydantic import BaseModel, ConfigDict, Json, JsonValue, TypeAdapter, ValidationError
 from pydantic.fields import FieldInfo, PydanticUndefined
 from typing_extensions import NotRequired, ReadOnly, assert_never
 
@@ -13880,7 +13880,10 @@ async def run_thread(
 #     dependencies=[Depends(user_api_key_auth)],
 # )
 # async def get_available_routes(user_api_key_dict: UserAPIKeyAuth = Depends(user_api_key_auth)):
+from litellm.llms.anthropic import oauth_policy as anthropic_oauth_policy
+from litellm.llms.anthropic.common_utils import AnthropicError
 from litellm.llms.base_llm.base_utils import BaseTokenCounter
+from litellm.proxy.common_utils.openai_error_payload import error_status_code
 from litellm.proxy.db.routing_prisma_wrapper import WriterPinnedClient
 from litellm.repositories.config_repository import ConfigRepository
 from litellm.repositories.model_repository import ModelRepository
@@ -13893,6 +13896,72 @@ from litellm.repositories.table_repositories import (
 )
 from litellm.repositories.team_repository import TeamRepository
 from litellm.repositories.user_repository import UserRepository
+
+
+class _TokenCountOAuthDeployment(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    litellm_params: Mapping[str, object]
+
+
+class _TokenCountCallerAliases(BaseModel):
+    model_config = ConfigDict(frozen=True, strict=True, from_attributes=True)
+    aliases: Mapping[str, str] | None = None
+    team_model_aliases: Mapping[str, str] | None = None
+
+
+class _TokenCountRoutingMetadata(TypedDict):
+    user_api_key_team_id: ReadOnly[str | None]
+
+
+_TOKEN_COUNT_PARAMS: Final = TypeAdapter(Mapping[str, object])
+_TOKEN_COUNT_ROUTING_KWARGS: Final = TypeAdapter(dict[str, object])
+
+
+def _managed_anthropic_token_count_deployment(deployment: object) -> bool:
+    if deployment is None:
+        return False
+    parsed: Final = _TokenCountOAuthDeployment.model_validate(deployment)
+    return anthropic_oauth_policy.is_anthropic_oauth_managed(parsed.litellm_params)
+
+
+def _token_count_caller_model(model: str, caller: UserAPIKeyAuth | None) -> str:
+    if caller is None:
+        return model
+    aliases: Final = _TokenCountCallerAliases.model_validate(caller)
+    team_aliases: Final = aliases.team_model_aliases or MappingProxyType({})
+    key_aliases: Final = aliases.aliases or MappingProxyType({})
+    team_model: Final = team_aliases.get(model, model)
+    key_model: Final = key_aliases.get(team_model, team_model)
+    global_model: Final = litellm.model_alias_map.get(key_model, key_model)
+    return key_aliases.get(global_model, global_model)
+
+
+def _validate_managed_anthropic_token_count_request(
+    request: TokenCountRequest,
+    deployment: _TokenCountOAuthDeployment | None,
+    provider_counter: BaseTokenCounter | None,
+    provider: str | None,
+) -> None:
+    if deployment is None or not anthropic_oauth_policy.is_anthropic_oauth_managed(deployment.litellm_params):
+        return
+    if provider_counter is None or provider != "anthropic":
+        raise ProxyException(
+            message="Managed Anthropic token counting requires the native Anthropic provider",
+            type="token_counting_error",
+            param="model",
+            code=400,
+        )
+    try:
+        anthropic_oauth_policy.validate_anthropic_oauth_request_overrides(
+            _TOKEN_COUNT_PARAMS.validate_python(request.model_dump()), deployment.litellm_params
+        )
+    except AnthropicError as e:
+        raise ProxyException(
+            message=e.message,
+            type="token_counting_error",
+            param="model",
+            code=e.status_code,
+        ) from e
 
 
 def _get_provider_token_counter(
@@ -13984,7 +14053,7 @@ async def _try_provider_token_count(
             code=status_code,
         )
     if result is not None and result.error is True:
-        if litellm.disable_token_counter is True:
+        if litellm.disable_token_counter is True or _managed_anthropic_token_count_deployment(deployment):
             raise ProxyException(
                 message=result.error_message or "Token counting failed",
                 type="token_counting_error",
@@ -14013,7 +14082,11 @@ def _system_message(system: object) -> ChatCompletionSystemMessage | None:
     dependencies=[Depends(user_api_key_auth)],
     response_model=TokenCountResponse,
 )
-async def token_counter(request: TokenCountRequest, call_endpoint: bool = False):
+async def token_counter(
+    request: TokenCountRequest,
+    call_endpoint: bool = False,
+    user_api_key_dict: Annotated[UserAPIKeyAuth | None, Depends(user_api_key_auth)] = None,
+):
     """
     Args:
         request: TokenCountRequest
@@ -14039,21 +14112,48 @@ async def token_counter(request: TokenCountRequest, call_endpoint: bool = False)
     deployment: dict[str, Any] | None = None
     litellm_model_name = None
     model_info: ModelMapInfo | None = None
+    routed_model: Final = _token_count_caller_model(request.model, user_api_key_dict)
+    requested_managed: Final = llm_router is not None and llm_router.anthropic_oauth_model_group_is_managed(
+        routed_model
+    )
+    if requested_managed and user_api_key_dict is not None:
+        await can_key_call_resolved_model(
+            model=request.model,
+            llm_model_list=None,
+            valid_token=user_api_key_dict,
+            llm_router=llm_router,
+        )
+    routing_metadata: Final[_TokenCountRoutingMetadata] = {
+        "user_api_key_team_id": user_api_key_dict.team_id if user_api_key_dict is not None else None,
+    }
+    routing_kwargs: Final = _TOKEN_COUNT_ROUTING_KWARGS.validate_python(
+        MappingProxyType({"metadata": routing_metadata})
+    )
     if llm_router is not None:
         # get 1 deployment corresponding to the model
         try:
             deployment = await llm_router.async_get_available_deployment(
-                model=request.model,
-                request_kwargs={},
+                model=routed_model,
+                request_kwargs=routing_kwargs,
             )
-        except Exception:
+        except Exception as e:
+            if requested_managed:
+                raise ProxyException(
+                    message="Managed Anthropic token counting could not select a deployment",
+                    type="token_counting_error",
+                    param="model",
+                    code=error_status_code(e, 500),
+                ) from e
             verbose_proxy_logger.exception(
                 "litellm.proxy.proxy_server.token_counter(): Exception occured while getting deployment"
             )
+    parsed_deployment: Final = _TokenCountOAuthDeployment.model_validate(deployment) if deployment is not None else None
+    managed: Final = _managed_anthropic_token_count_deployment(parsed_deployment)
     if deployment is not None:
         litellm_model_name = deployment.get("litellm_params", {}).get("model")
         model_info = deployment.get("model_info", {})
-        load_credentials_from_list(deployment.get("litellm_params", {}))
+        if not managed:
+            load_credentials_from_list(deployment.get("litellm_params", {}))
         # remove the custom_llm_provider_prefix in the litellm_model_name
         if "/" in litellm_model_name:
             litellm_model_name = litellm_model_name.split("/", 1)[1]
@@ -14065,11 +14165,13 @@ async def token_counter(request: TokenCountRequest, call_endpoint: bool = False)
     # Try provider-specific token counting first - only for non-direct requests (from provider endpoints)
     provider_counter: BaseTokenCounter | None = None
     custom_llm_provider: str | None = None
-    if call_endpoint is True and deployment is not None:
+    if (call_endpoint is True or managed) and deployment is not None:
         # Auto-route to the correct provider based on model
         provider_counter, _model, custom_llm_provider = _get_provider_token_counter(deployment, model_to_use)
         if _model is not None:
             model_to_use = _model
+
+    _validate_managed_anthropic_token_count_request(request, parsed_deployment, provider_counter, custom_llm_provider)
 
     if provider_counter is not None:
         result: Final = await _try_provider_token_count(

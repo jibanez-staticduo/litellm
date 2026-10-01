@@ -5,6 +5,8 @@ Test for anthropic_endpoints/endpoints.py, focusing on handling dictionary objec
 import json
 import logging
 import unittest
+from collections.abc import Mapping
+from functools import partial
 from typing import Final
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -12,9 +14,158 @@ import httpx
 import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
+from pydantic import JsonValue
 
 from litellm._logging import verbose_proxy_logger
 from litellm.proxy.common_request_processing import ProxyBaseLLMRequestProcessing
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("upstream_status", (200, 401, 429))
+@pytest.mark.parametrize("profile", ("first-profile", "second-profile"))
+async def test_count_tokens_managed_profile_is_selected_before_server_api_credentials(
+    upstream_status: int, profile: str
+):
+    import litellm.proxy.anthropic_endpoints.endpoints as ep
+    from litellm import Router
+    from litellm.llms.anthropic.authenticator import AnthropicOAuthConfig
+    from litellm.llms.anthropic.count_tokens.handler import AnthropicCountTokensHandler
+    from litellm.llms.anthropic.oauth_policy import resolve_anthropic_oauth_access_token
+    from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
+    from litellm.proxy._types import UserAPIKeyAuth
+
+    def token_provider(config: AnthropicOAuthConfig) -> str:
+        assert config.anthropic_auth_profile == profile
+        return f"sk-ant-oat01-test-{profile}"
+
+    native_error: Final = {"type": "error", "error": {"type": "api_error", "message": "managed profile rejected"}}
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        assert str(request.url) == "https://api.anthropic.com/v1/messages/count_tokens"
+        assert request.headers["authorization"] == f"Bearer sk-ant-oat01-test-{profile}"
+        assert "x-api-key" not in request.headers
+        assert "x-litellm-api-key" not in request.headers
+        body: Final = json.loads(request.content)
+        assert body["model"] == "claude-test-model"
+        assert body["system"][0]["text"].startswith("x-anthropic-billing-header:")
+        assert body["system"][1:] == [{"type": "text", "text": "original instructions"}]
+        assert "anthropic_auth_profile" not in body
+        return httpx.Response(upstream_status, json={"input_tokens": 73} if upstream_status == 200 else native_error)
+
+    async def authenticated() -> UserAPIKeyAuth:
+        return UserAPIKeyAuth(models=["managed-alias"])
+
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "managed-alias",
+                "litellm_params": {
+                    "model": "anthropic/claude-test-model",
+                    "api_key": "server-api-key",
+                    "use_anthropic_oauth": True,
+                    "anthropic_auth_profile": profile,
+                    "anthropic_token_dir": "/not-read-by-injected-token-provider",
+                    "anthropic_oauth_compatibility": "claude_code",
+                },
+            }
+        ]
+    )
+    original_params: Final = dict(router.model_list[0]["litellm_params"])
+    app: Final = FastAPI()
+    app.include_router(ep.router)
+    app.dependency_overrides[ep.user_api_key_auth] = authenticated
+    upstream_client: Final = AsyncHTTPHandler(transport=httpx.MockTransport(upstream))
+    generic_counter: Final = AsyncMock(return_value={"total_tokens": 999})
+    with (
+        patch("litellm.proxy.proxy_server.llm_router", router),
+        patch("litellm.proxy.proxy_server.token_counter", generic_counter),
+        patch.dict("os.environ", {"ANTHROPIC_API_KEY": "environment-api-key"}),
+        patch(
+            "litellm.llms.anthropic.oauth_policy.resolve_anthropic_oauth_access_token",
+            partial(resolve_anthropic_oauth_access_token, token_provider=token_provider),
+        ),
+        patch(
+            "litellm.proxy.anthropic_endpoints.endpoints.anthropic_count_tokens_handler",
+            AnthropicCountTokensHandler(http_client=upstream_client),
+        ),
+    ):
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://proxy.test") as client:
+            response: Final = await client.post(
+                "/v1/messages/count_tokens",
+                json={
+                    "model": "managed-alias",
+                    "messages": [{"role": "user", "content": "hi"}],
+                    "system": "original instructions",
+                },
+                headers={"authorization": "Bearer proxy-test-key"},
+            )
+    await upstream_client.client.aclose()
+    assert response.status_code == upstream_status, response.text
+    assert response.json() == ({"input_tokens": 73} if upstream_status == 200 else native_error)
+    generic_counter.assert_not_awaited()
+    assert router.model_list[0]["litellm_params"] == original_params
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("request_overrides", "authorization"),
+    (
+        ({"anthropic_auth_profile": "caller-selected-profile"}, "Bearer proxy-test-key"),
+        ({"anthropic_token_dir": "/caller-selected-directory"}, "Bearer proxy-test-key"),
+        ({"use_anthropic_oauth": False}, "Bearer proxy-test-key"),
+        ({"api_key": "caller-selected-api-key"}, "Bearer proxy-test-key"),
+        ({"api_base": "https://external.test"}, "Bearer proxy-test-key"),
+        ({"extra_headers": {"authorization": "Bearer sk-ant-oat01-body-token"}}, "Bearer proxy-test-key"),
+        ({}, "Bearer sk-ant-oat01-caller-token"),
+    ),
+)
+async def test_count_tokens_managed_profile_rejects_caller_credentials_and_config_overrides(
+    request_overrides: Mapping[str, JsonValue], authorization: str
+):
+    import litellm.proxy.anthropic_endpoints.endpoints as ep
+    from litellm import Router
+    from litellm.llms.anthropic.authenticator import AnthropicOAuthConfig
+    from litellm.llms.anthropic.oauth_policy import resolve_anthropic_oauth_access_token
+    from litellm.proxy._types import UserAPIKeyAuth
+
+    def token_provider(config: AnthropicOAuthConfig) -> str:
+        pytest.fail("Caller override reached credential storage")
+
+    async def authenticated() -> UserAPIKeyAuth:
+        return UserAPIKeyAuth(models=["managed-alias"])
+
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "managed-alias",
+                "litellm_params": {
+                    "model": "anthropic/claude-test-model",
+                    "use_anthropic_oauth": True,
+                    "anthropic_auth_profile": "server-selected-profile",
+                },
+            }
+        ]
+    )
+    app: Final = FastAPI()
+    app.include_router(ep.router)
+    app.dependency_overrides[ep.user_api_key_auth] = authenticated
+    generic_counter: Final = AsyncMock(return_value={"total_tokens": 999})
+    with (
+        patch("litellm.proxy.proxy_server.llm_router", router),
+        patch("litellm.proxy.proxy_server.token_counter", generic_counter),
+        patch(
+            "litellm.llms.anthropic.oauth_policy.resolve_anthropic_oauth_access_token",
+            partial(resolve_anthropic_oauth_access_token, token_provider=token_provider),
+        ),
+    ):
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://proxy.test") as client:
+            response: Final = await client.post(
+                "/v1/messages/count_tokens",
+                json={"model": "managed-alias", "messages": [{"role": "user", "content": "hi"}], **request_overrides},
+                headers={"authorization": authorization},
+            )
+    assert response.status_code == 400, response.text
+    generic_counter.assert_not_awaited()
 
 
 @pytest.mark.asyncio

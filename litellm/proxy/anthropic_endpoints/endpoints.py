@@ -19,6 +19,7 @@ from litellm.anthropic_interface.exceptions import (
 )
 from litellm.integrations.custom_guardrail import ModifyResponseException
 from litellm.litellm_core_utils.get_llm_provider_logic import get_llm_provider
+from litellm.llms.anthropic import oauth_policy
 from litellm.llms.anthropic.common_utils import AnthropicError, is_anthropic_oauth_key
 from litellm.llms.anthropic.count_tokens.token_counter import anthropic_count_tokens_handler
 from litellm.llms.anthropic.pass_through.context_management import (
@@ -66,6 +67,10 @@ class _OAuthCountTokensParams(BaseModel):
     model: str
     custom_llm_provider: str | None = None
     api_base: str | None = None
+    use_anthropic_oauth: bool = False
+    anthropic_auth_profile: str | None = None
+    anthropic_token_dir: str | None = None
+    anthropic_oauth_compatibility: str | None = None
 
 
 class _OAuthCountTokensDeployment(BaseModel):
@@ -83,23 +88,19 @@ class _OAuthCountTokensRoutingMetadata(TypedDict):
     user_api_key_team_id: ReadOnly[str | None]
 
 
-async def _count_tokens_with_client_oauth(
+async def _count_tokens_with_oauth(
     request: Request,
     request_data: Mapping[str, JsonValue],
     user_api_key_dict: UserAPIKeyAuth,
-    oauth_header: str,
-) -> Mapping[str, JsonValue] | JSONResponse:
+    oauth_header: str | None,
+) -> Mapping[str, JsonValue] | JSONResponse | None:
     from litellm.proxy.proxy_server import llm_router
 
     data: Final = request_data
     body: Final = _OAuthCountTokensBody.model_validate(data)
-    await can_key_call_resolved_model(
-        model=body.model,
-        llm_model_list=None,
-        valid_token=user_api_key_dict,
-        llm_router=llm_router,
-    )
     if llm_router is None:
+        if oauth_header is None:
+            return None
         raise HTTPException(status_code=400, detail="OAuth token counting requires a configured Anthropic deployment")
 
     aliases: Final = _OAuthCountTokensAliases.model_validate(user_api_key_dict)
@@ -109,6 +110,14 @@ async def _count_tokens_with_client_oauth(
     key_model: Final = key_aliases.get(team_model, team_model)
     global_model: Final = litellm.model_alias_map.get(key_model, key_model)
     routed_model: Final = key_aliases.get(global_model, global_model)
+    if oauth_header is None and not llm_router.anthropic_oauth_model_group_is_managed(routed_model):
+        return None
+    await can_key_call_resolved_model(
+        model=body.model,
+        llm_model_list=None,
+        valid_token=user_api_key_dict,
+        llm_router=llm_router,
+    )
     metadata: Final[_OAuthCountTokensRoutingMetadata] = {"user_api_key_team_id": user_api_key_dict.team_id}
     routing_kwargs: Final = _NATIVE_COUNT_BODY.validate_python(MappingProxyType({"metadata": metadata}))
     deployment: Final = _OAuthCountTokensDeployment.model_validate(
@@ -118,11 +127,17 @@ async def _count_tokens_with_client_oauth(
         )
     )
     params: Final = deployment.litellm_params
+    oauth_params: Final = _NATIVE_COUNT_BODY.validate_python(params.model_dump())
+    managed: Final = oauth_policy.is_anthropic_oauth_managed(oauth_params)
+    if not managed and oauth_header is None:
+        return None
     upstream_model, provider, _, _ = get_llm_provider(
         model=params.model,
         custom_llm_provider=params.custom_llm_provider,
     )
-    if provider != "anthropic" or params.api_base not in (
+    if provider != "anthropic":
+        raise HTTPException(status_code=400, detail="OAuth token counting requires the native Anthropic provider")
+    if not managed and params.api_base not in (
         None,
         "https://api.anthropic.com",
         "https://api.anthropic.com/",
@@ -131,14 +146,23 @@ async def _count_tokens_with_client_oauth(
     ):
         raise HTTPException(status_code=400, detail="Client OAuth token counting requires the native Anthropic API")
 
-    oauth_token: Final = oauth_header.removeprefix("Bearer ").strip()
     try:
+        oauth_policy.validate_anthropic_oauth_request_overrides(data, oauth_params)
+        oauth_headers: Final = MappingProxyType({"authorization": oauth_header}) if oauth_header else None
+        managed_token: Final = oauth_policy.resolve_anthropic_oauth_access_token(
+            oauth_params, api_base=params.api_base, headers=oauth_headers
+        )
+        oauth_token: Final = (
+            managed_token if managed else oauth_header.removeprefix("Bearer ").strip() if oauth_header else None
+        )
+        if oauth_token is None:
+            raise AnthropicError(401, "No Anthropic OAuth credential available for token counting")
         return await anthropic_count_tokens_handler.handle_count_tokens_request(
             model=upstream_model,
             messages=_NATIVE_COUNT_MESSAGES.validate_python(body.messages),
             api_key=oauth_token,
             tools=_NATIVE_COUNT_MESSAGES.validate_python(body.tools) if body.tools is not None else None,
-            system=body.system,
+            system=oauth_policy.apply_anthropic_oauth_system(body.system, oauth_params),
             optional_params=MappingProxyType(data),
             extra_headers=request.headers,
         )
@@ -432,19 +456,23 @@ async def count_tokens(
     litellm_call_id: Final = resolve_litellm_call_id(request.headers.get("x-litellm-call-id"))
     try:
         request_data: Final = await _read_request_body(request=request)
+        native_data: Final = _NATIVE_COUNT_BODY.validate_python(request_data)
+        if not native_data.get("model"):
+            raise HTTPException(status_code=400, detail={"error": "model parameter is required"})
         oauth_header: Final = request.headers.get("authorization")
-        if is_anthropic_oauth_key(oauth_header) and oauth_header is not None:
-            return await _count_tokens_with_client_oauth(
-                request, _NATIVE_COUNT_BODY.validate_python(request_data), user_api_key_dict, oauth_header
-            )
+        oauth_response: Final = await _count_tokens_with_oauth(
+            request,
+            native_data,
+            user_api_key_dict,
+            oauth_header if is_anthropic_oauth_key(oauth_header) else None,
+        )
+        if oauth_response is not None:
+            return oauth_response
         data: Final[dict] = {**request_data}
 
         # Extract required fields
         model_name: Final = data.get("model")
         messages: Final = data.get("messages", [])
-
-        if not model_name:
-            raise HTTPException(status_code=400, detail={"error": "model parameter is required"})
 
         if not messages:
             raise HTTPException(status_code=400, detail={"error": "messages parameter is required"})
