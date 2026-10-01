@@ -9,10 +9,12 @@ Regression test for https://github.com/BerriAI/litellm/issues/22040
 
 import os
 import sys
+from typing import Final
 
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../.."))
-)
+import httpx
+import pytest
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../..")))
 
 from litellm.llms.anthropic.count_tokens.transformation import (
     AnthropicCountTokensConfig,
@@ -21,6 +23,39 @@ from litellm.llms.anthropic.count_tokens.transformation import (
 # Fake tokens for testing (not real secrets)
 FAKE_OAUTH_TOKEN = "sk-ant-oat01-fake-token-for-testing-123456789abcdef"
 FAKE_REGULAR_KEY = "sk-ant-api03-regular-key-for-testing-123456789"
+
+
+@pytest.mark.asyncio
+async def test_count_tokens_native_beta_cannot_override_selected_oauth_credential():
+    from litellm.llms.anthropic.count_tokens.handler import AnthropicCountTokensHandler
+    from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        assert request.headers["authorization"] == f"Bearer {FAKE_OAUTH_TOKEN}"
+        assert "x-api-key" not in request.headers
+        assert "x-litellm-api-key" not in request.headers
+        assert "native-beta" in request.headers["anthropic-beta"].split(",")
+        assert "oauth" in request.headers["anthropic-beta"]
+        assert "token-counting" in request.headers["anthropic-beta"]
+        return httpx.Response(200, json={"input_tokens": 27})
+
+    client: Final = AsyncHTTPHandler(transport=httpx.MockTransport(upstream))
+    handler: Final = AnthropicCountTokensHandler(http_client=client)
+    try:
+        result: Final = await handler.handle_count_tokens_request(
+            model="claude-test-model",
+            messages=[{"role": "user", "content": "hi"}],
+            api_key=FAKE_OAUTH_TOKEN,
+            extra_headers={
+                "Anthropic-Beta": "native-beta",
+                "authorization": "Bearer override-must-not-be-used",
+                "x-api-key": FAKE_REGULAR_KEY,
+                "x-litellm-api-key": "proxy-key-must-not-be-forwarded",
+            },
+        )
+        assert result == {"input_tokens": 27}
+    finally:
+        await client.client.aclose()
 
 
 class TestCountTokensOAuthHeaders:
@@ -78,9 +113,5 @@ class TestCountTokensOAuthHeaders:
         headers = config.get_required_headers(FAKE_OAUTH_TOKEN)
 
         beta_value = headers.get("anthropic-beta", "")
-        assert (
-            "token-counting" in beta_value
-        ), f"token-counting beta missing from OAuth headers: {beta_value}"
-        assert (
-            "oauth-2025-04-20" in beta_value
-        ), f"oauth beta missing from OAuth headers: {beta_value}"
+        assert "token-counting" in beta_value, f"token-counting beta missing from OAuth headers: {beta_value}"
+        assert "oauth-2025-04-20" in beta_value, f"oauth beta missing from OAuth headers: {beta_value}"

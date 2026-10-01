@@ -5,13 +5,231 @@ Test for anthropic_endpoints/endpoints.py, focusing on handling dictionary objec
 import json
 import logging
 import unittest
+from typing import Final
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
+from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
 from litellm._logging import verbose_proxy_logger
 from litellm.proxy.common_request_processing import ProxyBaseLLMRequestProcessing
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("upstream_status", (200, 401, 429))
+@pytest.mark.parametrize("use_key_alias", (False, True))
+async def test_count_tokens_client_oauth_uses_native_transport_without_api_fallback(
+    upstream_status: int, use_key_alias: bool
+):
+    import litellm.proxy.anthropic_endpoints.endpoints as ep
+    from litellm import Router
+    from litellm.llms.anthropic.count_tokens.handler import AnthropicCountTokensHandler
+    from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
+    from litellm.proxy._types import UserAPIKeyAuth
+    from litellm.types.utils import TokenCountResponse
+
+    oauth: Final = "sk-ant-oat01-endpoint-test"
+    payload: Final = {
+        "model": "subscription-alias",
+        "messages": [
+            {"role": "user", "content": [{"type": "text", "text": "hi", "cache_control": {"type": "ephemeral"}}]}
+        ],
+        "system": [{"type": "text", "text": "instructions"}],
+        "tools": [{"name": "lookup", "input_schema": {"type": "object"}}],
+        "thinking": {"type": "enabled", "budget_tokens": 1024},
+        "tool_choice": {"type": "auto"},
+        "output_config": {"effort": "high"},
+        "api_key": "body-credential-must-not-be-used",
+    }
+    native_error: Final = {"type": "error", "error": {"type": "authentication_error", "message": "OAuth rejected"}}
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        assert str(request.url) == "https://api.anthropic.com/v1/messages/count_tokens"
+        assert request.headers["authorization"] == f"Bearer {oauth}"
+        assert "x-api-key" not in request.headers
+        assert "x-litellm-api-key" not in request.headers
+        assert "client-native-beta" in request.headers["anthropic-beta"].split(",")
+        assert "oauth" in request.headers["anthropic-beta"]
+        assert "token-counting" in request.headers["anthropic-beta"]
+        assert json.loads(request.content) == {
+            "model": "claude-test-model",
+            "messages": payload["messages"],
+            "system": payload["system"],
+            "tools": payload["tools"],
+            "thinking": payload["thinking"],
+            "tool_choice": payload["tool_choice"],
+            "output_config": payload["output_config"],
+        }
+        return httpx.Response(upstream_status, json={"input_tokens": 73} if upstream_status == 200 else native_error)
+
+    async def authenticated(request: Request) -> UserAPIKeyAuth:
+        assert request.headers["x-litellm-api-key"] == "Bearer proxy-test-key"
+        return UserAPIKeyAuth(
+            models=["configured-group" if use_key_alias else "subscription-alias"],
+            aliases={"subscription-alias": "configured-group"} if use_key_alias else {},
+        )
+
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "configured-group" if use_key_alias else "subscription-alias",
+                "litellm_params": {"model": "anthropic/claude-test-model", "api_key": "server-api-key"},
+            }
+        ]
+    )
+    app: Final = FastAPI()
+    app.include_router(ep.router)
+    app.dependency_overrides[ep.user_api_key_auth] = authenticated
+    generic_counter: Final = AsyncMock(
+        return_value=TokenCountResponse(
+            total_tokens=999, request_model="subscription-alias", model_used="claude-test-model", tokenizer_type="local"
+        )
+    )
+    upstream_client: Final = AsyncHTTPHandler(transport=httpx.MockTransport(upstream))
+    with (
+        patch("litellm.proxy.proxy_server.llm_router", router),
+        patch("litellm.proxy.proxy_server.token_counter", generic_counter),
+        patch.dict("os.environ", {"ANTHROPIC_API_KEY": "environment-api-key-must-not-be-used"}),
+        patch(
+            "litellm.proxy.anthropic_endpoints.endpoints.anthropic_count_tokens_handler",
+            AnthropicCountTokensHandler(http_client=upstream_client),
+        ),
+    ):
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://proxy.test") as client:
+            response: Final = await client.post(
+                "/v1/messages/count_tokens",
+                json=payload,
+                headers={
+                    "authorization": f"Bearer {oauth}",
+                    "x-litellm-api-key": "Bearer proxy-test-key",
+                    "anthropic-beta": "client-native-beta",
+                },
+            )
+    await upstream_client.client.aclose()
+    assert response.status_code == upstream_status, response.text
+    assert response.json() == ({"input_tokens": 73} if upstream_status == 200 else native_error)
+    generic_counter.assert_not_awaited()
+    assert router.model_list[0]["litellm_params"]["api_key"] == "server-api-key"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("deployment_model", "api_base", "allowed_model", "expected_status"),
+    (
+        ("anthropic/claude-test-model", None, "other-alias", 403),
+        ("openai/test-model", None, "subscription-alias", 400),
+        ("bedrock/anthropic.test-model", None, "subscription-alias", 400),
+        ("vertex_ai/claude-test-model", None, "subscription-alias", 400),
+        ("anthropic/claude-test-model", "https://external.test", "subscription-alias", 400),
+    ),
+)
+async def test_count_tokens_oauth_rejects_unauthorized_or_non_native_destination(
+    deployment_model: str, api_base: str | None, allowed_model: str, expected_status: int
+):
+    import litellm.proxy.anthropic_endpoints.endpoints as ep
+    from litellm import Router
+    from litellm.llms.anthropic.count_tokens.handler import AnthropicCountTokensHandler
+    from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
+    from litellm.proxy._types import UserAPIKeyAuth
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        pytest.fail(f"Unauthorized OAuth request reached {request.url.host}")
+
+    async def authenticated() -> UserAPIKeyAuth:
+        return UserAPIKeyAuth(models=[allowed_model])
+
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "subscription-alias",
+                "litellm_params": {"model": deployment_model, "api_base": api_base, "api_key": "server-key"},
+            }
+        ]
+    )
+    app: Final = FastAPI()
+    app.include_router(ep.router)
+    app.dependency_overrides[ep.user_api_key_auth] = authenticated
+    upstream_client: Final = AsyncHTTPHandler(transport=httpx.MockTransport(upstream))
+    generic_counter: Final = AsyncMock(return_value={"total_tokens": 999})
+    with (
+        patch("litellm.proxy.proxy_server.llm_router", router),
+        patch("litellm.proxy.proxy_server.token_counter", generic_counter),
+        patch(
+            "litellm.proxy.anthropic_endpoints.endpoints.anthropic_count_tokens_handler",
+            AnthropicCountTokensHandler(http_client=upstream_client),
+        ),
+    ):
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://proxy.test") as client:
+            response: Final = await client.post(
+                "/v1/messages/count_tokens",
+                json={"model": "subscription-alias", "messages": [{"role": "user", "content": "hi"}]},
+                headers={"authorization": "Bearer sk-ant-oat01-endpoint-test"},
+            )
+    await upstream_client.client.aclose()
+    assert response.status_code == expected_status, response.text
+    generic_counter.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("invalid_messages", ("not-an-array", ["not-an-object"]))
+async def test_count_tokens_oauth_rejects_invalid_native_body_before_counting(invalid_messages: object):
+    import litellm.proxy.anthropic_endpoints.endpoints as ep
+    from litellm.proxy._types import UserAPIKeyAuth
+
+    async def authenticated() -> UserAPIKeyAuth:
+        return UserAPIKeyAuth()
+
+    app: Final = FastAPI()
+    app.include_router(ep.router)
+    app.dependency_overrides[ep.user_api_key_auth] = authenticated
+    generic_counter: Final = AsyncMock(return_value={"total_tokens": 999})
+    with patch("litellm.proxy.proxy_server.token_counter", generic_counter):
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://proxy.test") as client:
+            response: Final = await client.post(
+                "/v1/messages/count_tokens",
+                json={"model": "subscription-alias", "messages": invalid_messages},
+                headers={"authorization": "Bearer sk-ant-oat01-endpoint-test"},
+            )
+    assert response.status_code == 400, response.text
+    generic_counter.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_count_tokens_without_oauth_preserves_generic_counter():
+    import litellm.proxy.anthropic_endpoints.endpoints as ep
+    from litellm.proxy._types import UserAPIKeyAuth
+
+    async def authenticated() -> UserAPIKeyAuth:
+        return UserAPIKeyAuth()
+
+    app: Final = FastAPI()
+    app.include_router(ep.router)
+    app.dependency_overrides[ep.user_api_key_auth] = authenticated
+    generic_counter: Final = AsyncMock(return_value={"total_tokens": 999})
+    with patch("litellm.proxy.proxy_server.token_counter", generic_counter):
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://proxy.test") as client:
+            response: Final = await client.post(
+                "/v1/messages/count_tokens",
+                json={
+                    "model": "subscription-alias",
+                    "messages": [{"role": "user", "content": "hi"}],
+                    "api_key": "body-credential",
+                },
+                headers={"authorization": "Bearer proxy-test-key"},
+            )
+    assert response.status_code == 200, response.text
+    assert response.json() == {"input_tokens": 999}
+    assert generic_counter.await_args.kwargs["call_endpoint"] is True
+    assert generic_counter.await_args.kwargs["request"].model_dump() == {
+        "model": "subscription-alias",
+        "prompt": None,
+        "messages": [{"role": "user", "content": "hi"}],
+        "contents": None,
+        "tools": None,
+        "system": None,
+    }
 
 
 class TestAnthropicEndpoints(unittest.TestCase):
@@ -278,13 +496,17 @@ class TestHttpExceptionDictDetail:
         request.headers = {}
 
         with (
-            patch.object(ep, "_read_request_body", new=AsyncMock(return_value={})),  # test-quality-ok: endpoint reads the body via a module function; no injection seam
+            patch.object(
+                ep, "_read_request_body", new=AsyncMock(return_value={})
+            ),  # test-quality-ok: endpoint reads the body via a module function; no injection seam
             patch.object(  # test-quality-ok: the guardrail raise happens deep inside this call; the test targets the endpoint's except block
                 ep.ProxyBaseLLMRequestProcessing,
                 "base_process_llm_request",
                 new=AsyncMock(side_effect=exc),
             ),
-            patch.object(proxy_server, "proxy_logging_obj") as mock_logging,  # test-quality-ok: module global imported at call time; no injection seam
+            patch.object(
+                proxy_server, "proxy_logging_obj"
+            ) as mock_logging,  # test-quality-ok: module global imported at call time; no injection seam
         ):
             mock_logging.post_call_failure_hook = AsyncMock()
             response = await ep.anthropic_response(
@@ -375,9 +597,15 @@ class TestErrorLogCarriesCallId:
         request.headers = {}
 
         with (
-            patch.object(ep, "_read_request_body", new=AsyncMock(return_value={"model": "claude-sonnet"})),  # test-quality-ok: endpoint reads the body via a module function; no injection seam
-            patch.object(ep.ProxyBaseLLMRequestProcessing, "base_process_llm_request", new=fake_process),  # test-quality-ok: the provider failure happens inside this call; the test targets the endpoint's except block
-            patch.object(proxy_server, "proxy_logging_obj") as mock_logging,  # test-quality-ok: module global imported at call time; no injection seam
+            patch.object(
+                ep, "_read_request_body", new=AsyncMock(return_value={"model": "claude-sonnet"})
+            ),  # test-quality-ok: endpoint reads the body via a module function; no injection seam
+            patch.object(
+                ep.ProxyBaseLLMRequestProcessing, "base_process_llm_request", new=fake_process
+            ),  # test-quality-ok: the provider failure happens inside this call; the test targets the endpoint's except block
+            patch.object(
+                proxy_server, "proxy_logging_obj"
+            ) as mock_logging,  # test-quality-ok: module global imported at call time; no injection seam
             caplog.at_level(logging.ERROR, logger="LiteLLM Proxy"),
         ):
             mock_logging.post_call_failure_hook = AsyncMock()
@@ -408,9 +636,15 @@ class TestErrorLogCarriesCallId:
         request.headers = {}
 
         with (
-            patch.object(ep, "_read_request_body", new=AsyncMock(return_value={"model": "claude-sonnet"})),  # test-quality-ok: endpoint reads the body via a module function; no injection seam
-            patch.object(ep.ProxyBaseLLMRequestProcessing, "base_process_llm_request", new=fake_process),  # test-quality-ok: the proxy shaped failure happens inside this call; the test targets the endpoint's except block
-            patch.object(proxy_server, "proxy_logging_obj") as mock_logging,  # test-quality-ok: module global imported at call time; no injection seam
+            patch.object(
+                ep, "_read_request_body", new=AsyncMock(return_value={"model": "claude-sonnet"})
+            ),  # test-quality-ok: endpoint reads the body via a module function; no injection seam
+            patch.object(
+                ep.ProxyBaseLLMRequestProcessing, "base_process_llm_request", new=fake_process
+            ),  # test-quality-ok: the proxy shaped failure happens inside this call; the test targets the endpoint's except block
+            patch.object(
+                proxy_server, "proxy_logging_obj"
+            ) as mock_logging,  # test-quality-ok: module global imported at call time; no injection seam
         ):
             mock_logging.post_call_failure_hook = AsyncMock()
             response = await ep.anthropic_response(
@@ -440,7 +674,9 @@ class TestErrorLogCarriesCallId:
                 "_read_request_body",
                 new=AsyncMock(return_value={"model": "claude-sonnet", "messages": [{"role": "user", "content": "hi"}]}),
             ),
-            patch.object(proxy_server, "token_counter", new=AsyncMock(side_effect=RuntimeError("tokenizer down"))),  # test-quality-ok: module global imported at call time; the test targets the endpoint's except block
+            patch.object(
+                proxy_server, "token_counter", new=AsyncMock(side_effect=RuntimeError("tokenizer down"))
+            ),  # test-quality-ok: module global imported at call time; the test targets the endpoint's except block
             caplog.at_level(logging.ERROR, logger="LiteLLM Proxy"),
             pytest.raises(HTTPException) as raised,
         ):

@@ -2,10 +2,14 @@
 Unified /v1/messages endpoint - (Anthropic Spec)
 """
 
+from collections.abc import Mapping, Sequence
+from types import MappingProxyType
 from typing import Final
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict, JsonValue, TypeAdapter, ValidationError
+from typing_extensions import ReadOnly, TypedDict
 
 import litellm
 from litellm.anthropic_interface.exceptions import (
@@ -14,6 +18,9 @@ from litellm.anthropic_interface.exceptions import (
     AnthropicExceptionMapping,
 )
 from litellm.integrations.custom_guardrail import ModifyResponseException
+from litellm.litellm_core_utils.get_llm_provider_logic import get_llm_provider
+from litellm.llms.anthropic.common_utils import AnthropicError, is_anthropic_oauth_key
+from litellm.llms.anthropic.count_tokens.token_counter import anthropic_count_tokens_handler
 from litellm.llms.anthropic.pass_through.context_management import (
     AnthropicContextManagementError,
 )
@@ -21,6 +28,7 @@ from litellm.llms.base_llm.guardrail_translation.utils import (
     blocked_response_usage as _blocked_response_usage,
 )
 from litellm.proxy._types import *
+from litellm.proxy.auth.auth_checks import can_key_call_resolved_model
 from litellm.proxy.auth.user_api_key_auth import user_api_key_auth
 from litellm.proxy.common_request_processing import (
     ProxyBaseLLMRequestProcessing,
@@ -41,6 +49,110 @@ from litellm.proxy.common_utils.openai_error_payload import (
 from litellm.types.utils import TokenCountResponse
 
 router: Final = APIRouter()
+_NATIVE_COUNT_BODY: Final = TypeAdapter(dict[str, JsonValue])
+_NATIVE_COUNT_MESSAGES: Final = TypeAdapter(list[dict[str, JsonValue]])
+
+
+class _OAuthCountTokensBody(BaseModel):
+    model_config = ConfigDict(frozen=True, strict=True)
+    model: str
+    messages: Sequence[Mapping[str, JsonValue]]
+    tools: Sequence[Mapping[str, JsonValue]] | None = None
+    system: JsonValue = None
+
+
+class _OAuthCountTokensParams(BaseModel):
+    model_config = ConfigDict(frozen=True, strict=True)
+    model: str
+    custom_llm_provider: str | None = None
+    api_base: str | None = None
+
+
+class _OAuthCountTokensDeployment(BaseModel):
+    model_config = ConfigDict(frozen=True, strict=True)
+    litellm_params: _OAuthCountTokensParams
+
+
+class _OAuthCountTokensAliases(BaseModel):
+    model_config = ConfigDict(frozen=True, strict=True, from_attributes=True)
+    aliases: Mapping[str, str] | None = None
+    team_model_aliases: Mapping[str, str] | None = None
+
+
+class _OAuthCountTokensRoutingMetadata(TypedDict):
+    user_api_key_team_id: ReadOnly[str | None]
+
+
+async def _count_tokens_with_client_oauth(
+    request: Request,
+    request_data: Mapping[str, JsonValue],
+    user_api_key_dict: UserAPIKeyAuth,
+    oauth_header: str,
+) -> Mapping[str, JsonValue] | JSONResponse:
+    from litellm.proxy.proxy_server import llm_router
+
+    data: Final = request_data
+    body: Final = _OAuthCountTokensBody.model_validate(data)
+    await can_key_call_resolved_model(
+        model=body.model,
+        llm_model_list=None,
+        valid_token=user_api_key_dict,
+        llm_router=llm_router,
+    )
+    if llm_router is None:
+        raise HTTPException(status_code=400, detail="OAuth token counting requires a configured Anthropic deployment")
+
+    aliases: Final = _OAuthCountTokensAliases.model_validate(user_api_key_dict)
+    team_aliases: Final = aliases.team_model_aliases or MappingProxyType({})
+    key_aliases: Final = aliases.aliases or MappingProxyType({})
+    team_model: Final = team_aliases.get(body.model, body.model)
+    key_model: Final = key_aliases.get(team_model, team_model)
+    global_model: Final = litellm.model_alias_map.get(key_model, key_model)
+    routed_model: Final = key_aliases.get(global_model, global_model)
+    metadata: Final[_OAuthCountTokensRoutingMetadata] = {"user_api_key_team_id": user_api_key_dict.team_id}
+    routing_kwargs: Final = _NATIVE_COUNT_BODY.validate_python(MappingProxyType({"metadata": metadata}))
+    deployment: Final = _OAuthCountTokensDeployment.model_validate(
+        await llm_router.async_get_available_deployment(  # pyright: ignore[reportUnknownMemberType]  # validate the legacy router result at this boundary
+            model=routed_model,
+            request_kwargs=routing_kwargs,
+        )
+    )
+    params: Final = deployment.litellm_params
+    upstream_model, provider, _, _ = get_llm_provider(
+        model=params.model,
+        custom_llm_provider=params.custom_llm_provider,
+    )
+    if provider != "anthropic" or params.api_base not in (
+        None,
+        "https://api.anthropic.com",
+        "https://api.anthropic.com/",
+        "https://api.anthropic.com/v1",
+        "https://api.anthropic.com/v1/",
+    ):
+        raise HTTPException(status_code=400, detail="Client OAuth token counting requires the native Anthropic API")
+
+    oauth_token: Final = oauth_header.removeprefix("Bearer ").strip()
+    try:
+        return await anthropic_count_tokens_handler.handle_count_tokens_request(
+            model=upstream_model,
+            messages=_NATIVE_COUNT_MESSAGES.validate_python(body.messages),
+            api_key=oauth_token,
+            tools=_NATIVE_COUNT_MESSAGES.validate_python(body.tools) if body.tools is not None else None,
+            system=body.system,
+            optional_params=MappingProxyType(data),
+            extra_headers=request.headers,
+        )
+    except AnthropicError as exc:
+        try:
+            error_body: Final = _NATIVE_COUNT_BODY.validate_json(exc.message)
+        except ValidationError:
+            return JSONResponse(
+                status_code=exc.status_code,
+                content=AnthropicExceptionMapping.transform_to_anthropic_error(
+                    status_code=exc.status_code, raw_message=exc.message
+                ),
+            )
+        return JSONResponse(status_code=exc.status_code, content=error_body)
 
 
 def _with_provider_specific_fields(exc: ProxyException, detail: AnthropicErrorDetail) -> AnthropicErrorDetail:
@@ -320,6 +432,11 @@ async def count_tokens(
     litellm_call_id: Final = resolve_litellm_call_id(request.headers.get("x-litellm-call-id"))
     try:
         request_data: Final = await _read_request_body(request=request)
+        oauth_header: Final = request.headers.get("authorization")
+        if is_anthropic_oauth_key(oauth_header) and oauth_header is not None:
+            return await _count_tokens_with_client_oauth(
+                request, _NATIVE_COUNT_BODY.validate_python(request_data), user_api_key_dict, oauth_header
+            )
         data: Final[dict] = {**request_data}
 
         # Extract required fields
@@ -356,6 +473,8 @@ async def count_tokens(
         # Convert the internal response to Anthropic API format
         return {"input_tokens": _token_response_dict.get("total_tokens", 0)}
 
+    except ValidationError:
+        raise HTTPException(status_code=400, detail="Invalid native token counting request")
     except HTTPException:
         raise
     except ProxyException as e:

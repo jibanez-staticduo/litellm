@@ -5,6 +5,7 @@ Uses httpx for HTTP requests instead of the Anthropic SDK.
 """
 
 from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Final
 
 import httpx
@@ -16,9 +17,10 @@ from litellm.llms.anthropic.common_utils import AnthropicError
 from litellm.llms.anthropic.count_tokens.transformation import (
     AnthropicCountTokensConfig,
 )
-from litellm.llms.custom_httpx.http_handler import get_async_httpx_client
+from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, get_async_httpx_client
 
 _COUNT_RESPONSE: Final = TypeAdapter(dict[str, JsonValue])
+_COUNT_HEADERS: Final = TypeAdapter(dict[str, str])
 
 
 class AnthropicCountTokensHandler(AnthropicCountTokensConfig):
@@ -27,6 +29,9 @@ class AnthropicCountTokensHandler(AnthropicCountTokensConfig):
 
     Uses httpx for HTTP requests, following the same pattern as BedrockCountTokensHandler.
     """
+
+    def __init__(self, http_client: AsyncHTTPHandler | None = None) -> None:
+        self._http_client = http_client
 
     async def handle_count_tokens_request(
         self,
@@ -38,6 +43,7 @@ class AnthropicCountTokensHandler(AnthropicCountTokensConfig):
         tools: list[dict[str, JsonValue]] | None = None,
         system: JsonValue = None,
         optional_params: Mapping[str, JsonValue] | None = None,
+        extra_headers: Mapping[str, str] | None = None,
     ) -> dict[str, JsonValue]:
         """
         Handle a CountTokens request using httpx.
@@ -78,10 +84,30 @@ class AnthropicCountTokensHandler(AnthropicCountTokensConfig):
             verbose_logger.debug("Making request to: %s", endpoint_url)
 
             # Get required headers
-            headers: Final = self.get_required_headers(api_key)
+            required_headers: Final = self.get_required_headers(api_key)
+            client_beta: Final = next(
+                (
+                    value
+                    for name, value in (extra_headers or MappingProxyType({})).items()
+                    if name.lower() == "anthropic-beta"
+                ),
+                "",
+            )
+            headers: Final = _COUNT_HEADERS.validate_python(
+                MappingProxyType(
+                    {
+                        **required_headers,
+                        "anthropic-beta": f"{required_headers['anthropic-beta']},{client_beta}"
+                        if client_beta
+                        else required_headers["anthropic-beta"],
+                    }
+                )
+            )
 
             # Use LiteLLM's async httpx client
-            async_client: Final = get_async_httpx_client(llm_provider=litellm.LlmProviders.ANTHROPIC)
+            async_client: Final = self._http_client or get_async_httpx_client(
+                llm_provider=litellm.LlmProviders.ANTHROPIC
+            )
 
             # Use provided timeout or fall back to litellm.request_timeout
             request_timeout: Final = timeout if timeout is not None else litellm.request_timeout
