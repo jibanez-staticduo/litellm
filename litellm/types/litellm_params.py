@@ -89,6 +89,10 @@ class ProviderConnection:
     use_xai_oauth: bool | None = None
     # ChatGPT OAuth deployment options; read from litellm_params by the ChatGPT
     # adapters and listed as owned so they are never swept into extra_body.
+    use_anthropic_oauth: bool | None = None
+    anthropic_auth_profile: str | None = None
+    anthropic_token_dir: str | None = None
+    anthropic_oauth_compatibility: str | None = None
     chatgpt_auth_profile: str | None = None
     chatgpt_token_dir: str | None = None
     chatgpt_auth_file: str | None = None

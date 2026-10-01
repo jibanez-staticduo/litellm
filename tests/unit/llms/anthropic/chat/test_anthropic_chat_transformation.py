@@ -33,6 +33,44 @@ from litellm.types.llms.anthropic import ANTHROPIC_BETA_HEADER_VALUES
 from litellm.types.utils import ServerToolUse, Usage
 
 
+def test_managed_subscription_metadata_preserves_cached_system_and_thinking() -> None:
+    from litellm.llms.anthropic.oauth_policy import ANTHROPIC_OAUTH_BILLING_HEADER
+    from litellm.types.router import GenericLiteLLMParams
+
+    settings: Final = {
+        "use_anthropic_oauth": True,
+        "anthropic_auth_profile": "work",
+        "anthropic_oauth_compatibility": "claude_code",
+    }
+    system: Final = [{"type": "text", "text": "Caller instructions", "cache_control": {"type": "ephemeral"}}]
+    thinking: Final = {"type": "thinking", "thinking": "Retained reasoning", "signature": "test-signature"}
+    messages: Final = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": "Hello"},
+        {"role": "assistant", "content": "Hello back", "thinking_blocks": [thinking]},
+        {"role": "user", "content": "Continue"},
+    ]
+    result: Final = AnthropicConfig().transform_request(
+        model="claude-subscription-test", messages=messages, optional_params={}, litellm_params=settings, headers={}
+    )
+    assert result["system"] == [{"type": "text", "text": ANTHROPIC_OAUTH_BILLING_HEADER}, *system]
+    assert result["messages"][1]["content"][0] == thinking
+    assert messages[0]["content"] == system
+    assert not set(settings).intersection(result)
+
+    native_tools: Final = [{"name": "get_weather", "input_schema": {"type": "object", "properties": {}}}]
+    native_result: Final = AnthropicMessagesConfig().transform_anthropic_messages_request(
+        model="claude-subscription-test",
+        messages=[{"role": "user", "content": "Hello"}],
+        anthropic_messages_optional_request_params={"max_tokens": 16, "system": system, "tools": native_tools},
+        litellm_params=GenericLiteLLMParams(**settings),
+        headers={},
+    )
+    assert native_result["system"] == result["system"]
+    assert native_result["tools"] == native_tools
+    assert not set(settings).intersection(native_result)
+
+
 def test_response_format_transformation_unit_test():
     config = AnthropicConfig()
 

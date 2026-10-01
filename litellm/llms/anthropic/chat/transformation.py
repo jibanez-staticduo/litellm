@@ -1984,6 +1984,11 @@ class AnthropicConfig(AnthropicModelInfo, BaseConfig):
         # Handling anthropic API Prompt Caching
         if len(anthropic_system_message_list) > 0:
             optional_params["system"] = anthropic_system_message_list
+        from litellm.llms.anthropic.oauth_policy import apply_anthropic_oauth_system
+
+        managed_system: Final = apply_anthropic_oauth_system(optional_params.get("system"), litellm_params)
+        if managed_system is not None:
+            optional_params["system"] = managed_system
         conversation: Final = place_mid_conversation_system(
             later_messages,
             supports_mid_conversation_system=supports_mid_conversation_system(

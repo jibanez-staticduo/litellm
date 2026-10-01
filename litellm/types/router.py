@@ -423,6 +423,10 @@ class GenericLiteLLMParams(CredentialLiteLLMParams, CustomPricingLiteLLMParams):
         default=False,
         description="Use stored xAI OAuth credentials when no xAI API key is configured.",
     )
+    use_anthropic_oauth: bool | None = None
+    anthropic_auth_profile: str | None = None
+    anthropic_token_dir: str | None = None
+    anthropic_oauth_compatibility: str | None = None
     chatgpt_auth_profile: str | None = None
     chatgpt_token_dir: str | None = None
     chatgpt_auth_file: str | None = None
@@ -607,6 +611,10 @@ class LiteLLMParamsTypedDict(TypedDict, total=False):
     litellm_credential_name: str | None
     ## UNIFIED PROJECT/REGION ##
     region_name: str | None
+    use_anthropic_oauth: ReadOnly[bool | None]
+    anthropic_auth_profile: ReadOnly[str | None]
+    anthropic_token_dir: ReadOnly[str | None]
+    anthropic_oauth_compatibility: ReadOnly[str | None]
     chatgpt_auth_profile: str | None
     chatgpt_token_dir: str | None
     chatgpt_auth_file: str | None

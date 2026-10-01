@@ -34,6 +34,33 @@ from litellm.types.prompts.init_prompts import PromptSpec
 from litellm.types.utils import Delta, ModelResponseStream, StandardCallbackDynamicParams, StreamingChoices, Usage
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("is_async", (False, True))
+@pytest.mark.parametrize("fallback_source", ("request", "global"))
+async def test_managed_anthropic_missing_profile_never_uses_server_api_credentials(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, is_async: bool, fallback_source: str
+) -> None:
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "server-api-credential")
+    monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "server-auth-credential")
+    if fallback_source == "global":
+        monkeypatch.setattr(litellm, "model_fallbacks", ["openai/non-subscription-target"])
+    request: Final = {
+        "model": "anthropic/claude-subscription-test",
+        "messages": [{"role": "user", "content": "Hello"}],
+        "use_anthropic_oauth": True,
+        "anthropic_auth_profile": "missing-profile",
+        "anthropic_token_dir": str(tmp_path),
+        "anthropic_oauth_compatibility": "claude_code",
+        "max_retries": 0,
+        "fallbacks": ["openai/non-subscription-target"] if fallback_source == "request" else None,
+    }
+    with pytest.raises(litellm.AuthenticationError, match="profile is missing"):
+        if is_async:
+            await litellm.acompletion(**request)
+        else:
+            litellm.completion(**request)
+
+
 @pytest.fixture(autouse=True)
 def clear_client_cache():
     """

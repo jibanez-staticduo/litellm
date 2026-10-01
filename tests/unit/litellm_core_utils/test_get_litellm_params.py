@@ -31,6 +31,29 @@ NAMED_PRICE_PARAMS: Final = frozenset(
 )
 
 
+def test_anthropic_subscription_settings_remain_internal_provider_parameters() -> None:
+    from litellm.types.litellm_params import ProviderConnection
+    from litellm.utils import get_non_default_completion_params, get_optional_params
+
+    settings: Final = {
+        "use_anthropic_oauth": True,
+        "anthropic_auth_profile": "work",
+        "anthropic_token_dir": "/operator/credentials",
+        "anthropic_oauth_compatibility": "claude_code",
+    }
+    result: Final = get_litellm_params(**settings)
+    connection: Final = ProviderConnection(**settings)
+    forwarded: Final = get_non_default_completion_params(kwargs={**settings, "unowned_provider_option": True})
+    provider_params: Final = get_optional_params(
+        model="claude-subscription-test", custom_llm_provider="anthropic", **forwarded
+    )
+    assert {name: result[name] for name in settings} == settings
+    assert {name: getattr(connection, name) for name in settings} == settings
+    assert not set(settings).intersection(provider_params)
+    assert not set(settings).intersection(provider_params.get("extra_body", {}))
+    assert provider_params["unowned_provider_option"] is True
+
+
 class TestGetBaseModelFromLitellmCallMetadata:
     def test_none_metadata_returns_none(self):
         assert _get_base_model_from_litellm_call_metadata(None) is None

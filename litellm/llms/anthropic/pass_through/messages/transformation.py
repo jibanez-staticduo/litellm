@@ -236,7 +236,16 @@ class AnthropicMessagesConfig(BaseAnthropicMessagesConfig):
         litellm_params: dict,
         stream: bool | None = None,
     ) -> str:
-        api_base = AnthropicModelInfo.get_api_base(api_base) or "https://api.anthropic.com"
+        from litellm.llms.anthropic.oauth_policy import (
+            is_anthropic_oauth_managed,
+            validate_anthropic_oauth_destination,
+        )
+
+        api_base = (
+            validate_anthropic_oauth_destination(api_base)
+            if is_anthropic_oauth_managed(litellm_params)
+            else AnthropicModelInfo.get_api_base(api_base) or "https://api.anthropic.com"
+        )
         if not api_base.endswith("/v1/messages"):
             api_base = f"{api_base}/v1/messages"
         return api_base
@@ -251,8 +260,19 @@ class AnthropicMessagesConfig(BaseAnthropicMessagesConfig):
         api_key: str | None = None,
         api_base: str | None = None,
     ) -> tuple[dict, str | None]:
+        from litellm.llms.anthropic.oauth_policy import (
+            ANTHROPIC_OAUTH_USER_AGENT,
+            is_anthropic_oauth_managed,
+            resolve_anthropic_oauth_access_token,
+            validate_anthropic_oauth_destination,
+        )
+
+        managed_token: Final = resolve_anthropic_oauth_access_token(litellm_params, api_base, headers)
+        managed_api_base: Final = (
+            validate_anthropic_oauth_destination(api_base) if is_anthropic_oauth_managed(litellm_params) else api_base
+        )
         # Check for Anthropic OAuth token in Authorization header
-        headers, api_key = optionally_handle_anthropic_oauth(headers=headers, api_key=api_key)
+        headers, api_key = optionally_handle_anthropic_oauth(headers=headers, api_key=managed_token or api_key)
 
         header_names: Final = frozenset(name.lower() for name in headers)
         if "x-api-key" not in header_names and "authorization" not in header_names:
@@ -273,13 +293,20 @@ class AnthropicMessagesConfig(BaseAnthropicMessagesConfig):
         if "content-type" not in headers:
             headers["content-type"] = "application/json"
 
-        headers = self._update_headers_with_anthropic_beta(
+        updated_headers: Final = self._update_headers_with_anthropic_beta(
             headers=headers,
             optional_params=optional_params,
             messages=messages,
         )
-
-        return headers, api_base
+        return (
+            {
+                **{name: value for name, value in updated_headers.items() if name.lower() != "user-agent"},
+                "user-agent": ANTHROPIC_OAUTH_USER_AGENT,
+            }
+            if managed_token is not None
+            else updated_headers,
+            managed_api_base,
+        )
 
     @staticmethod
     def _translate_reasoning_effort_to_anthropic(
@@ -534,6 +561,14 @@ class AnthropicMessagesConfig(BaseAnthropicMessagesConfig):
                 anthropic_messages_optional_request_params["system"] = filtered_system
             else:
                 anthropic_messages_optional_request_params.pop("system", None)
+
+        from litellm.llms.anthropic.oauth_policy import apply_anthropic_oauth_system
+
+        managed_system: Final = apply_anthropic_oauth_system(
+            anthropic_messages_optional_request_params.get("system"), dict(litellm_params)
+        )
+        if managed_system is not None:
+            anthropic_messages_optional_request_params["system"] = managed_system
 
         # Transform context_management from OpenAI format to Anthropic format if needed
         context_management_param: Final = anthropic_messages_optional_request_params.get("context_management")
