@@ -3520,7 +3520,7 @@ if MCP_AVAILABLE:
         except ProxyException as e:
             raise _proxy_exception_to_http_exception(e)
         except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
-            verbose_logger.exception(f"Error handling LazyMCP request: {e}")
+            verbose_logger.exception("Error handling LazyMCP request: %s", e)
             try:
                 from starlette.responses import JSONResponse
                 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR
@@ -3536,7 +3536,9 @@ if MCP_AVAILABLE:
                 )
                 await error_response(scope, receive, send)
             except Exception as response_error:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
-                verbose_logger.exception(f"Failed to send LazyMCP error response: {response_error}")
+                verbose_logger.exception(
+                    "Failed to send LazyMCP error response: %s", response_error
+                )
                 raise e
 
     async def handle_sse_mcp(scope: Scope, receive: Receive, send: Send) -> None:

@@ -1310,7 +1310,7 @@ def test_generic_cost_per_token_bedrock_mantle_gpt56_long_context(_local_model_c
     [
         ("bedrock_mantle/openai.gpt-5.5", 5.5e-06, 5.5e-07, 3.3e-05, 1.1e-05, 1.1e-06, 4.95e-05),
         ("bedrock_mantle/openai.gpt-5.4", 2.75e-06, 2.75e-07, 1.65e-05, 5.5e-06, 5.5e-07, 2.475e-05),
-        ("bedrock_mantle/openai.gpt-5.6-sol", 5.5e-06, 5.5e-07, 3.3e-05, 1.1e-05, 1.1e-06, 4.95e-05),
+        ("bedrock_mantle/openai.gpt-5.6-sol", 4.4e-06, 4.4e-07, 2.2e-05, 8.8e-06, 8.8e-07, 3.3e-05),
     ],
 )
 def test_generic_cost_per_token_bedrock_mantle_gpt5_matches_aws_invoiced_rates(
@@ -1366,11 +1366,11 @@ def test_generic_cost_per_token_bedrock_mantle_gpt5_matches_aws_invoiced_rates(
 
 
 def test_bedrock_mantle_gpt56_sol_cache_write_matches_aws_invoiced_rate(_local_model_cost_map):
-    """The invoice bills sol 30-minute cache writes at $6.88 per million tokens, 1.25x the $5.50 input rate."""
+    """The current invoice bills sol 30-minute cache writes at $5.50 per million tokens, 1.25x the $4.40 input rate."""
 
     sol = litellm.model_cost["bedrock_mantle/openai.gpt-5.6-sol"]
-    assert sol["cache_creation_input_token_cost"] == pytest.approx(6.875e-06)
-    assert sol["cache_creation_input_token_cost_above_272k_tokens"] == pytest.approx(1.375e-05)
+    assert sol["cache_creation_input_token_cost"] == pytest.approx(5.5e-06)
+    assert sol["cache_creation_input_token_cost_above_272k_tokens"] == pytest.approx(1.1e-05)
 
 
 def test_generic_cost_per_token_honors_non_standard_above_threshold():
@@ -1902,7 +1902,7 @@ def test_gpt_5_6_alias_prices_match_sol(local_model_cost_map):
     sol = litellm.model_cost["gpt-5.6-sol"]
 
     cost_fields = sorted(field for field in sol if "cost" in field)
-    assert len(cost_fields) == 27
+    assert len(cost_fields) == 33
 
     for field in cost_fields:
         assert alias.get(field) == sol.get(field), field
@@ -2089,20 +2089,20 @@ def test_generic_cost_per_token_gpt_6_astra_price_sheet(
 @pytest.mark.parametrize(
     "model,input_cost,output_cost,cache_read_cost",
     [
-        ("azure/gpt-5.6", 5e-6, 3e-5, 5e-7),
-        ("azure/gpt-5.6-sol", 5e-6, 3e-5, 5e-7),
+        ("azure/gpt-5.6", 4e-6, 2e-5, 4e-7),
+        ("azure/gpt-5.6-sol", 4e-6, 2e-5, 4e-7),
         ("azure/gpt-5.6-terra", 2e-6, 1.2e-5, 2e-7),
         ("azure/gpt-5.6-luna", 2e-7, 1.2e-6, 2e-8),
-        ("azure/us/gpt-5.6", 5.5e-6, 3.3e-5, 5.5e-7),
+        ("azure/us/gpt-5.6", 4.4e-6, 2.2e-5, 4.4e-7),
         ("azure/eu/gpt-5.6-terra", 2.2e-6, 1.32e-5, 2.2e-7),
         ("azure/eu/gpt-5.6-luna", 2.2e-7, 1.32e-6, 2.2e-8),
     ],
 )
 def test_generic_cost_per_token_azure_gpt56(_local_model_cost_map, model, input_cost, output_cost, cache_read_cost):
-    """Azure gpt-5.6 (global + us/eu regional): Azure prices this family on its own
-    schedule and carries the standard 10% regional uplift on top. It did not take the
-    promotional cut OpenAI applied to gpt-5.6-sol, so these rates deliberately sit
-    above the openai ones and must not be lowered to match them.
+    """Azure gpt-5.6 (global + us/eu regional): rates follow the current official
+    Azure sheet, which now matches the promotional OpenAI rates, with the standard
+    10% regional uplift on the us/eu data-zone entries. The us rates must stay 1.1x
+    the global ones and the rates_page test keeps the cache ratios pinned.
     """
 
     model_cost_map = litellm.model_cost[model]
@@ -2265,16 +2265,22 @@ def test_gpt55_dated_variants_match_base_reasoning_effort_capabilities(_local_mo
 
 
 @pytest.mark.parametrize(
-    "model,expected_mode,expected_input,expected_output,expected_cache_read",
+    "model,expected_mode,expected_input,expected_output,expected_cache_read,expected_max_input",
     [
-        ("azure/gpt-5.5", "chat", 5e-6, 3e-5, 5e-7),
-        ("azure/gpt-5.5-2026-04-23", "chat", 5e-6, 3e-5, 5e-7),
-        ("azure/gpt-5.5-pro", "responses", 3e-5, 1.8e-4, 3e-6),
-        ("azure/gpt-5.5-pro-2026-04-23", "responses", 3e-5, 1.8e-4, 3e-6),
+        ("azure/gpt-5.5", "chat", 5e-6, 3e-5, 5e-7, 922000),
+        ("azure/gpt-5.5-2026-04-23", "chat", 5e-6, 3e-5, 5e-7, 922000),
+        ("azure/gpt-5.5-pro", "responses", 3e-5, 1.8e-4, 3e-6, 1050000),
+        ("azure/gpt-5.5-pro-2026-04-23", "responses", 3e-5, 1.8e-4, 3e-6, 1050000),
     ],
 )
 def test_azure_gpt55_entries_present_with_correct_pricing(
-    _local_model_cost_map, model, expected_mode, expected_input, expected_output, expected_cache_read
+    _local_model_cost_map,
+    model,
+    expected_mode,
+    expected_input,
+    expected_output,
+    expected_cache_read,
+    expected_max_input,
 ):
     """Day-0 Azure entries for GPT-5.5 mirror the OpenAI pricing structure.
 
@@ -2289,8 +2295,8 @@ def test_azure_gpt55_entries_present_with_correct_pricing(
     assert m["input_cost_per_token"] == expected_input
     assert m["output_cost_per_token"] == expected_output
     assert m["cache_read_input_token_cost"] == expected_cache_read
-    # Long-context window inherited from gpt-5.4 / openai gpt-5.5.
-    assert m["max_input_tokens"] == 1050000
+    # The current sheet gives the chat tier the 922K window and keeps pro at 1050K.
+    assert m["max_input_tokens"] == expected_max_input
     assert m["max_output_tokens"] == 128000
 
 
@@ -3518,11 +3524,12 @@ def test_priority_service_tier_above_threshold_uses_priority_tier_rates_for_cach
     prompt_cost, completion_cost = generic_cost_per_token(
         model="gemini-3-pro-preview",
         usage=usage,
-        custom_llm_provider="gemini",
+        custom_llm_provider="vertex_ai",
         service_tier="priority",
     )
 
-    # gemini-3-pro-preview priority + above_200k rates from the pricing JSON:
+    # vertex_ai/gemini-3-pro-preview priority + above_200k rates from the pricing JSON
+    # (the current sheet only publishes this family under the vertex_ai prefix):
     #   input  7.2e-6, output 3.24e-5, cache_read 7.2e-7
     expected_prompt = 50_000 * 7.2e-6 + 200_000 * 7.2e-7
     expected_completion = 1_000 * 3.24e-5
@@ -4374,6 +4381,8 @@ def test_image_response_cached_modality_counts_cannot_exceed_inputs(excess):
             image_response=image_response,
             custom_llm_provider="openai",
         )
+
+
 GEMINI_DAY0_LAUNCH_PRICING = [
     ("gemini-3.6-flash", 7.5e-07, 3.75e-06, 7.5e-08),
     ("gemini/gemini-3.6-flash", 7.5e-07, 3.75e-06, 7.5e-08),

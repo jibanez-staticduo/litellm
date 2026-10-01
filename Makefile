@@ -209,7 +209,7 @@ lint-basedpyright: $(LINT_DEP_INSTALL) $(LINT_DEP_BASE)
 	$(UV_RUN) python scripts/type_check_gate.py --base "$(BASE_REF)"
 
 lint-e2e-basedpyright: $(LINT_E2E_DEP_INSTALL)
-	$(UV_RUN) basedpyright tests/e2e
+	$(UV_RUN) basedpyright --pythonpath "$$($(UV_RUN) python -c 'import sys; print(sys.executable)')" tests/e2e
 
 # Type-discipline budget (mutable collections / casts / type guards / kwargs /
 # unexplained suppressions), the test-linting.yml step `make lint` used to omit.

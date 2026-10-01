@@ -1611,6 +1611,38 @@ def test_access_log_filter_redacts_a_record_that_carries_no_positional_args():
     assert _LEAKED_KEY not in record.getMessage()
 
 
+def test_access_log_filter_redacts_percent_encoded_credentials_without_positional_args():
+    """A request target whose credential only appears after decoding — the query
+    parser sees ``api%5Fkey`` as ``api_key`` — must not survive a no-args record."""
+    record = logging.LogRecord(
+        name="uvicorn.access",
+        level=logging.INFO,
+        pathname="",
+        lineno=0,
+        msg=f'127.0.0.1:1 - "GET /key/info?api%5Fkey={_LEAKED_KEY} HTTP/1.1" 200',
+        args=None,
+        exc_info=None,
+    )
+    assert AccessLogRedactionFilter().filter(record) is True
+    assert _LEAKED_KEY not in record.getMessage()
+
+
+def test_access_log_filter_redacts_no_args_record_with_non_string_message():
+    """A pre-formatted record whose msg is not yet a string must still be
+    rendered, redacted, and kept — not stamped raw nor dropped."""
+    record = logging.LogRecord(
+        name="uvicorn.access",
+        level=logging.INFO,
+        pathname="",
+        lineno=0,
+        msg={"path": f"/key/info?key={_LEAKED_KEY}"},
+        args=None,
+        exc_info=None,
+    )
+    assert AccessLogRedactionFilter().filter(record) is True
+    assert _LEAKED_KEY not in record.getMessage()
+
+
 def _emit_access_line(full_path: str) -> str:
     """Hand one real record to uvicorn.access and return what a handler wrote out."""
     from uvicorn.logging import AccessFormatter

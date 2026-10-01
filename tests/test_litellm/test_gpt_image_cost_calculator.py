@@ -332,9 +332,24 @@ class TestGPTImageCostRouting:
         expected_cost = 0.0005 + 0.15
         assert abs(cost - expected_cost) < 1e-6, f"Expected {expected_cost}, got {cost}"
 
-    def test_openai_dalle_routes_to_pixel_calculator(self):
-        """Test that OpenAI DALL-E still routes to pixel-based calculator"""
+    def test_openai_dalle_routes_to_pixel_calculator(self, monkeypatch: pytest.MonkeyPatch):
+        """Test that OpenAI DALL-E still routes to pixel-based calculator.
+
+        Upstream dropped the bare ``dall-e-3`` entries from the current sheet, so the
+        pixel path is exercised against an injected size/quality entry at OpenAI's
+        published $0.04 rate for standard 1024x1024.
+        """
         from litellm.litellm_core_utils.llm_cost_calc.utils import CostCalculatorUtils
+
+        monkeypatch.setitem(
+            litellm.model_cost,
+            "standard/1024-x-1024/dall-e-3",
+            {
+                "litellm_provider": "openai",
+                "mode": "image_generation",
+                "input_cost_per_pixel": 0.04 / (1024 * 1024),
+            },
+        )
 
         image_response = ImageResponse(
             created=1234567890,
@@ -352,7 +367,7 @@ class TestGPTImageCostRouting:
             n=1,
         )
 
-        assert cost >= 0
+        assert cost == pytest.approx(0.04)
 
 
 class TestGPTImage15OutputImageTokens:

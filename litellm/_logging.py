@@ -224,7 +224,7 @@ class AccessLogRedactionFilter(logging.Filter):
     """
 
     def filter(self, record: logging.LogRecord) -> bool:
-        if not _ENABLE_SECRET_REDACTION:
+        if not _ENABLE_SECRET_REDACTION or _is_redacted(record):
             return True
         if isinstance(record.args, tuple) and record.args:
             strings: Final = tuple(arg for arg in record.args if isinstance(arg, str))
@@ -240,8 +240,11 @@ class AccessLogRedactionFilter(logging.Filter):
                 next(values) if isinstance(arg, str) else arg for arg in record.args
             )
             return True
-        # No positional args means everything is in msg, where collapsing is correct.
-        return _secret_filter.filter(record)
+        # SecretRedactionFilter drops records without the five-argument access
+        # tuple, so scrub the message here before processing the whole record.
+        if isinstance(record.msg, str):
+            record.msg = _scrub_access_arg(record.msg)  # rebind-ok: a Filter scrubs records in place
+        return _process_record(record, base64_limit=0, text_limit=0, redact=True)
 
 
 _access_log_filter: Final = AccessLogRedactionFilter()
