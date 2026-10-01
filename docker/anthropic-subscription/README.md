@@ -134,6 +134,6 @@ The retry used `drop_params: true` only in the pilot to handle OpenCode's `promp
 
 Managed profile custody, explicit account selection and serialized refresh are implemented, with real refresh verified in isolation. Automatic account rotation and quota scheduling remain absent. The native phase 1 NAS route remains healthy with its previously published aliases
 
-The accounting correction passes live QA and focused regressions. The final gate is in progress. The managed proxy and PostgreSQL containers and their temporary network were stopped and removed without `-v`; `docker ps -a` confirms their absence. The PostgreSQL data directory and volumes remain, and the shared native proxy remains healthy
+The accounting correction passes live QA, 47 focused logging tests and 27 spend tests. The final `make check` passes, including generated dashboard API types. The managed proxy and PostgreSQL containers and their temporary network were stopped and removed without `-v`; `docker ps -a` confirms their absence. The PostgreSQL data directory and volumes remain, and both shared native proxies remain healthy
 
 The full objective remains unfinished because subscription-only OpenCode is blocked and managed Fedora/NAS promotion has not occurred. See the [implementation plan](../../docs/superpowers/plans/2026-10-01-anthropic-subscription.md) for the remaining acceptance criteria
