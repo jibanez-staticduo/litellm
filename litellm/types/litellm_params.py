@@ -131,6 +131,7 @@ class DispatchOptions:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RoutingOptions:
+    disable_fallbacks: bool | None = None
     fallbacks: Sequence[str | Mapping[str, object]] | None = None
     context_window_fallback_dict: Mapping[str, str] | None = None
     num_retries: int | None = None
