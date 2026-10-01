@@ -6,7 +6,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Any, Final, Protocol, runtime_checkable
+
+from pydantic import TypeAdapter
 
 import litellm
 from litellm._logging import verbose_router_logger
@@ -46,6 +48,51 @@ _router_fallback_identity: Final[ContextVar[tuple[object, object] | None]] = Con
 # (e.g. a nonexistent file/batch/thread id), independent of the selected deployment's health.
 _REQUEST_SCOPED_STATUS_CODES: Final = frozenset((404,))
 _NO_MODEL_CALL_DETAILS: Final[Mapping[str, object]] = MappingProxyType({})
+_ANTHROPIC_OAUTH_PARAMS_ADAPTER: Final[TypeAdapter[Mapping[str, object]]] = TypeAdapter(Mapping[str, object])
+
+
+@runtime_checkable
+class AnthropicOAuthRoutingPolicy(Protocol):
+    def anthropic_oauth_model_group_is_managed(self, model_group: str | None) -> bool: ...
+
+
+def is_anthropic_oauth_managed_deployment(deployment: Mapping[str, object]) -> bool:
+    params: Final = deployment.get("litellm_params")
+    return (
+        isinstance(params, Mapping)
+        and _ANTHROPIC_OAUTH_PARAMS_ADAPTER.validate_python(params).get("use_anthropic_oauth") is True
+    )
+
+
+def validate_anthropic_model_group_profiles(
+    deployments: Sequence[Mapping[str, object]] | Mapping[str, object], model_group: str
+) -> None:
+    rows: Final = (deployments,) if isinstance(deployments, Mapping) else tuple(deployments)
+    managed: Final = tuple(row for row in rows if is_anthropic_oauth_managed_deployment(row))
+    if not managed:
+        return
+    if len(managed) != len(rows):
+        raise ValueError(f"Anthropic OAuth model group {model_group!r} mixes managed and API deployments")
+    identities: Final = frozenset(_anthropic_oauth_deployment_identity(row) for row in managed)
+    if len(identities) > 1:
+        raise ValueError(f"Anthropic OAuth model group {model_group!r} contains mixed authentication profiles")
+
+
+def _anthropic_oauth_deployment_identity(deployment: Mapping[str, object]) -> tuple[str, str]:
+    params: Final = deployment.get("litellm_params")
+    if not isinstance(params, Mapping):
+        return ("default", "")
+    parsed_params: Final = _ANTHROPIC_OAUTH_PARAMS_ADAPTER.validate_python(params)
+    return (
+        str(parsed_params.get("anthropic_auth_profile") or "default"),
+        str(parsed_params.get("anthropic_token_dir") or ""),
+    )
+
+
+def _anthropic_oauth_fallback_denied(litellm_router: object, model_group: str | None) -> bool:
+    return isinstance(
+        litellm_router, AnthropicOAuthRoutingPolicy
+    ) and litellm_router.anthropic_oauth_model_group_is_managed(model_group)
 
 
 def _trigger_cooldown_for_failed_deployment(
@@ -710,6 +757,8 @@ async def run_async_fallback(
     logical_model_group: Final = kwargs.get("logical_model_group", original_model_group)
     requested_model: Final = kwargs.get("original_requested_model", logical_model_group)
     failed_model_group: Final = get_pre_routing_selection(kwargs) or original_model_group
+    if fallbacks_disabled_for_request(kwargs) or _anthropic_oauth_fallback_denied(litellm_router, failed_model_group):
+        raise original_exception
     attempted.record(failed_model_group)
 
     for mg in fallback_model_group:
@@ -725,6 +774,8 @@ async def run_async_fallback(
         if not await _is_fallback_target_authorized(litellm_router, mg, original_model_group, kwargs):
             continue
         target_model_group = _get_fallback_target_model_group(mg)
+        if _anthropic_oauth_fallback_denied(litellm_router, target_model_group):
+            continue
         if not getattr(litellm_router, "allow_chatgpt_cross_profile_fallback", False) and _is_cross_profile_fallback(
             litellm_router, logical_model_group, target_model_group
         ):
