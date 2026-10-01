@@ -1,6 +1,6 @@
 # Claude Code subscription gateway
 
-The verified phase 1 NAS gateway at `https://litellm.staticduo.com` keeps Anthropic OAuth login and refresh in Claude Code and records API-equivalent usage in LiteLLM. The isolated pilot at `127.0.0.1:14001` supplied the initial evidence and was retired after shared-route verification. The candidate now also implements managed OAuth profiles under separate `*-subscription` aliases. Live validation of those profiles and Codex/OpenCode remains pending
+The verified phase 1 NAS gateway at `https://litellm.staticduo.com` keeps Anthropic OAuth login and refresh in Claude Code and records API-equivalent usage in LiteLLM. The isolated pilot at `127.0.0.1:14001` supplied the initial evidence and was retired after shared-route verification. The candidate now also implements managed OAuth profiles under separate `*-subscription` aliases. The isolated candidate passes Codex and managed-refresh checks, but OpenCode is blocked by the provider's extra-usage requirement. The managed candidate is not being promoted to Fedora or NAS
 
 ## Shared deployment
 
@@ -67,7 +67,7 @@ The default profile is stored as `auth.json`, and a named profile as `<profile>.
 
 Managed policy fails closed when the profile is missing, invalid, lacks `user:inference`, or cannot refresh. Storage failures also stop the request. Clients cannot change the configured profile, disable managed OAuth, supply replacement credentials or redirect it away from the official HTTPS Anthropic endpoint. Managed deployments must have no API fallback. Keep Anthropic API credentials out of the deployment and do not configure API, Bedrock or Vertex alternatives for these aliases
 
-The `claude_code` preset adds an `x-anthropic-billing-header` system block pinned to Claude Code compatibility version `2.1.286` when one is absent. This is experimental transport compatibility, not proof of provider support or successful subscription billing. It does not run Claude CLI or the Agent SDK for inference. Provider acceptance, refresh and later tool turns still require live validation
+The `claude_code` preset adds an `x-anthropic-billing-header` system block pinned to Claude Code compatibility version `2.1.286` when one is absent. This is experimental transport compatibility, not proof of provider support or successful subscription billing. It does not run Claude CLI or the Agent SDK for inference. The isolated candidate evidence below covers managed refresh and Codex tool turns. It does not establish subscription-only OpenCode support
 
 ## Managed clients and accounting
 
@@ -90,9 +90,9 @@ opencode-anthropic-litellm run --model subscription/claude-sonnet-5-5-subscripti
 
 Codex uses LiteLLM's `/v1/responses` bridge and OpenCode uses `/v1/messages`. These launchers do not add an Anthropic catalog to Codex or enable native Anthropic Responses support
 
-These routes reuse the Anthropic provider and Responses bridge, including signed thinking replay. Their presence in the candidate does not establish working Codex/OpenCode conversations. Validate streaming, tools and subsequent turns from each actual client before promoting the managed route
+These routes reuse the Anthropic provider and Responses bridge, including signed thinking replay. Codex passed an actual tool, file and resume conversation on the isolated candidate. OpenCode failed on both Messages and Responses, so managed promotion remains blocked
 
-Spend remains an API-equivalent valuation derived from provider usage and the effective LiteLLM price map. It is not an Anthropic API invoice. Verify `used_client_oauth_token=true`, the served model, virtual key attribution and cache usage in spend logs, and verify rejected authentication records no successful generation spend
+Spend remains an API-equivalent valuation derived from provider usage and the effective LiteLLM price map. It is not an Anthropic API invoice. For phase 1 passthrough, verify `used_client_oauth_token=true`. Managed profiles instead require `used_client_oauth_token=false`, server OAuth attribution and the configured profile. For the default profile, the expected ledger values are `used_server_oauth_token=true` and `anthropic_auth_profile=default`. The ledger correction and its live verification are in progress. Verify the served model, virtual key attribution and cache usage, and verify rejected authentication records no successful generation spend
 
 ## Verified phase 1 shared route, 2026-10-01
 
@@ -102,9 +102,9 @@ The shared native counter returned HTTP 200 with `{"input_tokens":11}`. Invalid 
 
 The shared dashboard API `/spend/logs/ui` returned HTTP 200 for `key_alias=claude-subscription`, `model_group=claude-sonnet-5-5` and the UTC interval `2026-10-01 17:27:36` to `2026-10-02 00:00:00`. The last four native successful records have `used_client_oauth_token=true` and API-equivalent spend of USD `0.0080198`, `0.0103398`, `0.0112836` and `0.0779932`. The request without OAuth recorded zero spend. The calculator comparison was performed on the pilot, not repeated on the shared records
 
-The Responses patch passes 112 focused tests and the counter passes 48 focused tests. `make check` passes for the Responses patch, and independent review findings were corrected. These checks do not establish live Codex/OpenCode compatibility
+The Responses patch passes 112 focused tests and the counter passes 48 focused tests. `make check` passes for the Responses patch, and independent review findings were corrected. These earlier checks belong to phase 1 and do not establish managed-client compatibility
 
-Temporary QA `litellm-anthropic-qa` and pilot containers `litellm-anthropic-subscription-proxy-1` and `litellm-anthropic-subscription-postgres-1` were stopped and removed without `-v`. Their absence was verified with `docker ps -a`. Pilot `postgresql-data` and private files remain intact. The private pilot directory has mode 700 and its key, config, credentials and image files have mode 600 after correcting inherited ACL permissions. The shared `litellm` container remains healthy on the candidate image
+Temporary QA `litellm-anthropic-qa` and pilot containers `litellm-anthropic-subscription-proxy-1` and `litellm-anthropic-subscription-postgres-1` were stopped and removed without `-v`. Their absence was verified with `docker ps -a`. Pilot `postgresql-data` and private files remain intact. The private pilot directory has mode 700 and its key, config, credentials and image files have mode 600 after correcting inherited ACL permissions. The native phase 1 shared `litellm` container remains healthy on its verified image. This completed cleanup concerns the earlier phase 1 containers, not the current managed candidate pilot
 
 ## Initial isolated pilot evidence
 
@@ -116,8 +116,22 @@ Requests `msg_011Cfbn3woLuuNZNUKAir5Lh`, `msg_011Cfbn43xBkqfoTuu7twBdT` and `msg
 
 The pilot dashboard endpoint `/spend/logs/ui` returned the verified request and spend. Forced live quota exhaustion and interruption during generation were not exercised. Status preservation and absence of local fallback are covered by the focused regressions
 
+## Isolated managed candidate evidence
+
+Candidate 04 passed Messages for all three managed models, Chat Completions, Responses, both tested token-counting routes and signed thinking replay through a tool continuation. Its NAS authorization is independent of the native login, stored under private directory mode 0700 and credential mode 0600. A real refresh rotated the credential successfully. Fedora has a separately imported authorization, but the managed candidate is not deployed there
+
+Codex 0.159.2 passed tools, file handling and resume on the isolated candidate, with 207 reasoning tokens reported. This evidence uses the Responses bridge and does not add native Anthropic catalog metadata to Codex
+
+OpenCode 2.0.20 received HTTP 400 from Anthropic on both Messages and Responses:
+
+> Third-party apps now draw from your extra usage, not your plan limits. Add more at claude.ai/settings/usage and keep going
+
+The retry used `drop_params: true` only in the pilot to handle OpenCode's `prompt_cache_key`; the provider rejection remained. OAuth `GET /api/oauth/usage` reported `extra_usage.is_enabled=false` and `credits_ever_enabled=false`. This is an external blocker for subscription-only OpenCode. Extra usage is not enabled by this deployment, and the candidate is not promoted to Fedora or NAS
+
 ## Remaining work
 
-Managed profile custody, explicit selection and serialized refresh are implemented in the candidate. They have not yet been verified live on the final NAS/Fedora routes. Automatic account rotation and quota scheduling remain absent. A previous generic request with the same OAuth returned HTTP 429 while the native control succeeded, so that failure has not been attributed to subscription quota
+Managed profile custody, explicit account selection and serialized refresh are implemented, with real refresh verified in isolation. Automatic account rotation and quota scheduling remain absent. The native phase 1 NAS route remains healthy with its previously published aliases
 
-Live Codex/OpenCode tools, streaming and later turns on the final route remain unverified. See the [implementation plan](../../docs/superpowers/plans/2026-10-01-anthropic-subscription.md) for the work in progress and its acceptance criteria
+Finish the server OAuth/profile ledger correction and live accounting QA, then run the final gate. Previous focused tests and gates passed, with an expected generated schema update still to validate. Stop and remove the current managed pilot after accounting QA while preserving its database and volumes. That cleanup has not yet been confirmed
+
+The full objective remains unfinished because subscription-only OpenCode is blocked and managed Fedora/NAS promotion has not occurred. See the [implementation plan](../../docs/superpowers/plans/2026-10-01-anthropic-subscription.md) for the remaining acceptance criteria
