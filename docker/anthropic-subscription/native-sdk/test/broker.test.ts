@@ -195,3 +195,28 @@ test('native deltas preserve text, thinking signature and JSON tool arguments; o
   assert.deepEqual(delivered.find(event => event['type'] === 'content_block_start')!['content_block'], { type: 'thinking', thinking: '', signature: '' });
   broker.close();
 });
+
+test('empty tool JSON delta retains native empty arguments and signed thinking through caller continuation', async () => {
+  const { broker, engines } = setup();
+  const initial: Request = { ...request(), max_tokens: 4096, thinking: { type: 'enabled', budget_tokens: 1024 }, tools: [{ name: 'get_answer', input_schema: { type: 'object', properties: {}, additionalProperties: false } }] };
+  const started = value(broker.begin(scope, initial)); const fake = engines[0]!;
+  fake.push({ type: 'message_start', message: { id: 'signed-native', type: 'message', role: 'assistant', model: initial.model, content: [], usage: { input_tokens: 10, output_tokens: 0 } } });
+  fake.push({ type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: '', signature: '' } });
+  fake.push({ type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: 'Use the caller tool' } });
+  fake.push({ type: 'content_block_delta', index: 0, delta: { type: 'signature_delta', signature: 'native-signature' } });
+  fake.push({ type: 'content_block_stop', index: 0 });
+  fake.push({ type: 'content_block_start', index: 1, content_block: { type: 'tool_use', id: 'native-empty-tool', name: 'mcp__caller__get_answer', input: {} } });
+  fake.push({ type: 'content_block_delta', index: 1, delta: { type: 'input_json_delta', partial_json: '' } });
+  fake.push({ type: 'content_block_stop', index: 1 });
+  fake.push({ type: 'message_delta', delta: { stop_reason: 'tool_use', stop_sequence: null }, usage: { output_tokens: 37 } });
+  fake.push({ type: 'message_stop' });
+  const first = await response(started);
+  assert.deepEqual(first['content'], [{ type: 'thinking', thinking: 'Use the caller tool', signature: 'native-signature' }, { type: 'tool_use', id: 'native-empty-tool', name: 'get_answer', input: {} }]);
+  assert.equal(await fake.options.beforeTool('mcp__caller__get_answer', 'native-empty-tool', {}), true);
+  const pending = fake.options.handleTool('mcp__caller__get_answer', {}, new AbortController().signal);
+  const continued = value(broker.begin(scope, { ...initial, messages: [...initial.messages, assistant(first), { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'native-empty-tool', content: 'VERIFIED' }] }] }));
+  assert.deepEqual((await pending).content, [{ type: 'text', text: 'VERIFIED' }]);
+  fake.message([{ type: 'text', text: 'VERIFIED' }]);
+  assert.deepEqual((await response(continued))['content'], [{ type: 'text', text: 'VERIFIED' }]);
+  broker.close();
+});

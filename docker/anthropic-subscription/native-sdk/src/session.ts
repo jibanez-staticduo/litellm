@@ -93,7 +93,7 @@ class Session {
       if (typeof raw['index'] !== 'number') return false;
       const block = this.blocks.get(raw['index']); if (!block) return false;
       const partial = this.inputs.get(raw['index']);
-      if (partial !== undefined) block['input'] = objectSchema.parse(JSON.parse(partial));
+      if (partial !== undefined && partial !== '') block['input'] = objectSchema.parse(JSON.parse(partial));
       if (block['type'] === 'tool_use') {
         if (typeof block['id'] !== 'string' || typeof block['name'] !== 'string' || !isObject(block['input'])) return false;
         if (!this.bridge.register(block['id'], `mcp__caller__${block['name']}`, block['input'])) return false;
