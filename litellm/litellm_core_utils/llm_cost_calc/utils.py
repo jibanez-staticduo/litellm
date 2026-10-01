@@ -52,6 +52,8 @@ _VALID_DATA_RESIDENCIES: Final = frozenset(r.value for r in DataResidency)
 
 _DEPLOYMENT_PRICING_KEYS: Final[frozenset[str]] = frozenset(CustomPricingLiteLLMParams.model_fields)
 
+_EMPTY_GEO_MULTIPLIERS: Final[Mapping[str, float]] = MappingProxyType({})
+
 _IMAGE_TOKEN_RATE_KEYS: Final[tuple[str, ...]] = (
     "input_cost_per_token",
     "output_cost_per_token",
@@ -654,7 +656,7 @@ def _get_token_base_cost(
     if completion_base_cost == 0.0 or completion_base_cost is None:
         output_image_cost: Final = _get_cost_per_unit(model_info, "output_cost_per_image_token", None)
         if output_image_cost is not None:
-            completion_base_cost = cast(float, output_image_cost)
+            completion_base_cost = output_image_cost
     cache_creation_cost = _get_cost_per_unit(model_info, cache_creation_cost_key, default_value=None)
     cache_creation_cost_above_1hr = _get_cost_per_unit(
         model_info, "cache_creation_input_token_cost_above_1hr", default_value=None
@@ -666,11 +668,11 @@ def _get_token_base_cost(
     # Exclude service_tier-specific variants (e.g. input_cost_per_token_above_200k_tokens_priority)
     # so that the threshold detection loop only processes standard keys.  The
     # service_tier-specific above-threshold key is resolved later via _get_service_tier_cost_key.
-    threshold_keys: Final = [
+    threshold_keys: Final = tuple(
         k
         for k in model_info
         if k.startswith("input_cost_per_token_above_") and not k.endswith(_NON_STANDARD_THRESHOLD_SUFFIXES)
-    ]
+    )
 
     # Only sort the threshold keys (typically 1-2 keys instead of 66+)
     threshold: float | None = None
@@ -1239,7 +1241,9 @@ def get_provider_specific_geo_multiplier(model_info: ModelInfo, usage: Usage) ->
     inference_geo: Final = getattr(usage, "inference_geo", None)
     if not isinstance(inference_geo, str) or inference_geo.lower() in ("global", "not_available"):
         return 1.0
-    provider_specific_entry: Final[dict[str, float]] = model_info.get("provider_specific_entry") or {}
+    provider_specific_entry: Final[Mapping[str, float]] = (
+        model_info.get("provider_specific_entry") or _EMPTY_GEO_MULTIPLIERS
+    )
     return float(provider_specific_entry.get(inference_geo.lower(), 1.0))
 
 
@@ -1948,11 +1952,12 @@ def _uses_token_based_image_pricing(model: str, custom_llm_provider: str | None)
     registered_info: Final = (
         litellm.model_cost.get(model)
         or litellm.model_cost.get(f"{custom_llm_provider}/{model}")
-        or litellm.model_cost.get(model.removeprefix(f"{custom_llm_provider}/"), {})
+        or litellm.model_cost.get(model.removeprefix(f"{custom_llm_provider}/"))
     )
-    return registered_info.get("output_cost_per_image_token") is not None or (
-        custom_llm_provider in ("openai", "azure") and "gpt-image" in model.lower()
+    has_image_token_rate: Final = (
+        registered_info is not None and registered_info.get("output_cost_per_image_token") is not None
     )
+    return has_image_token_rate or (custom_llm_provider in ("openai", "azure") and "gpt-image" in model.lower())
 
 
 class CostCalculatorUtils:

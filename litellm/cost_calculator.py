@@ -3,7 +3,8 @@
 import logging
 import time
 from collections.abc import Mapping, Sequence
-from functools import lru_cache
+from functools import lru_cache, reduce
+from itertools import product
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Final, Literal, cast
 
@@ -2448,8 +2449,7 @@ def default_image_cost_calculator(
     cost: Final = next(
         (
             price * units
-            for price_table in price_tables
-            for cost_key, units in unit_counts
+            for price_table, (cost_key, units) in product(price_tables, unit_counts)
             if (price := price_table.get(cost_key)) is not None
         ),
         None,
@@ -2888,6 +2888,8 @@ class ResponsesWebSocketTokenUsageProcessor(BaseTokenUsageProcessor):
 
 _TRANSCRIPTION_COMPLETED_EVENT_TYPE: Final = "conversation.item.input_audio_transcription.completed"
 
+_EMPTY_EVENT_FIELDS: Final[Mapping[str, object]] = MappingProxyType({})
+
 
 def _candidate_realtime_token_costs(
     model_name: str,
@@ -3157,9 +3159,9 @@ def handle_realtime_transcription_cost_calculation(
       - {"type": "duration", "seconds": <float>}  → priced via input_cost_per_second
       - {"type": "tokens", "input_tokens": ...}    → priced via input/audio token cost
     """
-    completed_events: Final = [
-        cast(dict, result) for result in results if result.get("type") == _TRANSCRIPTION_COMPLETED_EVENT_TYPE
-    ]
+    completed_events: Final = tuple(
+        result for result in results if result.get("type") == _TRANSCRIPTION_COMPLETED_EVENT_TYPE
+    )
     if not completed_events:
         return 0.0
 
@@ -3171,9 +3173,20 @@ def handle_realtime_transcription_cost_calculation(
 
     total_cost = 0.0
     for event in completed_events:
-        usage = event.get("usage") or {}
+        usage = event.get("usage") or _EMPTY_EVENT_FIELDS
         total_cost += _transcription_usage_cost(usage, model_info, override_info)
     return total_cost
+
+
+def _event_fields_at(event: object, *keys: str) -> Mapping[str, object]:
+    """Follow ``keys`` through the nested mappings of a realtime event payload."""
+    fields: Final = reduce(_event_field, keys, event)
+    return fields if isinstance(fields, Mapping) else _EMPTY_EVENT_FIELDS
+
+
+def _event_field(parent: object, key: str) -> object:
+    """One step of ``_event_fields_at``: the child mapping, or ``None`` once the shape stops being one."""
+    return parent.get(key) if isinstance(parent, Mapping) else None
 
 
 def _get_transcription_model_name_from_results(
@@ -3187,12 +3200,12 @@ def _get_transcription_model_name_from_results(
             "session.created",
             "session.updated",
         ):
-            session = cast(dict, result).get("session", {}) or {}
-            transcription = ((session.get("audio", {}) or {}).get("input", {}) or {}).get(
-                "transcription", {}
-            ) or session.get("input_audio_transcription", {})
-            model = (transcription or {}).get("model") or session.get("model")
-            if model:
+            session: Mapping[str, object] = _event_fields_at(result, "session")
+            transcription: Mapping[str, object] = _event_fields_at(
+                session, "audio", "input", "transcription"
+            ) or _event_fields_at(session, "input_audio_transcription")
+            model: object = transcription.get("model") or session.get("model")
+            if isinstance(model, str) and model:
                 return model
     return None
 
@@ -3224,7 +3237,7 @@ def _transcription_rate(keys: tuple[str, ...], override: ModelInfo | None, base:
 
 
 def _transcription_usage_cost(
-    usage: dict,
+    usage: Mapping[str, object],
     model_info: ModelInfo | None,
     override_info: ModelInfo | None = None,
 ) -> float:
@@ -3236,7 +3249,7 @@ def _transcription_usage_cost(
         seconds: Final = usage.get("seconds") or 0.0
         return float(seconds) * _transcription_rate(("input_cost_per_second",), override_info, model_info)
     if usage_type == "tokens":
-        input_token_details: Final = usage.get("input_token_details") or {}
+        input_token_details: Final = usage.get("input_token_details") or _EMPTY_EVENT_FIELDS
         audio_tokens: Final = input_token_details.get("audio_tokens") or 0
         text_tokens: Final = input_token_details.get("text_tokens") or 0
         output_tokens: Final = usage.get("output_tokens") or 0

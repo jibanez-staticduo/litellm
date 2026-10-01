@@ -89,14 +89,14 @@ def _is_redacted(record: logging.LogRecord) -> bool:
 def _scrubbing_changed_nothing(scrubbed: object, original: object) -> bool:
     try:
         return bool(scrubbed == original)
-    except Exception:
+    except Exception:  # noqa: BLE001  # a custom __eq__ on a log arg can raise anything
         return False
 
 
 def _plain_text(value: object) -> str:
     try:
         return str(value)
-    except Exception:
+    except Exception:  # noqa: BLE001  # a custom __str__ on a log arg can raise anything
         return UNSERIALIZABLE_OBJECT
 
 
@@ -139,7 +139,7 @@ def _substituted_color_message(record: logging.LogRecord) -> str | None:
         return None
     try:
         return color_message % record.args
-    except Exception:
+    except Exception:  # noqa: BLE001  # %-formatting arbitrary args can raise anything
         return color_message
 
 
@@ -351,7 +351,7 @@ def _extra_structure(key: str, value: object) -> object:
         return value
     try:
         return safe_json_structure(value, key=key)
-    except Exception:
+    except Exception:  # noqa: BLE001  # walking an arbitrary object can raise anything
         return _plain_text(value)
 
 
@@ -430,7 +430,7 @@ def _python_process_diagnostic(
 def _render_message(record: logging.LogRecord) -> str:
     try:
         return record.getMessage()
-    except Exception:
+    except Exception:  # noqa: BLE001  # getMessage() formats arbitrary args that can raise
         return record.msg if isinstance(record.msg, str) else UNSERIALIZABLE_OBJECT
 
 
@@ -439,7 +439,7 @@ def _render_exception(record: logging.LogRecord) -> str | None:
         return None
     try:
         return record.exc_text or SecretRedactionFilter._formatter.formatException(record.exc_info)
-    except Exception:
+    except Exception:  # noqa: BLE001  # an exception repr can raise anything when formatted
         return "REDACTED"
 
 
@@ -740,7 +740,7 @@ def _get_standard_record_attrs() -> frozenset:
 
 
 _STANDARD_RECORD_ATTRS: Final = _get_standard_record_attrs()
-_NON_EXTRA_RECORD_ATTRS: Final = _STANDARD_RECORD_ATTRS | {_REDACTED_RECORD_ATTR}
+_NON_EXTRA_RECORD_ATTRS: Final = _STANDARD_RECORD_ATTRS | frozenset((_REDACTED_RECORD_ATTR,))
 
 # CorrelationContextFilter is the only legitimate source for these two JSON fields;
 # see JsonFormatter.format() for why they're excluded from the generic message-content
@@ -976,12 +976,12 @@ def _redact_third_party_loggers() -> None:
 _suppress_loggers()
 _redact_third_party_loggers()
 
-ALL_LOGGERS: Final = [
+ALL_LOGGERS: Final = (
     logging.getLogger(),
     verbose_logger,
     verbose_router_logger,
     verbose_proxy_logger,
-]
+)
 
 
 def _get_loggers_to_initialize():
@@ -996,7 +996,7 @@ def _get_loggers_to_initialize():
     loggers: Final = list(ALL_LOGGERS)
 
     # Add langfuse logger if langfuse is being used as a callback
-    langfuse_callbacks: Final = {"langfuse", "langfuse_otel"}
+    langfuse_callbacks: Final = frozenset(("langfuse", "langfuse_otel"))
     all_callbacks: Final = set(litellm.success_callback + litellm.failure_callback)
     if langfuse_callbacks & all_callbacks:
         loggers.append(logging.getLogger("langfuse"))

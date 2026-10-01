@@ -13,6 +13,7 @@ import traceback
 from collections.abc import Awaitable, Callable, Iterator, Mapping, Sequence
 from datetime import datetime as dt_object
 from functools import lru_cache
+from itertools import chain
 from types import MappingProxyType, TracebackType
 from typing import TYPE_CHECKING, Any, Final, Literal, Union, cast
 
@@ -287,6 +288,16 @@ _in_memory_loggers: Final[list[CustomLogger]] = []
 _STANDARD_LOGGING_METADATA_KEYS: Final[frozenset[str]] = frozenset(StandardLoggingMetadata.__annotations__.keys())
 
 
+def _request_id_header_values(header_sources: tuple[object, ...], expected_header_name: str) -> Iterator[str]:
+    """Values matching one canonical header name, across the sources in source order."""
+    for headers in header_sources:
+        if not isinstance(headers, Mapping):
+            continue
+        for header_name, value in headers.items():
+            if isinstance(header_name, str) and header_name.lower() == expected_header_name and value:
+                yield str(value)
+
+
 def _get_provider_request_id(original_exception: Exception) -> str | None:
     try:
         error_response: Final = getattr(original_exception, "response", None)
@@ -296,13 +307,9 @@ def _get_provider_request_id(original_exception: Exception) -> str | None:
             getattr(original_exception, "litellm_response_headers", None),
         )
         return next(
-            (
-                str(value)
+            chain.from_iterable(
+                _request_id_header_values(header_sources, expected_header_name)
                 for expected_header_name in PROVIDER_REQUEST_ID_HEADERS
-                for headers in header_sources
-                if isinstance(headers, Mapping)
-                for header_name, value in headers.items()
-                if isinstance(header_name, str) and header_name.lower() == expected_header_name and value
             ),
             None,
         )
