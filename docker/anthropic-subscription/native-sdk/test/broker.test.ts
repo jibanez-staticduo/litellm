@@ -172,7 +172,7 @@ test('profile allowlist rejects directory and HOME symlink escape', async () => 
 
 test('native deltas preserve text, thinking signature and JSON tool arguments; output limit settles before message_stop', async () => {
   const { broker, engines } = setup();
-  const started = value(broker.begin(scope, request())); const fake = engines[0]!;
+  const started = value(broker.begin(scope, { ...request(), tools: [{ name: 'repeat', input_schema: { type: 'object' } }] })); const fake = engines[0]!;
   fake.push({ type: 'message_start', message: { id: 'native', type: 'message', role: 'assistant', model: 'claude-test', content: [], usage: { input_tokens: 10, output_tokens: 0 } } });
   fake.push({ type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: '', signature: '' } });
   fake.push({ type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: 'Think' } });
@@ -181,10 +181,14 @@ test('native deltas preserve text, thinking signature and JSON tool arguments; o
   fake.push({ type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } });
   fake.push({ type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: 'Partial' } });
   fake.push({ type: 'content_block_stop', index: 1 });
+  fake.push({ type: 'content_block_start', index: 2, content_block: { type: 'tool_use', id: 'native-tool', name: 'mcp__caller__repeat', input: {} } });
+  fake.push({ type: 'content_block_delta', index: 2, delta: { type: 'input_json_delta', partial_json: '{"label":' } });
+  fake.push({ type: 'content_block_delta', index: 2, delta: { type: 'input_json_delta', partial_json: '"same"}' } });
+  fake.push({ type: 'content_block_stop', index: 2 });
   fake.push({ type: 'message_delta', delta: { stop_reason: 'max_tokens', stop_sequence: null }, usage: { output_tokens: 100 } });
   const result = await response(started);
   assert.equal(fake.closed, true);
-  assert.deepEqual(result['content'], [{ type: 'thinking', thinking: 'Think', signature: 'signed' }, { type: 'text', text: 'Partial' }]);
+  assert.deepEqual(result['content'], [{ type: 'thinking', thinking: 'Think', signature: 'signed' }, { type: 'text', text: 'Partial' }, { type: 'tool_use', id: 'native-tool', name: 'repeat', input: { label: 'same' } }]);
   assert.deepEqual(result['usage'], { input_tokens: 10, output_tokens: 100 });
   const delivered: JsonObject[] = []; for await (const event of started.events) delivered.push(event);
   assert.equal(delivered.at(-1)!['type'], 'message_stop');
