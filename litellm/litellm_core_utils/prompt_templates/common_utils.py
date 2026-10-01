@@ -208,7 +208,9 @@ def _content_parts_contain_image(parts: Sequence[object]) -> bool:
     for _ in range(_IMAGE_SCAN_MAX_DEPTH):
         if any(isinstance(part, Mapping) and part.get("type") in _IMAGE_CONTENT_PART_TYPES for part in frontier):
             return True
-        contents: Final = tuple(part.get("content") for part in frontier if isinstance(part, Mapping))
+        contents = tuple(  # rebind-ok: each depth uses the current image frontier
+            part.get("content") for part in frontier if isinstance(part, Mapping)
+        )
         frontier = tuple(chain.from_iterable(content for content in contents if isinstance(content, list)))
         if not frontier:
             return False
