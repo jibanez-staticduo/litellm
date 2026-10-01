@@ -15,7 +15,7 @@ pytestmark = pytest.mark.requires_rust_extension
 
 @pytest.mark.asyncio
 async def test_trace_reader_projects_connection_and_parameters(recording_server: RecordingServer) -> None:
-    recording_server.enqueue(ResponseSpec(body={"data": [{"span_id": "span-1"}]}))
+    recording_server.enqueue(ResponseSpec(body={"data": [{"trace_id": "trace-1"}]}))
     reader_url: Final = recording_server.base_url.replace("http://", "http://reader:p%40ss%2Fword%25@")
     storage: Final = NativeTraceStorage("trace_test", recording_server.base_url, reader_url + "?database=wrong")
     rows: Final = json.loads(
@@ -23,7 +23,7 @@ async def test_trace_reader_projects_connection_and_parameters(recording_server:
     )
     request: Final = recording_server.requests[0]
     parameters: Final = parse_qs(urlsplit(request.path).query, keep_blank_values=True)
-    assert rows == {"data": [{"span_id": "span-1"}]}
+    assert rows == {"data": [{"trace_id": "trace-1"}]}
     assert b"FROM otel_traces AS o" in request.raw_body
     assert b"WHERE o.TraceId = {trace_id:String}" in request.raw_body
     assert b"trace-1" not in request.raw_body
