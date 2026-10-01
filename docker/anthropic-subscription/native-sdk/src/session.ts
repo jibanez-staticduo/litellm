@@ -1,4 +1,4 @@
-import { controls, failure, isObject, sameMessages, objectSchema, type JsonObject, type Message, type NativeProfile, type Request, type Result, type Scope } from './protocol.js';
+import { changedControls, controls, failure, isObject, sameMessages, objectSchema, type JsonObject, type Message, type NativeProfile, type Request, type Result, type Scope } from './protocol.js';
 import { Queue, ToolBridge, callerResults } from './tools.js';
 import type { Engine, QueryFactory } from './engine.js';
 
@@ -138,7 +138,7 @@ export class Broker {
     if (candidates.length > 1) return failure(409, 'Conversation history is ambiguous. Start a distinct conversation');
     const existing = candidates[0];
     if (existing) {
-      if (existing.fingerprint !== controls(request)) return failure(409, 'Native conversation controls changed. Start a new conversation');
+      if (existing.fingerprint !== controls(request)) return failure(409, `Native conversation controls changed: ${changedControls(existing.request, request).join(', ')}. Start a new conversation`);
       return existing.start(last, false);
     }
     if (prefix.length) return failure(409, 'History is not owned by this native conversation. Start with one user message');

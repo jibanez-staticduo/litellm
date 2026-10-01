@@ -52,7 +52,13 @@ test('exact native history, signatures, tool inputs and scoped ownership are req
   failed(broker.begin(scope, { ...request(history), model: 'claude-different' }), 409);
   const tampered = structuredClone(history); (tampered[1]!.content as JsonObject[])[0]!['signature'] = 'forged';
   failed(broker.begin(scope, request(tampered)), 409);
-  failed(broker.begin(scope, { ...request(history), max_tokens: 200 }), 409);
+  const controlFailure = broker.begin(scope, { ...request(history), max_tokens: 200, system: 'private-system-must-not-leak' });
+  failed(controlFailure, 409);
+  if (!controlFailure.ok) {
+    const diagnostic = JSON.stringify(controlFailure.error);
+    assert.match(diagnostic, /controls changed: max_tokens, system/);
+    assert.equal(diagnostic.includes('private-system-must-not-leak'), false);
+  }
   const cached = structuredClone(history); (cached[1]!.content as JsonObject[])[1]!['cache_control'] = { type: 'ephemeral' };
   const continued = value(broker.begin(scope, request(cached)));
   fake.message([{ type: 'text', text: 'Next done' }], 3);

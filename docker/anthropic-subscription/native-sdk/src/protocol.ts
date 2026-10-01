@@ -82,7 +82,11 @@ export function scopeFromHeaders(headers: Readonly<Record<string, string | strin
 }
 
 export function controls(request: Request): string {
-  return canonical(normalizeControls(toJson({
+  return canonical(controlValues(request));
+}
+
+function controlValues(request: Request): JsonObject {
+  return objectSchema.parse(normalizeControls(toJson({
     model: request.model,
     max_tokens: request.max_tokens,
     system: request.system ?? '',
@@ -91,6 +95,13 @@ export function controls(request: Request): string {
     output_config: request.output_config ?? null,
     tool_choice: request.tool_choice ?? null,
   })));
+}
+
+export function changedControls(original: Request, incoming: Request): readonly string[] {
+  const before = controlValues(original);
+  const after = controlValues(incoming);
+  const fields = ['model', 'max_tokens', 'system', 'tools', 'thinking', 'output_config', 'tool_choice'] as const;
+  return fields.filter(field => canonical(before[field] ?? null) !== canonical(after[field] ?? null));
 }
 
 export function sameMessages(left: readonly Message[], right: readonly Message[]): boolean {
