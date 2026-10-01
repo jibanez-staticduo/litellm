@@ -368,9 +368,7 @@ class LiteLLM_Proxy_MCP_Handler:
                                 None  # rebind-ok: framework flow intentionally updates request or lifecycle state
                             )
                 except Exception as _e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
-                    verbose_logger.debug(
-                        "Could not resolve LazyMCP scope '%s' as toolset: %s", requested_scope, _e
-                    )
+                    verbose_logger.debug("Could not resolve LazyMCP scope '%s' as toolset: %s", requested_scope, _e)
         return effective_filter, active_toolset_id
 
     @staticmethod

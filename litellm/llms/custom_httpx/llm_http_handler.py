@@ -675,9 +675,14 @@ class BaseLLMHTTPHandler:
             data: Final = provider_config.finalize_request(
                 model=model,
                 request_data=(
-                    {**transformed, **provider_config.transform_extra_body(
-                        extra_body=extra_body, request=transformed, model=model, litellm_params=litellm_params
-                    )} if extra_body is not None else transformed
+                    {
+                        **transformed,
+                        **provider_config.transform_extra_body(
+                            extra_body=extra_body, request=transformed, model=model, litellm_params=litellm_params
+                        ),
+                    }
+                    if extra_body is not None
+                    else transformed
                 ),
                 litellm_params=litellm_params,
             )
@@ -2455,9 +2460,11 @@ class BaseLLMHTTPHandler:
         provider_requires_native_stream: Final = data.get("stream") is True
 
         if extra_body:
-            data.update(responses_api_provider_config.transform_extra_body(
-                extra_body=extra_body, request=data, model=model, litellm_params=litellm_params
-            ))
+            data.update(
+                responses_api_provider_config.transform_extra_body(
+                    extra_body=extra_body, request=data, model=model, litellm_params=litellm_params
+                )
+            )
         data = responses_api_provider_config.finalize_request(  # rebind-ok: framework flow intentionally updates request or lifecycle state
             model=model,
             request_data=data,
@@ -2661,9 +2668,11 @@ class BaseLLMHTTPHandler:
         provider_requires_native_stream: Final = data.get("stream") is True
 
         if extra_body:
-            data.update(responses_api_provider_config.transform_extra_body(
-                extra_body=extra_body, request=data, model=model, litellm_params=litellm_params
-            ))
+            data.update(
+                responses_api_provider_config.transform_extra_body(
+                    extra_body=extra_body, request=data, model=model, litellm_params=litellm_params
+                )
+            )
         data = responses_api_provider_config.finalize_request(  # rebind-ok: framework flow intentionally updates request or lifecycle state
             model=model,
             request_data=data,

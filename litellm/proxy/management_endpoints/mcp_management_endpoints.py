@@ -1382,14 +1382,18 @@ if MCP_AVAILABLE:
             return [  # mutable-ok: framework contract requires mutable request or response containers
                 {  # mutable-ok: framework contract requires mutable request or response containers
                     "server_id": server.server_id,
-                    "status": _mcp_health_status_for_response(await principal_health(server, user_api_key_dict), include_reachability),
+                    "status": _mcp_health_status_for_response(
+                        await principal_health(server, user_api_key_dict), include_reachability
+                    ),
                 }  # mutable-ok: framework contract requires mutable request or response containers
                 for server in servers
             ]
 
         auth_contexts: Final = await build_effective_auth_contexts(user_api_key_dict)
 
-        server_status_map: Final[dict[str, Literal["healthy", "reachable", "unhealthy", "unknown", "auth_required"] | None]] = {}
+        server_status_map: Final[
+            dict[str, Literal["healthy", "reachable", "unhealthy", "unknown", "auth_required"] | None]
+        ] = {}
         for auth_context in auth_contexts:
             servers = await global_mcp_server_manager.get_all_mcp_servers_with_health_and_teams(
                 user_api_key_auth=auth_context,

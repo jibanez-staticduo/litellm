@@ -735,11 +735,7 @@ async def user_api_key_auth_websocket_for_model(websocket: WebSocket, model: str
         from litellm.proxy.realtime_endpoints.call_sessions import decode_call
 
         call_token: Final = websocket.path_params.get("call_id") or websocket.query_params.get("call_id")
-        effective_model: Final = (
-            decode_call(call_token, f"Bearer {api_key}").alias
-            if call_token is not None
-            else model
-        )
+        effective_model: Final = decode_call(call_token, f"Bearer {api_key}").alias if call_token is not None else model
         if call_token is not None:
             request.scope["litellm_pinned_realtime_model"] = effective_model
 

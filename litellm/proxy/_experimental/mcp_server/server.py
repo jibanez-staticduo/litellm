@@ -1767,11 +1767,8 @@ if MCP_AVAILABLE:
             )
         return user_api_key_auth.model_copy(update={"object_permission": updated_op, "mcp_toolset_id": toolset_id})
 
-
-
     async def list_lazymcp_tools(ctx: ServerRequestContext, params: PaginatedRequestParams) -> ListToolsResult:
         return ListToolsResult(tools=_get_lazymcp_gateway_tools())
-
 
     async def lazymcp_tool_call(ctx: ServerRequestContext, params: CallToolRequestParams) -> CallToolResult:
         name: Final = params.name
@@ -1817,11 +1814,7 @@ if MCP_AVAILABLE:
     lazymcp_server.add_request_handler("tools/list", PaginatedRequestParams, list_lazymcp_tools)
     lazymcp_server.add_request_handler("tools/call", CallToolRequestParams, lazymcp_tool_call)
 
-
     apply_tool_overrides: Final = apply_display_name_overrides
-
-
-
 
     LAZYMCP_TOOL_NAMES = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
         "mcp_describe",
@@ -1852,7 +1845,6 @@ if MCP_AVAILABLE:
         )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
-
     def _safe_lazymcp_text(value: str | None, fallback: str) -> str:
         text = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
             re.sub(r"\s+", " ", value or "").strip() or fallback
@@ -1866,10 +1858,8 @@ if MCP_AVAILABLE:
             )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         return text
 
-
     def _get_lazymcp_server_label(mcp_server: MCPServer) -> str:
         return str(mcp_server.alias or mcp_server.server_name or mcp_server.name or mcp_server.server_id)
-
 
     def _get_lazymcp_server_description(mcp_server: MCPServer) -> str:
         mcp_info = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
@@ -1881,7 +1871,6 @@ if MCP_AVAILABLE:
             "description"
         )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         return _safe_lazymcp_text(description, "No description configured.")
-
 
     def _summarize_lazymcp_schema(
         schema: object,
@@ -1904,7 +1893,6 @@ if MCP_AVAILABLE:
             ),  # mutable-ok: framework contract requires mutable request or response containers
         }
 
-
     def _lazymcp_tool_to_summary(
         tool: MCPTool, include_schema: bool = False
     ) -> dict[str, Any]:  # mutable-ok: framework contract requires mutable request or response containers
@@ -1926,7 +1914,6 @@ if MCP_AVAILABLE:
         else:
             summary["input_schema_summary"] = _summarize_lazymcp_schema(schema)
         return summary
-
 
     def _lazymcp_cache_scope(
         user_api_key_auth: UserAPIKeyAuth | None,
@@ -1981,7 +1968,6 @@ if MCP_AVAILABLE:
         )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
-
     async def _lazymcp_cache_get(key: str) -> object | None:
         try:
             from litellm.proxy.proxy_server import user_api_key_cache
@@ -1990,7 +1976,6 @@ if MCP_AVAILABLE:
         except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.debug("LazyMCP cache get failed for %s: %s", key, e)
             return None
-
 
     async def _lazymcp_cache_set(key: str, value: object) -> None:
         try:
@@ -2003,7 +1988,6 @@ if MCP_AVAILABLE:
             )
         except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.debug("LazyMCP cache set failed for %s: %s", key, e)
-
 
     def invalidate_lazymcp_cache() -> None:
         """Evict LazyMCP entries from the in-memory DualCache layer only."""
@@ -2026,7 +2010,6 @@ if MCP_AVAILABLE:
                 cache_dict.pop(key, None)
         except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.warning("invalidate_lazymcp_cache failed: %s", e)
-
 
     async def _merge_toolset_permissions(
         user_api_key_auth: UserAPIKeyAuth | None,
@@ -2064,7 +2047,6 @@ if MCP_AVAILABLE:
         )
         return user_api_key_auth.model_copy(update=MappingProxyType({"object_permission": updated_permission}))
 
-
     async def _get_lazymcp_allowed_servers(
         user_api_key_auth: UserAPIKeyAuth | None,
         mcp_servers: list[str] | None,  # mutable-ok: framework contract requires mutable request or response containers
@@ -2078,7 +2060,6 @@ if MCP_AVAILABLE:
             mcp_servers=mcp_servers,
             client_ip=client_ip,
         )
-
 
     async def _get_lazymcp_server_tools(
         server: MCPServer,
@@ -2134,11 +2115,9 @@ if MCP_AVAILABLE:
         )
         return apply_tool_overrides(tools, server)
 
-
     def _consume_lazymcp_listing_task(task: asyncio.Task[Any]) -> None:
         with contextlib.suppress(BaseException):
             task.result()
-
 
     async def _get_bounded_lazymcp_server_tools(
         server: MCPServer,
@@ -2214,7 +2193,6 @@ if MCP_AVAILABLE:
                 "authentication_failed" if server.needs_user_oauth_token else "listing_failed",
             )  # mutable-ok: framework contract requires mutable request or response containers
 
-
     async def _get_bounded_lazymcp_catalog_server_entry(
         server: MCPServer,
         user_api_key_auth: UserAPIKeyAuth | None,
@@ -2250,7 +2228,6 @@ if MCP_AVAILABLE:
             ],  # mutable-ok: framework contract requires mutable request or response containers
             "auth_status": auth_status,
         }
-
 
     async def _get_lazymcp_catalog(
         user_api_key_auth: UserAPIKeyAuth | None,
@@ -2335,7 +2312,6 @@ if MCP_AVAILABLE:
             await _lazymcp_cache_set(cache_key, catalog)
         return catalog
 
-
     def _resolve_lazymcp_tool(
         tools: Sequence[MCPTool], server: MCPServer, requested_name: str
     ) -> tuple[MCPTool | None, Mapping[str, str] | None]:
@@ -2350,7 +2326,6 @@ if MCP_AVAILABLE:
         if len(local_matches) > 1:
             return None, LAZYMCP_AMBIGUOUS_TOOL_ERROR
         return None, LAZYMCP_UNAVAILABLE_TOOL_ERROR
-
 
     async def _lazymcp_describe(
         arguments: dict[str, Any],  # mutable-ok: framework contract requires mutable request or response containers
@@ -2448,7 +2423,6 @@ if MCP_AVAILABLE:
             ]
         }
 
-
     async def _lazymcp_status() -> (
         dict[  # mutable-ok: framework contract requires mutable request or response containers
             str, Any
@@ -2496,7 +2470,6 @@ if MCP_AVAILABLE:
                 )  # mutable-ok: framework contract requires mutable request or response containers
             ],
         }
-
 
     async def _lazymcp_call(
         arguments: dict[str, Any],  # mutable-ok: framework contract requires mutable request or response containers
@@ -2600,7 +2573,6 @@ if MCP_AVAILABLE:
             },
         )
 
-
     def _make_lazymcp_text_result(
         payload: dict[str, Any],  # mutable-ok: framework contract requires mutable request or response containers
     ) -> CallToolResult:  # mutable-ok: framework contract requires mutable request or response containers
@@ -2610,7 +2582,6 @@ if MCP_AVAILABLE:
             ],  # mutable-ok: framework contract requires mutable request or response containers
             is_error=bool(payload.get("error")),
         )
-
 
     def _get_lazymcp_gateway_tools(
         description: str | None = None,
@@ -2676,7 +2647,6 @@ if MCP_AVAILABLE:
                 },
             ),
         ]
-
 
     async def _raise_preemptive_401_for_unauthenticated_servers(
         scope: Scope,
@@ -3536,9 +3506,7 @@ if MCP_AVAILABLE:
                 )
                 await error_response(scope, receive, send)
             except Exception as response_error:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
-                verbose_logger.exception(
-                    "Failed to send LazyMCP error response: %s", response_error
-                )
+                verbose_logger.exception("Failed to send LazyMCP error response: %s", response_error)
                 raise e
 
     async def handle_sse_mcp(scope: Scope, receive: Receive, send: Send) -> None:

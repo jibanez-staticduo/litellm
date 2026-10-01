@@ -327,11 +327,10 @@ async def _deployment(model: str, processed: Mapping[str, object]) -> LiveDeploy
     prefix, _, suffix = qualified.partition("/")
     provider: Final = prefix if prefix in ("openai", "chatgpt") else "openai"
     upstream: Final = suffix if prefix in ("openai", "chatgpt") else qualified
-    if provider == "chatgpt" and any(
-        params.get(key) is not None for key in ("chatgpt_token_dir", "chatgpt_auth_file")
-    ):
+    if provider == "chatgpt" and any(params.get(key) is not None for key in ("chatgpt_token_dir", "chatgpt_auth_file")):
         raise HTTPException(
-            400, "ChatGPT Live selects accounts through chatgpt_auth_profile; token directory or file overrides are unsupported"
+            400,
+            "ChatGPT Live selects accounts through chatgpt_auth_profile; token directory or file overrides are unsupported",
         )
     if prefix not in ("openai", "chatgpt"):
         if "/" in qualified:
@@ -385,9 +384,7 @@ def _validate_pinned_deployment(handle: LiveHandle) -> LiveDeployment:
     prefix, _, suffix = qualified.partition("/")
     provider: Final = prefix if prefix in ("openai", "chatgpt") else "openai"
     upstream: Final = suffix if prefix in ("openai", "chatgpt") else qualified
-    if provider == "chatgpt" and any(
-        params.get(key) is not None for key in ("chatgpt_token_dir", "chatgpt_auth_file")
-    ):
+    if provider == "chatgpt" and any(params.get(key) is not None for key in ("chatgpt_token_dir", "chatgpt_auth_file")):
         raise HTTPException(410, "Live session deployment is no longer available")
     if any(
         (
