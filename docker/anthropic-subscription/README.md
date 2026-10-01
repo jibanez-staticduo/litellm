@@ -1,6 +1,6 @@
 # Claude Code subscription gateway
 
-The verified phase 1 NAS gateway at `https://litellm.staticduo.com` keeps Anthropic OAuth login and refresh in Claude Code and records API-equivalent usage in LiteLLM. The isolated pilot at `127.0.0.1:14001` supplied the initial evidence and was retired after shared-route verification. The HTTP managed candidate passed Codex and refresh checks, but Anthropic rejected OpenCode through that transport. A native Agent SDK broker is now being integrated under separate `*-subscription` aliases, with dedicated subscription authorizations and server-owned refresh. Promotion waits for real isolated client QA, then Fedora verification
+The verified phase 1 NAS gateway at `https://litellm.staticduo.com` keeps Anthropic OAuth login and refresh in Claude Code and records API-equivalent usage in LiteLLM. The isolated pilot at `127.0.0.1:14001` supplied the initial evidence and was retired after shared-route verification. The HTTP managed candidate passed Codex and refresh checks, but Anthropic rejected OpenCode through that transport. The native Agent SDK broker provides separate `*-subscription` aliases, dedicated subscription authorizations and server-owned refresh. Native Codex tool use and resume pass in isolation; the complete OpenCode request remains rejected by Anthropic, so promotion to Fedora and NAS is blocked
 
 ## Shared deployment
 
@@ -66,7 +66,7 @@ The dedicated `codex-anthropic-litellm` and `opencode-anthropic-litellm` launche
 
 Install the executable launchers in a directory on the client's PATH. They preserve existing logins, provider configuration and policy settings. They export `LITELLM_ANTHROPIC_QA_KEY` only to the child client and leave upstream OAuth to the managed server profile. Neither launcher changes the ordinary `codex` or `opencode` defaults
 
-The Codex launcher supplies the `anthropic_subscription` provider through command-line configuration with `base_url=<root>/v1`, `env_key=LITELLM_ANTHROPIC_QA_KEY` and `wire_api=responses`. It defaults to `claude-sonnet-5-5-subscription`, overridable with `LITELLM_ANTHROPIC_MODEL` or ordinary Codex arguments. It disables hosted web search for this provider because the broker only supports caller tools. External MCP search tools remain available. User arguments are passed through without changing approval or sandbox policy
+The Codex launcher supplies the `anthropic_subscription` provider through command-line configuration with `base_url=<root>/v1`, `env_key=LITELLM_ANTHROPIC_QA_KEY` and `wire_api=responses`. It defaults to `claude-sonnet-5-5-subscription`, overridable with `LITELLM_ANTHROPIC_MODEL` or ordinary Codex arguments. It disables hosted web search for this provider because the broker only supports caller tools. External MCP search tools remain available. It sets `mcp_optional_startup_grace_ms=0` to wait for each optional MCP server's configured startup timeout before sending the first request or resuming. This avoids dropping tools from an existing native conversation while a server starts. User arguments are passed through without changing approval or sandbox policy
 
 ```bash
 codex-anthropic-litellm
@@ -81,7 +81,7 @@ opencode-anthropic-litellm run --model subscription/claude-sonnet-5-5-subscripti
 
 Codex uses LiteLLM's `/v1/responses` bridge and OpenCode uses `/v1/messages`. These launchers do not add an Anthropic catalog to Codex or enable native Anthropic Responses support
 
-These routes reuse the Anthropic provider and Responses bridge, including signed thinking replay. The direct HTTP candidate passed Codex but failed OpenCode. The native broker has passed standalone SDK probes with the original OpenCode system prompt and parallel tools. Client integration QA is still required
+These routes reuse the Anthropic provider and Responses bridge, including signed thinking replay. The direct HTTP candidate passed Codex but failed OpenCode. The native broker passes Codex tool use and resume. Its standalone probes with the original OpenCode system prompt and parallel tools did not establish support for the complete OpenCode agent request, which Anthropic rejects
 
 Spend remains an API-equivalent valuation derived from provider usage and the effective LiteLLM price map. It is not an Anthropic API invoice. For phase 1 passthrough, verify `used_client_oauth_token=true`. Managed profiles instead require `used_client_oauth_token=false`, server OAuth attribution and the configured profile. For the default profile, the expected ledger values are `used_server_oauth_token=true` and `anthropic_auth_profile=default`. The HTTP candidate ledger correction passed live verification; native broker accounting must pass the same checks. Verify the served model, virtual key attribution and cache usage, and verify rejected authentication records no successful generation spend
 
@@ -136,3 +136,11 @@ The isolated native broker passed Messages with all three models, Chat, Response
 The complete OpenCode 2.0.20 agent request fails before the first message event. Capturing the client's request and executing that exact body directly with Agent SDK 0.3.287 reproduces Anthropic HTTP 400 requiring extra usage. Its auxiliary title request succeeds, which explains why the earlier prompt-only probe did not establish full client compatibility. The native profile's OAuth usage endpoint returns HTTP 200 with extra usage disabled. No billing setting or application identity was changed to work around the rejection
 
 The authenticated NAS Admin UI with the requested team filter displays the three canonical phase 1 aliases. The managed subscription aliases remain isolated until the complete client acceptance criteria pass
+
+Native broker candidate 05, `sha256:0c61719c08c7fd4b782a8c536d16fa91f92dd9e91a7f26fedf2174fcd2d6b147`, completed real Codex 0.159.2 tool use and file creation with `workspace-write`. The first turn read `314159`, wrote `314160` and returned `CODEX_TOOL_OK`, with 209 reasoning tokens. A separate resume executed `cat proof-codex.txt`, read `314160` and returned `CODEX_RESUME_OK 314160`, with 297 reasoning tokens. This native evidence is separate from the earlier HTTP candidate
+
+The broker accepts added caller tools through public MCP `tools/list_changed`, then waits for `tools/list` and the native SDK inventory before releasing pending results. It preserves the same Query and rejects removed or modified existing definitions, foreign histories and changed account controls. The 16 broker tests, build and independent review pass; the added regression fails against the previous source. All six compiled broker files matched the reviewed runtime
+
+The final `make check` passes after the caller replay, dynamic tool inventory and launcher corrections, including Python lint, test quality, dashboard lint budgets and generated API types. No lint or type budgets were changed
+
+After these checks, Compose down without `-v` stopped and removed the native SDK, proxy and PostgreSQL containers and their project network. `docker ps -a` and network listing confirm their absence. PostgreSQL data and dedicated credentials remain intact. Both shared proxies remain healthy on their previous images; the native candidate was not promoted

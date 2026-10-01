@@ -213,7 +213,7 @@ La investigacion del SDK oficial encontro perfiles independientes y streaming, p
 
 ### Motor nativo, reapertura comprobada
 
-El bloqueo corresponde al transporte HTTP directo. El SDK oficial 0.3.287 completo una prueba real con el prompt original de OpenCode, identidad propia del puente y extra usage desactivado. Otra prueba devolvio tres herramientas en un mensaje, incluidas dos con argumentos identicos. Sus handlers quedaron suspendidos mientras el caller devolvia resultados en orden inverso. El motor mantuvo la asociacion correcta, thinking firmado y otro turno user en la misma sesion. Descartar el SDK por complejidad no demostraba imposibilidad
+La investigacion se reabrio tras una prueba real con el SDK oficial 0.3.287, el prompt original de OpenCode, identidad propia del puente y extra usage desactivado. Esa prueba no incluia el request completo del agente, cuyo rechazo posterior se documenta abajo. Otra prueba devolvio tres herramientas en un mensaje, incluidas dos con argumentos identicos. Sus handlers quedaron suspendidos mientras el caller devolvia resultados en orden inverso. El motor mantuvo la asociacion correcta, thinking firmado y otro turno user en la misma sesion. Descartar el SDK por complejidad no demostraba imposibilidad
 
 Se implementara un broker interno Messages/SSE con sesiones nativas, manteniendo el proveedor Anthropic y el bridge Responses existentes. El modo `anthropic_execution_mode: native_sdk` sera exclusivo del deployment. URL y credencial del servicio permaneceran separadas del OAuth Anthropic. El broker fijara perfil, identidad autenticada, deployment y modelo de cada sesion, validara el historial y los IDs pendientes y traducira los nombres MCP de forma reversible, conservando nombres HTTP y firmas originales
 
@@ -223,9 +223,11 @@ El contador debe contar el cuerpo solicitado con la misma cuenta del engine, sin
 
 - [x] Probar SDK nativo con prompt OpenCode original, herramientas paralelas y repetidas, resultados externos en orden inverso, thinking firmado y otro turno
 - [x] Implementar broker tipado con autenticacion privada, aislamiento de sesiones, streaming, cancelacion y pruebas funcionales con SDK inyectado
-- [ ] Integrar el modo nativo trusted en Chat, Messages, Responses y ambos contadores, preservando politica de cuentas y contabilidad
+- [x] Integrar el modo nativo trusted en Chat, Messages, Responses y ambos contadores, preservando politica de cuentas y contabilidad
 - [x] Verificar autorizaciones nativas independientes, refresh, parametros efectivos y conteo exacto sin cargos auxiliares
-- [ ] Validar OpenCode y Codex reales en aislamiento, eliminar todos los contenedores temporales y conservar datos
+- [x] Validar Codex real en aislamiento con herramientas, archivo y reanudacion
+- [x] Parar y eliminar todos los contenedores temporales y su red, conservando datos y credenciales
+- [ ] Validar OpenCode real subscription-only. El request completo sigue rechazado por Anthropic con el requisito de extra usage
 - [ ] Probar el mismo candidato en Fedora y solo despues promover a NAS, con modelos visibles y consumo atribuible
 
 ### Resultado del cliente OpenCode con motor nativo
@@ -234,7 +236,7 @@ El request completo del agente OpenCode 2.0.20, con doce herramientas, falla ant
 
 La consulta OAuth de uso del perfil nativo devuelve HTTP 200 y `extra_usage.is_enabled=false`. No se habilita extra usage ni se cambia la identidad de la aplicacion para evitar el rechazo. El criterio subscription-only de OpenCode sigue incumplido y bloquea la promocion ordenada a Fedora y NAS
 
-El piloto nativo pasa los tres modelos en Messages, Chat, Responses, ambos contadores y replay firmado de una herramienta. Cinco registros nativos conservan servidor OAuth, perfil default y la virtual key esperada; el coste coincide con el calculador desplegado. Las correcciones de thinking vacio firmado y herramientas `type: custom` disponen de regresiones. El gate `make check` pasa sobre el candidato Python anterior a la correccion posterior de caller en Responses
+El piloto nativo pasa los tres modelos en Messages, Chat, Responses, ambos contadores y replay firmado de una herramienta. Cinco registros nativos conservan servidor OAuth, perfil default y la virtual key esperada; el coste coincide con el calculador desplegado. Las correcciones de thinking vacio firmado y herramientas `type: custom` disponen de regresiones. El gate final `make check` pasa despues de las correcciones de caller en Responses, inventario dinamico de herramientas y launcher
 
 La pagina real del Admin UI del NAS con el filtro de equipo solicitado muestra los tres aliases canonicos de fase 1. Los aliases gestionados `-subscription` no se han publicado en los proxies compartidos
 
@@ -287,3 +289,15 @@ Codex 0.159.2 completo herramientas, archivo y resume con 207 reasoning tokens. 
 El candidato final 05, `sha256:875fba7af1d4cdec0f0967e73f9016688f2b1fd563a81ffc597603f711e114fa`, repite las pruebas API y replay tras corregir la atribucion contable. Sus 21 archivos fuente overlay coinciden byte a byte con el checkout. Cinco registros exitosos conservan OAuth de servidor, perfil default, OAuth de cliente false y la virtual key esperada. Los cinco importes coinciden con el calculador desplegado
 
 La regresion contable pasa 47 tests focalizados de logging y 27 de spend. La review independiente no encontro defectos bloqueantes y otros 13 tests focalizados de propagacion pasan. El gate final `make check` pasa, incluyendo lint, presupuestos y sincronizacion del schema del dashboard. Se pararon y eliminaron los dos contenedores del piloto gestionado y su red con Compose down sin `-v`. `docker ps -a` no devuelve esos contenedores en NAS ni otros temporales Anthropic en Fedora, `postgresql-data` sigue presente y ambos proxies compartidos permanecen healthy. La fase 2 sigue bloqueada por OpenCode subscription-only y no se ha promovido a Fedora ni NAS
+
+### Cierre del piloto SDK nativo
+
+El broker nativo candidato 05, `sha256:0c61719c08c7fd4b782a8c536d16fa91f92dd9e91a7f26fedf2174fcd2d6b147`, completa Codex 0.159.2 real con sandbox `workspace-write`. El primer turno usa herramientas para leer `314159`, escribir `314160` y devolver `CODEX_TOOL_OK`, con 209 reasoning tokens. La reanudacion ejecuta `cat proof-codex.txt`, obtiene `314160` y devuelve `CODEX_RESUME_OK 314160`, con 297 reasoning tokens. Esta evidencia usa el motor SDK y no el candidato HTTP anterior
+
+Codex incorpora herramientas MCP cuando terminan de arrancar. El broker acepta ampliaciones sin modificar definiciones existentes, notifica `tools/list_changed` y espera tanto `tools/list` como el inventario confirmado por `mcpServerStatus` antes de liberar resultados. Conserva la misma Query y rechaza eliminaciones, cambios de schema, propietario, historial y otros controles. El launcher dedicado usa `mcp_optional_startup_grace_ms=0`, documentado en [Codex MCP](https://learn.chatgpt.com/docs/extend/mcp), para esperar el arranque de servidores opcionales tambien durante resume
+
+Pasan build, 16 pruebas del broker y review independiente, incluidas cancelacion, timeout real de 15 segundos y rechazo de resultados ajenos antes del refresh. La regresion de ampliacion falla contra la fuente anterior. La prueba funcional temporal del launcher pasa exec y resume sin perder argumentos o exponer la clave. Los seis archivos compilados del broker coinciden con el runtime revisado
+
+El ultimo `make check` termina con PASS y exit code 0, incluyendo lint Python, calidad de tests, presupuestos del dashboard y sincronizacion de tipos API. No se han cambiado presupuestos de lint o tipos
+
+Compose down sin `-v` paro y elimino `litellm-anthropic-subscription-native-sdk-1`, `litellm-anthropic-subscription-proxy-1`, `litellm-anthropic-subscription-postgres-1` y su red. Las listas de contenedores y redes del proyecto estan vacias, PostgreSQL conserva su directorio de datos y las credenciales dedicadas permanecen intactas. Ambos proxies compartidos siguen healthy con las imagenes anteriores. No se ha promovido este candidato a Fedora ni NAS porque OpenCode sigue rechazado por Anthropic
