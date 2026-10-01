@@ -73,6 +73,7 @@ from litellm.litellm_core_utils.classifier_logging import (
 from litellm.litellm_core_utils.core_helpers import (
     get_provider_response_headers_from_hidden_params,
     is_expected_client_error,
+    managed_anthropic_oauth_attribution,
     proxy_stamped_used_client_oauth_token,
     reconstruct_model_name,
     set_response_cost_in_hidden_params,
@@ -286,7 +287,9 @@ else:
     _PAGERDUTY_ALERTING_FACTORY: Final = PagerDutyAlerting
 _in_memory_loggers: Final[list[CustomLogger]] = []
 
-_STANDARD_LOGGING_METADATA_RESOLVED_KEYS: Final[frozenset[str]] = frozenset(("used_client_oauth_token",))
+_STANDARD_LOGGING_METADATA_RESOLVED_KEYS: Final[frozenset[str]] = frozenset(
+    ("used_client_oauth_token", "used_server_oauth_token", "anthropic_auth_profile")
+)
 _STANDARD_LOGGING_METADATA_KEYS: Final[frozenset[str]] = (
     frozenset(StandardLoggingMetadata.__annotations__.keys()) - _STANDARD_LOGGING_METADATA_RESOLVED_KEYS
 )
@@ -975,8 +978,9 @@ class Logging(LiteLLMLoggingBaseClass):
         """
         base_litellm_params: Final[dict[str, Any]] = {}
 
-        if "use_anthropic_oauth" in kwargs:
-            base_litellm_params["use_anthropic_oauth"] = kwargs["use_anthropic_oauth"]
+        for oauth_param in ("use_anthropic_oauth", "anthropic_auth_profile"):
+            if oauth_param in kwargs:
+                base_litellm_params[oauth_param] = kwargs[oauth_param]
         if isinstance(kwargs.get("metadata"), dict):
             base_litellm_params["metadata"] = kwargs["metadata"].copy()
         if "litellm_metadata" in kwargs and isinstance(kwargs["litellm_metadata"], dict):
@@ -5807,6 +5811,10 @@ class StandardLoggingPayloadSetup:
                     prompt_integration=prompt_integration,
                 )
 
+        used_server_oauth_token, anthropic_auth_profile = managed_anthropic_oauth_attribution(
+            litellm_params, custom_llm_provider
+        )
+
         # Initialize with default values
         clean_metadata = StandardLoggingMetadata(
             user_api_key_hash=None,
@@ -5843,8 +5851,10 @@ class StandardLoggingPayloadSetup:
             user_api_key_auth_metadata=None,
             team_alias=None,
             team_id=None,
+            used_server_oauth_token=used_server_oauth_token,
+            anthropic_auth_profile=anthropic_auth_profile,
             used_client_oauth_token=resolve_used_client_oauth_token(
-                proxy_stamped_used_client_oauth_token(metadata, litellm_params),
+                False if used_server_oauth_token else proxy_stamped_used_client_oauth_token(metadata, litellm_params),
                 custom_llm_provider,
             ),
         )
@@ -6892,7 +6902,9 @@ def get_standard_logging_metadata(
     )
     if isinstance(metadata, dict):
         # Update the clean_metadata with values from input metadata that match StandardLoggingMetadata fields
-        for key in StandardLoggingMetadata.__annotations__:
+        for key in StandardLoggingMetadata.__annotations__.keys() - frozenset(
+            ("used_server_oauth_token", "anthropic_auth_profile")
+        ):
             if key in metadata:
                 clean_metadata[key] = metadata[key]
 

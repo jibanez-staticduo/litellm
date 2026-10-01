@@ -346,6 +346,19 @@ def proxy_stamped_used_client_oauth_token(metadata: object, litellm_params: Mapp
     return metadata.get("used_client_oauth_token") if isinstance(metadata, Mapping) else None
 
 
+def managed_anthropic_oauth_attribution(
+    litellm_params: Mapping[str, object] | None, custom_llm_provider: str | None
+) -> tuple[bool, str | None]:
+    if (
+        litellm_params is None
+        or custom_llm_provider != "anthropic"
+        or litellm_params.get("use_anthropic_oauth") is not True
+    ):
+        return False, None
+    profile: Final = litellm_params.get("anthropic_auth_profile")
+    return True, profile if isinstance(profile, str) and profile else "default"
+
+
 def get_litellm_metadata_from_kwargs(kwargs: dict):
     """
     Helper to get litellm metadata from all litellm request kwargs

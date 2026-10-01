@@ -4860,6 +4860,65 @@ def test_get_standard_logging_object_payload_takes_used_client_oauth_token_from_
     assert payload["metadata"]["used_client_oauth_token"] is expected
 
 
+@pytest.mark.parametrize("managed", [False, True])
+@pytest.mark.parametrize("function_name", [None, "_ageneric_api_call_with_fallbacks"])
+def test_managed_anthropic_oauth_attribution_survives_router_logging_and_spend(
+    logging_obj: LitellmLogging, managed: bool, function_name: str | None
+) -> None:
+    from datetime import datetime, timezone
+
+    from litellm.litellm_core_utils.litellm_logging import get_standard_logging_object_payload
+    from litellm.proxy.spend_tracking.spend_tracking_utils import get_logging_payload
+
+    router: Final = litellm.Router(model_list=[])
+    profile: Final = "accounting-profile"
+    deployment: Final = {
+        "model_name": "accounting-model",
+        "litellm_params": {
+            "model": "anthropic/unit-test-model",
+            "use_anthropic_oauth": managed,
+            "anthropic_auth_profile": profile,
+        },
+        "model_info": {"id": "accounting-deployment"},
+    }
+    request: Final = {
+        "metadata": {
+            "used_server_oauth_token": not managed,
+            "anthropic_auth_profile": "caller-profile",
+            "used_client_oauth_token": True,
+        },
+        "litellm_metadata": {
+            "used_server_oauth_token": not managed,
+            "anthropic_auth_profile": "caller-profile",
+            "used_client_oauth_token": True,
+        },
+    }
+    router._update_kwargs_with_deployment(deployment=deployment, kwargs=request, function_name=function_name)
+    logging_obj.update_from_kwargs(kwargs=request, litellm_params={"custom_llm_provider": "anthropic"})
+    kwargs: Final = {
+        "model": deployment["litellm_params"]["model"],
+        "custom_llm_provider": "anthropic",
+        "litellm_params": logging_obj.litellm_params,
+    }
+    now: Final = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    payload: Final = get_standard_logging_object_payload(
+        kwargs=kwargs,
+        init_response_obj={},
+        start_time=now,
+        end_time=now,
+        logging_obj=logging_obj,
+        status="success",
+    )
+    assert payload is not None
+    spend: Final = get_logging_payload(
+        kwargs={**kwargs, "standard_logging_object": payload}, response_obj={}, start_time=now, end_time=now
+    )
+    for metadata in (payload["metadata"], json.loads(spend["metadata"])):
+        assert metadata["used_server_oauth_token"] is managed
+        assert metadata["anthropic_auth_profile"] == (profile if managed else None)
+        assert metadata["used_client_oauth_token"] is (not managed)
+
+
 def test_get_standard_logging_object_payload_carries_matched_access_groups(logging_obj):
     """Access groups stamped at auth time reach the logging payload, so integrations see what a request billed."""
     from datetime import datetime
