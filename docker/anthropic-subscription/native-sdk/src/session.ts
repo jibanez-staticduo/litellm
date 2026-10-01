@@ -1,4 +1,4 @@
-import { changedControls, controls, failure, isObject, sameMessages, objectSchema, type JsonObject, type Message, type NativeProfile, type Request, type Result, type Scope } from './protocol.js';
+import { changedControls, extendsTools, failure, isObject, sameMessages, objectSchema, type JsonObject, type Message, type NativeProfile, type Request, type Result, type Scope, type ToolDefinition } from './protocol.js';
 import { Queue, ToolBridge, callerResults } from './tools.js';
 import type { Engine, QueryFactory } from './engine.js';
 
@@ -8,9 +8,9 @@ type Active = Readonly<{ events: Queue<JsonObject>; resolve: (result: Result<Jso
 class Session {
   readonly input = new Queue<Message>();
   readonly bridge: ToolBridge;
-  readonly fingerprint: string;
   readonly history: Message[] = [];
   readonly engine: Engine;
+  tools: readonly ToolDefinition[];
   active: Active | undefined;
   pendingIds: readonly string[] = [];
   touched = Date.now();
@@ -20,28 +20,39 @@ class Session {
   private readonly inputs = new Map<number, string>();
 
   constructor(readonly scope: Scope, readonly request: Request, profile: NativeProfile, factory: QueryFactory, private readonly remove: () => void) {
-    this.fingerprint = controls(request);
+    this.tools = request.tools ?? [];
     this.bridge = new ToolBridge(request.tools ?? [], () => this.cancel());
     this.engine = factory({ profile, request, input: this.input, beforeTool: (name, id, args) => this.bridge.before(name, id, args), handleTool: (name, args, signal) => this.bridge.handle(name, args, signal) });
   }
 
-  start(message: Message, initial: boolean): Result<Generation> {
+  start(message: Message, initial: boolean, tools: readonly ToolDefinition[] = this.tools): Result<Generation> {
     if (this.closed) return failure(409, 'Native conversation is closed. Start a new conversation');
     if (this.active) return failure(409, 'A generation is already active for this conversation');
     const results = this.pendingIds.length ? callerResults(message.content) : undefined;
     if (results && !results.ok) return results;
     if (!results && typeof message.content !== 'string' && message.content.some(block => block.type === 'tool_result')) return failure(409, 'No tool results are pending for this conversation');
+    if (results?.ok) {
+      const valid = this.bridge.validate(results.value, this.pendingIds);
+      if (!valid.ok) return valid;
+    }
     const events = new Queue<JsonObject>();
     const done = new Promise<Result<JsonObject>>(resolve => { this.active = { events, resolve }; });
-    if (results?.ok) {
-      const accepted = this.bridge.accept(results.value, this.pendingIds);
-      if (!accepted.ok) { this.active = undefined; events.end(); return accepted; }
-      this.pendingIds = [];
-    }
-    this.history.push(message);
-    this.touched = Date.now();
-    if (!results) this.input.push(message);
-    if (initial) void this.read();
+    const resume = (): void => {
+      if (this.closed) return;
+      this.tools = tools;
+      this.bridge.extend(tools);
+      if (results?.ok) {
+        const accepted = this.bridge.accept(results.value, this.pendingIds);
+        if (!accepted.ok) { this.cancel(); return; }
+        this.pendingIds = [];
+      }
+      this.history.push(message);
+      this.touched = Date.now();
+      if (!results) this.input.push(message);
+      if (initial) void this.read();
+    };
+    if (tools.length > this.tools.length) void this.engine.updateTools(tools).then(resume, () => this.cancel());
+    else resume();
     return { ok: true, value: { events, done, cancel: () => this.cancel() } };
   }
 
@@ -138,8 +149,10 @@ export class Broker {
     if (candidates.length > 1) return failure(409, 'Conversation history is ambiguous. Start a distinct conversation');
     const existing = candidates[0];
     if (existing) {
-      if (existing.fingerprint !== controls(request)) return failure(409, `Native conversation controls changed: ${changedControls(existing.request, request).join(', ')}. Start a new conversation`);
-      return existing.start(last, false);
+      const fields = changedControls(existing.request, request).filter(field => field !== 'tools');
+      const extended = extendsTools(existing.tools, request.tools ?? []);
+      if (fields.length || !extended) return failure(409, `Native conversation controls changed: ${[...fields, ...(!extended ? ['tools'] : [])].join(', ')}. Start a new conversation`);
+      return existing.start(last, false, request.tools ?? []);
     }
     if (prefix.length) return failure(409, 'History is not owned by this native conversation. Start with one user message');
     if (this.sessions.size >= this.capacity) return failure(429, 'Native conversation capacity reached', 'rate_limit_error');

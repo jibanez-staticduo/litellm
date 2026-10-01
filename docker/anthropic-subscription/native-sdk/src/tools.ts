@@ -34,7 +34,7 @@ type Expected = Readonly<{ name: string; args: JsonObject }>;
 export type CallerResult = Readonly<{ id: string; result: ExternalResult }>;
 
 export class ToolBridge {
-  private readonly names: ReadonlyMap<string, string>;
+  private names: ReadonlyMap<string, string>;
   private readonly lanes = new Map<string, Promise<void>>();
   private readonly admissions = new Map<string, Admission>();
   private readonly hooks = new Set<string>();
@@ -48,6 +48,10 @@ export class ToolBridge {
   }
 
   externalName(native: string): string | undefined { return this.names.get(native); }
+
+  extend(tools: readonly ToolDefinition[]): void {
+    this.names = new Map(tools.map(tool => [`mcp__caller__${tool.name}`, tool.name]));
+  }
 
   register(id: string, name: string, args: JsonObject): boolean {
     if (!this.names.has(name) || this.expected.has(id)) return false;
@@ -89,12 +93,18 @@ export class ToolBridge {
   }
 
   accept(results: readonly CallerResult[], expectedIds: readonly string[]): Result<undefined> {
+    const valid = this.validate(results, expectedIds);
+    if (!valid.ok) return valid;
+    for (const result of results) this.results.set(result.id, result.result);
+    for (const result of results) { this.pending.get(result.id)?.(result.result); this.pending.delete(result.id); }
+    return { ok: true, value: undefined };
+  }
+
+  validate(results: readonly CallerResult[], expectedIds: readonly string[]): Result<undefined> {
     const ids = results.map(result => result.id);
     if (new Set(ids).size !== ids.length) return failure(400, 'Duplicate tool_result IDs are not allowed');
     if (ids.length !== expectedIds.length || ids.some(id => !expectedIds.includes(id))) return failure(409, 'Tool results must match every pending tool_use ID from this conversation');
     if (ids.some(id => !this.expected.has(id) || this.results.has(id))) return failure(409, 'Tool_result ID is foreign or already completed');
-    for (const result of results) this.results.set(result.id, result.result);
-    for (const result of results) { this.pending.get(result.id)?.(result.result); this.pending.delete(result.id); }
     return { ok: true, value: undefined };
   }
 

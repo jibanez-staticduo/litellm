@@ -1,6 +1,7 @@
 import { createSdkMcpServer, query, type SDKUserMessage, type ThinkingConfig } from '@anthropic-ai/claude-agent-sdk';
 import { CallToolRequestSchema, CallToolResultSchema, ListToolsRequestSchema, type CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
+import { setTimeout as delay } from 'node:timers/promises';
 import { objectSchema, type JsonObject, type Message, type NativeProfile, type Request, type ToolDefinition } from './protocol.js';
 
 export type EngineEvent = Readonly<{ type: 'stream'; event: JsonObject }> | Readonly<{ type: 'error' }>;
@@ -12,7 +13,7 @@ export type EngineOptions = Readonly<{
   beforeTool: (name: string, id: string, args: JsonObject) => Promise<boolean>;
   handleTool: (name: string, args: JsonObject, signal: AbortSignal) => Promise<ExternalResult>;
 }>;
-export type Engine = Readonly<{ events: AsyncIterable<EngineEvent>; close: () => void }>;
+export type Engine = Readonly<{ events: AsyncIterable<EngineEvent>; updateTools: (tools: readonly ToolDefinition[]) => Promise<void>; close: () => void }>;
 export type QueryFactory = (options: EngineOptions) => Engine;
 
 export function nativeEnvironment(profile: NativeProfile, maxTokens?: number): Record<string, string | undefined> {
@@ -42,20 +43,64 @@ function toToolResult(result: ExternalResult): CallToolResult {
   return CallToolResultSchema.parse({ content: result.content, isError: result.isError });
 }
 
+export class CallerCatalog {
+  readonly server = createSdkMcpServer({ name: 'caller', tools: [], alwaysLoad: true });
+  private definitions: readonly ToolDefinition[];
+  private validators: ReadonlyMap<string, z.ZodType>;
+  private listed: (() => void) | undefined;
+  private readonly aborted = new AbortController();
+
+  constructor(tools: readonly ToolDefinition[], handleTool: EngineOptions['handleTool']) {
+    this.definitions = tools;
+    this.validators = new Map(tools.map(tool => [tool.name, toolValidator(tool)]));
+    this.server.instance.server.registerCapabilities({ tools: { listChanged: true } });
+    this.server.instance.server.setRequestHandler(ListToolsRequestSchema, () => {
+      this.listed?.();
+      return { tools: this.definitions.map(tool => ({ name: tool.name, description: tool.description ?? '', inputSchema: tool.input_schema, _meta: { 'anthropic/alwaysLoad': true } })) };
+    });
+    this.server.instance.server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
+      const args = objectSchema.parse(request.params.arguments ?? {});
+      const validator = this.validators.get(request.params.name);
+      if (!validator || !validator.safeParse(args).success) {
+        await handleTool(`mcp__caller__${request.params.name}`, args, AbortSignal.abort());
+        return { content: [{ type: 'text', text: 'Caller tool arguments failed validation' }], isError: true };
+      }
+      return toToolResult(await handleTool(`mcp__caller__${request.params.name}`, args, extra.signal));
+    });
+  }
+
+  async update(tools: readonly ToolDefinition[], inventory: () => Promise<readonly string[]>): Promise<void> {
+    const validators = new Map(tools.map(tool => [tool.name, toolValidator(tool)]));
+    const signal = AbortSignal.any([this.aborted.signal, AbortSignal.timeout(15000)]);
+    signal.throwIfAborted();
+    const listed = new Promise<void>(resolve => { this.listed = resolve; });
+    let abort: () => void = () => {};
+    const canceled = new Promise<never>((_, reject) => {
+      abort = () => reject(signal.reason);
+      signal.addEventListener('abort', abort, { once: true });
+    });
+    this.definitions = tools;
+    this.validators = validators;
+    try {
+      await Promise.race([canceled, (async () => {
+        await this.server.instance.server.sendToolListChanged();
+        await listed;
+        while (true) {
+          signal.throwIfAborted();
+          const names = await inventory();
+          if (names.length === tools.length && tools.every(tool => names.includes(tool.name))) return;
+          await delay(10, undefined, { signal });
+        }
+      })()]);
+    } finally { this.listed = undefined; signal.removeEventListener('abort', abort); }
+  }
+
+  close(): void { this.aborted.abort(); }
+}
+
 export const createNativeEngine: QueryFactory = options => {
   const definitions = options.request.tools ?? [];
-  const validators = new Map(definitions.map(tool => [tool.name, toolValidator(tool)]));
-  const server = createSdkMcpServer({ name: 'caller', tools: [], alwaysLoad: true });
-  server.instance.server.setRequestHandler(ListToolsRequestSchema, () => ({ tools: definitions.map(tool => ({ name: tool.name, description: tool.description ?? '', inputSchema: tool.input_schema, _meta: { 'anthropic/alwaysLoad': true } })) }));
-  server.instance.server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
-    const args = objectSchema.parse(request.params.arguments ?? {});
-    const validator = validators.get(request.params.name);
-    if (!validator || !validator.safeParse(args).success) {
-      await options.handleTool(`mcp__caller__${request.params.name}`, args, AbortSignal.abort());
-      return { content: [{ type: 'text', text: 'Caller tool arguments failed validation' }], isError: true };
-    }
-    return toToolResult(await options.handleTool(`mcp__caller__${request.params.name}`, args, extra.signal));
-  });
+  const catalog = new CallerCatalog(definitions, options.handleTool);
   async function* inputs(): AsyncGenerator<SDKUserMessage> {
     for await (const message of options.input) {
       yield { type: 'user', parent_tool_use_id: null, message: message as SDKUserMessage['message'] };
@@ -68,7 +113,7 @@ export const createNativeEngine: QueryFactory = options => {
     options: {
       model: options.request.model,
       tools: [], skills: [], settingSources: [],
-      mcpServers: { caller: server },
+      mcpServers: { caller: catalog.server },
       allowedTools: definitions.map(tool => `mcp__caller__${tool.name}`),
       permissionMode: 'default',
       persistSession: false,
@@ -96,5 +141,12 @@ export const createNativeEngine: QueryFactory = options => {
       yield { type: 'error' };
     }
   }
-  return { events: events(), close: () => sdk.close() };
+  return {
+    events: events(),
+    updateTools: tools => catalog.update(tools, async () => {
+      const statuses = await sdk.mcpServerStatus();
+      return (statuses.find(status => status.name === 'caller' && status.status === 'connected')?.tools ?? []).map(tool => tool.name.replace(/^mcp__caller__/, ''));
+    }),
+    close: () => { catalog.close(); sdk.close(); },
+  };
 };

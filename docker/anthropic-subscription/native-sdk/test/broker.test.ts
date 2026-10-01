@@ -8,8 +8,11 @@ import { Broker, type Generation } from '../src/session.js';
 import { Queue, ToolBridge } from '../src/tools.js';
 import { createBrokerServer, loadProfiles } from '../src/server.js';
 import { createCounter, countSchema } from '../src/counter.js';
-import { nativeEnvironment, type EngineEvent, type EngineOptions, type QueryFactory } from '../src/engine.js';
-import { parseRequest, sameMessages, controls, type JsonObject, type Message, type NativeProfile, type Request, type Result } from '../src/protocol.js';
+import { CallerCatalog, nativeEnvironment, type EngineEvent, type EngineOptions, type QueryFactory } from '../src/engine.js';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { ToolListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js';
+import { parseRequest, sameMessages, controls, type JsonObject, type Message, type NativeProfile, type Request, type Result, type ToolDefinition } from '../src/protocol.js';
 
 const profile: NativeProfile = { name: 'default', configDir: '/profiles/default', home: '/profiles/default/home' };
 const profiles = new Map([['default', profile], ['other', { ...profile, name: 'other' }]]);
@@ -20,6 +23,7 @@ function failed<T>(result: Result<T>, status: number): void { assert.equal(resul
 class Fake {
   readonly events = new Queue<EngineEvent>();
   closed = false;
+  updateTools: (tools: readonly ToolDefinition[]) => Promise<void> = async () => {};
   constructor(readonly options: EngineOptions) {}
   push(event: JsonObject): void { this.events.push({ type: 'stream', event }); }
   close(): void { this.closed = true; this.events.end(); }
@@ -35,7 +39,7 @@ class Fake {
 }
 function setup() {
   const engines: Fake[] = [];
-  const factory: QueryFactory = options => { const fake = new Fake(options); engines.push(fake); return { events: fake.events, close: () => fake.close() }; };
+  const factory: QueryFactory = options => { const fake = new Fake(options); engines.push(fake); return { events: fake.events, updateTools: tools => fake.updateTools(tools), close: () => fake.close() }; };
   return { engines, factory, broker: new Broker(profiles, factory) };
 }
 async function response(generation: Generation): Promise<JsonObject> { return value(await generation.done); }
@@ -254,5 +258,104 @@ test('Chat and Responses custom caller tool discriminator is admitted, hosted to
   assert.deepEqual((await pending).content, [{ type: 'text', text: 'CUSTOM_OK' }]);
   fake.message([{ type: 'text', text: 'CUSTOM_OK' }]); await response(next);
   for (const type of ['web_search', 'computer', 'bash', 'text_editor']) failed(parseRequest({ ...request(), tools: [{ ...tool, type }] }), 400);
+  broker.close();
+});
+
+test('additive caller tools wait for the native inventory before releasing results and preserve every previous definition', async () => {
+  const { broker, engines } = setup();
+  const original = { name: 'first', description: 'Original', input_schema: { type: 'object', properties: {} } };
+  const added = { name: 'second', description: 'Added', input_schema: { type: 'object', properties: { label: { type: 'string' } }, required: ['label'] } };
+  const initial = { ...request(), tools: [original] };
+  const started = value(broker.begin(scope, initial)); const fake = engines[0]!;
+  fake.message([{ type: 'tool_use', id: 'first-id', name: 'mcp__caller__first', input: {} }], 7, 'tool_use');
+  const generated = await response(started);
+  await fake.options.beforeTool('mcp__caller__first', 'first-id', {});
+  let released = false;
+  const pending = fake.options.handleTool('mcp__caller__first', {}, new AbortController().signal).then(result => { released = true; return result; });
+  const history: Message[] = [...initial.messages, assistant(generated), { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'first-id', content: 'original result' }] }];
+  for (const tools of [[], [{ ...original, description: 'Changed' }, added], [{ ...original, input_schema: { type: 'object', additionalProperties: false } }, added]]) failed(broker.begin(scope, { ...initial, tools, messages: history }), 409);
+  let acknowledge: () => void = () => {};
+  fake.updateTools = async tools => {
+    assert.deepEqual(tools, [added, original]);
+    await new Promise<void>(resolve => { acknowledge = resolve; });
+  };
+  const continued = value(broker.begin(scope, { ...initial, tools: [added, original], messages: history }));
+  await new Promise<void>(resolve => setImmediate(resolve));
+  assert.equal(released, false);
+  failed(broker.begin(scope, { ...initial, tools: [added, original], messages: history }), 409);
+  acknowledge();
+  assert.deepEqual((await pending).content, [{ type: 'text', text: 'original result' }]);
+  assert.equal(engines.length, 1);
+  fake.message([{ type: 'tool_use', id: 'second-id', name: 'mcp__caller__second', input: { label: 'new' } }], 7, 'tool_use');
+  const second = await response(continued);
+  assert.equal(await fake.options.beforeTool('mcp__caller__second', 'second-id', { label: 'new' }), true);
+  const pendingSecond = fake.options.handleTool('mcp__caller__second', { label: 'new' }, new AbortController().signal);
+  const next: Message[] = [...history, assistant(second), { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'second-id', content: 'new result' }] }];
+  failed(broker.begin(scope, { ...initial, messages: next }), 409);
+  const final = value(broker.begin(scope, { ...initial, tools: [original, added], messages: next }));
+  assert.deepEqual((await pendingSecond).content, [{ type: 'text', text: 'new result' }]);
+  fake.message([{ type: 'text', text: 'Done' }]); await response(final);
+  broker.close();
+});
+
+test('caller catalog uses public MCP notifications, waits for installed inventory and validates added tool schemas', async () => {
+  const original = { name: 'first', input_schema: { type: 'object' } };
+  const added = { name: 'second', input_schema: { type: 'object', properties: { label: { type: 'string' } }, required: ['label'] } };
+  const called: string[] = [];
+  const catalog = new CallerCatalog([original], async (name, args, signal) => {
+    called.push(name);
+    if (signal.aborted) return { content: [], isError: true };
+    assert.deepEqual(args, { label: 'new' });
+    assert.equal(signal.aborted, false);
+    return { content: [{ type: 'text', text: 'caller executed' }], isError: false };
+  });
+  const client = new Client({ name: 'test', version: '1' });
+  const [serverTransport, clientTransport] = InMemoryTransport.createLinkedPair();
+  let notification: () => void = () => {};
+  const notified = new Promise<void>(resolve => { notification = resolve; });
+  client.setNotificationHandler(ToolListChangedNotificationSchema, () => { notification(); });
+  await Promise.all([catalog.server.instance.connect(serverTransport), client.connect(clientTransport)]);
+  try {
+    assert.equal(client.getServerCapabilities()?.tools?.listChanged, true);
+    let installed: readonly string[] = ['first'];
+    let completed = false;
+    const updated = catalog.update([original, added], async () => installed).then(() => { completed = true; });
+    await notified;
+    await new Promise<void>(resolve => setImmediate(resolve));
+    assert.equal(completed, false);
+    const listed = await client.listTools();
+    assert.deepEqual(listed.tools.map(tool => tool.name), ['first', 'second']);
+    await new Promise<void>(resolve => setImmediate(resolve));
+    assert.equal(completed, false);
+    installed = ['first', 'second'];
+    await updated;
+    const result = await client.callTool({ name: 'second', arguments: { label: 'new' } });
+    assert.deepEqual(result.content, [{ type: 'text', text: 'caller executed' }]);
+    assert.deepEqual(called, ['mcp__caller__second']);
+    const invalid = await client.callTool({ name: 'second', arguments: { label: 12 } });
+    assert.equal(invalid.isError, true);
+    assert.deepEqual(called, ['mcp__caller__second', 'mcp__caller__second']);
+    const canceled = catalog.update([original, added], async () => new Promise<readonly string[]>(() => {}));
+    catalog.close();
+    await assert.rejects(canceled);
+  } finally { catalog.close(); await client.close(); await catalog.server.instance.close(); }
+});
+
+test('failed native catalog update closes the query before returning pending tool results', async () => {
+  const { broker, engines } = setup();
+  const original = { name: 'first', input_schema: { type: 'object' } };
+  const added = { name: 'second', input_schema: { type: 'object' } };
+  const initial = { ...request(), tools: [original] };
+  const started = value(broker.begin(scope, initial)); const fake = engines[0]!;
+  fake.message([{ type: 'tool_use', id: 'first-id', name: 'mcp__caller__first', input: {} }], 7, 'tool_use');
+  const first = await response(started);
+  await fake.options.beforeTool('mcp__caller__first', 'first-id', {});
+  const pending = fake.options.handleTool('mcp__caller__first', {}, new AbortController().signal);
+  fake.updateTools = async () => { throw new Error('Native refresh failed'); };
+  const continued = value(broker.begin(scope, { ...initial, tools: [original, added], messages: [...initial.messages, assistant(first), { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'first-id', content: 'must not reach native' }] }] }));
+  failed(await continued.done, 502);
+  assert.equal(fake.closed, true);
+  assert.equal((await pending).isError, true);
+  assert.equal(engines.length, 1);
   broker.close();
 });

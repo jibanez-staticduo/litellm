@@ -85,6 +85,11 @@ export function controls(request: Request): string {
   return canonical(controlValues(request));
 }
 
+export function extendsTools(original: readonly ToolDefinition[], incoming: readonly ToolDefinition[]): boolean {
+  const definitions = new Map(incoming.map(tool => [tool.name, canonical(normalizeBlock(objectSchema.parse(toJson(tool))))]));
+  return definitions.size === incoming.length && original.every(tool => definitions.get(tool.name) === canonical(normalizeBlock(objectSchema.parse(toJson(tool)))));
+}
+
 function controlValues(request: Request): JsonObject {
   return objectSchema.parse(normalizeControls(toJson({
     model: request.model,
