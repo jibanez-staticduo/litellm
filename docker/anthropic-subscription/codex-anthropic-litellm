@@ -1,0 +1,34 @@
+#!/bin/sh
+set -eu
+
+key_file=${LITELLM_ANTHROPIC_KEY_FILE:-$HOME/.config/litellm/anthropic-proxy-key}
+proxy_url=${LITELLM_ANTHROPIC_URL:-$(cat "$HOME/.config/litellm/anthropic-proxy-url")}
+proxy_root=${proxy_url%/}
+case "$proxy_root" in
+    http://*|https://*) ;;
+    *) printf '%s\n' 'Configure an HTTP or HTTPS proxy root URL' >&2; exit 1 ;;
+esac
+authority=${proxy_root#*://}
+case "$authority" in
+    ''|*/*|*[!a-zA-Z0-9._:\[\]-]*)
+        printf '%s\n' 'Configure a proxy root URL without a path, query or credentials' >&2
+        exit 1
+        ;;
+esac
+
+proxy_key=$(cat "$key_file")
+if [ -z "$proxy_key" ]; then
+    printf '%s\n' 'The private LiteLLM proxy key file is empty' >&2
+    exit 1
+fi
+export LITELLM_ANTHROPIC_QA_KEY="$proxy_key"
+model=${LITELLM_ANTHROPIC_MODEL:-claude-sonnet-5-5-subscription}
+case "$model" in
+    ''|*[!a-zA-Z0-9._/-]*) printf '%s\n' 'Configure a valid subscription model alias' >&2; exit 1 ;;
+esac
+
+exec codex \
+    -c 'model_provider="anthropic_subscription"' \
+    -c "model=\"$model\"" \
+    -c "model_providers.anthropic_subscription={name=\"Anthropic subscription\",base_url=\"$proxy_root/v1\",env_key=\"LITELLM_ANTHROPIC_QA_KEY\",wire_api=\"responses\"}" \
+    "$@"

@@ -71,7 +71,24 @@ The `claude_code` preset adds an `x-anthropic-billing-header` system block pinne
 
 ## Managed clients and accounting
 
-Codex should target LiteLLM's `/v1/responses` surface with a managed `*-subscription` alias. OpenCode should use the Anthropic Messages surface `/v1/messages` with that alias. Both authenticate to LiteLLM with a restricted virtual key and leave upstream OAuth to the configured server profile. The root gateway URL remains `https://litellm.staticduo.com`; client configuration must select the appropriate API surface without duplicating `/v1`
+The dedicated `codex-anthropic-litellm` and `opencode-anthropic-litellm` launchers read a restricted virtual proxy key from `~/.config/litellm/anthropic-proxy-key`, overridable with `LITELLM_ANTHROPIC_KEY_FILE`. Keep that file at mode 0600. Set the proxy root URL through `LITELLM_ANTHROPIC_URL` or the local file `~/.config/litellm/anthropic-proxy-url`, without `/v1`. There is no default host. These files contain the proxy key and destination, never subscription OAuth credentials
+
+Install the executable launchers in a directory on the client's PATH. They preserve existing logins, provider configuration and policy settings. They export `LITELLM_ANTHROPIC_QA_KEY` only to the child client and leave upstream OAuth to the managed server profile. Neither launcher changes the ordinary `codex` or `opencode` defaults
+
+The Codex launcher supplies the `anthropic_subscription` provider through command-line configuration with `base_url=<root>/v1`, `env_key=LITELLM_ANTHROPIC_QA_KEY` and `wire_api=responses`. It defaults to `claude-sonnet-5-5-subscription`, overridable with `LITELLM_ANTHROPIC_MODEL` or ordinary Codex arguments. User arguments are passed through without changing approval or sandbox policy
+
+```bash
+codex-anthropic-litellm
+codex-anthropic-litellm exec "Inspect the current project"
+```
+
+The OpenCode launcher passes arguments directly to `opencode`. Configure its separate `subscription` provider in the host's existing runtime config with `npm=@ai-sdk/anthropic`, `options.baseURL=<root>/v1`, `options.apiKey={env:LITELLM_ANTHROPIC_QA_KEY}` and the managed aliases in `models`. Match that base URL to the launcher's selected root. The launcher does not rewrite provider configuration or choose a global default model
+
+```bash
+opencode-anthropic-litellm run --model subscription/claude-sonnet-5-5-subscription "Inspect the current project"
+```
+
+Codex uses LiteLLM's `/v1/responses` bridge and OpenCode uses `/v1/messages`. These launchers do not add an Anthropic catalog to Codex or enable native Anthropic Responses support
 
 These routes reuse the Anthropic provider and Responses bridge, including signed thinking replay. Their presence in the candidate does not establish working Codex/OpenCode conversations. Validate streaming, tools and subsequent turns from each actual client before promoting the managed route
 
