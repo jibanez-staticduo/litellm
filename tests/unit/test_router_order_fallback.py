@@ -866,6 +866,16 @@ def test_anthropic_oauth_deployment_cannot_mirror_into_silent_provider() -> None
         )
 
 
+async def _select_mixed_anthropic_oauth_group(
+    router: Router, async_selection: bool, request_kwargs: Mapping[str, object]
+) -> None:
+    request: Final = dict(request_kwargs)
+    if async_selection:
+        await router.async_get_available_deployment(model="mixed", request_kwargs=request)
+        return
+    router.get_available_deployment(model="mixed", request_kwargs=request)
+
+
 @pytest.mark.parametrize("async_selection", [False, True])
 @pytest.mark.parametrize(
     "second_params",
@@ -891,10 +901,7 @@ async def test_anthropic_oauth_model_group_rejects_mixed_accounts_before_selecti
         enable_pre_call_checks=False,
     )
     with pytest.raises(ValueError, match="Anthropic OAuth model group"):
-        if async_selection:
-            await router.async_get_available_deployment(model="mixed", request_kwargs={})
-        else:
-            router.get_available_deployment(model="mixed")
+        await _select_mixed_anthropic_oauth_group(router, async_selection, {})
 
 
 @pytest.mark.parametrize("async_selection", [False, True])
@@ -937,7 +944,4 @@ async def test_anthropic_oauth_access_groups_cannot_hide_mixed_deployment_policy
     )
     assert tuple(row["model_info"]["id"] for row in visible) == ("public-profile",)
     with pytest.raises(ValueError, match="Anthropic OAuth model group"):
-        if async_selection:
-            await router.async_get_available_deployment(model="mixed", request_kwargs=request)
-        else:
-            router.get_available_deployment(model="mixed", request_kwargs=request)
+        await _select_mixed_anthropic_oauth_group(router, async_selection, request)
