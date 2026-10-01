@@ -93,16 +93,16 @@ async def test_insert_encodes_and_sends_rows(recording_server: RecordingServer) 
     recording_server.enqueue(ResponseSpec(body=""))
     storage: Final = NativeTraceStorage("trace_test", recording_server.base_url)
     before_insert_ms: Final = time.time_ns() // 1_000_000
-    await storage.insert_rows("otel_traces", [{"Timestamp": 1_234_567_890, "Input": "hello", "EngineReceivedMs": 0}])
+    await storage.insert_rows("otel_traces", [{"Timestamp": 1_234_567_890, "Input": "hello", "EngineReceivedMs": -1}])
     after_insert_ms: Final = time.time_ns() // 1_000_000
     request: Final = recording_server.requests[0]
     row: Final = json.loads(gzip.decompress(request.raw_body))
     assert type(row["EngineReceivedMs"]) is int
     assert before_insert_ms <= row["EngineReceivedMs"] <= after_insert_ms
     assert row == {
-        "EngineReceivedMs": row["EngineReceivedMs"],
         "Input": "hello",
         "Timestamp": "1970-01-01T00:00:01.23456789Z",
+        "EngineReceivedMs": row["EngineReceivedMs"],
     }
     assert parse_qs(urlsplit(request.path).query)["query"] == [
         "INSERT INTO `trace_test`.otel_traces FORMAT JSONEachRow"
