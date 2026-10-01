@@ -95,7 +95,7 @@ from litellm.types.responses.main import (
 
 from .base import CachedTokensDetails
 
-FileContent = IO[bytes] | bytes | PathLike
+FileContent = IO[bytes] | bytes | PathLike[str]
 
 FileTypes = (
     # file (or bytes)
