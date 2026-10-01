@@ -195,10 +195,10 @@ Los aliases por perfil permiten seleccion explicita de cuentas. No hay rotacion 
 - [x] Probar candidato 04 aislado: Messages con los tres modelos, Chat Completions, Responses, dos rutas de count_tokens y replay firmado con herramientas
 - [x] Validar Codex 0.159.2 real con herramientas, archivo y resume en aislamiento, con 207 reasoning tokens y sin inventar catalogo nativo Anthropic
 - [ ] Completar OpenCode subscription-only. OpenCode 2.0.20 recibe HTTP 400 por extra usage en Messages y Responses, tambien tras reintentar con `drop_params: true` solo en el piloto para `prompt_cache_key`
-- [ ] Verificar ledger gestionado: `used_client_oauth_token=false`, `used_server_oauth_token=true` y `anthropic_auth_profile=default` para el perfil default. La correccion server/profile y QA live siguen en curso
+- [x] Verificar ledger gestionado: cinco registros exitosos conservan `used_client_oauth_token=false`, `used_server_oauth_token=true`, `anthropic_auth_profile=default` y la virtual key esperada. Sus costes coinciden con el calculador desplegado
 - [ ] Ejecutar gate final del candidato incluyendo el schema regenerado esperado. Los tests y gates previos no sustituyen esta comprobacion
 - [x] Retirar los temporales anteriores de fase 1, conservando datos y archivos privados
-- [ ] Parar y eliminar el piloto gestionado actual despues de QA contable, conservando DB y volumenes. La retirada anterior no prueba esta limpieza
+- [x] Parar y eliminar el piloto gestionado despues de QA contable, conservando DB y volumenes. Verificar ausencia de ambos contenedores con `docker ps -a` y salud del proxy nativo compartido
 - [ ] Promover primero a Fedora y luego a NAS solo cuando el alcance subscription-only cumpla aceptacion. No promover el candidato gestionado con el bloqueo actual
 
 ### Bloqueo externo comprobado
@@ -257,4 +257,6 @@ El candidato 04 paso Messages para los tres modelos, Chat Completions, Responses
 
 Codex 0.159.2 completo herramientas, archivo y resume con 207 reasoning tokens. OpenCode 2.0.20 fallo por extra usage en Messages y Responses. Los indicadores de usage confirman extra usage desactivado y creditos nunca habilitados. La fase 1 nativa NAS permanece saludable y los aliases anteriores siguen publicados
 
-El ledger gestionado requiere OAuth de servidor y perfil, con `used_client_oauth_token=false`. Esa correccion esta en curso junto con QA contable. Los tests y gates previos pasan salvo el schema regenerado esperado; el gate final sigue pendiente. El piloto actual se retirara despues de QA contable preservando DB y volumenes. No se afirma que esa limpieza haya ocurrido ni que la fase 2 este cerrada
+El candidato final 05, `sha256:875fba7af1d4cdec0f0967e73f9016688f2b1fd563a81ffc597603f711e114fa`, repite las pruebas API y replay tras corregir la atribucion contable. Sus 21 archivos fuente overlay coinciden byte a byte con el checkout. Cinco registros exitosos conservan OAuth de servidor, perfil default, OAuth de cliente false y la virtual key esperada. Los cinco importes coinciden con el calculador desplegado
+
+La regresion contable pasa 47 tests focalizados de logging y 27 de spend. El gate final sigue en curso. Se pararon y eliminaron los dos contenedores del piloto gestionado y su red con Compose down sin `-v`. `docker ps -a` no devuelve esos contenedores, `postgresql-data` sigue presente y el proxy nativo compartido permanece healthy. La fase 2 sigue bloqueada por OpenCode subscription-only y no se ha promovido a Fedora ni NAS

@@ -120,6 +120,8 @@ The pilot dashboard endpoint `/spend/logs/ui` returned the verified request and 
 
 Candidate 04 passed Messages for all three managed models, Chat Completions, Responses, both tested token-counting routes and signed thinking replay through a tool continuation. Its NAS authorization is independent of the native login, stored under private directory mode 0700 and credential mode 0600. A real refresh rotated the credential successfully. Fedora has a separately imported authorization, but the managed candidate is not deployed there
 
+Final candidate 05, `sha256:875fba7af1d4cdec0f0967e73f9016688f2b1fd563a81ffc597603f711e114fa`, repeats those API checks after the accounting correction. All 21 overlay source files match the checkout byte for byte. Five successful spend records preserve `used_server_oauth_token=true`, `used_client_oauth_token=false`, `anthropic_auth_profile=default` and the restricted virtual key alias. Recalculation with the deployed price map matches each recorded amount
+
 Codex 0.159.2 passed tools, file handling and resume on the isolated candidate, with 207 reasoning tokens reported. This evidence uses the Responses bridge and does not add native Anthropic catalog metadata to Codex
 
 OpenCode 2.0.20 received HTTP 400 from Anthropic on both Messages and Responses:
@@ -132,6 +134,6 @@ The retry used `drop_params: true` only in the pilot to handle OpenCode's `promp
 
 Managed profile custody, explicit account selection and serialized refresh are implemented, with real refresh verified in isolation. Automatic account rotation and quota scheduling remain absent. The native phase 1 NAS route remains healthy with its previously published aliases
 
-Finish the server OAuth/profile ledger correction and live accounting QA, then run the final gate. Previous focused tests and gates passed, with an expected generated schema update still to validate. Stop and remove the current managed pilot after accounting QA while preserving its database and volumes. That cleanup has not yet been confirmed
+The accounting correction passes live QA and focused regressions. The final gate is in progress. The managed proxy and PostgreSQL containers and their temporary network were stopped and removed without `-v`; `docker ps -a` confirms their absence. The PostgreSQL data directory and volumes remain, and the shared native proxy remains healthy
 
 The full objective remains unfinished because subscription-only OpenCode is blocked and managed Fedora/NAS promotion has not occurred. See the [implementation plan](../../docs/superpowers/plans/2026-10-01-anthropic-subscription.md) for the remaining acceptance criteria
