@@ -975,6 +975,8 @@ class Logging(LiteLLMLoggingBaseClass):
         """
         base_litellm_params: Final[dict[str, Any]] = {}
 
+        if "use_anthropic_oauth" in kwargs:
+            base_litellm_params["use_anthropic_oauth"] = kwargs["use_anthropic_oauth"]
         if isinstance(kwargs.get("metadata"), dict):
             base_litellm_params["metadata"] = kwargs["metadata"].copy()
         if "litellm_metadata" in kwargs and isinstance(kwargs["litellm_metadata"], dict):
@@ -1334,7 +1336,11 @@ class Logging(LiteLLMLoggingBaseClass):
 
         self.model_call_details["input"] = input
         self.model_call_details["api_key"] = api_key
-        self.model_call_details["additional_args"] = additional_args
+        self.model_call_details["additional_args"] = (
+            {**additional_args, "headers": self._get_masked_headers(additional_args.get("headers") or {})}
+            if self.litellm_params.get("use_anthropic_oauth") is True
+            else additional_args
+        )
         self.model_call_details["log_event_type"] = "pre_api_call"
         if is_classifier_call(self.call_type, self.model_call_details.get("litellm_params") or EMPTY_MAPPING):
             self.classifier_input = (

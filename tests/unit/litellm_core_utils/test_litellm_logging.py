@@ -8,6 +8,7 @@ import os
 import sys
 import time
 from collections.abc import Callable, Iterator, Mapping
+from queue import Queue
 from types import MappingProxyType
 from typing import Final, Literal
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -58,6 +59,36 @@ def logging_obj():
         litellm_call_id="12345",
         function_id="1245",
     )
+
+
+@pytest.mark.parametrize("header_name", ["authorization", "Authorization"])
+@pytest.mark.parametrize("update_from_kwargs", [False, True])
+def test_managed_anthropic_oauth_headers_are_redacted_before_custom_logging(
+    logging_obj: LitellmLogging, header_name: str, update_from_kwargs: bool
+) -> None:
+    captured: Final[Queue[Mapping[str, object]]] = Queue()
+
+    def capture(details: Mapping[str, object]) -> None:
+        captured.put(details)
+
+    if update_from_kwargs:
+        logging_obj.update_from_kwargs(
+            kwargs={"use_anthropic_oauth": True}, litellm_params={"logger_fn": capture}, optional_params={}
+        )
+    else:
+        logging_obj.update_environment_variables(
+            litellm_params={"use_anthropic_oauth": True, "logger_fn": capture}, optional_params={}
+        )
+    token: Final = "sk-ant-oat01-synthetic-managed-logging-token"
+    headers: Final = {header_name: f"Bearer {token}", "x-trace": "trace-value"}
+    transport_args: Final = {"headers": headers, "api_base": "https://api.anthropic.com/v1/messages"}
+    logging_obj.pre_call(input="hello", api_key=None, additional_args=transport_args)
+
+    logged: Final = json.dumps(dict(captured.get_nowait()), default=str)
+    assert token not in logged
+    assert "trace-value" in logged
+    assert headers[header_name] == f"Bearer {token}"
+    assert transport_args["headers"] is headers
 
 
 @pytest.fixture(scope="module")
