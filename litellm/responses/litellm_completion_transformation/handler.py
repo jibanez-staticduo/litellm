@@ -6,13 +6,13 @@ from collections.abc import Coroutine, Mapping
 from typing import Final
 
 import litellm
+from litellm.responses.additional_tools import hoist_additional_tools
 from litellm.responses.litellm_completion_transformation.hosted_vllm_codex_summary import (
     HostedVLLMCodexSummaryStream,
     run_summary_sync,
     summarize_response,
     summary_requested,
 )
-from litellm.responses.additional_tools import hoist_additional_tools
 from litellm.responses.litellm_completion_transformation.streaming_iterator import (
     LiteLLMCompletionStreamingIterator,
 )

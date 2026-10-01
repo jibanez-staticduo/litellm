@@ -18,8 +18,7 @@ from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
 from litellm.types.proxy.management_endpoints.common_daily_activity import (
     SpendAnalyticsPaginatedResponse,
 )
-from litellm.types.utils import ModelResponse
-from litellm.types.utils import ChatCompletionMessageToolCall
+from litellm.types.utils import ChatCompletionMessageToolCall, ModelResponse
 
 # ---------------------------------------------------------------------------
 # Constants

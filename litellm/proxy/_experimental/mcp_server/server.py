@@ -9,18 +9,15 @@ import contextlib
 import contextvars
 import hashlib
 import json
-import re
 import os
+import re
 import time
 import types
-import uuid
 from collections import Counter
 from collections.abc import AsyncGenerator, AsyncIterator, Callable, Iterable, Mapping, Sequence
-from datetime import datetime
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Final, NoReturn, Protocol
 
-import anyio
 import httpx
 from fastapi import FastAPI, HTTPException
 from pydantic import ConfigDict, TypeAdapter, ValidationError
@@ -30,10 +27,9 @@ from starlette.routing import Route
 from starlette.types import Message, Receive, Scope, Send
 
 from litellm._logging import verbose_logger
-from litellm.constants import MAXIMUM_TRACEBACK_LINES_TO_LOG, MCP_TOOL_LISTING_TIMEOUT
-from litellm.litellm_core_utils.litellm_logging import Logging as LiteLLMLoggingObj
 from litellm.constants import (
     MCP_GATEWAY_SESSION_ID_PREFIX_LENGTH,
+    MCP_TOOL_LISTING_TIMEOUT,
 )
 from litellm.llms.custom_httpx.http_handler import (
     get_async_httpx_client,
@@ -76,8 +72,6 @@ from litellm.proxy._experimental.mcp_server.mcp_debug import (
 )
 from litellm.proxy._experimental.mcp_server.mcp_server_manager import MCPServerManager
 from litellm.proxy._experimental.mcp_server.oauth_utils import (
-    get_byok_www_authenticate,
-    _redact_mcp_resource_url,
     get_passthrough_www_authenticate,
     get_route_relative_request_path,
     redact_mcp_resource_url,
@@ -523,10 +517,9 @@ if MCP_AVAILABLE:
         ListResourceTemplatesRequest,
         ListToolsRequest,
         ReadResourceRequest,
+        TextContent,
     )
-
-    from mcp.types import TextContent, Tool as MCPTool
-    from litellm.proxy._experimental.mcp_server.utils import strip_known_server_prefix
+    from mcp.types import Tool as MCPTool
 
     from litellm.proxy._experimental.mcp_server import operations
     from litellm.proxy._experimental.mcp_server.contracts import OperationContext
@@ -535,6 +528,7 @@ if MCP_AVAILABLE:
         _mcp_session_id_from_headers,
     )
     from litellm.proxy._experimental.mcp_server.result_conversion import wire_compat_for
+    from litellm.proxy._experimental.mcp_server.utils import strip_known_server_prefix
 
     try:
         from mcp.server.streamable_http_manager import StreamableHTTPSessionManager

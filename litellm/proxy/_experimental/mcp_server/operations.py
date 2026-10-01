@@ -9,7 +9,6 @@ from datetime import datetime
 from typing import Any, Final, NoReturn, TypeAlias, overload
 
 import anyio
-
 from fastapi import HTTPException
 from mcp import ReadResourceResult, Resource
 from mcp.types import (
