@@ -10,6 +10,7 @@ const messageSchema = z.object({
   content: z.union([z.string(), z.array(blockSchema)]),
 }).strict();
 const toolSchema = z.object({
+  type: z.literal('custom').optional(),
   name: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
   description: z.string().optional(),
   input_schema: objectSchema,
@@ -57,7 +58,13 @@ export function isObject(value: Json | undefined): value is JsonObject {
 
 export function parseRequest(input: unknown): Result<Request> {
   const parsed = requestSchema.safeParse(input);
-  if (!parsed.success) return failure(400, 'Unsupported or invalid Messages fields. Native controls support max_tokens, thinking, output_config.effort and automatic tool_choice only');
+  if (!parsed.success) {
+    const issues = parsed.error.issues.flatMap(issue => {
+      const paths = issue.code === 'unrecognized_keys' ? issue.keys.map(key => [...issue.path, key]) : [issue.path];
+      return paths.map(path => `${path.map(part => String(part)).join('.') || '$'} (${issue.code})`);
+    }).slice(0, 12);
+    return failure(400, `Unsupported or invalid Messages fields: ${issues.join(', ')}. Native controls support max_tokens, thinking, output_config.effort and automatic tool_choice only`);
+  }
   const tools = parsed.data.tools ?? [];
   if (new Set(tools.map(tool => tool.name)).size !== tools.length) return failure(400, 'Tool names must be unique');
   if (tools.some(tool => tool.input_schema['type'] !== 'object')) return failure(400, 'Tool input_schema must describe an object');

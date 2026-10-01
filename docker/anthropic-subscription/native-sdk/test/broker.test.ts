@@ -220,3 +220,33 @@ test('empty tool JSON delta retains native empty arguments and signed thinking t
   assert.deepEqual((await response(continued))['content'], [{ type: 'text', text: 'VERIFIED' }]);
   broker.close();
 });
+
+test('invalid request diagnostics identify field paths and codes without payload values', () => {
+  const sensitive = 'private-content-must-not-leak';
+  const result = parseRequest({ ...request([{ role: 'user', content: sensitive }]), system: [{ type: 'text', text: sensitive, unsupported: sensitive }], temperature: sensitive });
+  failed(result, 400);
+  if (result.ok) return;
+  const serialized = JSON.stringify(result.error);
+  assert.equal(serialized.includes(sensitive), false);
+  const error = result.error.body['error'] as JsonObject;
+  assert.match(String(error['message']), /temperature \(unrecognized_keys\)/);
+  assert.match(String(error['message']), /system\.0\.unsupported \(unrecognized_keys\)/);
+});
+
+test('Chat and Responses custom caller tool discriminator is admitted, hosted tool discriminators are rejected', async () => {
+  const tool = { name: 'get_answer', input_schema: { type: 'object', properties: {}, additionalProperties: false } };
+  const input = { ...request(), tools: [{ ...tool, type: 'custom' }] };
+  const parsed = value(parseRequest(input));
+  const { broker, engines } = setup();
+  const started = value(broker.begin(scope, parsed)); const fake = engines[0]!;
+  fake.message([{ type: 'tool_use', id: 'custom-native-id', name: 'mcp__caller__get_answer', input: {} }], 7, 'tool_use');
+  const first = await response(started);
+  assert.deepEqual(first['content'], [{ type: 'tool_use', id: 'custom-native-id', name: 'get_answer', input: {} }]);
+  assert.equal(await fake.options.beforeTool('mcp__caller__get_answer', 'custom-native-id', {}), true);
+  const pending = fake.options.handleTool('mcp__caller__get_answer', {}, new AbortController().signal);
+  const next = value(broker.begin(scope, { ...parsed, messages: [...parsed.messages, assistant(first), { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'custom-native-id', content: 'CUSTOM_OK' }] }] }));
+  assert.deepEqual((await pending).content, [{ type: 'text', text: 'CUSTOM_OK' }]);
+  fake.message([{ type: 'text', text: 'CUSTOM_OK' }]); await response(next);
+  for (const type of ['web_search', 'computer', 'bash', 'text_editor']) failed(parseRequest({ ...request(), tools: [{ ...tool, type }] }), 400);
+  broker.close();
+});
