@@ -8,16 +8,24 @@ when lower order deployments fail.
 
 import json
 from collections.abc import Mapping
+from functools import partial
+from pathlib import Path
+from queue import SimpleQueue
 from typing import Final, Optional
 
 import httpx
 import pytest
 from openai import AsyncOpenAI
+from pydantic import JsonValue, TypeAdapter
 
 import litellm
 from litellm import Router
 from litellm.integrations.custom_logger import CustomLogger
+from litellm.llms.anthropic import oauth_policy
+from litellm.llms.anthropic.authenticator import AnthropicAuthenticator
+from litellm.llms.anthropic.chat import handler as anthropic_chat_handler
 from litellm.llms.anthropic.common_utils import AnthropicError
+from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
 from litellm.proxy._types import UserAPIKeyAuth
 from litellm.router_utils.prompt_caching_cache import PromptCachingCache
 from litellm.types.router import RouterRateLimitError
@@ -690,6 +698,95 @@ def _anthropic_oauth_policy_router(defaults: Mapping[str, object] | None = None,
         num_retries=0,
         enable_pre_call_checks=False,
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("async_completion", [False, True], ids=["sync", "async"])
+async def test_anthropic_oauth_router_http_payload_excludes_routing_controls(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, async_completion: bool
+) -> None:
+    prompt: Final = "Return the word accepted"
+    max_tokens: Final = 32
+    synthetic_token: Final = "sk-ant-oat01-router-fixture"
+    (tmp_path / "work.json").write_text(
+        json.dumps({"access_token": synthetic_token, "expires_at": 3600.0, "scope": "user:inference"})
+    )
+    monkeypatch.setattr(oauth_policy, "AnthropicAuthenticator", partial(AnthropicAuthenticator, clock=lambda: 0.0))
+    monkeypatch.setenv("LITELLM_LOCAL_ANTHROPIC_BETA_HEADERS", "true")
+    requests: Final[SimpleQueue[httpx.Request]] = SimpleQueue()
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.put(request)
+        return httpx.Response(
+            200,
+            json={
+                "id": "msg_router_subscription",
+                "type": "message",
+                "role": "assistant",
+                "model": "unit-test-model",
+                "content": [{"type": "text", "text": "accepted"}],
+                "stop_reason": "end_turn",
+                "stop_sequence": None,
+                "usage": {"input_tokens": 1, "output_tokens": 1},
+            },
+        )
+
+    transport: Final = httpx.MockTransport(respond)
+    sync_client: Final = HTTPHandler(client=httpx.Client(transport=transport))
+    async_client: Final = AsyncHTTPHandler(transport=transport)
+
+    def sync_http_client(params: Mapping[str, object] | None = None) -> HTTPHandler:
+        return sync_client
+
+    def async_http_client(llm_provider: litellm.LlmProviders) -> AsyncHTTPHandler:
+        return async_client
+
+    monkeypatch.setattr(anthropic_chat_handler, "_get_httpx_client", sync_http_client)
+    monkeypatch.setattr(anthropic_chat_handler, "get_async_httpx_client", async_http_client)
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "subscription",
+                "litellm_params": {
+                    "model": "anthropic/unit-test-model",
+                    "use_anthropic_oauth": True,
+                    "anthropic_auth_profile": "work",
+                    "anthropic_token_dir": str(tmp_path),
+                    "anthropic_oauth_compatibility": "claude_code",
+                },
+                "model_info": {"id": "subscription-id"},
+            }
+        ],
+        model_group_alias={"subscription-alias": "subscription"},
+        num_retries=0,
+        timeout=10.0,
+    )
+    try:
+        response: Final = (
+            await router.acompletion(
+                model="subscription-alias", messages=[{"role": "user", "content": prompt}], max_tokens=max_tokens
+            )
+            if async_completion
+            else router.completion(
+                model="subscription-alias", messages=[{"role": "user", "content": prompt}], max_tokens=max_tokens
+            )
+        )
+    finally:
+        sync_client.close()
+        await async_client.close()
+
+    request: Final = requests.get_nowait()
+    payload: Final = TypeAdapter(dict[str, JsonValue]).validate_json(request.content)
+    assert requests.empty()
+    assert request.headers["authorization"] == f"Bearer {synthetic_token}"
+    assert "x-api-key" not in request.headers
+    assert request.url.host == "api.anthropic.com"
+    assert set(payload) == {"model", "messages", "max_tokens", "system"}
+    assert payload["model"] == "unit-test-model"
+    assert payload["messages"] == [{"role": "user", "content": [{"type": "text", "text": prompt}]}]
+    assert payload["max_tokens"] == max_tokens
+    assert isinstance(response, litellm.ModelResponse)
+    assert response.choices[0].message.content == "accepted"
 
 
 @pytest.mark.parametrize("nested", [False, True])
