@@ -9,13 +9,25 @@ from litellm.llms.anthropic.common_utils import AnthropicError
 from litellm.llms.anthropic.oauth_policy import (
     ANTHROPIC_OAUTH_BILLING_HEADER,
     ANTHROPIC_OAUTH_COMPATIBILITY_VERSION,
+    ANTHROPIC_OAUTH_USER_AGENT,
     apply_anthropic_oauth_system,
+    normalize_anthropic_oauth_headers,
     resolve_anthropic_oauth_access_token,
 )
 
 _MANAGED: Final[Mapping[str, object]] = MappingProxyType(
     {"use_anthropic_oauth": True, "anthropic_auth_profile": "work", "anthropic_oauth_compatibility": "claude_code"}
 )
+
+
+def test_managed_headers_set_honest_user_agent_without_mutating_caller_headers() -> None:
+    headers: Final = MappingProxyType({"User-Agent": "caller-agent", "anthropic-beta": "client-beta"})
+    assert normalize_anthropic_oauth_headers(headers, True) == {
+        "user-agent": ANTHROPIC_OAUTH_USER_AGENT,
+        "anthropic-beta": "client-beta",
+    }
+    assert normalize_anthropic_oauth_headers(headers, False) == headers
+    assert headers["User-Agent"] == "caller-agent"
 
 
 def _profile_token(config: AnthropicOAuthConfig) -> str:

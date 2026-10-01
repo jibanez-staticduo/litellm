@@ -17,6 +17,7 @@ _SYSTEM: Final[TypeAdapter[JsonValue]] = TypeAdapter(JsonValue)
 _SYSTEM_BLOCK: Final = TypeAdapter(dict[str, JsonValue])
 _SYSTEM_BLOCKS: Final = TypeAdapter(list[JsonValue])
 _OVERRIDES: Final = TypeAdapter(dict[str, object])
+_HEADERS: Final = TypeAdapter(dict[str, str])
 _OAUTH_FIELDS: Final = (
     "use_anthropic_oauth",
     "anthropic_auth_profile",
@@ -27,6 +28,22 @@ _OAUTH_FIELDS: Final = (
 
 def is_anthropic_oauth_managed(params: Mapping[str, object]) -> bool:
     return params.get("use_anthropic_oauth") is True
+
+
+def normalize_anthropic_oauth_headers(
+    headers: object, managed: bool
+) -> dict[str, str]:  # mutable-ok: HTTP provider adapters require header dictionaries
+    validated: Final = _HEADERS.validate_python(headers)
+    if not managed:
+        return validated
+    return _HEADERS.validate_python(
+        MappingProxyType(
+            {
+                **MappingProxyType({name: value for name, value in validated.items() if name.lower() != "user-agent"}),
+                "user-agent": ANTHROPIC_OAUTH_USER_AGENT,
+            }
+        )
+    )
 
 
 def validate_anthropic_oauth_destination(api_base: str | None) -> str:

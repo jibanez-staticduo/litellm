@@ -1016,7 +1016,7 @@ class AnthropicModelInfo(BaseLLMModelInfo):
         api_base: str | None = None,
     ) -> dict:
         from litellm.llms.anthropic.oauth_policy import (
-            ANTHROPIC_OAUTH_USER_AGENT,
+            normalize_anthropic_oauth_headers,
             resolve_anthropic_oauth_access_token,
         )
 
@@ -1079,17 +1079,9 @@ class AnthropicModelInfo(BaseLLMModelInfo):
             use_bearer_for_custom_base=use_bearer_for_custom_base,
         )
 
-        headers = (
-            {
-                **{name: value for name, value in headers.items() if name.lower() != "user-agent"},
-                **anthropic_headers,
-                "user-agent": ANTHROPIC_OAUTH_USER_AGENT,
-            }
-            if managed_token is not None
-            else {**headers, **anthropic_headers}
-        )
+        headers = {**headers, **anthropic_headers}
 
-        return headers
+        return normalize_anthropic_oauth_headers(headers, managed_token is not None)
 
     @staticmethod
     def get_api_base(api_base: str | None = None) -> str | None:

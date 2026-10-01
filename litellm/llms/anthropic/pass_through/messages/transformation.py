@@ -261,8 +261,8 @@ class AnthropicMessagesConfig(BaseAnthropicMessagesConfig):
         api_base: str | None = None,
     ) -> tuple[dict, str | None]:
         from litellm.llms.anthropic.oauth_policy import (
-            ANTHROPIC_OAUTH_USER_AGENT,
             is_anthropic_oauth_managed,
+            normalize_anthropic_oauth_headers,
             resolve_anthropic_oauth_access_token,
             validate_anthropic_oauth_destination,
         )
@@ -298,15 +298,7 @@ class AnthropicMessagesConfig(BaseAnthropicMessagesConfig):
             optional_params=optional_params,
             messages=messages,
         )
-        return (
-            {
-                **{name: value for name, value in updated_headers.items() if name.lower() != "user-agent"},
-                "user-agent": ANTHROPIC_OAUTH_USER_AGENT,
-            }
-            if managed_token is not None
-            else updated_headers,
-            managed_api_base,
-        )
+        return normalize_anthropic_oauth_headers(updated_headers, managed_token is not None), managed_api_base
 
     @staticmethod
     def _translate_reasoning_effort_to_anthropic(
@@ -565,7 +557,8 @@ class AnthropicMessagesConfig(BaseAnthropicMessagesConfig):
         from litellm.llms.anthropic.oauth_policy import apply_anthropic_oauth_system
 
         managed_system: Final = apply_anthropic_oauth_system(
-            anthropic_messages_optional_request_params.get("system"), dict(litellm_params)
+            anthropic_messages_optional_request_params.get("system"),
+            GenericLiteLLMParams.model_validate(litellm_params).model_dump(),
         )
         if managed_system is not None:
             anthropic_messages_optional_request_params["system"] = managed_system

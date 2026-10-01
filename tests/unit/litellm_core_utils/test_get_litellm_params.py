@@ -54,6 +54,32 @@ def test_anthropic_subscription_settings_remain_internal_provider_parameters() -
     assert provider_params["unowned_provider_option"] is True
 
 
+def test_router_fallback_controls_remain_internal_provider_parameters() -> None:
+    from litellm.utils import get_non_default_completion_params, get_optional_params
+
+    controls: Final = {
+        "disable_fallbacks": True,
+        "include_fallback_errors": True,
+        "original_requested_model": "requested-alias",
+        "logical_model_group": "selected-group",
+        "original_model_group": "original-group",
+        "fallback_model_group": ("fallback-group",),
+        "_retry_skipped_deployment_ids": ("failed-deployment",),
+        "fallback_depth": 1,
+        "max_fallbacks": 2,
+        "context_window_fallbacks": ({"selected-group": ("larger-group",)},),
+        "content_policy_fallbacks": ({"selected-group": ("alternate-group",)},),
+        "model_group_retry_policy": {},
+    }
+    forwarded: Final = get_non_default_completion_params(kwargs={**controls, "unowned_provider_option": True})
+    provider_params: Final = get_optional_params(
+        model="claude-subscription-test", custom_llm_provider="anthropic", **forwarded
+    )
+    assert not set(controls).intersection(provider_params)
+    assert not set(controls).intersection(provider_params.get("extra_body", {}))
+    assert provider_params["unowned_provider_option"] is True
+
+
 class TestGetBaseModelFromLitellmCallMetadata:
     def test_none_metadata_returns_none(self):
         assert _get_base_model_from_litellm_call_metadata(None) is None

@@ -132,10 +132,14 @@ class DispatchOptions:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RoutingOptions:
     disable_fallbacks: bool | None = None
+    include_fallback_errors: bool | None = None
     fallbacks: Sequence[str | Mapping[str, object]] | None = None
+    context_window_fallbacks: Sequence[str | Mapping[str, object]] | None = None
+    content_policy_fallbacks: Sequence[str | Mapping[str, object]] | None = None
     context_window_fallback_dict: Mapping[str, str] | None = None
     num_retries: int | None = None
     retry_policy: "RetryPolicy | Mapping[str, object] | None" = None
+    model_group_retry_policy: "Mapping[str, RetryPolicy] | None" = None
     retry_strategy: RetryStrategy | None = None
     routing_strategy: RoutingStrategyName | None = None
     cooldown_time: float | None = None
@@ -342,6 +346,13 @@ class AgenticLoopState:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RouterState:
     weights: "RouterWeights | None" = field(default=None, metadata=wire("_router_weights"))
+    original_requested_model: str | None = None
+    logical_model_group: str | None = None
+    original_model_group: str | None = None
+    fallback_model_group: Sequence[str] | None = None
+    retry_skipped_deployment_ids: Sequence[str] | None = field(
+        default=None, metadata=wire("_retry_skipped_deployment_ids")
+    )
     fallback_depth: int | None = None
     max_fallbacks: int | None = None
     attempted_targets: "AttemptedFallbackTargets | None" = None
