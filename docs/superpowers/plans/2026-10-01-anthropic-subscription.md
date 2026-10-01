@@ -1,12 +1,12 @@
 # Anthropic Subscription Implementation Plan
 
-**Estado:** Completado y cerrado el 2026-10-01. El usuario confirma que ha funcionado y acepta la entrega de la fase 1
+**Estado:** En ejecucion. El usuario confirma la fase 1 y corrige el cierre prematuro: falta terminar el objetivo completo de suscripciones Anthropic gestionadas en LiteLLM, multicuentas y otros clientes
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking
 
-**Goal:** Usar la suscripcion de Anthropic desde Claude Code a traves de LiteLLM y registrar el consumo con su valor equivalente a precios de API
+**Goal:** Usar suscripciones Anthropic a traves de LiteLLM, registrar el consumo con su valor equivalente a precios de API y completar la gestion de varias cuentas y el acceso desde otros clientes
 
-**Architecture:** Claude Code conserva el login y la renovacion OAuth. LiteLLM autentica por separado al cliente con una virtual key y reenvia Messages al proveedor `anthropic`, usando el OAuth recibido. La custodia central de cuentas para otros clientes se evalua como una fase posterior
+**Architecture:** Claude Code conserva el login y la renovacion OAuth. LiteLLM autentica por separado al cliente con una virtual key y reenvia Messages al proveedor `anthropic`, usando el OAuth recibido. La fase 2 sigue en ejecucion: faltan la decision de transporte, la custodia central de cuentas y la validacion real desde Codex/OpenCode
 
 **Tech Stack:** LiteLLM Proxy, Anthropic Messages, OAuth del cliente Claude Code, SSE, virtual keys, PostgreSQL spend logs y el mapa de precios de LiteLLM
 
@@ -174,9 +174,20 @@ Si un proxy compartido permite caer en una clave API global, elegir aislamiento 
 
 **Aceptacion de fase 1:** Claude Code completa una conversacion con herramientas y streaming pasando por LiteLLM, usa la credencial de suscripcion, conserva el login/refresh nativo, obtiene conteo nativo con la misma credencial, no puede caer en API de pago por el proxy y registra consumo/coste equivalente a API con atribucion correcta. El soporte de codigo/documentacion no sustituye esta prueba real
 
-## Seguimiento fuera de este plan: Varias cuentas y otros clientes
+## Fase 2: Varias cuentas y otros clientes
 
-La fase 1 queda aceptada y no tiene trabajo pendiente. La rotacion central y el acceso desde otros clientes requieren un plan separado
+La fase 1 quedo aceptada en el piloto y la ruta compartida ya completa herramientas y continuacion desde Claude Code. La publicacion de modelos en el NAS compartido esta verificada. La rotacion central y el acceso desde otros clientes siguen pendientes, por lo que el objetivo completo permanece en ejecucion
+
+### Trabajo pendiente y criterios de cierre
+
+- [x] Registrar los modelos en `https://litellm.staticduo.com` para el equipo `49cfd117-ef74-4eec-b26e-2d2ff083f5be`, verificar el catalogo autenticado y una llamada real por la ruta definitiva desde Claude Code
+- [ ] Resolver el transporte de suscripcion para otros clientes con evidencia real. La peticion generica con el mismo OAuth devuelve 429 mientras el cliente nativo responde; no atribuir este rechazo a cuota sin pruebas
+- [ ] Implementar seleccion de cuenta/perfil y renovacion serializada, con almacenamiento protegido y custodia exclusiva de cada autorizacion. No compartir un refresh token entre renovadores independientes
+- [ ] Impedir que un request cambie la cuenta, redirija OAuth a otro destino, desactive la politica de suscripcion o active un fallback API
+- [x] Reparar el replay firmado de thinking en Responses: los eventos `response.output_item.done` conservan los bloques necesarios para el siguiente turno de herramientas, igual que `response.completed.output`. Fix `cb61cd4156`, 112 tests focalizados y review corregida, sin validacion live de Codex/OpenCode
+- [ ] Validar herramientas, streaming y turnos posteriores desde Codex/OpenCode con la suscripcion por la ruta final, separando capacidades comprobadas de metadatos anunciados
+- [x] Parar y eliminar todos los contenedores temporales: QA `litellm-anthropic-qa` y piloto `litellm-anthropic-subscription-proxy-1` y `litellm-anthropic-subscription-postgres-1`. Verificar su ausencia en `docker ps -a`, conservar `postgresql-data` y los archivos privados, sin eliminar volumenes
+- [ ] Ejecutar tests, review proporcional y gates, subir commits y cerrar solo cuando el alcance completo este entregado o exista un bloqueo externo concreto documentado
 
 El passthrough inicial permite varios clientes Claude Code autenticados con sus propias cuentas. Cada cliente envia su propio OAuth y tiene su virtual key. No proporciona rotacion central de cuentas ni una suscripcion disponible para Codex/OpenCode mediante una sola clave LiteLLM
 
@@ -184,7 +195,9 @@ Un proveedor equivalente a `chatgpt` necesita custodia por perfil, login, refres
 
 Antes de especificar ese desarrollo, resolver la viabilidad del uso de suscripcion desde otros clientes. [Authentication and credential use](https://code.claude.com/docs/en/legal-and-compliance) restringe OAuth a aplicaciones nativas y no permite que productos de terceros ofrezcan login claude.ai o custodien credenciales de sus usuarios. La retirada del plugin OpenCode hace que no podamos tratarlo como soporte mantenido
 
-Si existe un mecanismo permitido y probado para el uso concreto, elaborar otro plan con un autenticador Anthropic separado. Reutilizar patrones de archivos, locks y escrituras atomicas de ChatGPT, sin generalizar ese autenticador ni copiar su OAuth. Resolver antes de implementar las diferencias de refresh, identificacion, caducidad y cuota; no aplicar umbrales ni endpoints ChatGPT a Anthropic
+La investigacion del SDK oficial confirma perfiles independientes y streaming, pero no un proveedor stateless equivalente para herramientas de Codex/OpenCode, historial assistant y thinking firmado. Integrarlo requiere un bridge nuevo con estado; la decision de transporte sigue pendiente
+
+Si existe un mecanismo permitido y probado para el uso concreto, especificar dentro de la fase 2 un autenticador Anthropic separado. Reutilizar patrones de archivos, locks y escrituras atomicas de ChatGPT, sin generalizar ese autenticador ni copiar su OAuth. Resolver antes de implementar las diferencias de refresh, identificacion, caducidad y cuota; no aplicar umbrales ni endpoints ChatGPT a Anthropic
 
 Para clientes Responses como Codex, evaluar el bridge comun `litellm/responses/litellm_completion_transformation/` y los adaptadores existentes `litellm/llms/anthropic/pass_through/responses_adapters/` con mensajes, herramientas y replay de thinking firmado. Para OpenCode, seleccionar transporte Messages cuando corresponda. Esa compatibilidad no demuestra que las credenciales de suscripcion esten habilitadas para esos clientes
 
@@ -200,14 +213,30 @@ Se consultaron Hindsight compartido, sus paginas pertinentes, Kindly y Context7.
 
 ## Ejecucion verificada, 2026-10-01
 
-La fase 1 esta activa en NAS, endpoint `http://127.0.0.1:14001`, instancia `litellm-anthropic-subscription` con PostgreSQL independiente. Claude Code conserva su login Pro y su refresh. El lanzador permanente `~/.local/bin/claude-litellm` selecciona el gateway, una virtual key restringida y los modelos canonicos `claude-sonnet-5-5`, `claude-opus-5-5` y `claude-haiku-4-5`. El comando ordinario `claude` conserva la ruta directa y sirve como rollback del cliente
+### Piloto inicial
 
-El fix del contador esta en `d17375a5a9`. La imagen candidata desplegada es `sha256:1262f02dcc48bbc4cc9728a03a51a75661845b42000ca8c81df87157d70e28d8`, construida sobre la release NAS 1.105.0 fijada por digest. El proxy compartido existente no fue reiniciado. Los servicios del piloto tienen politica manual `restart: no`
+El piloto aislado del NAS, endpoint `http://127.0.0.1:14001`, demostro el transporte nativo con PostgreSQL independiente. Claude Code 2.1.285 completo streaming, Read, segundo turno, thinking y `/context` conservando su login Pro y refresh. Opus y Haiku tambien respondieron desde el cliente nativo. El contador nativo devolvio HTTP 200 y las solicitudes con OAuth invalido o sin OAuth devolvieron HTTP 401
 
-La prueba interactiva desde Claude Code 2.1.285 completo streaming, Read, segundo turno, thinking y `/context`. El contador nativo devolvio HTTP 200 con el OAuth del cliente. Las solicitudes con OAuth invalido o sin OAuth devolvieron HTTP 401, sin credencial alternativa. Opus y Haiku tambien respondieron desde el cliente nativo
+Tres spend logs de esa conversacion registraron `used_client_oauth_token=true` y coincidieron con el calculador de costes desplegado, incluyendo cache de una hora, cache read y reasoning. Los importes equivalentes fueron USD 0.018318, 0.0015432 y 0.0022766. No se encontraron credenciales raw en los logs del contenedor ni las filas de consumo inspeccionadas
 
-Tres spend logs de la conversacion registraron `used_client_oauth_token=true` y coincidieron con el calculador de costes desplegado, incluyendo cache de una hora, cache read y reasoning. Los importes equivalentes fueron USD 0.018318, 0.0015432 y 0.0022766. No se encontraron credenciales raw en los logs del contenedor ni las filas de consumo inspeccionadas
+### Promocion al NAS compartido
 
-Los tests focalizados pasan 48 casos y el gate integrado `make check` pasa. Una review independiente no encontro defectos bloqueantes. Los errores no JSON del proveedor conservan el status y se normalizan al formato Anthropic. La evidencia reproducible y los comandos operativos estan en `docker/anthropic-subscription/README.md`
+Los aliases `claude-sonnet-5-5`, `claude-opus-5-5` y `claude-haiku-4-5` estan publicados en `https://litellm.staticduo.com`. El catalogo autenticado de la virtual key contiene los tres aliases y `/model/info` contiene los tres deployments para el equipo `49cfd117-ef74-4eec-b26e-2d2ff083f5be`, con acceso `all-proxy-models`
 
-No se ha forzado agotamiento real de cuota ni interrupcion durante generacion. Los errores 401/429 y la ausencia de fallback local se verifican en las regresiones. El consumo se ha comprobado en la base de datos y en `/spend/logs/ui` con HTTP 200; no se ha capturado una pantalla del dashboard. Estos limites no cambian la evidencia real de la suscripcion ni la aceptacion del transporte nativo
+El template `docker/anthropic-subscription/shared-models.json` usa el sentinel invalido `sk-ant-oat01-client-oauth-required` y metadatos descriptivos. Esas flags no son una politica servidor inmutable. La configuracion efectiva inspeccionada carece de credenciales Anthropic API globales y de fallbacks para los aliases actuales, con forwarding de headers limitado a los grupos correspondientes. El rechazo sin OAuth se ha probado en esta configuracion, sin atribuir a los metadatos una garantia que no implementan
+
+La imagen desplegada es `sha256:e941ad3d6c58aa1f7a136a0a21e542eef3a96bc911ab5e672efdf40ad2cf6316`, overlay del contador `d17375a5a9` y Responses `cb61cd4156` sobre la base `sha256:7263f32613a930e539792b7a1613a02eef617846d8e8ae493ab779a475af9fba`. El contexto de build incluye tambien `streaming_iterator.py`. Se activo mediante `LITELLM_IMAGE` en `/volume2/docker/litellm/.env`, con backup privado en `/volume2/docker/litellm/anthropic-subscription/environment.before-overlay`. Compose recreo solo `litellm` con `up -d --no-deps --pull never`. El contenedor compartido permanece healthy y readiness devolvio HTTP 200
+
+El launcher fuente y `~/.local/bin/claude-litellm` del NAS apuntan a la URL HTTPS compartida y leen por defecto `/volume2/docker/litellm/anthropic-subscription/claude-code-key`. Claude Code conserva login y refresh propios. El comando ordinario `claude` conserva la ruta directa para rollback del cliente
+
+La prueba final desde el launcher uso Read y devolvio `SUBSCRIPTION_TOOL_OK`. La continuacion mediante `--resume` devolvio `FINAL_ROUTE_817`, exit code 0 e `is_error=false`. El contador compartido devolvio HTTP 200 con `input_tokens=11`, OAuth invalido devolvio HTTP 401 y sin OAuth devolvio HTTP 401. La QA previa del candidato tambien completo Read y continuacion, con contador HTTP 200 e invalid/sin OAuth HTTP 401
+
+La API compartida `/spend/logs/ui` devolvio HTTP 200 al filtrar `key_alias=claude-subscription`, `model_group=claude-sonnet-5-5` e intervalo UTC `2026-10-01 17:27:36` a `2026-10-02 00:00:00`. Los ultimos cuatro registros nativos exitosos tienen `used_client_oauth_token=true` e importes equivalentes USD 0.0080198, 0.0103398, 0.0112836 y 0.0779932. La solicitud sin OAuth registra spend 0. La comparacion con el calculador se verifico en el piloto y no se repitio para estos registros compartidos
+
+El parche Responses pasa 112 tests focalizados, el contador pasa 48 y `make check` pasa sobre el parche Responses. Los hallazgos de review independiente se corrigieron. Estas comprobaciones no sustituyen la validacion live pendiente de Codex/OpenCode
+
+### Retirada de temporales y limites pendientes
+
+Se pararon y eliminaron `litellm-anthropic-qa`, `litellm-anthropic-subscription-proxy-1` y `litellm-anthropic-subscription-postgres-1`, sin `-v`. Su ausencia se verifico con `docker ps -a`. Se conservaron `postgresql-data` y los archivos privados. El directorio privado del piloto tiene permisos 700 y sus archivos de key, config, credentials e image tienen permisos 600 tras corregir permisos heredados por ACL. El `litellm` compartido sigue healthy con la imagen candidata
+
+No se ha forzado agotamiento real de cuota ni interrupcion durante generacion. El consumo del piloto se comprobo en la base de datos y en `/spend/logs/ui` con HTTP 200, sin captura visual del dashboard. La peticion generica con OAuth devolvio 429 frente a un control nativo exitoso, sin atribucion demostrada a cuota. Siguen pendientes el transporte central, la gestion y renovacion de varias cuentas y las conversaciones live desde Codex/OpenCode. La fase 2 no esta cerrada

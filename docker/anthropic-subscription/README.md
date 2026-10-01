@@ -1,23 +1,25 @@
 # Claude Code subscription gateway
 
-This NAS pilot keeps Anthropic OAuth login and refresh in Claude Code and records API-equivalent usage in an isolated LiteLLM database. It listens on `127.0.0.1:14001`, has no Anthropic API credentials or fallback models, and uses manual Docker lifecycle control
+The NAS shared gateway at `https://litellm.staticduo.com` keeps Anthropic OAuth login and refresh in Claude Code and records API-equivalent usage in LiteLLM. The isolated pilot at `127.0.0.1:14001` supplied the initial evidence and was retired after shared-route verification. Central account management and live Codex/OpenCode subscription support remain unfinished
 
-Copy `compose.yaml` and `config.yaml` to the private deployment directory `/volume2/docker/litellm-anthropic-subscription`. Initialize a new `postgresql-data` directory owned by UID 1001. Keep existing data directories intact
+## Shared deployment
 
-Supply PostgreSQL passwords, `DATABASE_URL` and `LITELLM_MASTER_KEY` through a private Compose override named `compose.credentials.yaml`, readable only by the owner. PostgreSQL needs `POSTGRESQL_PASSWORD` and `POSTGRESQL_POSTGRES_PASSWORD`. The database URL names the `postgres` service and `litellm_subscription` database. Do not add `ANTHROPIC_API_KEY` or `ANTHROPIC_AUTH_TOKEN` to either service
+`shared-models.json` is the deployment template for `claude-sonnet-5-5`, `claude-opus-5-5` and `claude-haiku-4-5`. They are visible to team `49cfd117-ef74-4eec-b26e-2d2ff083f5be` through its `all-proxy-models` access. Each deployment has the deliberately invalid sentinel `sk-ant-oat01-client-oauth-required` rather than a usable server credential. Its subscription metadata describes the intended use and does not enforce an immutable server policy. The inspected shared configuration has no global Anthropic API credential or fallback for these aliases, and header forwarding is limited to their model groups
 
-Build the candidate image from a small context containing only this Dockerfile, `litellm/proxy/anthropic_endpoints/endpoints.py` as `endpoints.py`, `litellm/llms/anthropic/count_tokens/handler.py` as `handler.py`, and the repository's `model_prices_and_context_window.json`. Set `ANTHROPIC_SUBSCRIPTION_IMAGE` to the resulting immutable image ID in `image.env`. The base image is the verified NAS release, not a floating tag
+Build the overlay from a small context containing this Dockerfile, `litellm/proxy/anthropic_endpoints/endpoints.py` as `endpoints.py`, `litellm/llms/anthropic/count_tokens/handler.py` as `handler.py`, `litellm/responses/litellm_completion_transformation/streaming_iterator.py` as `streaming_iterator.py`, and the repository's `model_prices_and_context_window.json`. The base image is pinned to `sha256:7263f32613a930e539792b7a1613a02eef617846d8e8ae493ab779a475af9fba`
 
 ```bash
-docker compose --env-file image.env -f compose.yaml -f compose.credentials.yaml config --quiet
-docker compose --env-file image.env -f compose.yaml -f compose.credentials.yaml up -d
-curl --fail http://127.0.0.1:14001/health/readiness
+curl --fail https://litellm.staticduo.com/health/readiness
 ```
 
-Create a virtual key restricted to the three configured aliases. Give Claude Code that key in a separate custom header while preserving its saved claude.ai login
+The deployed overlay is `sha256:e941ad3d6c58aa1f7a136a0a21e542eef3a96bc911ab5e672efdf40ad2cf6316`, containing the counter fix `d17375a5a9` and Responses replay fix `cb61cd4156`. It was selected through `LITELLM_IMAGE` in `/volume2/docker/litellm/.env`. The previous environment is backed up privately at `/volume2/docker/litellm/anthropic-subscription/environment.before-overlay`. Activation recreated only `litellm` with Compose `up -d --no-deps --pull never`. The shared container is healthy and readiness returned HTTP 200
+
+## Claude Code client
+
+Use a virtual key restricted to the three configured aliases. Give Claude Code that key in a separate custom header while preserving its saved claude.ai login
 
 ```bash
-export ANTHROPIC_BASE_URL=http://127.0.0.1:14001
+export ANTHROPIC_BASE_URL=https://litellm.staticduo.com
 export ANTHROPIC_CUSTOM_HEADERS="x-litellm-api-key: Bearer $LITELLM_CLAUDE_KEY"
 export ANTHROPIC_MODEL=claude-sonnet-5-5
 export ANTHROPIC_DEFAULT_SONNET_MODEL=claude-sonnet-5-5
@@ -28,15 +30,25 @@ claude
 
 The session must have no active `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN` or `apiKeyHelper`. A custom header authenticates to LiteLLM without replacing Claude Code's subscription credential. Do not copy OAuth tokens into the proxy. Canonical model names preserve Claude Code's native capabilities and context metadata
 
-The NAS installation includes the dedicated `~/.local/bin/claude-litellm` launcher from this directory. Run `claude-litellm` on the NAS to use the gateway with the existing subscription login. It reads the restricted key from the private runtime directory and sets the URL and model variables only for its child process. Existing Claude settings and login remain available to the ordinary `claude` command. The launcher rejects inherited API credentials; do not add an `apiKeyHelper` to this profile
+The NAS installation includes the dedicated `~/.local/bin/claude-litellm` launcher from this directory. Run `claude-litellm` on the NAS to use the shared HTTPS gateway with the existing subscription login. It reads the restricted key from `/volume2/docker/litellm/anthropic-subscription/claude-code-key`, overridable with `LITELLM_CLAUDE_KEY_FILE`, and sets the URL and model variables only for its child process. Existing Claude settings and login remain available to the ordinary `claude` command. The launcher rejects inherited API credentials; do not add an `apiKeyHelper` to this profile
 
 Verify a streamed conversation, a tool result in a subsequent turn, native token counting and spend logs with `used_client_oauth_token=true`. Cost is the equivalent API value, not an Anthropic invoice. Verify an unauthenticated upstream request fails without fallback. An OAuth flag or HTTP readiness alone does not prove a successful subscription request
 
-Stop the pilot with `docker compose --env-file image.env -f compose.yaml -f compose.credentials.yaml stop`. Use the ordinary `claude` command to restore direct client routing, preserving its login and all database data
+Use the ordinary `claude` command to restore direct client routing while preserving its login. A shared image rollback restores the previous `LITELLM_IMAGE` from the private environment backup and recreates only `litellm`. Keep pilot database files and private credentials intact when removing temporary containers
 
-## Verified deployment, 2026-10-01
+## Verified shared route, 2026-10-01
 
-The candidate image `sha256:1262f02dcc48bbc4cc9728a03a51a75661845b42000ca8c81df87157d70e28d8` contains the token-counting fix from `d17375a5a9`. The NAS proxy and dedicated PostgreSQL are healthy with manual restart policy. The existing shared LiteLLM instance was not restarted
+The authenticated shared catalog contains all three aliases for the restricted virtual key. `/model/info` contains all three deployments for the requested team. The final NAS launcher used Read and returned `SUBSCRIPTION_TOOL_OK`; a second turn through `--resume` returned `FINAL_ROUTE_817` with exit code 0 and `is_error=false`
+
+The shared native counter returned HTTP 200 with `{"input_tokens":11}`. Invalid OAuth and a request without OAuth each returned HTTP 401. The separate candidate QA route completed Read and a continuation, with counter HTTP 200 and invalid or absent OAuth HTTP 401
+
+The shared dashboard API `/spend/logs/ui` returned HTTP 200 for `key_alias=claude-subscription`, `model_group=claude-sonnet-5-5` and the UTC interval `2026-10-01 17:27:36` to `2026-10-02 00:00:00`. The last four native successful records have `used_client_oauth_token=true` and API-equivalent spend of USD `0.0080198`, `0.0103398`, `0.0112836` and `0.0779932`. The request without OAuth recorded zero spend. The calculator comparison was performed on the pilot, not repeated on the shared records
+
+The Responses patch passes 112 focused tests and the counter passes 48 focused tests. `make check` passes for the Responses patch, and independent review findings were corrected. These checks do not establish live Codex/OpenCode compatibility
+
+Temporary QA `litellm-anthropic-qa` and pilot containers `litellm-anthropic-subscription-proxy-1` and `litellm-anthropic-subscription-postgres-1` were stopped and removed without `-v`. Their absence was verified with `docker ps -a`. Pilot `postgresql-data` and private files remain intact. The private pilot directory has mode 700 and its key, config, credentials and image files have mode 600 after correcting inherited ACL permissions. The shared `litellm` container remains healthy on the candidate image
+
+## Initial isolated pilot evidence
 
 Claude Code 2.1.285 displayed `Sonnet 5.5 with high effort` and `Claude Pro`. An interactive streamed turn read `subscription-probe.txt` and returned `SUBSCRIPTION_TOOL_OK`. The next turn returned `SUBSCRIPTION_TOOL_OK` and `CONTINUATION_OK` without another read. `/context` completed and native token-counting requests returned HTTP 200. Separate native client requests confirmed Opus 5.5 and Haiku 4.5 access
 
@@ -44,6 +56,10 @@ A real native token-counting request returned `{"input_tokens":18}`. Invalid OAu
 
 Requests `msg_011Cfbn3woLuuNZNUKAir5Lh`, `msg_011Cfbn43xBkqfoTuu7twBdT` and `msg_011Cfbn47rLSiVhqwsM6EsT8` recorded OAuth attribution and API-equivalent spend of USD `0.018318`, `0.0015432` and `0.0022766`. Recalculation with the deployed LiteLLM cost function matched all three amounts. The records include one-hour cache creation, cache reads and reasoning tokens. Raw OAuth, refresh, virtual and master credentials were absent from the inspected container logs and spend rows
 
-The endpoint and handler regressions pass 48 focused tests, including upstream 401/429, alias authorization and destination isolation. Independent review found no blocking defect. The integrated `make check` gate passes, including type, lint, budget and OpenAPI/dashboard schema checks. The dashboard endpoint `/spend/logs/ui` returns the verified request and spend. Forced live quota exhaustion and interruption during generation were not exercised; status preservation and absence of local fallback are covered by the focused regressions
+The pilot dashboard endpoint `/spend/logs/ui` returned the verified request and spend. Forced live quota exhaustion and interruption during generation were not exercised. Status preservation and absence of local fallback are covered by the focused regressions
 
-See the [implementation plan](../../docs/superpowers/plans/2026-10-01-anthropic-subscription.md) for acceptance and the separate scope of future central account management
+## Remaining work
+
+Central account custody, selection and serialized refresh are not implemented. A generic request with the same OAuth returned HTTP 429 while the native control succeeded, so the failure has not been attributed to subscription quota. Official SDK research supports independent profiles and streaming, but it does not supply a stateless provider equivalent for Codex/OpenCode tools, assistant history and signed thinking. That approach needs a new stateful bridge, and the architecture decision remains pending
+
+Live Codex/OpenCode tools, streaming and later turns on the final route remain unverified. See the [implementation plan](../../docs/superpowers/plans/2026-10-01-anthropic-subscription.md) for the work in progress and its acceptance criteria
