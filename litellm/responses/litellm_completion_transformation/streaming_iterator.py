@@ -1,6 +1,7 @@
 import time
 import uuid
 from collections.abc import Mapping, Sequence
+from copy import deepcopy
 from typing import Any, Final, cast
 
 import litellm
@@ -48,13 +49,14 @@ from litellm.types.llms.openai import (
     WebSearchCallInProgressEvent,
     WebSearchCallSearchingEvent,
 )
-from litellm.types.utils import Delta as ChatCompletionDelta
 from litellm.types.utils import (
+    Choices,
     ModelResponse,
     ModelResponseStream,
     StreamingChoices,
     TextCompletionResponse,
 )
+from litellm.types.utils import Delta as ChatCompletionDelta
 
 
 def _index_of_output_item_type(items: Sequence[object], item_type: str) -> int | None:
@@ -143,6 +145,7 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
         self._pending_response_events: list[BaseLiteLLMOpenAIResponseObject] = []
         self._reasoning_active = False
         self._reasoning_done_emitted = False
+        self._has_signed_thinking_blocks: bool = False
         self._reasoning_item_id: str | None = None
         self._accumulated_reasoning_content_parts: list[str] = []
         self._accumulated_provider_specific_fields: dict[str, object] = {}
@@ -866,6 +869,13 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
         reasoning_content: str,
         sequence_number: int,
     ) -> OutputItemDoneEvent:
+        assembled: Final = stream_chunk_builder(chunks=deepcopy(self.collected_chat_completion_chunks))
+        choice: Final = assembled.choices[0] if isinstance(assembled, ModelResponse) and assembled.choices else None
+        encrypted_content: Final = (
+            LiteLLMCompletionResponsesConfig._encode_thinking_blocks(choice.message)
+            if isinstance(choice, Choices)
+            else None
+        )
         return OutputItemDoneEvent(
             type=ResponsesAPIStreamEvents.OUTPUT_ITEM_DONE,
             output_index=self._reasoning_output_index,
@@ -877,6 +887,7 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
                     "status": "completed",
                     "summary": [],
                     "content": [{"type": "reasoning_text", "text": reasoning_content}],
+                    "encrypted_content": encrypted_content,
                 }
             ),
         )
@@ -984,7 +995,10 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
             return
         delta: Final = chunk.choices[0].delta
         reasoning_content: Final = getattr(delta, "reasoning_content", None)
-        if reasoning_content or _delta_has_signed_thinking_block(delta):
+        signed_thinking: Final = _delta_has_signed_thinking_block(delta)
+        if signed_thinking:
+            self._has_signed_thinking_blocks = True
+        if reasoning_content or signed_thinking:
             if self._cached_reasoning_item_id is None:
                 self._cached_reasoning_item_id = f"rs_{uuid.uuid4()}"
                 self._reasoning_active = True
@@ -1026,7 +1040,7 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
             if reasoning_content:
                 self._accumulated_reasoning_content_parts.append(reasoning_content)
             return
-        if self._is_reasoning_end(chunk):
+        if self._is_reasoning_end(chunk) and not self._has_signed_thinking_blocks:
             self._finish_reasoning()
         if self.sent_message_item_added_event or not delta.content:
             return

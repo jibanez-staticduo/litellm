@@ -11,6 +11,7 @@ spend tracking stores, so a follow-up previous_response_id still finds the conve
 """
 
 import json
+from copy import deepcopy
 from typing import Final
 from unittest.mock import AsyncMock, MagicMock
 
@@ -19,6 +20,7 @@ import pytest
 from litellm.responses.litellm_completion_transformation.streaming_iterator import (
     LiteLLMCompletionStreamingIterator,
 )
+from litellm.responses.litellm_completion_transformation.transformation import LiteLLMCompletionResponsesConfig
 from litellm.responses.utils import ResponsesAPIRequestUtils
 from litellm.types.llms.openai import (
     BaseLiteLLMOpenAIResponseObject,
@@ -1264,6 +1266,68 @@ async def test_signature_only_thinking_streams_a_replayable_reasoning_item(sync_
     assert added_item_types[0] == "reasoning"
     assert len(reasoning_items) == 1
     assert json.loads(reasoning_items[0].encrypted_content)[0]["signature"] == "sig_only"
+
+
+@pytest.mark.parametrize("sync_mode", [True, False])
+@pytest.mark.parametrize("interleaved", [True, False])
+@pytest.mark.asyncio
+async def test_done_item_history_replays_signed_thinking_with_tool_results(sync_mode: bool, interleaved: bool) -> None:
+    iterator: Final = _build_iterator(
+        [
+            _signature_only_thinking_chunk("signed_tool_turn"),
+            _tool_call_chunk(),
+            *([_signature_only_thinking_chunk("signed_after_tool")] if interleaved else []),
+            _chunk("", finish_reason="tool_calls"),
+        ]
+    )
+    events: Final = await _collect_events(iterator, sync_mode)
+    done_items: Final = [
+        event.item.model_dump()
+        for event in events
+        if getattr(event, "type", None) == ResponsesAPIStreamEvents.OUTPUT_ITEM_DONE
+    ]
+    completed: Final = next(
+        event for event in events if getattr(event, "type", None) == ResponsesAPIStreamEvents.RESPONSE_COMPLETED
+    )
+    completed_reasoning: Final = next(item for item in completed.response.output if item.type == "reasoning")
+    done_reasoning: Final = next(item for item in done_items if item["type"] == "reasoning")
+    assert done_reasoning.get("encrypted_content") == completed_reasoning.encrypted_content
+    tool_call: Final = next(item for item in done_items if item["type"] == "function_call")
+    messages: Final = LiteLLMCompletionResponsesConfig.transform_responses_api_input_to_messages(
+        input=[
+            *done_items,
+            {"type": "function_call_output", "call_id": tool_call["call_id"], "output": "/workspace"},
+        ],
+        responses_api_request={},
+        replay_reasoning=True,
+    )
+    assistant: Final = next(message for message in messages if message["role"] == "assistant")
+    assert assistant["thinking_blocks"] == json.loads(completed_reasoning.encrypted_content)
+    expected_signatures: Final = ("signed_tool_turn", "signed_after_tool") if interleaved else ("signed_tool_turn",)
+    assert tuple(block["signature"] for block in assistant["thinking_blocks"]) == expected_signatures
+    assert assistant["tool_calls"][0]["id"] == tool_call["call_id"]
+    assert messages[-1]["role"] == "tool"
+    assert messages[-1]["tool_call_id"] == tool_call["call_id"]
+
+
+def test_reasoning_done_preserves_collected_chunks_for_final_assembly() -> None:
+    iterator: Final = _build_iterator(
+        [_signature_only_thinking_chunk("signed_tool_turn"), _tool_call_chunk(finish_reason="tool_calls")]
+    )
+    next(
+        event
+        for event in iterator
+        if getattr(event, "type", None) == ResponsesAPIStreamEvents.OUTPUT_ITEM_ADDED
+        and event.item.type == "reasoning"
+    )
+    collected_before: Final = deepcopy(iterator.collected_chat_completion_chunks)
+    next(
+        event
+        for event in iterator
+        if getattr(event, "type", None) == ResponsesAPIStreamEvents.OUTPUT_ITEM_DONE
+        and event.item.type == "reasoning"
+    )
+    assert iterator.collected_chat_completion_chunks[: len(collected_before)] == collected_before
 
 
 @pytest.mark.parametrize("sync_mode", [True, False])
