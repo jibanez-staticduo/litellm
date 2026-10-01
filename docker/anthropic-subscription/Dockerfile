@@ -16,6 +16,7 @@ COPY litellm/llms/anthropic/oauth_policy.py /app/.venv/lib/python3.13/site-packa
 COPY litellm/llms/anthropic/native_transport.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/native_transport.py
 COPY litellm/llms/anthropic/common_utils.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/common_utils.py
 COPY litellm/llms/anthropic/chat/transformation.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/chat/transformation.py
+COPY litellm/llms/anthropic/chat/handler.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/chat/handler.py
 COPY litellm/llms/anthropic/pass_through/messages/transformation.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/pass_through/messages/transformation.py
 COPY litellm/llms/anthropic/pass_through/messages/handler.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/pass_through/messages/handler.py
 COPY litellm/llms/anthropic/count_tokens/handler.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/count_tokens/handler.py

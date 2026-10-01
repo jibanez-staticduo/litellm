@@ -222,11 +222,21 @@ Cada perfil nativo tendra un `CLAUDE_CONFIG_DIR` dedicado con autorizacion propi
 El contador debe contar el cuerpo solicitado con la misma cuenta del engine, sin inferencia auxiliar de pago, sin aproximaciones presentadas como conteo exacto y sin exponer credenciales al proxy o cliente. La prueba nativa de renovacion forzo la caducidad del perfil dedicado, invoco `getContextUsage({detail: "full"})` sin prompt y verifico rotacion por el motor. El SDK oficial de API conto dos cuerpos arbitrarios con el acceso propio del engine: 8 y 208 tokens, sin inferencia. NAS y Fedora tienen autorizaciones nativas independientes con directorios 0700 y credenciales 0600 Se verificara la renovacion nativa antes de aceptar produccion. Los controles de API sin equivalencia documentada se rechazaran, y los cambios de historial que el motor no pueda importar no se sintetizaran dentro de prompts
 
 - [x] Probar SDK nativo con prompt OpenCode original, herramientas paralelas y repetidas, resultados externos en orden inverso, thinking firmado y otro turno
-- [ ] Implementar broker tipado con autenticacion privada, aislamiento de sesiones, streaming, cancelacion y pruebas funcionales con SDK inyectado
+- [x] Implementar broker tipado con autenticacion privada, aislamiento de sesiones, streaming, cancelacion y pruebas funcionales con SDK inyectado
 - [ ] Integrar el modo nativo trusted en Chat, Messages, Responses y ambos contadores, preservando politica de cuentas y contabilidad
-- [ ] Verificar autorizaciones nativas independientes, refresh, parametros efectivos y conteo exacto sin cargos auxiliares
+- [x] Verificar autorizaciones nativas independientes, refresh, parametros efectivos y conteo exacto sin cargos auxiliares
 - [ ] Validar OpenCode y Codex reales en aislamiento, eliminar todos los contenedores temporales y conservar datos
 - [ ] Probar el mismo candidato en Fedora y solo despues promover a NAS, con modelos visibles y consumo atribuible
+
+### Resultado del cliente OpenCode con motor nativo
+
+El request completo del agente OpenCode 2.0.20, con doce herramientas, falla antes de `message_start`. La captura del cuerpo y su ejecucion directa con Agent SDK 0.3.287 y el mismo perfil nativo reproducen HTTP 400 de Anthropic con el requisito de extra usage. El resultado SDK contiene `is_error=true` y el mismo mensaje de facturacion observado en HTTP directo. El parser SSE de OpenCode completa la llamada auxiliar de titulo, que no lleva herramientas; ese probe no demuestra que el agente completo pueda consumir los limites del plan
+
+La consulta OAuth de uso del perfil nativo devuelve HTTP 200 y `extra_usage.is_enabled=false`. No se habilita extra usage ni se cambia la identidad de la aplicacion para evitar el rechazo. El criterio subscription-only de OpenCode sigue incumplido y bloquea la promocion ordenada a Fedora y NAS
+
+El piloto nativo pasa los tres modelos en Messages, Chat, Responses, ambos contadores y replay firmado de una herramienta. Cinco registros nativos conservan servidor OAuth, perfil default y la virtual key esperada; el coste coincide con el calculador desplegado. Las correcciones de thinking vacio firmado y herramientas `type: custom` disponen de regresiones. El gate `make check` pasa sobre el candidato Python anterior a la correccion posterior de caller en Responses
+
+La pagina real del Admin UI del NAS con el filtro de equipo solicitado muestra los tres aliases canonicos de fase 1. Los aliases gestionados `-subscription` no se han publicado en los proxies compartidos
 
 ## Fuentes verificadas el 2026-10-01
 

@@ -27,6 +27,7 @@ for relative in \
     litellm/llms/anthropic/native_transport.py \
     litellm/llms/anthropic/common_utils.py \
     litellm/llms/anthropic/chat/transformation.py \
+    litellm/llms/anthropic/chat/handler.py \
     litellm/llms/anthropic/pass_through/messages/transformation.py \
     litellm/llms/anthropic/pass_through/messages/handler.py \
     litellm/llms/anthropic/count_tokens/handler.py \

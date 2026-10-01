@@ -66,7 +66,7 @@ The dedicated `codex-anthropic-litellm` and `opencode-anthropic-litellm` launche
 
 Install the executable launchers in a directory on the client's PATH. They preserve existing logins, provider configuration and policy settings. They export `LITELLM_ANTHROPIC_QA_KEY` only to the child client and leave upstream OAuth to the managed server profile. Neither launcher changes the ordinary `codex` or `opencode` defaults
 
-The Codex launcher supplies the `anthropic_subscription` provider through command-line configuration with `base_url=<root>/v1`, `env_key=LITELLM_ANTHROPIC_QA_KEY` and `wire_api=responses`. It defaults to `claude-sonnet-5-5-subscription`, overridable with `LITELLM_ANTHROPIC_MODEL` or ordinary Codex arguments. User arguments are passed through without changing approval or sandbox policy
+The Codex launcher supplies the `anthropic_subscription` provider through command-line configuration with `base_url=<root>/v1`, `env_key=LITELLM_ANTHROPIC_QA_KEY` and `wire_api=responses`. It defaults to `claude-sonnet-5-5-subscription`, overridable with `LITELLM_ANTHROPIC_MODEL` or ordinary Codex arguments. It disables hosted web search for this provider because the broker only supports caller tools. External MCP search tools remain available. User arguments are passed through without changing approval or sandbox policy
 
 ```bash
 codex-anthropic-litellm
@@ -127,4 +127,12 @@ Managed profile custody, explicit account selection and serialized refresh are i
 
 The accounting correction passes live QA, 47 focused logging tests and 27 spend tests. The final `make check` passes, including generated dashboard API types. The managed proxy and PostgreSQL containers and their temporary network were stopped and removed without `-v`; `docker ps -a` confirms their absence. The PostgreSQL data directory and volumes remain, and both shared native proxies remain healthy
 
-The full objective remains unfinished while native broker integration, real client QA and ordered Fedora/NAS promotion are in progress. See the [implementation plan](../../docs/superpowers/plans/2026-10-01-anthropic-subscription.md) for the remaining acceptance criteria
+The full objective remains unfinished. The native SDK also rejects the complete OpenCode agent request with the same extra usage requirement, so subscription-only acceptance has not passed and the candidate is not promoted to Fedora or NAS. See the [implementation plan](../../docs/superpowers/plans/2026-10-01-anthropic-subscription.md) for the acceptance criteria
+
+## Native SDK integration evidence
+
+The isolated native broker passed Messages with all three models, Chat, Responses, both count routes and signed thinking with an external tool continuation. Five attributed native spend records match the deployed calculator. The dedicated native authorization has directory mode 0700 and credential mode 0600, and the native SDK refreshed an expired credential before exact token counting
+
+The complete OpenCode 2.0.20 agent request fails before the first message event. Capturing the client's request and executing that exact body directly with Agent SDK 0.3.287 reproduces Anthropic HTTP 400 requiring extra usage. Its auxiliary title request succeeds, which explains why the earlier prompt-only probe did not establish full client compatibility. The native profile's OAuth usage endpoint returns HTTP 200 with extra usage disabled. No billing setting or application identity was changed to work around the rejection
+
+The authenticated NAS Admin UI with the requested team filter displays the three canonical phase 1 aliases. The managed subscription aliases remain isolated until the complete client acceptance criteria pass
