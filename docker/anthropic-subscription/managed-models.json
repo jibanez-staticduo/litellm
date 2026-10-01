@@ -6,13 +6,13 @@
         "model": "anthropic/claude-sonnet-5-5",
         "use_anthropic_oauth": true,
         "anthropic_auth_profile": "default",
-        "anthropic_oauth_compatibility": "claude_code",
-        "num_retries": 0
+        "num_retries": 0,
+        "anthropic_execution_mode": "native_sdk"
       },
       "model_info": {
         "base_model": "anthropic/claude-sonnet-5-5",
         "mode": "chat",
-        "subscription_auth_mode": "managed_oauth",
+        "subscription_auth_mode": "managed_native_sdk",
         "anthropic_auth_profile": "default"
       }
     },
@@ -22,13 +22,13 @@
         "model": "anthropic/claude-opus-5-5",
         "use_anthropic_oauth": true,
         "anthropic_auth_profile": "default",
-        "anthropic_oauth_compatibility": "claude_code",
-        "num_retries": 0
+        "num_retries": 0,
+        "anthropic_execution_mode": "native_sdk"
       },
       "model_info": {
         "base_model": "anthropic/claude-opus-5-5",
         "mode": "chat",
-        "subscription_auth_mode": "managed_oauth",
+        "subscription_auth_mode": "managed_native_sdk",
         "anthropic_auth_profile": "default"
       }
     },
@@ -38,13 +38,13 @@
         "model": "anthropic/claude-haiku-4-5",
         "use_anthropic_oauth": true,
         "anthropic_auth_profile": "default",
-        "anthropic_oauth_compatibility": "claude_code",
-        "num_retries": 0
+        "num_retries": 0,
+        "anthropic_execution_mode": "native_sdk"
       },
       "model_info": {
         "base_model": "anthropic/claude-haiku-4-5",
         "mode": "chat",
-        "subscription_auth_mode": "managed_oauth",
+        "subscription_auth_mode": "managed_native_sdk",
         "anthropic_auth_profile": "default"
       }
     }

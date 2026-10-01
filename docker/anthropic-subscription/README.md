@@ -1,6 +1,6 @@
 # Claude Code subscription gateway
 
-The verified phase 1 NAS gateway at `https://litellm.staticduo.com` keeps Anthropic OAuth login and refresh in Claude Code and records API-equivalent usage in LiteLLM. The isolated pilot at `127.0.0.1:14001` supplied the initial evidence and was retired after shared-route verification. The candidate now also implements managed OAuth profiles under separate `*-subscription` aliases. The isolated candidate passes Codex and managed-refresh checks, but OpenCode is blocked by the provider's extra-usage requirement. The managed candidate is not being promoted to Fedora or NAS
+The verified phase 1 NAS gateway at `https://litellm.staticduo.com` keeps Anthropic OAuth login and refresh in Claude Code and records API-equivalent usage in LiteLLM. The isolated pilot at `127.0.0.1:14001` supplied the initial evidence and was retired after shared-route verification. The HTTP managed candidate passed Codex and refresh checks, but Anthropic rejected OpenCode through that transport. A native Agent SDK broker is now being integrated under separate `*-subscription` aliases, with dedicated subscription authorizations and server-owned refresh. Promotion waits for real isolated client QA, then Fedora verification
 
 ## Shared deployment
 
@@ -41,33 +41,24 @@ Verify a streamed conversation, a tool result in a subsequent turn, native token
 
 Use the ordinary `claude` command to restore direct client routing while preserving its login. A shared image rollback restores the previous `LITELLM_IMAGE` from the private environment backup and recreates only `litellm`. Keep pilot database files and private credentials intact when removing temporary containers
 
-## Managed profiles, experimental candidate
+## Managed native profiles
 
-`managed-models.json` defines `claude-sonnet-5-5-subscription`, `claude-opus-5-5-subscription` and `claude-haiku-4-5-subscription`. Their deployment parameters enable `use_anthropic_oauth`, select `anthropic_auth_profile=default`, set `anthropic_oauth_compatibility=claude_code` and disable retries with `num_retries=0`. The provider resolves the credential through `AnthropicAuthenticator` rather than receiving OAuth from the client. The original canonical aliases and launcher retain phase 1 passthrough
+`managed-models.json` defines `claude-sonnet-5-5-subscription`, `claude-opus-5-5-subscription` and `claude-haiku-4-5-subscription`. Each deployment enables `use_anthropic_oauth`, fixes `anthropic_auth_profile=default`, selects `anthropic_execution_mode=native_sdk` and disables retries. The provider remains Anthropic, with the existing Chat and Responses bridges
 
-Authorize a dedicated subscription login through Claude CLI, separate from the interactive phase 1 login. Import its credential file explicitly into the managed profile. Do not run Claude CLI and LiteLLM as independent refreshers of the same authorization after import. Each authorization needs one custodian, and independent NAS/Fedora deployments need separate authorizations or a single shared custodian
+The internal broker runs the pinned official Agent SDK. Authorize each account in its own `CLAUDE_CONFIG_DIR` through `claude auth login --claudeai`. Keep that directory at 0700 and its credential file at 0600. Mount the parent account directory as `/profiles`, so profile `default` uses `/profiles/default` and HOME `/profiles/default/home`. Native Claude Code owns refresh. The proxy does not import, export or independently refresh this authorization. NAS and Fedora need independent logins
 
-The import API accepts a native Claude credential file or the authenticator's persisted credential format. It does not discover or import the user's ordinary Claude login automatically. Set `ANTHROPIC_IMPORT_SOURCE` to the dedicated private source file and `ANTHROPIC_OAUTH_TOKEN_DIR` to the private runtime directory before running this example in the candidate environment
+Build the broker from this directory with `Dockerfile.native-sdk`. `compose.native-sdk.yaml` adds the internal broker to the isolated proxy project. Set `ANTHROPIC_NATIVE_SDK_IMAGE` to its reviewed image, `ANTHROPIC_NATIVE_SDK_PROFILE_ROOT` to the private account directory and `ANTHROPIC_NATIVE_SDK_KEY` to a separate random service credential. The proxy uses `ANTHROPIC_NATIVE_SDK_BASE_URL` and the same service credential. Keep this broker on the private Docker network. Its credential is distinct from subscription OAuth and the client's LiteLLM key
 
-```python
-import os
-
-from litellm.llms.anthropic.authenticator import AnthropicAuthenticator, AnthropicOAuthConfig
-
-AnthropicAuthenticator(
-    AnthropicOAuthConfig(
-        use_anthropic_oauth=True,
-        anthropic_auth_profile="default",
-        anthropic_token_dir=os.environ["ANTHROPIC_OAUTH_TOKEN_DIR"],
-    )
-).import_credentials(os.environ["ANTHROPIC_IMPORT_SOURCE"])
+```bash
+docker build -f docker/anthropic-subscription/Dockerfile.native-sdk \
+  -t litellm-anthropic-native-sdk docker/anthropic-subscription
 ```
 
-The default profile is stored as `auth.json`, and a named profile as `<profile>.json`. Set `anthropic_auth_profile` on each deployment to select its account. `anthropic_token_dir` takes precedence over `ANTHROPIC_OAUTH_TOKEN_DIR`, with `~/.config/litellm/anthropic` as the default. Keep the directory at mode 0700 and credential and lock files at 0600, owned by the runtime user. The authenticator writes credentials atomically at 0600 and serializes refresh with a profile lock. It does not provide automatic account rotation or quota scheduling
+LiteLLM stamps authenticated key ownership and the selected deployment. The broker binds sessions to owner, profile, deployment and model. Client metadata and headers cannot select another account or native session. History prefixes, tool IDs and results must match the native conversation. Thinking signatures and caller tool names survive the protocol translation. Built-in SDK tools are disabled; the caller executes its own tools
 
-Managed policy fails closed when the profile is missing, invalid, lacks `user:inference`, or cannot refresh. Storage failures also stop the request. Clients cannot change the configured profile, disable managed OAuth, supply replacement credentials or redirect it away from the official HTTPS Anthropic endpoint. Managed deployments must have no API fallback. Keep Anthropic API credentials out of the deployment and do not configure API, Bedrock or Vertex alternatives for these aliases
+The count route uses native SDK refresh, then the official token-counting endpoint with the engine-owned access credential. It counts the supplied body without paid inference or a local estimate. Credentials stay inside the broker. Unsupported API controls fail explicitly instead of being silently ignored
 
-The `claude_code` preset adds an `x-anthropic-billing-header` system block pinned to Claude Code compatibility version `2.1.286` when one is absent. This is experimental transport compatibility, not proof of provider support or successful subscription billing. It does not run Claude CLI or the Agent SDK for inference. The isolated candidate evidence below covers managed refresh and Codex tool turns. It does not establish subscription-only OpenCode support
+The earlier direct HTTP authenticator remains available for explicit HTTP deployments. Its managed stores are separate from native profiles. The experimental `claude_code` HTTP compatibility preset does not run the SDK and did not establish OpenCode subscription-only support. Preserve the previous private configuration for rollback instead of sharing refresh tokens between both modes
 
 ## Managed clients and accounting
 
@@ -90,9 +81,9 @@ opencode-anthropic-litellm run --model subscription/claude-sonnet-5-5-subscripti
 
 Codex uses LiteLLM's `/v1/responses` bridge and OpenCode uses `/v1/messages`. These launchers do not add an Anthropic catalog to Codex or enable native Anthropic Responses support
 
-These routes reuse the Anthropic provider and Responses bridge, including signed thinking replay. Codex passed an actual tool, file and resume conversation on the isolated candidate. OpenCode failed on both Messages and Responses, so managed promotion remains blocked
+These routes reuse the Anthropic provider and Responses bridge, including signed thinking replay. The direct HTTP candidate passed Codex but failed OpenCode. The native broker has passed standalone SDK probes with the original OpenCode system prompt and parallel tools. Client integration QA is still required
 
-Spend remains an API-equivalent valuation derived from provider usage and the effective LiteLLM price map. It is not an Anthropic API invoice. For phase 1 passthrough, verify `used_client_oauth_token=true`. Managed profiles instead require `used_client_oauth_token=false`, server OAuth attribution and the configured profile. For the default profile, the expected ledger values are `used_server_oauth_token=true` and `anthropic_auth_profile=default`. The ledger correction and its live verification are in progress. Verify the served model, virtual key attribution and cache usage, and verify rejected authentication records no successful generation spend
+Spend remains an API-equivalent valuation derived from provider usage and the effective LiteLLM price map. It is not an Anthropic API invoice. For phase 1 passthrough, verify `used_client_oauth_token=true`. Managed profiles instead require `used_client_oauth_token=false`, server OAuth attribution and the configured profile. For the default profile, the expected ledger values are `used_server_oauth_token=true` and `anthropic_auth_profile=default`. The HTTP candidate ledger correction passed live verification; native broker accounting must pass the same checks. Verify the served model, virtual key attribution and cache usage, and verify rejected authentication records no successful generation spend
 
 ## Verified phase 1 shared route, 2026-10-01
 
@@ -104,7 +95,7 @@ The shared dashboard API `/spend/logs/ui` returned HTTP 200 for `key_alias=claud
 
 The Responses patch passes 112 focused tests and the counter passes 48 focused tests. `make check` passes for the Responses patch, and independent review findings were corrected. These earlier checks belong to phase 1 and do not establish managed-client compatibility
 
-Temporary QA `litellm-anthropic-qa` and pilot containers `litellm-anthropic-subscription-proxy-1` and `litellm-anthropic-subscription-postgres-1` were stopped and removed without `-v`. Their absence was verified with `docker ps -a`. Pilot `postgresql-data` and private files remain intact. The private pilot directory has mode 700 and its key, config, credentials and image files have mode 600 after correcting inherited ACL permissions. The native phase 1 shared `litellm` container remains healthy on its verified image. This completed cleanup concerns the earlier phase 1 containers, not the current managed candidate pilot
+Temporary QA `litellm-anthropic-qa` and pilot containers `litellm-anthropic-subscription-proxy-1` and `litellm-anthropic-subscription-postgres-1` were stopped and removed without `-v`. Their absence was verified with `docker ps -a`. Pilot `postgresql-data` and private files remain intact. The private pilot directory has mode 700 and its key, config, credentials and image files have mode 600 after correcting inherited ACL permissions. The native phase 1 shared `litellm` container remains healthy on its verified image. The later direct HTTP candidate containers were also removed after their checks
 
 ## Initial isolated pilot evidence
 
@@ -136,4 +127,4 @@ Managed profile custody, explicit account selection and serialized refresh are i
 
 The accounting correction passes live QA, 47 focused logging tests and 27 spend tests. The final `make check` passes, including generated dashboard API types. The managed proxy and PostgreSQL containers and their temporary network were stopped and removed without `-v`; `docker ps -a` confirms their absence. The PostgreSQL data directory and volumes remain, and both shared native proxies remain healthy
 
-The full objective remains unfinished because subscription-only OpenCode is blocked and managed Fedora/NAS promotion has not occurred. See the [implementation plan](../../docs/superpowers/plans/2026-10-01-anthropic-subscription.md) for the remaining acceptance criteria
+The full objective remains unfinished while native broker integration, real client QA and ordered Fedora/NAS promotion are in progress. See the [implementation plan](../../docs/superpowers/plans/2026-10-01-anthropic-subscription.md) for the remaining acceptance criteria

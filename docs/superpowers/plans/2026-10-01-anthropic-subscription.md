@@ -1,6 +1,6 @@
 # Anthropic Subscription Implementation Plan
 
-**Estado:** En ejecucion, con bloqueo externo de OpenCode subscription-only. La fase 1 nativa esta entregada. El candidato gestionado pasa Codex y refresh real en aislamiento, pero no se promueve a Fedora ni NAS. Faltan QA contable, gate final y retirada del piloto actual
+**Estado:** En ejecucion. La fase 1 nativa esta entregada y el candidato HTTP gestionado paso sus gates y se retiro. El motor SDK nativo supera el rechazo HTTP de OpenCode en probes reales. Se implementan broker, transporte y QA antes de promover a Fedora y despues NAS
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking
 
@@ -210,6 +210,23 @@ Anthropic devolvio HTTP 400 a OpenCode 2.0.20 en ambos transportes con este mens
 La consulta OAuth `GET /api/oauth/usage` confirma `extra_usage.is_enabled=false` y `credits_ever_enabled=false`. No se habilita extra usage para sortear el rechazo. La prueba inicial de cuerpo generico HTTP 429 no explicaba por si sola este bloqueo. El requisito de OpenCode subscription-only no esta satisfecho aunque Codex funcione en aislamiento
 
 La investigacion del SDK oficial encontro perfiles independientes y streaming, pero no un proveedor stateless equivalente para herramientas de Codex/OpenCode, historial assistant y thinking firmado. El candidato usa el proveedor Anthropic existente y el bridge comun Responses. Su compatibilidad experimental no demuestra habilitacion general de clientes por parte del proveedor
+
+### Motor nativo, reapertura comprobada
+
+El bloqueo corresponde al transporte HTTP directo. El SDK oficial 0.3.287 completo una prueba real con el prompt original de OpenCode, identidad propia del puente y extra usage desactivado. Otra prueba devolvio tres herramientas en un mensaje, incluidas dos con argumentos identicos. Sus handlers quedaron suspendidos mientras el caller devolvia resultados en orden inverso. El motor mantuvo la asociacion correcta, thinking firmado y otro turno user en la misma sesion. Descartar el SDK por complejidad no demostraba imposibilidad
+
+Se implementara un broker interno Messages/SSE con sesiones nativas, manteniendo el proveedor Anthropic y el bridge Responses existentes. El modo `anthropic_execution_mode: native_sdk` sera exclusivo del deployment. URL y credencial del servicio permaneceran separadas del OAuth Anthropic. El broker fijara perfil, identidad autenticada, deployment y modelo de cada sesion, validara el historial y los IDs pendientes y traducira los nombres MCP de forma reversible, conservando nombres HTTP y firmas originales
+
+Cada perfil nativo tendra un `CLAUDE_CONFIG_DIR` dedicado con autorizacion propia y renovacion por Claude Code original. El access token en ENV solo demuestra el probe: no se usara como fuente de produccion para un Query largo. No se compartiran refresh tokens con el autenticador HTTP ni se usara SessionStore para copiar credenciales. La custodia HTTP anterior permanece separada para rollback
+
+El contador debe contar el cuerpo solicitado con la misma cuenta del engine, sin inferencia auxiliar de pago, sin aproximaciones presentadas como conteo exacto y sin exponer credenciales al proxy o cliente. La prueba nativa de renovacion forzo la caducidad del perfil dedicado, invoco `getContextUsage({detail: "full"})` sin prompt y verifico rotacion por el motor. El SDK oficial de API conto dos cuerpos arbitrarios con el acceso propio del engine: 8 y 208 tokens, sin inferencia. NAS y Fedora tienen autorizaciones nativas independientes con directorios 0700 y credenciales 0600 Se verificara la renovacion nativa antes de aceptar produccion. Los controles de API sin equivalencia documentada se rechazaran, y los cambios de historial que el motor no pueda importar no se sintetizaran dentro de prompts
+
+- [x] Probar SDK nativo con prompt OpenCode original, herramientas paralelas y repetidas, resultados externos en orden inverso, thinking firmado y otro turno
+- [ ] Implementar broker tipado con autenticacion privada, aislamiento de sesiones, streaming, cancelacion y pruebas funcionales con SDK inyectado
+- [ ] Integrar el modo nativo trusted en Chat, Messages, Responses y ambos contadores, preservando politica de cuentas y contabilidad
+- [ ] Verificar autorizaciones nativas independientes, refresh, parametros efectivos y conteo exacto sin cargos auxiliares
+- [ ] Validar OpenCode y Codex reales en aislamiento, eliminar todos los contenedores temporales y conservar datos
+- [ ] Probar el mismo candidato en Fedora y solo despues promover a NAS, con modelos visibles y consumo atribuible
 
 ## Fuentes verificadas el 2026-10-01
 

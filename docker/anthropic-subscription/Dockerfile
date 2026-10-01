@@ -1,5 +1,6 @@
 FROM docker.staticduo.com/litellm@sha256:7263f32613a930e539792b7a1613a02eef617846d8e8ae493ab779a475af9fba
 COPY litellm/main.py /app/.venv/lib/python3.13/site-packages/litellm/main.py
+COPY litellm/caching/caching_handler.py /app/.venv/lib/python3.13/site-packages/litellm/caching/caching_handler.py
 COPY litellm/router.py /app/.venv/lib/python3.13/site-packages/litellm/router.py
 COPY litellm/router_utils/fallback_event_handlers.py /app/.venv/lib/python3.13/site-packages/litellm/router_utils/fallback_event_handlers.py
 COPY litellm/types/litellm_params.py /app/.venv/lib/python3.13/site-packages/litellm/types/litellm_params.py
@@ -10,6 +11,7 @@ COPY litellm/litellm_core_utils/get_litellm_params.py /app/.venv/lib/python3.13/
 COPY litellm/litellm_core_utils/litellm_logging.py /app/.venv/lib/python3.13/site-packages/litellm/litellm_core_utils/litellm_logging.py
 COPY litellm/llms/anthropic/authenticator.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/authenticator.py
 COPY litellm/llms/anthropic/oauth_policy.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/oauth_policy.py
+COPY litellm/llms/anthropic/native_transport.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/native_transport.py
 COPY litellm/llms/anthropic/common_utils.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/common_utils.py
 COPY litellm/llms/anthropic/chat/transformation.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/chat/transformation.py
 COPY litellm/llms/anthropic/pass_through/messages/transformation.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/pass_through/messages/transformation.py
@@ -17,6 +19,7 @@ COPY litellm/llms/anthropic/count_tokens/handler.py /app/.venv/lib/python3.13/si
 COPY litellm/llms/anthropic/count_tokens/token_counter.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/count_tokens/token_counter.py
 COPY litellm/proxy/anthropic_endpoints/endpoints.py /app/.venv/lib/python3.13/site-packages/litellm/proxy/anthropic_endpoints/endpoints.py
 COPY litellm/proxy/proxy_server.py /app/.venv/lib/python3.13/site-packages/litellm/proxy/proxy_server.py
+COPY litellm/proxy/litellm_pre_call_utils.py /app/.venv/lib/python3.13/site-packages/litellm/proxy/litellm_pre_call_utils.py
 COPY litellm/proxy/_types.py /app/.venv/lib/python3.13/site-packages/litellm/proxy/_types.py
 COPY litellm/proxy/spend_tracking/spend_tracking_utils.py /app/.venv/lib/python3.13/site-packages/litellm/proxy/spend_tracking/spend_tracking_utils.py
 COPY litellm/responses/litellm_completion_transformation/streaming_iterator.py /app/.venv/lib/python3.13/site-packages/litellm/responses/litellm_completion_transformation/streaming_iterator.py

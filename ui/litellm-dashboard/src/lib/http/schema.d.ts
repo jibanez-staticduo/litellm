@@ -34746,6 +34746,8 @@ export interface components {
             annotation_cost_per_page_batches?: number | null;
             /** Anthropic Auth Profile */
             anthropic_auth_profile?: string | null;
+            /** Anthropic Execution Mode */
+            anthropic_execution_mode?: string | null;
             /** Anthropic Oauth Compatibility */
             anthropic_oauth_compatibility?: string | null;
             /** Anthropic Token Dir */
@@ -49170,6 +49172,8 @@ export interface components {
             annotation_cost_per_page_batches?: number | null;
             /** Anthropic Auth Profile */
             anthropic_auth_profile?: string | null;
+            /** Anthropic Execution Mode */
+            anthropic_execution_mode?: string | null;
             /** Anthropic Oauth Compatibility */
             anthropic_oauth_compatibility?: string | null;
             /** Anthropic Token Dir */

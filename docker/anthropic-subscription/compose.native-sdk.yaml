@@ -1,0 +1,24 @@
+services:
+  native-sdk:
+    image: ${ANTHROPIC_NATIVE_SDK_IMAGE:?Set the reviewed native SDK image ID}
+    restart: "no"
+    mem_limit: 2g
+    environment:
+      PORT: "4001"
+      ANTHROPIC_NATIVE_SDK_ROOT: /profiles
+      ANTHROPIC_NATIVE_SDK_PROFILES: ${ANTHROPIC_NATIVE_SDK_PROFILES:-default}
+      ANTHROPIC_NATIVE_SDK_KEY: ${ANTHROPIC_NATIVE_SDK_KEY:?Set the private broker key}
+    volumes:
+      - ${ANTHROPIC_NATIVE_SDK_PROFILE_ROOT:?Set the dedicated native profile directory}:/profiles:rw
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4001/health/readiness',{headers:{authorization:'Bearer '+process.env.ANTHROPIC_NATIVE_SDK_KEY}}).then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+  proxy:
+    depends_on:
+      native-sdk:
+        condition: service_healthy
+    environment:
+      ANTHROPIC_NATIVE_SDK_BASE_URL: http://native-sdk:4001
+      ANTHROPIC_NATIVE_SDK_KEY: ${ANTHROPIC_NATIVE_SDK_KEY:?Set the private broker key}
