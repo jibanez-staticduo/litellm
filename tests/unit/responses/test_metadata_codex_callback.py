@@ -44,6 +44,12 @@ class MetadataCaptureCallback(CustomLogger):
         self.event = asyncio.Event()
 
     async def async_log_success_event(self, kwargs, response_obj, start_time, end_time):
+        metadata = (kwargs.get("litellm_params") or {}).get("metadata") or {}
+        # litellm.callbacks is process-global and the logging worker flushes queued logs
+        # asynchronously, so logs enqueued by earlier tests can land here while this callback
+        # is installed; keep only the success log carrying this request's own metadata.
+        if metadata.get("request_id") != "req-456":
+            return
         self.captured_kwargs = kwargs
         self.event.set()
 
