@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from itertools import chain
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
@@ -167,9 +168,10 @@ async def scan_tool_descriptions(
             for offset in range(0, len(tools), _CATALOG_SCAN_BATCH_SIZE)
         ]
     )
+    outcomes: Final = tuple(chain.from_iterable(batches))
     return ToolDescriptionScan(
-        served=tuple(outcome for batch in batches for outcome in batch if isinstance(outcome, MCPTool)),
-        blocked=tuple(outcome for batch in batches for outcome in batch if isinstance(outcome, BlockedTool)),
+        served=tuple(outcome for outcome in outcomes if isinstance(outcome, MCPTool)),
+        blocked=tuple(outcome for outcome in outcomes if isinstance(outcome, BlockedTool)),
     )
 
 

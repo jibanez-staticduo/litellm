@@ -1,7 +1,7 @@
 import base64
 import time
 from collections.abc import Callable, Iterator, Mapping, Sequence
-from itertools import groupby
+from itertools import chain, groupby
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Final, TypeAlias, TypedDict, Union, cast
 
@@ -1015,8 +1015,7 @@ class ChunkProcessor:
     def _saw_finish_reason(chunks: Sequence["_UsageBearingChunk | ModelResponse"]) -> bool:
         return any(
             ChunkProcessor._finish_reason_of_choice(choice) is not None
-            for chunk in chunks
-            for choice in ChunkProcessor._chunk_choices(chunk)
+            for choice in chain.from_iterable(ChunkProcessor._chunk_choices(chunk) for chunk in chunks)
         )
 
     @staticmethod

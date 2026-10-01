@@ -1,5 +1,6 @@
 from collections.abc import Mapping
 from functools import reduce
+from itertools import chain
 from typing import Final
 
 from pydantic import TypeAdapter, ValidationError
@@ -67,7 +68,7 @@ def _rate_values(value: object) -> tuple[object, ...]:
 
 
 def _expand_rate_values(values: tuple[object, ...], _depth: int) -> tuple[object, ...]:
-    return tuple(nested for value in values for nested in _rate_values(value))
+    return tuple(chain.from_iterable(_rate_values(value) for value in values))
 
 
 def _is_positive_number(value: object) -> bool:

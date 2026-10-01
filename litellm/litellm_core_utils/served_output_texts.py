@@ -4,6 +4,7 @@ post-call guardrail rewrote rather than the provider response the proxy assemble
 from __future__ import annotations
 
 from collections.abc import Sequence
+from itertools import chain
 from typing import Final, Literal
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
@@ -120,15 +121,15 @@ def served_stream_output_texts(chunks: Sequence[object]) -> ServedTexts | None:
 def _chat_stream_choice_text(chunks: Sequence[ModelResponseStream], index: int) -> str | None:
     contents: Final = tuple(
         content
-        for chunk in chunks
-        for choice in chunk.choices
+        for choice in chain.from_iterable(chunk.choices for chunk in chunks)
         if choice.index == index and isinstance(content := choice.delta.content, str)
     )
     return "".join(contents) if contents else None
 
 
 def _chat_stream_texts(chunks: Sequence[ModelResponseStream]) -> ServedTexts | None:
-    choice_count: Final = max((choice.index + 1 for chunk in chunks for choice in chunk.choices), default=0)
+    choices: Final = chain.from_iterable(chunk.choices for chunk in chunks)
+    choice_count: Final = max((choice.index + 1 for choice in choices), default=0)
     texts: Final = tuple(_chat_stream_choice_text(chunks, index) for index in range(choice_count))
     return texts if any(text is not None for text in texts) else None
 
