@@ -86,7 +86,7 @@ def test_managed_anthropic_oauth_headers_are_redacted_before_custom_logging(
 
     logged: Final = json.dumps(dict(captured.get_nowait()), default=str)
     assert token not in logged
-    assert "trace-value" in logged
+    assert json.loads(logged)["additional_args"]["headers"]["x-trace"] == "trace-value"
     assert headers[header_name] == f"Bearer {token}"
     assert transport_args["headers"] is headers
 

@@ -1337,7 +1337,10 @@ class Logging(LiteLLMLoggingBaseClass):
         self.model_call_details["input"] = input
         self.model_call_details["api_key"] = api_key
         self.model_call_details["additional_args"] = (
-            {**additional_args, "headers": self._get_masked_headers(additional_args.get("headers") or {})}
+            {  # mutable-ok: callback JSON serialization and dict-based integrations require a dict
+                **additional_args,
+                "headers": self._get_masked_headers(additional_args.get("headers") or EMPTY_MAPPING),
+            }
             if self.litellm_params.get("use_anthropic_oauth") is True
             else additional_args
         )
