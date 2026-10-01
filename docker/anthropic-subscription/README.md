@@ -1,20 +1,25 @@
 # Claude Code subscription gateway
 
-The NAS shared gateway at `https://litellm.staticduo.com` keeps Anthropic OAuth login and refresh in Claude Code and records API-equivalent usage in LiteLLM. The isolated pilot at `127.0.0.1:14001` supplied the initial evidence and was retired after shared-route verification. Central account management and live Codex/OpenCode subscription support remain unfinished
+The verified phase 1 NAS gateway at `https://litellm.staticduo.com` keeps Anthropic OAuth login and refresh in Claude Code and records API-equivalent usage in LiteLLM. The isolated pilot at `127.0.0.1:14001` supplied the initial evidence and was retired after shared-route verification. The candidate now also implements managed OAuth profiles under separate `*-subscription` aliases. Live validation of those profiles and Codex/OpenCode remains pending
 
 ## Shared deployment
 
 `shared-models.json` is the deployment template for `claude-sonnet-5-5`, `claude-opus-5-5` and `claude-haiku-4-5`. They are visible to team `49cfd117-ef74-4eec-b26e-2d2ff083f5be` through its `all-proxy-models` access. Each deployment has the deliberately invalid sentinel `sk-ant-oat01-client-oauth-required` rather than a usable server credential. Its subscription metadata describes the intended use and does not enforce an immutable server policy. The inspected shared configuration has no global Anthropic API credential or fallback for these aliases, and header forwarding is limited to their model groups
 
-Build the overlay from a small context containing this Dockerfile, `litellm/proxy/anthropic_endpoints/endpoints.py` as `endpoints.py`, `litellm/llms/anthropic/count_tokens/handler.py` as `handler.py`, `litellm/responses/litellm_completion_transformation/streaming_iterator.py` as `streaming_iterator.py`, and the repository's `model_prices_and_context_window.json`. The base image is pinned to `sha256:7263f32613a930e539792b7a1613a02eef617846d8e8ae493ab779a475af9fba`
+Generate the current overlay context with `build-context.sh`, passing an empty directory. It copies the provider, authenticator, OAuth policy, router, proxy and Responses files required by this Dockerfile, plus the repository price map. The base image is pinned to `sha256:7263f32613a930e539792b7a1613a02eef617846d8e8ae493ab779a475af9fba`
+
+```bash
+docker/anthropic-subscription/build-context.sh "$ANTHROPIC_BUILD_CONTEXT"
+docker build -t litellm-anthropic-candidate "$ANTHROPIC_BUILD_CONTEXT"
+```
 
 ```bash
 curl --fail https://litellm.staticduo.com/health/readiness
 ```
 
-The deployed overlay is `sha256:e941ad3d6c58aa1f7a136a0a21e542eef3a96bc911ab5e672efdf40ad2cf6316`, containing the counter fix `d17375a5a9` and Responses replay fix `cb61cd4156`. It was selected through `LITELLM_IMAGE` in `/volume2/docker/litellm/.env`. The previous environment is backed up privately at `/volume2/docker/litellm/anthropic-subscription/environment.before-overlay`. Activation recreated only `litellm` with Compose `up -d --no-deps --pull never`. The shared container is healthy and readiness returned HTTP 200
+The verified phase 1 overlay was `sha256:e941ad3d6c58aa1f7a136a0a21e542eef3a96bc911ab5e672efdf40ad2cf6316`, containing the counter fix `d17375a5a9` and Responses replay fix `cb61cd4156`. It was selected through `LITELLM_IMAGE` in `/volume2/docker/litellm/.env`. The previous environment is backed up privately at `/volume2/docker/litellm/anthropic-subscription/environment.before-overlay`. Activation recreated only `litellm` with Compose `up -d --no-deps --pull never`. The shared container was healthy and readiness returned HTTP 200. This image evidence predates the managed-profile candidate
 
-## Claude Code client
+## Claude Code passthrough client
 
 Use a virtual key restricted to the three configured aliases. Give Claude Code that key in a separate custom header while preserving its saved claude.ai login
 
@@ -36,7 +41,43 @@ Verify a streamed conversation, a tool result in a subsequent turn, native token
 
 Use the ordinary `claude` command to restore direct client routing while preserving its login. A shared image rollback restores the previous `LITELLM_IMAGE` from the private environment backup and recreates only `litellm`. Keep pilot database files and private credentials intact when removing temporary containers
 
-## Verified shared route, 2026-10-01
+## Managed profiles, experimental candidate
+
+`managed-models.json` defines `claude-sonnet-5-5-subscription`, `claude-opus-5-5-subscription` and `claude-haiku-4-5-subscription`. Their deployment parameters enable `use_anthropic_oauth`, select `anthropic_auth_profile=default`, set `anthropic_oauth_compatibility=claude_code` and disable retries with `num_retries=0`. The provider resolves the credential through `AnthropicAuthenticator` rather than receiving OAuth from the client. The original canonical aliases and launcher retain phase 1 passthrough
+
+Authorize a dedicated subscription login through Claude CLI, separate from the interactive phase 1 login. Import its credential file explicitly into the managed profile. Do not run Claude CLI and LiteLLM as independent refreshers of the same authorization after import. Each authorization needs one custodian, and independent NAS/Fedora deployments need separate authorizations or a single shared custodian
+
+The import API accepts a native Claude credential file or the authenticator's persisted credential format. It does not discover or import the user's ordinary Claude login automatically. Set `ANTHROPIC_IMPORT_SOURCE` to the dedicated private source file and `ANTHROPIC_OAUTH_TOKEN_DIR` to the private runtime directory before running this example in the candidate environment
+
+```python
+import os
+
+from litellm.llms.anthropic.authenticator import AnthropicAuthenticator, AnthropicOAuthConfig
+
+AnthropicAuthenticator(
+    AnthropicOAuthConfig(
+        use_anthropic_oauth=True,
+        anthropic_auth_profile="default",
+        anthropic_token_dir=os.environ["ANTHROPIC_OAUTH_TOKEN_DIR"],
+    )
+).import_credentials(os.environ["ANTHROPIC_IMPORT_SOURCE"])
+```
+
+The default profile is stored as `auth.json`, and a named profile as `<profile>.json`. Set `anthropic_auth_profile` on each deployment to select its account. `anthropic_token_dir` takes precedence over `ANTHROPIC_OAUTH_TOKEN_DIR`, with `~/.config/litellm/anthropic` as the default. Keep the directory at mode 0700 and credential and lock files at 0600, owned by the runtime user. The authenticator writes credentials atomically at 0600 and serializes refresh with a profile lock. It does not provide automatic account rotation or quota scheduling
+
+Managed policy fails closed when the profile is missing, invalid, lacks `user:inference`, or cannot refresh. Storage failures also stop the request. Clients cannot change the configured profile, disable managed OAuth, supply replacement credentials or redirect it away from the official HTTPS Anthropic endpoint. Managed deployments must have no API fallback. Keep Anthropic API credentials out of the deployment and do not configure API, Bedrock or Vertex alternatives for these aliases
+
+The `claude_code` preset adds an `x-anthropic-billing-header` system block pinned to Claude Code compatibility version `2.1.286` when one is absent. This is experimental transport compatibility, not proof of provider support or successful subscription billing. It does not run Claude CLI or the Agent SDK for inference. Provider acceptance, refresh and later tool turns still require live validation
+
+## Managed clients and accounting
+
+Codex should target LiteLLM's `/v1/responses` surface with a managed `*-subscription` alias. OpenCode should use the Anthropic Messages surface `/v1/messages` with that alias. Both authenticate to LiteLLM with a restricted virtual key and leave upstream OAuth to the configured server profile. The root gateway URL remains `https://litellm.staticduo.com`; client configuration must select the appropriate API surface without duplicating `/v1`
+
+These routes reuse the Anthropic provider and Responses bridge, including signed thinking replay. Their presence in the candidate does not establish working Codex/OpenCode conversations. Validate streaming, tools and subsequent turns from each actual client before promoting the managed route
+
+Spend remains an API-equivalent valuation derived from provider usage and the effective LiteLLM price map. It is not an Anthropic API invoice. Verify `used_client_oauth_token=true`, the served model, virtual key attribution and cache usage in spend logs, and verify rejected authentication records no successful generation spend
+
+## Verified phase 1 shared route, 2026-10-01
 
 The authenticated shared catalog contains all three aliases for the restricted virtual key. `/model/info` contains all three deployments for the requested team. The final NAS launcher used Read and returned `SUBSCRIPTION_TOOL_OK`; a second turn through `--resume` returned `FINAL_ROUTE_817` with exit code 0 and `is_error=false`
 
@@ -60,6 +101,6 @@ The pilot dashboard endpoint `/spend/logs/ui` returned the verified request and 
 
 ## Remaining work
 
-Central account custody, selection and serialized refresh are not implemented. A generic request with the same OAuth returned HTTP 429 while the native control succeeded, so the failure has not been attributed to subscription quota. Official SDK research supports independent profiles and streaming, but it does not supply a stateless provider equivalent for Codex/OpenCode tools, assistant history and signed thinking. That approach needs a new stateful bridge, and the architecture decision remains pending
+Managed profile custody, explicit selection and serialized refresh are implemented in the candidate. They have not yet been verified live on the final NAS/Fedora routes. Automatic account rotation and quota scheduling remain absent. A previous generic request with the same OAuth returned HTTP 429 while the native control succeeded, so that failure has not been attributed to subscription quota
 
 Live Codex/OpenCode tools, streaming and later turns on the final route remain unverified. See the [implementation plan](../../docs/superpowers/plans/2026-10-01-anthropic-subscription.md) for the work in progress and its acceptance criteria
