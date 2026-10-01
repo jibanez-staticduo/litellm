@@ -4657,7 +4657,7 @@ class TestEnsureOutputItemContentPartAdded:
 
         events = iterator._pending_response_events
         assert len(events) == 2
-        assert events[1].type == "response.content_part.added"
+        assert events[1].type == "response.reasoning_part.added"
         assert events[1].part == {"type": "reasoning_text", "text": ""}
         assert isinstance(events[0], OutputItemAddedEvent)
         assert iterator.sent_content_part_added_event is False

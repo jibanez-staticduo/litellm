@@ -185,7 +185,7 @@ async def test_reasoning_lifecycle_survives_wire_serialization(sync, empty_prefi
     assert delta["content_index"] == 0
     assert delta["item_id"] == reasoning_id
     assert delta["delta"] == "Check the sum."
-    part_added = next(event for event in wire if event["type"] == "response.content_part.added")
+    part_added = next(event for event in wire if event["type"] == "response.reasoning_part.added")
     assert part_added["content_index"] == 0
     assert wire.index(part_added) < wire.index(delta)
     done = [event for event in wire if event["type"] == "response.output_item.done"]

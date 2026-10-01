@@ -1,6 +1,6 @@
 import time
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any, Final, cast
 
 import litellm
@@ -8,7 +8,6 @@ from litellm.main import stream_chunk_builder
 from litellm.responses.litellm_completion_transformation.custom_tools import (
     build_tool_call_item_kwargs,
     extract_custom_tool_names,
-    is_custom_tool_call,
     serialize_tool_call_arguments,
     unwrap_custom_tool_arguments,
 )
@@ -23,6 +22,7 @@ from litellm.responses.litellm_completion_transformation.transformation import (
 from litellm.responses.streaming_iterator import ResponsesAPIStreamingIterator
 from litellm.responses.utils import ResponsesAPIRequestUtils
 from litellm.types.llms.openai import (
+    PART_UNION_TYPES,
     BaseLiteLLMOpenAIResponseObject,
     ContentPartAddedEvent,
     ContentPartDoneEvent,
@@ -36,7 +36,6 @@ from litellm.types.llms.openai import (
     OutputTextAnnotationAddedEvent,
     OutputTextDeltaEvent,
     OutputTextDoneEvent,
-    PART_UNION_TYPES,
     ResponseCompletedEvent,
     ResponseCreatedEvent,
     ResponseInProgressEvent,
@@ -122,6 +121,7 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
         self.final_text: str = ""
         self._cached_item_id: str | None = None
         self._message_output_index: int = 0
+        self._reasoning_output_index: int = 0  # claimed when the reasoning item announces itself
         self._cached_response_id: str | None = None
         self._buffered_chunk: ModelResponseStream | None = None
         self._upstream_exhausted: bool = False
@@ -132,7 +132,6 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
         self._tool_item_id_by_call_id: dict[str, str] = {}  # mutable-ok: filled per call id as tool call events stream
         self._tool_call_id_by_index: dict[int, str] = {}
         self._ambiguous_tool_call_indexes: set[int] = set()
-        self._message_output_index: int = 0
         self._next_tool_output_index: int = 1  # output_index=0 reserved for the message item
         self._final_tool_events_queued: bool = False
         self._sequence_number: int = 0
@@ -151,8 +150,26 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
         self._custom_tool_names: frozenset[str] = extract_custom_tool_names(effective_tools)
         self._client_tool_search = has_client_tool_search(effective_tools)
         self._namespace_tool_names = LiteLLMCompletionResponsesConfig.namespace_tool_name_map(effective_tools)
+
         self._web_search_calls: dict[str, object] = {}  # mutable-ok: latest call by provider id
         self._queued_web_search_call_ids: set[str] = set()  # mutable-ok: emitted call ids
+
+    def _custom_tool_name_set(self) -> frozenset[str]:
+        # A nested custom tool is addressed by its bare short name: providers flatten only
+        # functions, so an alias short name is unambiguous unless a top-level tool owns it.
+        top_level_function_names: Final = frozenset(
+            str(tool.get("name") or "")
+            for tool in (self.responses_api_request or {}).get("tools") or ()
+            if isinstance(tool, Mapping) and tool.get("type") == "function"
+        )
+        aliases: Final = frozenset(
+            short
+            for flat in self._custom_tool_names
+            if "__" in flat
+            and (short := flat.split("__", 1)[1]) not in self._namespace_tool_names
+            and short not in top_level_function_names
+        )
+        return self._custom_tool_names | aliases
 
     def _get_or_assign_tool_output_index(self, call_id: str) -> int:
         existing: Final = self._tool_output_index_by_call_id.get(call_id)
@@ -173,6 +190,15 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
             return None
 
     def _responses_namespace_tool_call_fields(self, fn_name: str) -> tuple[str, str | None]:
+        if fn_name in self._custom_tool_name_set():
+            # A nested custom tool keeps its bare name even when a namespaced function
+            # flattens to the same short name; it is not a namespaced function call.
+            # A flattened custom name still restores its short name + namespace.
+            mapped_custom: Final = self._namespace_tool_names.get(fn_name)
+            if mapped_custom:
+                namespace, tool_name = mapped_custom
+                return tool_name, namespace
+            return fn_name, None
         mapped: Final = self._namespace_tool_names.get(fn_name)
         if mapped:
             namespace, tool_name = mapped
@@ -180,10 +206,9 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
         return fn_name, None
 
     def _tool_call_item_kwargs(self, call_id: str, fn_name: str, arguments: str, status: str) -> dict[str, str]:
-        item_kwargs: Final = build_tool_call_item_kwargs(call_id, fn_name, arguments, status, self._custom_tool_names)
+        custom_names: Final = self._custom_tool_name_set()
+        item_kwargs: Final = build_tool_call_item_kwargs(call_id, fn_name, arguments, status, custom_names)
         tool_name, tool_namespace = self._responses_namespace_tool_call_fields(fn_name)
-        if is_custom_tool_call(fn_name, self._custom_tool_names):
-            return {**item_kwargs, "name": tool_name}
         namespace_kwargs: Final = {"namespace": tool_namespace} if tool_namespace else {}
         return {**item_kwargs, "name": tool_name, **namespace_kwargs}
 
@@ -379,7 +404,7 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
                     )
                 )
                 continue
-            if fn_name in self._custom_tool_names:
+            if fn_name in self._custom_tool_name_set():
                 self._queue_custom_tool_input_events(call_id, output_index, final_args)
 
             # Emit delta events for arguments that weren't streamed yet
@@ -739,7 +764,7 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
             {
                 "type": "response.reasoning_text.done",
                 "item_id": reasoning_item_id,
-                "output_index": 0,
+                "output_index": self._reasoning_output_index,
                 "sequence_number": sequence_number,
                 "content_index": 0,
                 "text": reasoning_content,
@@ -754,9 +779,9 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
     ) -> BaseLiteLLMOpenAIResponseObject:
         return BaseLiteLLMOpenAIResponseObject.model_validate(
             {
-                "type": "response.content_part.done",
+                "type": "response.reasoning_part.done",
                 "item_id": reasoning_item_id,
-                "output_index": 0,
+                "output_index": self._reasoning_output_index,
                 "sequence_number": sequence_number,
                 "content_index": 0,
                 "part": {"type": "reasoning_text", "text": reasoning_content},
@@ -843,7 +868,7 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
     ) -> OutputItemDoneEvent:
         return OutputItemDoneEvent(
             type=ResponsesAPIStreamEvents.OUTPUT_ITEM_DONE,
-            output_index=0,
+            output_index=self._reasoning_output_index,
             sequence_number=sequence_number,
             item=BaseLiteLLMOpenAIResponseObject.model_validate(
                 {
@@ -963,12 +988,17 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
             if self._cached_reasoning_item_id is None:
                 self._cached_reasoning_item_id = f"rs_{uuid.uuid4()}"
                 self._reasoning_active = True
-                self._message_output_index = 1
-                self._next_tool_output_index = 1
+                if self.sent_message_item_added_event:
+                    # The message item already owns output_index=0, so the reasoning item
+                    # that arrives later claims the next unclaimed slot instead.
+                    self._reasoning_output_index = self._next_tool_output_index
+                    self._next_tool_output_index += 1
+                else:
+                    self._reasoning_output_index = 0
                 self._sequence_number += 1
                 reasoning_added: Final = OutputItemAddedEvent(
                     type=ResponsesAPIStreamEvents.OUTPUT_ITEM_ADDED,
-                    output_index=0,
+                    output_index=self._reasoning_output_index,
                     item=BaseLiteLLMOpenAIResponseObject.model_validate(
                         {
                             "id": self._cached_reasoning_item_id,
@@ -984,9 +1014,9 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
                 self._pending_response_events.append(
                     BaseLiteLLMOpenAIResponseObject.model_validate(
                         {
-                            "type": "response.content_part.added",
+                            "type": "response.reasoning_part.added",
                             "item_id": self._cached_reasoning_item_id,
-                            "output_index": 0,
+                            "output_index": self._reasoning_output_index,
                             "content_index": 0,
                             "sequence_number": self._sequence_number,
                             "part": {"type": "reasoning_text", "text": ""},
@@ -1176,7 +1206,7 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
                 {
                     "type": "response.reasoning_text.delta",
                     "item_id": self._cached_reasoning_item_id,
-                    "output_index": 0,
+                    "output_index": self._reasoning_output_index,
                     "content_index": 0,
                     "sequence_number": self._sequence_number,
                     "delta": reasoning_content,

@@ -134,7 +134,7 @@ class TestAdditionalToolsThroughTheBridge:
                 "name": "functions",
                 "tools": [{"type": "custom", "name": "exec", "description": "Run code"}],
             },
-            "functions__exec",
+            "exec",
             "custom_tool_call",
             "functions",
         ),

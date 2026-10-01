@@ -476,12 +476,24 @@ class LiteLLMCompletionResponsesConfig:
         """
         _cfg = LiteLLMCompletionResponsesConfig
         effective_tools: Final = _cfg.effective_tools(input, responses_api_request)
+        lifted_tools: Final = _cfg._lift_additional_tools(input)[1]
+        tool_choice_param: Final = responses_api_request.get("tool_choice")
+        preserve_client_tool_search: Final = (
+            (isinstance(tool_choice_param, Mapping) and tool_choice_param.get("type") == "tool_search")
+            or has_client_tool_search(lifted_tools)
+            or any(
+                isinstance(item, Mapping) and item.get("type") in ("tool_search_call", "tool_search_output")
+                for item in (input if isinstance(input, list) else ())
+            )
+        )
         input, _ = _cfg._lift_additional_tools(input)  # rebind-ok: lifted items must skip msg conversion
 
         (
             tools,
             web_search_options,
-        ) = LiteLLMCompletionResponsesConfig.transform_responses_api_tools_to_chat_completion_tools(effective_tools)
+        ) = LiteLLMCompletionResponsesConfig.transform_responses_api_tools_to_chat_completion_tools(
+            effective_tools, preserve_client_tool_search=preserve_client_tool_search
+        )
 
         if web_search_options is not None and LiteLLMCompletionResponsesConfig._should_drop_derived_web_search_options(
             model=model, custom_llm_provider=custom_llm_provider
@@ -2149,17 +2161,27 @@ class LiteLLMCompletionResponsesConfig:
         return ResponsesToolChatForm(chat_tools=(cast(ChatToolParam, tool),), web_search_options=None)
 
     @staticmethod
-    def responses_tools_to_chat_forms(tools: ResponseTools) -> tuple[ResponsesToolChatForm, ...]:
+    def responses_tools_to_chat_forms(
+        tools: ResponseTools, *, preserve_client_tool_search: bool = False
+    ) -> tuple[ResponsesToolChatForm, ...]:
         LiteLLMCompletionResponsesConfig._validate_namespace_name_collisions(tools)
         if has_client_tool_search(tools) and any(
             tool.get("type") in ("function", "custom") and tool.get("name") == TOOL_SEARCH_NAME for tool in tools or ()
         ):
             raise ValueError("Client tool_search conflicts with a function/custom tool named tool_search")
-        return tuple(LiteLLMCompletionResponsesConfig._responses_tool_to_chat_form(tool) for tool in tools or ())
+        # Codex CLI injects the client tool_search descriptor for its local harness; providers
+        # must not see it unless the bridge context asked for it (tool_choice / lifted / history).
+        return tuple(
+            LiteLLMCompletionResponsesConfig._responses_tool_to_chat_form(tool)
+            for tool in tools or ()
+            if preserve_client_tool_search or tool.get("type") != "tool_search" or tool.get("execution") != "client"
+        )
 
     @staticmethod
     def transform_responses_api_tools_to_chat_completion_tools(
         tools: ResponseTools,
+        *,
+        preserve_client_tool_search: bool = False,
     ) -> tuple[
         list[ChatCompletionToolParam | OpenAIMcpServerTool],
         OpenAIWebSearchOptions | None,
@@ -2169,7 +2191,9 @@ class LiteLLMCompletionResponsesConfig:
         """
         if tools is None:
             return [], None
-        forms: Final = LiteLLMCompletionResponsesConfig.responses_tools_to_chat_forms(tools)
+        forms: Final = LiteLLMCompletionResponsesConfig.responses_tools_to_chat_forms(
+            tools, preserve_client_tool_search=preserve_client_tool_search
+        )
         web_search_options: Final = next(
             (form.web_search_options for form in reversed(forms) if form.web_search_options is not None),
             None,
