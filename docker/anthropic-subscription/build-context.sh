@@ -20,12 +20,15 @@ for relative in \
     litellm/litellm_core_utils/core_helpers.py \
     litellm/litellm_core_utils/get_litellm_params.py \
     litellm/litellm_core_utils/litellm_logging.py \
+    litellm/litellm_core_utils/prompt_templates/factory.py \
+    litellm/litellm_core_utils/prompt_templates/common_utils.py \
     litellm/llms/anthropic/authenticator.py \
     litellm/llms/anthropic/oauth_policy.py \
     litellm/llms/anthropic/native_transport.py \
     litellm/llms/anthropic/common_utils.py \
     litellm/llms/anthropic/chat/transformation.py \
     litellm/llms/anthropic/pass_through/messages/transformation.py \
+    litellm/llms/anthropic/pass_through/messages/handler.py \
     litellm/llms/anthropic/count_tokens/handler.py \
     litellm/llms/anthropic/count_tokens/token_counter.py \
     litellm/proxy/anthropic_endpoints/endpoints.py \

@@ -9,12 +9,15 @@ COPY litellm/types/utils.py /app/.venv/lib/python3.13/site-packages/litellm/type
 COPY litellm/litellm_core_utils/core_helpers.py /app/.venv/lib/python3.13/site-packages/litellm/litellm_core_utils/core_helpers.py
 COPY litellm/litellm_core_utils/get_litellm_params.py /app/.venv/lib/python3.13/site-packages/litellm/litellm_core_utils/get_litellm_params.py
 COPY litellm/litellm_core_utils/litellm_logging.py /app/.venv/lib/python3.13/site-packages/litellm/litellm_core_utils/litellm_logging.py
+COPY litellm/litellm_core_utils/prompt_templates/factory.py /app/.venv/lib/python3.13/site-packages/litellm/litellm_core_utils/prompt_templates/factory.py
+COPY litellm/litellm_core_utils/prompt_templates/common_utils.py /app/.venv/lib/python3.13/site-packages/litellm/litellm_core_utils/prompt_templates/common_utils.py
 COPY litellm/llms/anthropic/authenticator.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/authenticator.py
 COPY litellm/llms/anthropic/oauth_policy.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/oauth_policy.py
 COPY litellm/llms/anthropic/native_transport.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/native_transport.py
 COPY litellm/llms/anthropic/common_utils.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/common_utils.py
 COPY litellm/llms/anthropic/chat/transformation.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/chat/transformation.py
 COPY litellm/llms/anthropic/pass_through/messages/transformation.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/pass_through/messages/transformation.py
+COPY litellm/llms/anthropic/pass_through/messages/handler.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/pass_through/messages/handler.py
 COPY litellm/llms/anthropic/count_tokens/handler.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/count_tokens/handler.py
 COPY litellm/llms/anthropic/count_tokens/token_counter.py /app/.venv/lib/python3.13/site-packages/litellm/llms/anthropic/count_tokens/token_counter.py
 COPY litellm/proxy/anthropic_endpoints/endpoints.py /app/.venv/lib/python3.13/site-packages/litellm/proxy/anthropic_endpoints/endpoints.py
