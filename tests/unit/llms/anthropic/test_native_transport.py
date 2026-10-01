@@ -11,6 +11,7 @@ from litellm.llms.anthropic.common_utils import AnthropicError
 from litellm.llms.anthropic.native_transport import (
     NATIVE_IDENTITY_FIELD,
     AnthropicNativeIdentity,
+    decode_native_tool_call_id,
     is_anthropic_native_sdk,
     native_sdk_connection,
 )
@@ -28,6 +29,12 @@ _PARAMS: Final[Mapping[str, object]] = MappingProxyType(
         NATIVE_IDENTITY_FIELD: AnthropicNativeIdentity("owner-hash", "selected-deployment"),
     }
 )
+
+
+@pytest.mark.parametrize("identifier", ("litellm_native_tool_!", "litellm_native_tool_e30"))
+def test_native_tool_replay_rejects_malformed_payload(identifier: str) -> None:
+    with pytest.raises(AnthropicError, match="Invalid native SDK tool replay"):
+        decode_native_tool_call_id(identifier)
 
 
 def test_broker_credentials_and_identity_are_separate_from_provider_credentials() -> None:

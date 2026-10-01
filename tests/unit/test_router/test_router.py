@@ -220,6 +220,156 @@ async def test_native_sdk_router_transports_preserve_identity_and_original_syste
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("surface", ("chat", "responses"))
+@pytest.mark.parametrize("stream", (False, True))
+async def test_native_sdk_tool_replay_preserves_original_caller(surface: str, stream: bool) -> None:
+    from litellm.caching.llm_caching_handler import LLMClientCache
+    from litellm.llms.anthropic.native_transport import AnthropicNativeIdentity
+    from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
+
+    thinking: Final = {"type": "thinking", "thinking": "", "signature": "opaque-native-signature"}
+    tool_use: Final = {
+        "type": "tool_use",
+        "id": "toolu_exact_replay",
+        "name": "lookup",
+        "input": {"query": "test"},
+        "caller": {"type": "direct"},
+    }
+    original_content: Final = [thinking, tool_use]
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        body: Final = json.loads(request.content)
+        replay: Final = len(body["messages"]) > 1
+        if replay:
+            assert body["messages"][1]["content"] == original_content
+            assert body["messages"][2]["content"][0]["tool_use_id"] == tool_use["id"]
+        response: Final = {
+            "id": "msg_replay",
+            "type": "message",
+            "role": "assistant",
+            "model": "claude-test-model",
+            "content": [{"type": "text", "text": "continued"}] if replay else original_content,
+            "stop_reason": "end_turn" if replay else "tool_use",
+            "stop_sequence": None,
+            "usage": {"input_tokens": 3, "output_tokens": 1},
+        }
+        if body.get("stream") is not True:
+            return httpx.Response(200, json=response)
+        events: Final = (
+            {"type": "message_start", "message": {**response, "content": [], "stop_reason": None}},
+            {"type": "content_block_start", "index": 0, "content_block": {"type": "thinking", "thinking": ""}},
+            {
+                "type": "content_block_delta",
+                "index": 0,
+                "delta": {"type": "signature_delta", "signature": thinking["signature"]},
+            },
+            {"type": "content_block_stop", "index": 0},
+            {"type": "content_block_start", "index": 1, "content_block": {**tool_use, "input": {}}},
+            {
+                "type": "content_block_delta",
+                "index": 1,
+                "delta": {"type": "input_json_delta", "partial_json": json.dumps(tool_use["input"])},
+            },
+            {"type": "content_block_stop", "index": 1},
+            {"type": "message_delta", "delta": {"stop_reason": "tool_use"}, "usage": {"output_tokens": 1}},
+            {"type": "message_stop"},
+        )
+        payload: Final = "".join(f"event: {event['type']}\ndata: {json.dumps(event)}\n\n" for event in events)
+        return httpx.Response(200, content=payload.encode(), headers={"content-type": "text/event-stream"})
+
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "native-tool-replay",
+                "litellm_params": {
+                    "model": "anthropic/claude-test-model",
+                    "use_anthropic_oauth": True,
+                    "anthropic_auth_profile": "fixed-profile",
+                    "anthropic_execution_mode": "native_sdk",
+                },
+                "model_info": {"id": "selected-deployment"},
+            }
+        ],
+        num_retries=0,
+    )
+    client: Final = AsyncHTTPHandler(transport=httpx.MockTransport(upstream))
+    cache: Final = LLMClientCache()
+    cache.set_cache("async_httpx_clientanthropic", client)
+    identity: Final = AnthropicNativeIdentity("authenticated-owner")
+    try:
+        with (
+            patch("litellm.in_memory_llm_clients_cache", cache),
+            patch.dict(
+                "os.environ",
+                {"ANTHROPIC_NATIVE_SDK_BASE_URL": "http://native-broker", "ANTHROPIC_NATIVE_SDK_KEY": "broker-key"},
+            ),
+            patch("litellm.module_level_aclient", client),
+        ):
+            if surface == "responses":
+                first: Final = await router.aresponses(
+                    model="native-tool-replay", input="start", stream=stream, _anthropic_native_identity=identity
+                )
+                output: Final = (
+                    next(
+                        event.response.output
+                        for event in [event async for event in first]
+                        if event.type == "response.completed"
+                    )
+                    if stream
+                    else first.output
+                )
+                portable_items: Final = [
+                    {
+                        key: value
+                        for key, value in item.model_dump(exclude_none=True).items()
+                        if key in ("type", "id", "call_id", "name", "arguments", "summary", "encrypted_content")
+                    }
+                    for item in output
+                ]
+                function_call: Final = next(item for item in portable_items if item["type"] == "function_call")
+                result: Final = await router.aresponses(
+                    model="native-tool-replay",
+                    input=[
+                        {"role": "user", "content": "start"},
+                        *portable_items,
+                        {"type": "function_call_output", "call_id": function_call["call_id"], "output": "done"},
+                    ],
+                    _anthropic_native_identity=identity,
+                )
+                assert "continued" in str(result.output)
+                return
+            first_chat: Final = await router.acompletion(
+                model="native-tool-replay",
+                messages=[{"role": "user", "content": "start"}],
+                stream=stream,
+                _anthropic_native_identity=identity,
+            )
+            chat_response: Final = (
+                litellm.stream_chunk_builder([chunk async for chunk in first_chat]) if stream else first_chat
+            )
+            assistant: Final = chat_response.choices[0].message.model_dump(exclude_none=True)
+            call: Final = assistant["tool_calls"][0]
+            portable_assistant: Final = {
+                "role": "assistant",
+                "content": assistant.get("content"),
+                "thinking_blocks": assistant["thinking_blocks"],
+                "tool_calls": [{key: value for key, value in call.items() if key in ("id", "type", "function")}],
+            }
+            result_chat: Final = await router.acompletion(
+                model="native-tool-replay",
+                messages=[
+                    {"role": "user", "content": "start"},
+                    portable_assistant,
+                    {"role": "tool", "tool_call_id": call["id"], "content": "done"},
+                ],
+                _anthropic_native_identity=identity,
+            )
+            assert result_chat.choices[0].message.content == "continued"
+    finally:
+        await client.client.aclose()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("direct", (False, True))
 async def test_native_sdk_router_bypasses_shared_response_cache_despite_caller_override(direct: bool) -> None:
     from itertools import count

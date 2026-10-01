@@ -1531,9 +1531,19 @@ def _replace_invalid_tool_use_id_chars(tool_use_id: str, invalid_chars: re.Patte
     return invalid_chars.sub("_", tool_use_id) or _TOOL_USE_ID_FALLBACK
 
 
-def _sanitize_anthropic_tool_use_id(tool_use_id: str) -> str:
+def _anthropic_tool_replay_fields(tool_use_id: str, *, native_sdk: bool = False) -> tuple[str, Mapping[str, object]]:
+    from litellm.llms.anthropic.native_transport import decode_native_tool_call_id
+
+    replay: Final = decode_native_tool_call_id(tool_use_id) if native_sdk else None
+    if replay is None:
+        return tool_use_id, MappingProxyType({})
+    return replay.identifier, MappingProxyType({"caller": replay.caller})
+
+
+def _sanitize_anthropic_tool_use_id(tool_use_id: str, *, native_sdk: bool = False) -> str:
     """Anthropic requires tool_use_id to match ^[a-zA-Z0-9_-]+$."""
-    return _replace_invalid_tool_use_id_chars(tool_use_id, _ANTHROPIC_TOOL_USE_ID_INVALID_CHARS)
+    original_id, _ = _anthropic_tool_replay_fields(tool_use_id, native_sdk=native_sdk)
+    return _replace_invalid_tool_use_id_chars(original_id, _ANTHROPIC_TOOL_USE_ID_INVALID_CHARS)
 
 
 def _sanitize_bedrock_tool_use_id(tool_use_id: str) -> str:
@@ -1566,6 +1576,8 @@ def _is_anthropic_document_data_uri(url: str) -> bool:
 def convert_to_anthropic_tool_result(
     message: ChatCompletionToolMessage | ChatCompletionFunctionMessage,
     force_base64: bool = False,
+    *,
+    native_sdk: bool = False,
 ) -> AnthropicMessagesToolResultParam:
     """
     OpenAI message with a tool result looks like:
@@ -1677,7 +1689,7 @@ def convert_to_anthropic_tool_result(
         tool_message: Final[ChatCompletionToolMessage] = message
         tool_call_id: str = tool_message["tool_call_id"]
         # Sanitize tool_use_id to match Anthropic's pattern requirement: ^[a-zA-Z0-9_-]+$
-        sanitized_tool_use_id = _sanitize_anthropic_tool_use_id(tool_call_id)
+        sanitized_tool_use_id = _sanitize_anthropic_tool_use_id(tool_call_id, native_sdk=native_sdk)
 
         # We can't determine from openai message format whether it's a successful or
         # error call result so default to the successful result template
@@ -1691,7 +1703,7 @@ def convert_to_anthropic_tool_result(
         function_message: Final[ChatCompletionFunctionMessage] = message
         tool_call_id = function_message.get("tool_call_id") or str(uuid.uuid4())
         # Sanitize tool_use_id to match Anthropic's pattern requirement: ^[a-zA-Z0-9_-]+$
-        sanitized_tool_use_id = _sanitize_anthropic_tool_use_id(tool_call_id)
+        sanitized_tool_use_id = _sanitize_anthropic_tool_use_id(tool_call_id, native_sdk=native_sdk)
         anthropic_tool_result = AnthropicMessagesToolResultParam(
             type="tool_result",
             tool_use_id=sanitized_tool_use_id,
@@ -1745,6 +1757,8 @@ def convert_to_anthropic_tool_invoke(
     tool_calls: list[ChatCompletionAssistantToolCall],
     web_search_results: Sequence[object] | None = None,
     tool_results: Sequence[object] | None = None,
+    *,
+    native_sdk: bool = False,
 ) -> list[AnthropicMessagesToolUseParam | dict[str, Any]]:
     """
     OpenAI tool invokes:
@@ -1821,7 +1835,8 @@ def convert_to_anthropic_tool_invoke(
             )
             anthropic_tool_invoke.append(server_tool_result)
         else:
-            sanitized_tool_id = _sanitize_anthropic_tool_use_id(tool_id)
+            original_id, replay_fields = _anthropic_tool_replay_fields(tool_id, native_sdk=native_sdk)
+            sanitized_tool_id = _sanitize_anthropic_tool_use_id(original_id)
             _anthropic_tool_use_param = AnthropicMessagesToolUseParam(
                 type="tool_use",
                 id=sanitized_tool_id,
@@ -1837,7 +1852,7 @@ def convert_to_anthropic_tool_invoke(
             if "cache_control" in _content_element:
                 _anthropic_tool_use_param["cache_control"] = _content_element["cache_control"]
 
-            anthropic_tool_invoke.append(_anthropic_tool_use_param)
+            anthropic_tool_invoke.append({**_anthropic_tool_use_param, **replay_fields})
 
     return anthropic_tool_invoke
 
@@ -2353,7 +2368,7 @@ def anthropic_messages_pt(
     model: str,
     llm_provider: str,
     *,
-    preserve_signed_empty_thinking: bool = False,
+    native_sdk: bool = False,
 ) -> _AnthropicMessageList:
     """
     format messages for anthropic
@@ -2367,7 +2382,7 @@ def anthropic_messages_pt(
     6. Ensure we only accept role, content. (message.name is not supported)
     """
     # Sanitize messages for tool calling issues when modify_params=True
-    messages = sanitize_messages_for_tool_calling(messages)
+    messages = messages if native_sdk else sanitize_messages_for_tool_calling(messages)
 
     # Anthropic rejects empty text content blocks with:
     #   "messages: text content blocks must be non-empty"
@@ -2379,7 +2394,7 @@ def anthropic_messages_pt(
     # request will always 400 otherwise. The richer tool-call sanitization
     # (Cases A/B/D in `sanitize_messages_for_tool_calling`) remains gated on
     # `modify_params` because it actually mutates conversation structure.
-    messages = [_sanitize_empty_text_content(m) for m in messages]
+    messages = messages if native_sdk else [_sanitize_empty_text_content(m) for m in messages]
 
     # add role=tool support to allow function call result/error submission
     user_message_types: Final = {"user", "tool", "function"}
@@ -2504,7 +2519,9 @@ def anthropic_messages_pt(
             elif user_message_types_block["role"] == "tool" or user_message_types_block["role"] == "function":
                 # OpenAI's tool message content will always be a string
                 user_content.append(
-                    convert_to_anthropic_tool_result(user_message_types_block, force_base64=force_base64)
+                    convert_to_anthropic_tool_result(
+                        user_message_types_block, force_base64=force_base64, native_sdk=native_sdk
+                    )
                 )
 
             msg_i += 1
@@ -2530,9 +2547,7 @@ def anthropic_messages_pt(
 
             _raw_thinking_blocks = assistant_content_block.get("thinking_blocks", None)
             thinking_blocks = (
-                _drop_unsignable_thinking_blocks(
-                    _raw_thinking_blocks, preserve_signed_empty=preserve_signed_empty_thinking
-                )
+                _drop_unsignable_thinking_blocks(_raw_thinking_blocks, preserve_signed_empty=native_sdk)
                 if _raw_thinking_blocks is not None
                 else None
             )
@@ -2573,6 +2588,7 @@ def anthropic_messages_pt(
                     assistant_tool_calls,
                     web_search_results=_web_search_results_tc,
                     tool_results=_tool_results_tc,
+                    native_sdk=native_sdk,
                 )
 
                 # Group tool invoke results into (server_tool_use, result) pairs
@@ -2698,7 +2714,7 @@ def anthropic_messages_pt(
                         # handle thinking blocks
                         text_block = cast(str, m.get("text", ""))
                         if m.get("type", "") == "thinking" and not is_unsignable_thinking_block(
-                            m, preserve_signed_empty=preserve_signed_empty_thinking
+                            m, preserve_signed_empty=native_sdk
                         ):  # don't pass empty text blocks. anthropic api raises errors.
                             anthropic_message: ChatCompletionThinkingBlock | AnthropicMessagesTextParam = cast(
                                 ChatCompletionThinkingBlock, m
@@ -2753,6 +2769,7 @@ def anthropic_messages_pt(
                     assistant_tool_calls,
                     web_search_results=_web_search_results,
                     tool_results=_tool_results,
+                    native_sdk=native_sdk,
                 )
 
                 # Prevent "tool_use ids must be unique" errors by filtering duplicates

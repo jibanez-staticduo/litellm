@@ -57,6 +57,7 @@ from litellm.types.utils import (
 
 from ...base import BaseLLM
 from ..common_utils import AnthropicError, process_anthropic_headers
+from ..native_transport import NATIVE_SDK_MAPPING, encode_native_tool_call_id, is_anthropic_native_sdk
 from .transformation import ANTHROPIC_TOOL_NAME_REVERSE_MAP_KEY, AnthropicConfig
 
 if TYPE_CHECKING:
@@ -81,6 +82,7 @@ async def make_call(
     json_mode: bool,
     speed: str | None = None,
     tool_name_reverse_map: dict[str, str] | None = None,
+    native_sdk: bool = False,
 ) -> tuple["ModelResponseIterator", httpx.Headers]:
     if client is None:
         client = litellm.module_level_aclient
@@ -116,6 +118,7 @@ async def make_call(
         json_mode=json_mode,
         speed=speed,
         tool_name_reverse_map=tool_name_reverse_map,
+        native_sdk=native_sdk,
     )
 
     # LOGGING
@@ -141,6 +144,7 @@ def make_sync_call(
     json_mode: bool,
     speed: str | None = None,
     tool_name_reverse_map: dict[str, str] | None = None,
+    native_sdk: bool = False,
 ) -> tuple["ModelResponseIterator", httpx.Headers]:
     if client is None:
         client = litellm.module_level_client  # re-use a module level client
@@ -184,6 +188,7 @@ def make_sync_call(
         json_mode=json_mode,
         speed=speed,
         tool_name_reverse_map=tool_name_reverse_map,
+        native_sdk=native_sdk,
     )
 
     # LOGGING
@@ -241,6 +246,7 @@ class AnthropicChatCompletion(BaseLLM):
             tool_name_reverse_map=(
                 litellm_params.get(ANTHROPIC_TOOL_NAME_REVERSE_MAP_KEY) if isinstance(litellm_params, dict) else None
             ),
+            native_sdk=is_anthropic_native_sdk(NATIVE_SDK_MAPPING.validate_python(litellm_params or {})),
         )
         streamwrapper: Final = CustomStreamWrapper(
             completion_stream=completion_stream,
@@ -485,6 +491,7 @@ class AnthropicChatCompletion(BaseLLM):
                         if isinstance(litellm_params, dict)
                         else None
                     ),
+                    native_sdk=is_anthropic_native_sdk(NATIVE_SDK_MAPPING.validate_python(litellm_params)),
                 )
                 return CustomStreamWrapper(
                     completion_stream=completion_stream,
@@ -550,6 +557,7 @@ class ModelResponseIterator:
         json_mode: bool | None = False,
         speed: str | None = None,
         tool_name_reverse_map: dict[str, str] | None = None,
+        native_sdk: bool = False,
     ):
         self.streaming_response = streaming_response
         self.response_iterator = self.streaming_response
@@ -557,6 +565,7 @@ class ModelResponseIterator:
         self.tool_index = -1
         self.json_mode = json_mode
         self.speed = speed
+        self.native_sdk = native_sdk
         self._cumulative_usage: Mapping[str, object] = MappingProxyType({})
         # rewritten-name -> caller's original. Built per-request from the
         # forward map in AnthropicConfig._build_request_tool_name_maps; only
@@ -860,7 +869,13 @@ class ModelResponseIterator:
                     # come in subsequent content_block_delta chunks and get accumulated.
                     # Using str(input) here would prepend '{}' causing invalid JSON accumulation.
                     tool_use = ChatCompletionToolCallChunk(
-                        id=content_block_start["content_block"]["id"],
+                        id=(
+                            encode_native_tool_call_id(
+                                NATIVE_SDK_MAPPING.validate_python(content_block_start["content_block"])
+                            )
+                            if self.native_sdk
+                            else content_block_start["content_block"]["id"]
+                        ),
                         type="function",
                         function=ChatCompletionToolCallFunctionChunk(
                             name=_stream_tool_name,

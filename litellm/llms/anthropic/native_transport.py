@@ -1,3 +1,5 @@
+import base64
+import binascii
 import os
 import re
 from collections.abc import Mapping
@@ -6,13 +8,51 @@ from types import MappingProxyType
 from typing import Final, Literal
 from urllib.parse import urlsplit
 
-from pydantic import TypeAdapter
+from pydantic import JsonValue, TypeAdapter
 
 from .common_utils import AnthropicError
 
 NATIVE_IDENTITY_FIELD: Final = "_anthropic_native_identity"
+NATIVE_SDK_MAPPING: Final = TypeAdapter(Mapping[str, object])
 _HEADER_IDENTITY: Final = re.compile(r"^[a-zA-Z0-9_.:-]{1,256}$")
 _NATIVE_HEADERS: Final = TypeAdapter(dict[str, str])
+_NATIVE_TOOL_ID_PREFIX: Final = "litellm_native_tool_"
+_NATIVE_TOOL_CALLER: Final = TypeAdapter(Mapping[str, JsonValue])
+
+
+@dataclass(frozen=True, slots=True)
+class AnthropicNativeToolReplay:
+    identifier: str
+    caller: Mapping[str, JsonValue]
+
+
+_NATIVE_TOOL_REPLAY: Final = TypeAdapter(AnthropicNativeToolReplay)
+
+
+def encode_native_tool_call_id(tool_call: Mapping[str, object]) -> str | None:
+    identifier: Final = tool_call.get("id")
+    caller: Final = tool_call.get("caller")
+    if identifier is not None and not isinstance(identifier, str):
+        raise AnthropicError(400, "Invalid native SDK tool replay identifier")
+    if identifier is None or caller is None:
+        return identifier
+    parsed_caller: Final = _NATIVE_TOOL_CALLER.validate_python(caller)
+    payload: Final = AnthropicNativeToolReplay(identifier, parsed_caller)
+    encoded: Final = base64.urlsafe_b64encode(_NATIVE_TOOL_REPLAY.dump_json(payload)).decode().rstrip("=")
+    return f"{_NATIVE_TOOL_ID_PREFIX}{encoded}"
+
+
+def decode_native_tool_call_id(identifier: str) -> AnthropicNativeToolReplay | None:
+    if not identifier.startswith(_NATIVE_TOOL_ID_PREFIX):
+        return None
+    encoded: Final = identifier.removeprefix(_NATIVE_TOOL_ID_PREFIX)
+    try:
+        payload: Final = _NATIVE_TOOL_REPLAY.validate_json(
+            base64.b64decode(encoded + "=" * (-len(encoded) % 4), altchars=b"-_", validate=True)
+        )
+    except (binascii.Error, ValueError) as exc:
+        raise AnthropicError(400, "Invalid native SDK tool replay identifier") from exc
+    return payload
 
 
 class AnthropicNativeIdentity:
