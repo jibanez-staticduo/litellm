@@ -55,30 +55,30 @@ async def with_proxy_compaction_executor(call: Awaitable[_ResultT], request: Req
             with (
                 native_compaction_call(parent_model, str(payload["model"])),
                 inherit_message_logging_privacy(logging_disabled),
-            ):
-                with get_async_asgi_client(
+                get_async_asgi_client(
                     app=_ASGI_APP.validate_python(scope["app"]),
                     root_path=root_path,
                     client=request.client,
-                ) as client:
-                    async with client.stream(
-                        "POST", url, headers=headers, json=_JSON_OBJECT.validate_python(payload)
-                    ) as response:
-                        if not response.is_success:
-                            raise BadRequestError(
-                                message=f"Native compaction child request failed (HTTP {response.status_code})",
-                                model="context_compaction",
-                                llm_provider="",
-                            )
-                        body: Final = await response.aread()
-                        try:
-                            return MappingProxyType(_JSON_OBJECT.validate_json(body))
-                        except ValidationError:
-                            raise BadRequestError(
-                                message="Native compaction child returned an invalid JSON object",
-                                model="context_compaction",
-                                llm_provider="",
-                            ) from None
+                ) as client,
+            ):
+                async with client.stream(
+                    "POST", url, headers=headers, json=_JSON_OBJECT.validate_python(payload)
+                ) as response:
+                    if not response.is_success:
+                        raise BadRequestError(
+                            message=f"Native compaction child request failed (HTTP {response.status_code})",
+                            model="context_compaction",
+                            llm_provider="",
+                        )
+                    body: Final = await response.aread()
+                    try:
+                        return MappingProxyType(_JSON_OBJECT.validate_json(body))
+                    except ValidationError:
+                        raise BadRequestError(
+                            message="Native compaction child returned an invalid JSON object",
+                            model="context_compaction",
+                            llm_provider="",
+                        ) from None
 
         task: Final = Context().run(asyncio.create_task, dispatch())
         return await task
