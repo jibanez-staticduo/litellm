@@ -95,6 +95,16 @@ def _anthropic_oauth_fallback_denied(litellm_router: object, model_group: str | 
     ) and litellm_router.anthropic_oauth_model_group_is_managed(model_group)
 
 
+def _raise_if_fallbacks_disabled(
+    litellm_router: object,
+    request_kwargs: Mapping[str, object],
+    model_group: str,
+    original_exception: Exception,
+) -> None:
+    if fallbacks_disabled_for_request(request_kwargs) or _anthropic_oauth_fallback_denied(litellm_router, model_group):
+        raise original_exception
+
+
 def _trigger_cooldown_for_failed_deployment(
     litellm_router: LitellmRouter,
     kwargs: Mapping[str, object],
@@ -757,8 +767,7 @@ async def run_async_fallback(
     logical_model_group: Final = kwargs.get("logical_model_group", original_model_group)
     requested_model: Final = kwargs.get("original_requested_model", logical_model_group)
     failed_model_group: Final = get_pre_routing_selection(kwargs) or original_model_group
-    if fallbacks_disabled_for_request(kwargs) or _anthropic_oauth_fallback_denied(litellm_router, failed_model_group):
-        raise original_exception
+    _raise_if_fallbacks_disabled(litellm_router, kwargs, failed_model_group, original_exception)
     attempted.record(failed_model_group)
 
     for mg in fallback_model_group:
@@ -771,11 +780,11 @@ async def run_async_fallback(
                 original_model_group,
             )
             continue
-        if not await _is_fallback_target_authorized(litellm_router, mg, original_model_group, kwargs):
+        if not await _is_fallback_target_authorized(
+            litellm_router, mg, original_model_group, kwargs
+        ) or _anthropic_oauth_fallback_denied(litellm_router, _get_fallback_target_model_group(mg)):
             continue
         target_model_group = _get_fallback_target_model_group(mg)
-        if _anthropic_oauth_fallback_denied(litellm_router, target_model_group):
-            continue
         if not getattr(litellm_router, "allow_chatgpt_cross_profile_fallback", False) and _is_cross_profile_fallback(
             litellm_router, logical_model_group, target_model_group
         ):
