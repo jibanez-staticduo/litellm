@@ -1,5 +1,7 @@
 # Anthropic Subscription Implementation Plan
 
+**Estado:** Completado y cerrado el 2026-10-01. El usuario confirma que ha funcionado y acepta la entrega de la fase 1
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking
 
 **Goal:** Usar la suscripcion de Anthropic desde Claude Code a traves de LiteLLM y registrar el consumo con su valor equivalente a precios de API
@@ -172,7 +174,9 @@ Si un proxy compartido permite caer en una clave API global, elegir aislamiento 
 
 **Aceptacion de fase 1:** Claude Code completa una conversacion con herramientas y streaming pasando por LiteLLM, usa la credencial de suscripcion, conserva el login/refresh nativo, obtiene conteo nativo con la misma credencial, no puede caer en API de pago por el proxy y registra consumo/coste equivalente a API con atribucion correcta. El soporte de codigo/documentacion no sustituye esta prueba real
 
-## Fase 2: Varias cuentas y otros clientes
+## Seguimiento fuera de este plan: Varias cuentas y otros clientes
+
+La fase 1 queda aceptada y no tiene trabajo pendiente. La rotacion central y el acceso desde otros clientes requieren un plan separado
 
 El passthrough inicial permite varios clientes Claude Code autenticados con sus propias cuentas. Cada cliente envia su propio OAuth y tiene su virtual key. No proporciona rotacion central de cuentas ni una suscripcion disponible para Codex/OpenCode mediante una sola clave LiteLLM
 
