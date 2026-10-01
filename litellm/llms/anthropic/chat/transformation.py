@@ -1996,11 +1996,14 @@ class AnthropicConfig(AnthropicModelInfo, BaseConfig):
             ),
         )
         # Format rest of message according to anthropic guidelines
+        from litellm.llms.anthropic.native_transport import is_anthropic_native_sdk
+
         try:
             anthropic_messages = anthropic_messages_pt(
                 model=model,
                 messages=list(conversation),  # mutable-ok: anthropic_messages_pt rewrites entries in place
                 llm_provider=self._resolved_provider,
+                preserve_signed_empty_thinking=is_anthropic_native_sdk(litellm_params),
             )
         except Exception as e:
             raise AnthropicError(

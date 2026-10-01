@@ -349,6 +349,7 @@ if TYPE_CHECKING:
     from opentelemetry.trace import Span as _Span
 
     from litellm.exceptions import MidStreamFallbackError
+    from litellm.llms.anthropic.native_transport import AnthropicNativeIdentity
     from litellm.responses.streaming_iterator import (
         BaseResponsesAPIStreamingIterator,
     )
@@ -4127,24 +4128,15 @@ class Router:
         if oauth_effective_params is not kwargs:
             kwargs.clear()
             kwargs.update(oauth_effective_params)
-        from litellm.llms.anthropic.common_utils import AnthropicError
         from litellm.llms.anthropic.native_transport import (
             NATIVE_IDENTITY_FIELD,
-            AnthropicNativeIdentity,
             is_anthropic_native_sdk,
         )
 
         if is_anthropic_native_sdk(oauth_effective_params):
-            native_identity: Final = Router._ANTHROPIC_OAUTH_MAPPING_ADAPTER.validate_python(kwargs).get(
-                NATIVE_IDENTITY_FIELD
-            )
-            native_deployment: Final = Router._ANTHROPIC_OAUTH_MAPPING_ADAPTER.validate_python(model_info).get("id")
-            if not isinstance(native_identity, AnthropicNativeIdentity) or not isinstance(native_deployment, str):
-                raise AnthropicError(401, "The native SDK requires an authenticated server owner and deployment")
-            kwargs[NATIVE_IDENTITY_FIELD] = (
-                AnthropicNativeIdentity(  # rebind-ok: kwargs is the router request out-param
-                    native_identity.owner, native_deployment
-                )
+            kwargs[NATIVE_IDENTITY_FIELD] = self._native_sdk_deployment_identity(  # rebind-ok: router request out-param
+                Router._ANTHROPIC_OAUTH_MAPPING_ADAPTER.validate_python(kwargs),
+                Router._ANTHROPIC_OAUTH_MAPPING_ADAPTER.validate_python(model_info),
             )
         client_oauth_metadata: Final = (
             MappingProxyType({"used_client_oauth_token": False}) if anthropic_oauth_managed else MappingProxyType({})
@@ -4193,6 +4185,19 @@ class Router:
     _ANTHROPIC_OAUTH_MAPPING_ADAPTER: Final[TypeAdapter[Mapping[str, object]]] = TypeAdapter(Mapping[str, object])
 
     @staticmethod
+    def _native_sdk_deployment_identity(
+        request_params: Mapping[str, object], model_info: Mapping[str, object]
+    ) -> "AnthropicNativeIdentity":
+        from litellm.llms.anthropic.common_utils import AnthropicError
+        from litellm.llms.anthropic.native_transport import NATIVE_IDENTITY_FIELD, AnthropicNativeIdentity
+
+        identity: Final = request_params.get(NATIVE_IDENTITY_FIELD)
+        deployment: Final = model_info.get("id")
+        if not isinstance(identity, AnthropicNativeIdentity) or not isinstance(deployment, str):
+            raise AnthropicError(401, "The native SDK requires an authenticated server owner and deployment")
+        return AnthropicNativeIdentity(identity.owner, deployment)
+
+    @staticmethod
     def _anthropic_oauth_request_params(
         deployment_params: Mapping[str, object], request_params: Mapping[str, object]
     ) -> Mapping[str, object]:
@@ -4229,9 +4234,11 @@ class Router:
             for carrier in carriers
         ):
             return request_params
-        stripped: Final[frozenset[str]] = Router._ANTHROPIC_OAUTH_PARAMS | (
-            Router._ANTHROPIC_OAUTH_CREDENTIAL_PARAMS if managed else frozenset[str]()
-        ) | (frozenset({"cache", "caching"}) if native else frozenset({NATIVE_IDENTITY_FIELD}))
+        stripped: Final[frozenset[str]] = (
+            Router._ANTHROPIC_OAUTH_PARAMS
+            | (Router._ANTHROPIC_OAUTH_CREDENTIAL_PARAMS if managed else frozenset[str]())
+            | (frozenset({"cache", "caching"}) if native else frozenset({NATIVE_IDENTITY_FIELD}))
+        )
         sanitized: Final = Router._anthropic_oauth_strip_carrier(request_params, stripped, managed)
         nested: Final[Mapping[str, object]] = (
             MappingProxyType(

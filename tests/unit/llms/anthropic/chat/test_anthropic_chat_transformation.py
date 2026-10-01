@@ -33,6 +33,35 @@ from litellm.types.llms.anthropic import ANTHROPIC_BETA_HEADER_VALUES
 from litellm.types.utils import ServerToolUse, Usage
 
 
+@pytest.mark.parametrize("native", (False, True))
+@pytest.mark.parametrize("inline", (False, True))
+def test_native_chat_preserves_signed_empty_thinking(native: bool, inline: bool) -> None:
+    thinking: Final = {"type": "thinking", "thinking": "", "signature": "opaque-native-signature"}
+    text: Final = {"type": "text", "text": "previous answer"}
+    assistant: Final = (
+        {"role": "assistant", "content": [thinking, text]}
+        if inline
+        else {"role": "assistant", "content": text["text"], "thinking_blocks": [thinking]}
+    )
+    settings: Final = (
+        {
+            "use_anthropic_oauth": True,
+            "anthropic_auth_profile": "fixed-profile",
+            "anthropic_execution_mode": "native_sdk",
+        }
+        if native
+        else {}
+    )
+    result: Final = AnthropicConfig().transform_request(
+        model="claude-test-model",
+        messages=[{"role": "user", "content": "hello"}, assistant, {"role": "user", "content": "continue"}],
+        optional_params={},
+        litellm_params=settings,
+        headers={},
+    )
+    assert result["messages"][1]["content"] == ([thinking, text] if native else [text])
+
+
 def test_managed_subscription_metadata_preserves_cached_system_and_thinking() -> None:
     from litellm.llms.anthropic.oauth_policy import ANTHROPIC_OAUTH_BILLING_HEADER
     from litellm.types.router import GenericLiteLLMParams

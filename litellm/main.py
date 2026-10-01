@@ -2900,7 +2900,9 @@ def _complete_anthropic(ctx: _CompletionDispatchContext) -> _CompletionDispatchR
     timeout: Final = ctx.timeout
 
     managed_oauth: Final = is_anthropic_oauth_managed(litellm_params)
-    native_connection: Final = native_sdk_connection(litellm_params) if is_anthropic_native_sdk(litellm_params) else None
+    native_connection: Final = (
+        native_sdk_connection(litellm_params) if is_anthropic_native_sdk(litellm_params) else None
+    )
     api_key = (
         None
         if managed_oauth

@@ -56,15 +56,24 @@ from litellm.router_utils.cooldown_handlers import _async_get_cooldown_deploymen
 from litellm.router_utils.fallback_event_handlers import DISABLE_FALLBACKS_METADATA_KEY
 from litellm.router_utils.router_callbacks.track_deployment_metrics import get_deployment_successes_for_current_minute
 from litellm.types.llms.openai import ChatCompletionRequest
-from litellm.types.router import Deployment, DeploymentTypedDict, LiteLLM_Params, ModelInfo, PreRoutingHookResponse, RetryPolicy
+from litellm.types.router import (
+    Deployment,
+    DeploymentTypedDict,
+    LiteLLM_Params,
+    ModelInfo,
+    PreRoutingHookResponse,
+    RetryPolicy,
+)
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("surface", ("chat", "messages", "responses", "messages_stream"))
+@pytest.mark.parametrize("surface", ("chat", "messages", "responses", "responses_history", "messages_stream"))
 async def test_native_sdk_router_transports_preserve_identity_and_original_system(surface: str) -> None:
     from litellm.caching.llm_caching_handler import LLMClientCache
     from litellm.llms.anthropic.native_transport import AnthropicNativeIdentity
     from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
+
+    thinking: Final = {"type": "thinking", "thinking": "", "signature": "opaque-native-signature"}
 
     def upstream(request: httpx.Request) -> httpx.Response:
         assert str(request.url) == "http://native-broker/v1/messages"
@@ -78,6 +87,8 @@ async def test_native_sdk_router_transports_preserve_identity_and_original_syste
         assert "x-anthropic-billing-header" not in str(body)
         assert "anthropic_execution_mode" not in body
         assert "_anthropic_native_identity" not in body
+        if surface == "responses_history":
+            assert body["messages"][1]["content"][0] == thinking
         if body.get("stream") is True:
             events: Final = (
                 {
@@ -171,10 +182,24 @@ async def test_native_sdk_router_transports_preserve_identity_and_original_syste
                 )
                 assert message_result["content"][0]["text"] == "native reply"
                 assert message_result["usage"]["input_tokens"] == 12
-            elif surface == "responses":
+            elif surface in ("responses", "responses_history"):
                 response_result: Final = await router.aresponses(
                     model="native-alias",
-                    input="hello",
+                    input=(
+                        [
+                            {"role": "user", "content": "hello"},
+                            {
+                                "type": "reasoning",
+                                "id": "rs_replay",
+                                "summary": [],
+                                "encrypted_content": json.dumps([thinking]),
+                            },
+                            {"role": "assistant", "content": "previous answer"},
+                            {"role": "user", "content": "continue"},
+                        ]
+                        if surface == "responses_history"
+                        else "hello"
+                    ),
                     instructions="original system",
                     max_output_tokens=32,
                     _anthropic_native_identity=identity,

@@ -20,6 +20,7 @@ from litellm.llms.anthropic.common_utils import (
     strip_empty_content_blocks_from_anthropic_messages,
     strip_provider_specific_fields_from_anthropic_messages,
 )
+from litellm.llms.anthropic.native_transport import is_anthropic_native_sdk
 from litellm.llms.base_llm.anthropic_messages.transformation import (
     BaseAnthropicMessagesConfig,
 )
@@ -262,11 +263,12 @@ async def anthropic_messages(
     # 400.  /v1/chat/completions already handles this in
     # anthropic_messages_pt; sanitize the native Anthropic Messages path
     # here for the same guarantee.  See #22930.
-    messages = strip_empty_content_blocks_from_anthropic_messages(messages)
-    # Replay of cross-provider tool history (e.g. kimi -> Anthropic) may carry
-    # ids like ``functions.Bash:0`` that violate Anthropic's id pattern.
-    messages = sanitize_tool_use_ids_in_anthropic_messages(messages)
-    messages = flatten_unencrypted_web_search_results_in_anthropic_messages(messages)
+    if not is_anthropic_native_sdk(kwargs):
+        messages = strip_empty_content_blocks_from_anthropic_messages(messages)
+        # Replay of cross-provider tool history (e.g. kimi -> Anthropic) may carry
+        # ids like ``functions.Bash:0`` that violate Anthropic's id pattern.
+        messages = sanitize_tool_use_ids_in_anthropic_messages(messages)
+        messages = flatten_unencrypted_web_search_results_in_anthropic_messages(messages)
 
     from litellm.integrations.anthropic_cache_control_hook import (
         AnthropicCacheControlHook,
@@ -460,7 +462,7 @@ def anthropic_messages_handler(
     # does not reassign messages before dispatch, so it sets
     # ``_litellm_messages_presanitized`` to skip this redundant second
     # full-messages scan. Pop it so it never leaks into provider params.
-    if not kwargs.pop("_litellm_messages_presanitized", False):
+    if not kwargs.pop("_litellm_messages_presanitized", False) and not is_anthropic_native_sdk(kwargs):
         messages = strip_empty_content_blocks_from_anthropic_messages(messages)
         messages = sanitize_tool_use_ids_in_anthropic_messages(messages)
         messages = flatten_unencrypted_web_search_results_in_anthropic_messages(messages)

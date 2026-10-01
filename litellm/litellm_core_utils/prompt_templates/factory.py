@@ -2335,8 +2335,14 @@ def sanitize_messages_for_tool_calling(
 
 def _drop_unsignable_thinking_blocks(
     thinking_blocks: list[ChatCompletionThinkingBlock | ChatCompletionRedactedThinkingBlock],
+    *,
+    preserve_signed_empty: bool = False,
 ) -> list[ChatCompletionThinkingBlock | ChatCompletionRedactedThinkingBlock]:
-    return [block for block in thinking_blocks if not is_unsignable_thinking_block(block)]
+    return [
+        block
+        for block in thinking_blocks
+        if not is_unsignable_thinking_block(block, preserve_signed_empty=preserve_signed_empty)
+    ]
 
 
 _AnthropicMessageList: TypeAlias = list[AllAnthropicPassThroughMessageValues]
@@ -2346,6 +2352,8 @@ def anthropic_messages_pt(
     messages: list[AllMessageValues],
     model: str,
     llm_provider: str,
+    *,
+    preserve_signed_empty_thinking: bool = False,
 ) -> _AnthropicMessageList:
     """
     format messages for anthropic
@@ -2522,7 +2530,11 @@ def anthropic_messages_pt(
 
             _raw_thinking_blocks = assistant_content_block.get("thinking_blocks", None)
             thinking_blocks = (
-                _drop_unsignable_thinking_blocks(_raw_thinking_blocks) if _raw_thinking_blocks is not None else None
+                _drop_unsignable_thinking_blocks(
+                    _raw_thinking_blocks, preserve_signed_empty=preserve_signed_empty_thinking
+                )
+                if _raw_thinking_blocks is not None
+                else None
             )
 
             # Check if tool_calls contain server tool calls (web search, etc.)
@@ -2684,12 +2696,9 @@ def anthropic_messages_pt(
                         if not isinstance(m, dict):
                             continue
                         # handle thinking blocks
-                        thinking_block = cast(str, m.get("thinking", ""))
                         text_block = cast(str, m.get("text", ""))
-                        if (
-                            m.get("type", "") == "thinking"
-                            and len(thinking_block) > 0
-                            and not is_unsignable_thinking_block(m)
+                        if m.get("type", "") == "thinking" and not is_unsignable_thinking_block(
+                            m, preserve_signed_empty=preserve_signed_empty_thinking
                         ):  # don't pass empty text blocks. anthropic api raises errors.
                             anthropic_message: ChatCompletionThinkingBlock | AnthropicMessagesTextParam = cast(
                                 ChatCompletionThinkingBlock, m
