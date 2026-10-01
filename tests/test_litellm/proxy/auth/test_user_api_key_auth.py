@@ -39,10 +39,6 @@ from litellm.proxy.auth.auth_checks import TeamNotFoundError, UserNotFoundError,
 from litellm.proxy.auth.handle_jwt import JWTHandler
 from litellm.proxy.auth.auth_checks import (
     OrganizationNotFoundError,
-    TeamNotFoundError,
-    UserNotFoundError,
-    get_key_object,
-    _cache_key_object,
     jwt_key_mapping_cache_key,
 )
 from litellm.proxy.auth.route_checks import RouteChecks

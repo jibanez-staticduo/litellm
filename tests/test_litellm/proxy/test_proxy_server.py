@@ -32,7 +32,6 @@ from litellm.caching.caching import RedisCache
 from litellm.caching.dual_cache import DualCache
 from litellm.caching.redis_cluster_cache import RedisClusterCache
 from litellm.litellm_core_utils.get_model_cost_map import ModelCostMapReloaded
-from litellm.caching.dual_cache import DualCache
 from litellm.proxy._types import (
     LitellmUserRoles,
     ModelAccessDeniedProxyException,
