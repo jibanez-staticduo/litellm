@@ -12,7 +12,7 @@
 
 ## Resultado de la investigacion
 
-Revision local: `e3cb7c39cefd1e8b9bdc427b33f1d989cad50641`, igual a `origin/main` tras actualizar referencias el 2026-10-01. No se ha verificado la release efectiva de los proxies NAS/Fedora ni una inferencia real en este encargo
+Revision local: `e3cb7c39cefd1e8b9bdc427b33f1d989cad50641`, igual a `origin/main` tras actualizar referencias el 2026-10-01. La investigacion inicial no incluia verificacion del runtime. La ejecucion posterior verificada del NAS se recoge al final de este documento; Fedora permanece fuera de este despliegue
 
 LiteLLM ya documenta la primera fase en [Using Claude Code Max Subscription](https://docs.litellm.ai/docs/tutorials/claude_code_max_subscription). Anthropic confirma que configurar solo la URL del gateway, conservando el login claude.ai como credencial activa, mantiene los limites y la facturacion de la suscripcion en [Subscriptions and gateways](https://code.claude.com/docs/en/llm-gateway#subscriptions-and-gateways)
 
@@ -76,33 +76,33 @@ El modelo facturado debe ser el realmente servido y el importe debe ser valor eq
 
 **Interfaces:** El cliente envia su OAuth en `Authorization`, mas su virtual key en `x-litellm-api-key`. El proxy responde por `/v1/messages` con Messages/SSE nativo. El refresh sigue siendo responsabilidad del cliente
 
-- [ ] Identificar la version efectiva de Claude Code y LiteLLM, los aliases existentes, las credenciales de API globales y los fallbacks aplicables, sin mostrar secretos
-- [ ] Preparar un proxy piloto sin credenciales Anthropic de API ni fallbacks de los aliases de suscripcion, con la misma release candidata a promocion
-- [ ] Registrar aliases separados para Sonnet, Opus y Haiku y restringir una virtual key de prueba a esos aliases
-- [ ] Conservar el forwarding que necesite Claude Code, limitado a estos grupos. Probar OAuth, beta y cuerpo nativo por la ruta seleccionada antes de ampliar forwarding global
-- [ ] Conectar un perfil Claude Code que tenga login de suscripcion propio y verificar que sigue activo al apuntar a la URL del piloto
-- [ ] Desde Claude Code, probar texto con streaming, una herramienta y su resultado en el turno siguiente, thinking cuando el modelo lo permita y el contador de tokens que use el cliente
-- [ ] Confirmar que un error OAuth no produce fallback ni sustituye la credencial, y que los logs no contienen ninguna de las dos claves
+- [x] Identificar la version efectiva de Claude Code y LiteLLM, los aliases existentes, las credenciales de API globales y los fallbacks aplicables, sin mostrar secretos
+- [x] Preparar un proxy piloto sin credenciales Anthropic de API ni fallbacks de los aliases de suscripcion, con la misma release candidata a promocion
+- [x] Registrar aliases separados para Sonnet, Opus y Haiku y restringir una virtual key de prueba a esos aliases
+- [x] Conservar el forwarding que necesite Claude Code, limitado a estos grupos. Probar OAuth, beta y cuerpo nativo por la ruta seleccionada antes de ampliar forwarding global
+- [x] Conectar un perfil Claude Code que tenga login de suscripcion propio y verificar que sigue activo al apuntar a la URL del piloto
+- [x] Desde Claude Code, probar texto con streaming, una herramienta y su resultado en el turno siguiente, thinking cuando el modelo lo permita y el contador de tokens que use el cliente
+- [x] Confirmar que un error OAuth no produce fallback ni sustituye la credencial, y que los logs no contienen ninguna de las dos claves
 
 Configuracion orientativa de modelos. Los nombres upstream son los presentes en el mapa local consultado; confirmar acceso real y catalogo al ejecutar
 
 ```yaml
 model_list:
-  - model_name: claude-subscription-sonnet
+  - model_name: claude-sonnet-5-5
     litellm_params:
       model: anthropic/claude-sonnet-5-5
-  - model_name: claude-subscription-opus
+  - model_name: claude-opus-5-5
     litellm_params:
       model: anthropic/claude-opus-5-5
-  - model_name: claude-subscription-haiku
+  - model_name: claude-haiku-4-5
     litellm_params:
       model: anthropic/claude-haiku-4-5
 litellm_settings:
   model_group_settings:
     forward_client_headers_to_llm_api:
-      - claude-subscription-sonnet
-      - claude-subscription-opus
-      - claude-subscription-haiku
+      - claude-sonnet-5-5
+      - claude-opus-5-5
+      - claude-haiku-4-5
 ```
 
 El OAuth tiene un camino especifico por proveedor en este fork. El forwarding por grupo complementa los headers del cliente. No es necesario activar `forward_llm_provider_auth_headers`, que corresponde al caso BYOK con claves API
@@ -114,10 +114,10 @@ Configuracion del cliente, con `LITELLM_CLAUDE_KEY` obtenido de forma privada y 
 ```bash
 export ANTHROPIC_BASE_URL="$CLAUDE_PROXY_URL"
 export ANTHROPIC_CUSTOM_HEADERS="x-litellm-api-key: Bearer $LITELLM_CLAUDE_KEY"
-export ANTHROPIC_MODEL=claude-subscription-sonnet
-export ANTHROPIC_DEFAULT_SONNET_MODEL=claude-subscription-sonnet
-export ANTHROPIC_DEFAULT_OPUS_MODEL=claude-subscription-opus
-export ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-subscription-haiku
+export ANTHROPIC_MODEL=claude-sonnet-5-5
+export ANTHROPIC_DEFAULT_SONNET_MODEL=claude-sonnet-5-5
+export ANTHROPIC_DEFAULT_OPUS_MODEL=claude-opus-5-5
+export ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-haiku-4-5
 claude
 ```
 
@@ -129,13 +129,13 @@ El entorno dedicado del piloto debe carecer de `ANTHROPIC_API_KEY`, `ANTHROPIC_A
 
 **Interfaces:** La peticion HTTP autenticada es la fuente confiable del OAuth; el cuerpo del usuario no puede introducir una credencial interna. El branch OAuth del endpoint nativo resuelve un deployment Anthropic autorizado y llama al handler CountTokens existente con ese token. El contador generico conserva su comportamiento para peticiones sin OAuth y otros proveedores
 
-- [ ] Extender `test_endpoints.py` con una regresion que envie OAuth y virtual key separados, use un alias y compruebe que la llamada nativa recibe el OAuth y el modelo resuelto, aunque exista una clave API de servidor distinta
-- [ ] Confirmar que falla con este HEAD: `TokenCountRequest` se construye sin credencial y `internal_token_counter` solo puede buscar la clave del deployment o del entorno
-- [ ] Implementar un branch interno para las solicitudes OAuth en el endpoint nativo, conservando la autorizacion del alias y sin mutar un deployment compartido ni exponer secretos en `TokenCountRequest`
-- [ ] Reutilizar `AnthropicCountTokensHandler.handle_count_tokens_request` y su preparacion OAuth. Si se necesitan betas adicionales del cliente, anadir `extra_headers: Mapping[str, str] | None = None` al handler y combinar exclusivamente headers permitidos, preservando la credencial seleccionada
-- [ ] Comprobar en la regresion que beta/cuerpo soportado llegan upstream, la clave LiteLLM no sale del proxy y un destino no Anthropic no recibe OAuth
-- [ ] Anadir la regresion de error: un rechazo upstream del contador OAuth conserva su status/error Anthropic y no se convierte en conteo local exitoso ni consulta otra credencial
-- [ ] Ejecutar los tests afectados y el caso existente de contador sin OAuth. Repetir despues un conteo real desde el perfil Claude Code del piloto y conservar la evidencia sin tokens
+- [x] Extender `test_endpoints.py` con una regresion que envie OAuth y virtual key separados, use un alias y compruebe que la llamada nativa recibe el OAuth y el modelo resuelto, aunque exista una clave API de servidor distinta
+- [x] Confirmar que falla con este HEAD: `TokenCountRequest` se construye sin credencial y `internal_token_counter` solo puede buscar la clave del deployment o del entorno
+- [x] Implementar un branch interno para las solicitudes OAuth en el endpoint nativo, conservando la autorizacion del alias y sin mutar un deployment compartido ni exponer secretos en `TokenCountRequest`
+- [x] Reutilizar `AnthropicCountTokensHandler.handle_count_tokens_request` y su preparacion OAuth. Si se necesitan betas adicionales del cliente, anadir `extra_headers: Mapping[str, str] | None = None` al handler y combinar exclusivamente headers permitidos, preservando la credencial seleccionada
+- [x] Comprobar en la regresion que beta/cuerpo soportado llegan upstream, la clave LiteLLM no sale del proxy y un destino no Anthropic no recibe OAuth
+- [x] Anadir la regresion de error: un rechazo upstream del contador OAuth conserva su status/error Anthropic y no se convierte en conteo local exitoso ni consulta otra credencial
+- [x] Ejecutar los tests afectados y el caso existente de contador sin OAuth. Repetir despues un conteo real desde el perfil Claude Code del piloto y conservar la evidencia sin tokens
 
 El CountTokens handler sabe usar OAuth cuando recibe el token. El fallo esta en el recorrido desde el endpoint, no en la deteccion del prefijo. Esta reparacion no debe sustituirse por un token fijo en configuracion
 
@@ -145,13 +145,13 @@ El CountTokens handler sabe usar OAuth cuando recibe el token. El fallo esta en 
 
 **Interfaces:** Logs contienen modelo servido, usage completo, virtual key y `used_client_oauth_token=true`. `spend` es el valor equivalente de API que solicita el usuario, no una factura de Anthropic
 
-- [ ] Comprobar que los aliases resuelven al modelo real y al precio vigente de su deployment, incluyendo entrada, salida, cache read y cache creation/TTL disponibles
-- [ ] Hacer dos turnos comparables con un prefijo reutilizable y comprobar los contadores cache realmente devueltos. La prueba no presume que todo turno tendra cache hit
-- [ ] Comparar el coste del spend log con el calculador existente usando el usage y metadata del mismo request. No sumar dos veces tokens cache a los tokens de entrada
-- [ ] Confirmar `used_client_oauth_token=true` para las solicitudes Anthropic OAuth y atribucion a la virtual key esperada
-- [ ] Revisar comportamiento de cuota, errores y desconexion de stream. Registrar el uso conocido y distinguir cualquier dato que el proveedor no entregue
-- [ ] Verificar que el piloto consumio suscripcion y que no utilizo una credencial de API. La presencia del flag OAuth por si sola no demuestra el tipo de cargo upstream
-- [ ] Si aparece un defecto, extender el test mapeado correspondiente y escribir la correccion minima. Reproducir el fallo antes de corregir y repetir la verificacion despues
+- [x] Comprobar que los aliases resuelven al modelo real y al precio vigente de su deployment, incluyendo entrada, salida, cache read y cache creation/TTL disponibles
+- [x] Hacer dos turnos comparables con un prefijo reutilizable y comprobar los contadores cache realmente devueltos. La prueba no presume que todo turno tendra cache hit
+- [x] Comparar el coste del spend log con el calculador existente usando el usage y metadata del mismo request. No sumar dos veces tokens cache a los tokens de entrada
+- [x] Confirmar `used_client_oauth_token=true` para las solicitudes Anthropic OAuth y atribucion a la virtual key esperada
+- [x] Revisar comportamiento de cuota, errores y desconexion de stream. Registrar el uso conocido y distinguir cualquier dato que el proveedor no entregue (errores y uso verificados; ruta de desconexion revisada en common_request_processing.py, sin corte forzado en vivo)
+- [x] Verificar que el piloto consumio suscripcion y que no utilizo una credencial de API. La presencia del flag OAuth por si sola no demuestra el tipo de cargo upstream
+- [x] Si aparece un defecto, extender el test mapeado correspondiente y escribir la correccion minima. Reproducir el fallo antes de corregir y repetir la verificacion despues
 
 Los tests existentes a revisar y extender solo cuando haya un defecto concreto son `tests/test_litellm/proxy/test_litellm_pre_call_utils.py` para credenciales/logging, `tests/unit/llms/anthropic/test_count_tokens_oauth.py` para count_tokens, `tests/unit/llms/anthropic/pass_through/messages/test_anthropic_experimental_pass_through_messages_handler.py` para Messages y `tests/test_litellm/proxy/spend_tracking/test_spend_tracking_utils.py` para atribucion. Localizar el test de coste ya mapeado dentro de `tests/unit/llms/anthropic/` al corregir contabilidad
 
@@ -163,12 +163,12 @@ Si un proxy compartido permite caer en una clave API global, elegir aislamiento 
 
 **Interfaces:** El mismo perfil Claude Code conserva su suscripcion y utiliza la URL seleccionada. El dashboard y spend logs muestran los requests atribuibles a su virtual key
 
-- [ ] Registrar la configuracion exacta candidata, el mecanismo de activacion existente y un backup seguro de los campos afectados
-- [ ] Hacer review proporcional de autenticacion doble, destinos, fallbacks y coste. Si se cambia codigo, ejecutar los tests afectados y los gates exigidos por el repositorio
-- [ ] Aplicar el cambio mediante el mecanismo del host cuando se ejecute el plan, respetando procesos/turnos activos y las autorizaciones de reinicio vigentes
-- [ ] Repetir la prueba completa desde Claude Code en el endpoint final y esperar a que el consumo aparezca en el dashboard y spend logs
-- [ ] Capturar comando/configuracion sin secretos, salida real de Claude Code y evidencia del dashboard. Los tests unitarios no se presentan como prueba de uso real
-- [ ] Comprobar rollback: restaurar los campos del cliente que cambian la URL y los aliases, conservando su login. Desactivar solo los deployments/virtual key creados por esta entrega
+- [x] Registrar la configuracion exacta candidata, el mecanismo de activacion existente y un backup seguro de los campos afectados
+- [x] Hacer review proporcional de autenticacion doble, destinos, fallbacks y coste. Si se cambia codigo, ejecutar los tests afectados y los gates exigidos por el repositorio
+- [x] Aplicar el cambio mediante el mecanismo del host cuando se ejecute el plan, respetando procesos/turnos activos y las autorizaciones de reinicio vigentes
+- [x] Repetir la prueba completa desde Claude Code en el endpoint final y esperar a que el consumo aparezca en el dashboard y spend logs
+- [x] Capturar comando/configuracion sin secretos, salida real de Claude Code y evidencia del dashboard. Los tests unitarios no se presentan como prueba de uso real (evidencia del dashboard por su API, sin captura visual)
+- [x] Comprobar rollback: restaurar los campos del cliente que cambian la URL y los aliases, conservando su login. Desactivar solo los deployments/virtual key creados por esta entrega
 
 **Aceptacion de fase 1:** Claude Code completa una conversacion con herramientas y streaming pasando por LiteLLM, usa la credencial de suscripcion, conserva el login/refresh nativo, obtiene conteo nativo con la misma credencial, no puede caer en API de pago por el proxy y registra consumo/coste equivalente a API con atribucion correcta. El soporte de codigo/documentacion no sustituye esta prueba real
 
@@ -193,3 +193,17 @@ Para clientes Responses como Codex, evaluar el bridge comun `litellm/responses/l
 [OpenCode Anthropic](https://opencode.ai/docs/providers/#anthropic), [retirada de OAuth](https://github.com/anomalyco/opencode/pull/18186) y [artefacto historico 0.0.13](https://unpkg.com/opencode-anthropic-auth@0.0.13/index.mjs)
 
 Se consultaron Hindsight compartido, sus paginas pertinentes, Kindly y Context7. Las referencias historicas sirvieron para localizar componentes y decisiones; las afirmaciones tecnicas de este plan se contrastaron con el codigo o las fuentes actuales citadas
+
+## Ejecucion verificada, 2026-10-01
+
+La fase 1 esta activa en NAS, endpoint `http://127.0.0.1:14001`, instancia `litellm-anthropic-subscription` con PostgreSQL independiente. Claude Code conserva su login Pro y su refresh. El lanzador permanente `~/.local/bin/claude-litellm` selecciona el gateway, una virtual key restringida y los modelos canonicos `claude-sonnet-5-5`, `claude-opus-5-5` y `claude-haiku-4-5`. El comando ordinario `claude` conserva la ruta directa y sirve como rollback del cliente
+
+El fix del contador esta en `d17375a5a9`. La imagen candidata desplegada es `sha256:1262f02dcc48bbc4cc9728a03a51a75661845b42000ca8c81df87157d70e28d8`, construida sobre la release NAS 1.105.0 fijada por digest. El proxy compartido existente no fue reiniciado. Los servicios del piloto tienen politica manual `restart: no`
+
+La prueba interactiva desde Claude Code 2.1.285 completo streaming, Read, segundo turno, thinking y `/context`. El contador nativo devolvio HTTP 200 con el OAuth del cliente. Las solicitudes con OAuth invalido o sin OAuth devolvieron HTTP 401, sin credencial alternativa. Opus y Haiku tambien respondieron desde el cliente nativo
+
+Tres spend logs de la conversacion registraron `used_client_oauth_token=true` y coincidieron con el calculador de costes desplegado, incluyendo cache de una hora, cache read y reasoning. Los importes equivalentes fueron USD 0.018318, 0.0015432 y 0.0022766. No se encontraron credenciales raw en los logs del contenedor ni las filas de consumo inspeccionadas
+
+Los tests focalizados pasan 48 casos y el gate integrado `make check` pasa. Una review independiente no encontro defectos bloqueantes. Los errores no JSON del proveedor conservan el status y se normalizan al formato Anthropic. La evidencia reproducible y los comandos operativos estan en `docker/anthropic-subscription/README.md`
+
+No se ha forzado agotamiento real de cuota ni interrupcion durante generacion. Los errores 401/429 y la ausencia de fallback local se verifican en las regresiones. El consumo se ha comprobado en la base de datos y en `/spend/logs/ui` con HTTP 200; no se ha capturado una pantalla del dashboard. Estos limites no cambian la evidencia real de la suscripcion ni la aceptacion del transporte nativo
