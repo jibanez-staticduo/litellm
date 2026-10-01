@@ -14153,7 +14153,7 @@ async def token_counter(
         litellm_model_name = deployment.get("litellm_params", {}).get("model")
         model_info = deployment.get("model_info", {})
         if not managed:
-            load_credentials_from_list(deployment.get("litellm_params", {}))
+            load_credentials_from_list(deployment["litellm_params"])
         # remove the custom_llm_provider_prefix in the litellm_model_name
         if "/" in litellm_model_name:
             litellm_model_name = litellm_model_name.split("/", 1)[1]

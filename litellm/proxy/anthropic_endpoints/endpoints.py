@@ -458,7 +458,10 @@ async def count_tokens(
         request_data: Final = await _read_request_body(request=request)
         native_data: Final = _NATIVE_COUNT_BODY.validate_python(request_data)
         if not native_data.get("model"):
-            raise HTTPException(status_code=400, detail={"error": "model parameter is required"})
+            raise HTTPException(
+                status_code=400,
+                detail=_NATIVE_COUNT_BODY.validate_python(MappingProxyType({"error": "model parameter is required"})),
+            )
         oauth_header: Final = request.headers.get("authorization")
         oauth_response: Final = await _count_tokens_with_oauth(
             request,
