@@ -645,7 +645,7 @@ class GraySwanGuardrail(CustomGuardrail):
             return (), None
         try:
             structured: Final = handler_cls().get_structured_messages(request_data) or ()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001  # optional context translation must not skip the post-call scan
             verbose_proxy_logger.debug(
                 "Gray Swan Guardrail: could not resolve request context for call_type %s: %s",
                 call_type,
