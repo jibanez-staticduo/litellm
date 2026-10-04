@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterator, Mapping, Sequence
+from types import MappingProxyType
 from typing import Any, Final
 
 import httpx
@@ -266,7 +267,9 @@ class AnthropicMessagesConfig(BaseAnthropicMessagesConfig):
     ) -> tuple[dict, str | None]:
         from litellm.llms.anthropic.native_transport import is_anthropic_native_sdk, native_sdk_connection
         from litellm.llms.anthropic.oauth_policy import (
+            is_anthropic_native_client,
             is_anthropic_oauth_managed,
+            native_client_auth_headers,
             normalize_anthropic_oauth_headers,
             resolve_anthropic_oauth_access_token,
             validate_anthropic_oauth_destination,
@@ -280,6 +283,8 @@ class AnthropicMessagesConfig(BaseAnthropicMessagesConfig):
         managed_api_base: Final = (
             validate_anthropic_oauth_destination(api_base) if is_anthropic_oauth_managed(litellm_params) else api_base
         )
+        if is_anthropic_native_client(litellm_params) and managed_token is not None:
+            return native_client_auth_headers(headers, managed_token), managed_api_base
         # Check for Anthropic OAuth token in Authorization header
         headers, api_key = optionally_handle_anthropic_oauth(headers=headers, api_key=managed_token or api_key)
 
@@ -516,6 +521,16 @@ class AnthropicMessagesConfig(BaseAnthropicMessagesConfig):
 
         This takes in a request in the Anthropic /v1/messages API spec -> transforms it to /v1/messages API spec (i.e) no transformation is needed
         """
+        from litellm.llms.anthropic.oauth_policy import is_anthropic_native_client, native_client_request_body
+
+        if is_anthropic_native_client(litellm_params.model_dump()):
+            original: Final = litellm_params.anthropic_native_request_body
+            native_body: Final = original if original is not None else anthropic_messages_optional_request_params
+            if native_body.get("max_tokens") is None:
+                raise AnthropicError(400, "max_tokens is required for Anthropic /v1/messages API")
+            return native_client_request_body(
+                MappingProxyType({"messages": messages, **native_body}), litellm_params.model_dump(), model
+            )
         max_tokens: Final = anthropic_messages_optional_request_params.pop("max_tokens", None)
         if max_tokens is None:
             raise AnthropicError(

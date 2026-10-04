@@ -58,6 +58,52 @@ async def test_count_tokens_native_beta_cannot_override_selected_oauth_credentia
         await client.client.aclose()
 
 
+@pytest.mark.asyncio
+async def test_native_client_count_preserves_headers_and_original_body():
+    import json
+    from litellm.llms.anthropic.count_tokens.handler import AnthropicCountTokensHandler
+    from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
+
+    body: Final = {
+        "model": "native-model",
+        "messages": [{"role": "user", "content": "hello"}],
+        "system": [{"type": "text", "text": "native billing"}],
+        "native_feature": {"keep": True},
+    }
+    client_headers: Final = {
+        "User-Agent": "claude-cli/native",
+        "anthropic-beta": "native-beta",
+        "anthropic-version": "native-version",
+        "authorization": "Bearer wrong-account",
+        "Host": "proxy-host",
+        "Content-Length": "999",
+        "x-litellm-api-key": "proxy-key",
+    }
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        assert request.headers["authorization"] == f"Bearer {FAKE_OAUTH_TOKEN}"
+        assert request.headers["user-agent"] == client_headers["User-Agent"]
+        assert request.headers["anthropic-beta"] == client_headers["anthropic-beta"]
+        assert "x-litellm-api-key" not in request.headers
+        assert request.headers["host"] == "api.anthropic.com"
+        assert json.loads(request.content) == body
+        return httpx.Response(200, json={"input_tokens": 7})
+
+    client: Final = AsyncHTTPHandler(transport=httpx.MockTransport(upstream))
+    try:
+        result: Final = await AnthropicCountTokensHandler(http_client=client).handle_count_tokens_request(
+            model="native-model",
+            messages=body["messages"],
+            api_key=FAKE_OAUTH_TOKEN,
+            optional_params=body,
+            extra_headers=client_headers,
+            native_client=True,
+        )
+        assert result == {"input_tokens": 7}
+    finally:
+        await client.client.aclose()
+
+
 class TestCountTokensOAuthHeaders:
     """Tests that count_tokens headers are correct for both regular and OAuth keys."""
 

@@ -34,6 +34,75 @@ def _profile_token(config: AnthropicOAuthConfig) -> str:
     return f"subscription-token-for-{config.anthropic_auth_profile}"
 
 
+def test_native_client_selects_server_profile_without_changing_client_identity() -> None:
+    params: Final = MappingProxyType({**_MANAGED, "anthropic_execution_mode": "native_client"})
+    headers: Final = {
+        "Authorization": "Bearer client-token-must-not-be-used",
+        "x-api-key": "client-api-key",
+        "User-Agent": "claude-cli/test-native-client",
+        "anthropic-beta": "native-client-beta",
+        "anthropic-version": "native-client-version",
+        "x-app": "cli",
+    }
+    original: Final = dict(headers)
+    assert resolve_anthropic_oauth_access_token(params, headers=headers, token_provider=_profile_token) == (
+        "subscription-token-for-work"
+    )
+    assert headers == original
+    assert apply_anthropic_oauth_system("original native system", params) == "original native system"
+
+
+def test_native_client_body_preserves_history_and_all_native_options() -> None:
+    from litellm.llms.anthropic.pass_through.messages.transformation import AnthropicMessagesConfig
+    from litellm.types.router import GenericLiteLLMParams
+
+    history: Final = [
+        {"role": "user", "content": "first"},
+        {"role": "assistant", "content": [{"type": "encrypted_reasoning", "data": "opaque-reasoning"}]},
+        {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "native-id", "content": "result"}]},
+    ]
+    options: Final = {
+        "max_tokens": 1024,
+        "system": [{"type": "text", "text": "native instructions", "cache_control": {"type": "ephemeral"}}],
+        "tools": [{"name": "Native.Tool", "input_schema": {"type": "object"}}],
+        "thinking": {"type": "disabled"},
+        "context_management": {"edits": [{"type": "native-edit"}]},
+        "metadata": {"user_id": "native-session"},
+    }
+    original: Final = dict(options)
+    result: Final = AnthropicMessagesConfig().transform_anthropic_messages_request(
+        model="native-model",
+        messages=history,
+        anthropic_messages_optional_request_params=options,
+        litellm_params=GenericLiteLLMParams.model_validate({**_MANAGED, "anthropic_execution_mode": "native_client"}),
+        headers={},
+    )
+    assert result == {"model": "native-model", "messages": history, **original}
+    assert options == original
+
+
+def test_native_client_original_body_keeps_unrecognized_provider_fields() -> None:
+    from litellm.llms.anthropic.pass_through.messages.transformation import AnthropicMessagesConfig
+    from litellm.types.router import GenericLiteLLMParams
+
+    original: Final = {
+        "model": "caller-alias",
+        "messages": [{"role": "user", "content": "hello"}],
+        "max_tokens": 32,
+        "native_provider_feature": {"preserve": True},
+    }
+    result: Final = AnthropicMessagesConfig().transform_anthropic_messages_request(
+        model="selected-model",
+        messages=[],
+        anthropic_messages_optional_request_params={"max_tokens": 16},
+        litellm_params=GenericLiteLLMParams.model_validate(
+            {**_MANAGED, "anthropic_execution_mode": "native_client", "anthropic_native_request_body": original}
+        ),
+        headers={},
+    )
+    assert result == {**original, "model": "selected-model"}
+
+
 def test_managed_credential_uses_selected_profile_and_ignores_server_api_key() -> None:
     params: Final = MappingProxyType({**_MANAGED, "api_key": "server-api-key"})
     assert resolve_anthropic_oauth_access_token(params, token_provider=_profile_token) == "subscription-token-for-work"

@@ -1,16 +1,35 @@
 # Anthropic Subscription Implementation Plan
 
-**Estado:** En ejecucion. La fase 1 nativa esta entregada y el candidato HTTP gestionado paso sus gates y se retiro. El motor SDK nativo supera el rechazo HTTP de OpenCode en probes reales. Se implementan broker, transporte y QA antes de promover a Fedora y despues NAS
+**Estado:** Completada la integracion multicuenta nativa, 2026-10-04. Los apartados de HTTP gestionado, SDK, Codex y OpenCode conservan la investigacion anterior. El alcance vigente acordado con el usuario es Claude Code nativo con dos cuentas, selector compartido y `claude_usage`
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking
 
-**Goal:** Usar suscripciones Anthropic a traves de LiteLLM, registrar el consumo con su valor equivalente a precios de API y completar la gestion de varias cuentas y el acceso desde otros clientes
+**Goal:** Usar las cuentas `staticduo` y `defend1` desde Claude Code nativo a traves de LiteLLM, cambiar los aliases principales desde Fedora y consultar la cuota de ambas cuentas. Registrar el consumo con su valor equivalente a precios de API
 
-**Architecture:** Claude Code conserva el login y la renovacion OAuth. LiteLLM autentica por separado al cliente con una virtual key y reenvia Messages al proveedor `anthropic`, usando el OAuth recibido. La fase 2 implementa perfiles OAuth gestionados con seleccion explicita y refresh serializado. Codex pasa en aislamiento; OpenCode recibe un rechazo por extra usage. La promocion gestionada permanece bloqueada
+**Architecture:** Claude Code conserva el login y la renovacion OAuth en Fedora. LiteLLM autentica al cliente con una virtual key separada, conserva el cuerpo y headers nativos y selecciona credenciales de perfil en modo de lectura. NAS recibe instantaneas de acceso sin refresh tokens. `litellm_fallbacks claude` cambia los tres aliases neutrales en ambos hosts bajo el diario firmado existente. `claude_usage` consulta la cuota sin inferencia ni cambios de facturacion
 
 **Tech Stack:** LiteLLM Proxy, Anthropic Messages, OAuth del cliente Claude Code, SSE, virtual keys, PostgreSQL spend logs y el mapa de precios de LiteLLM
 
 **Spec:** Peticion del usuario del 2026-10-01, corregida expresamente: la primera fase usa la suscripcion de Anthropic via LiteLLM. El pricing de API representa el consumo; no selecciona una credencial de API ni cambia la facturacion upstream
+
+## Aceptacion vigente: multicuenta nativa
+
+- [x] Login independiente en Fedora para `staticduo` Pro y `defend1` Max, con renovacion en Claude Code
+- [x] Credenciales en modo de lectura y sincronizacion NAS sin refresh tokens, email ni permisos compartidos
+- [x] Nueve aliases visibles para el equipo en ambos proxies, con tres principales y tres explicitos por cuenta
+- [x] `claude_usage` humano y JSON con cuota de cinco horas, semanal, reinicios y estado de Extra usage
+- [x] Pruebas reales aisladas con herramientas y continuidad, contabilizacion equivalente y eliminacion del contenedor temporal y su red
+- [x] Review independiente y `make check` correcto, con pruebas del proveedor, selector, cuota y sincronizacion
+- [x] Cambio real de los seis aliases principales a `defend1` y regreso a `staticduo`, sin transaccion pendiente
+- [x] Promocion de la imagen final en Fedora y despues NAS, con prueba Claude Code nativa en cada host
+
+Ambos proxies ejecutan `litellm-claude-native-client-20261004-delivery` y estan saludables. La lectura nativa y su reanudacion devolvieron `NATIVE_d406f77ab182` en Fedora y `NATIVE_f9c477f13124` en NAS. El cambio a `defend1` completo los seis aliases en 192,82 segundos y su regreso a `staticduo` en 185,11 segundos. El estado final es `ready`, sin transaccion pendiente y con `quota-sidecar.timer` activo
+
+La comprobacion posterior de `/model/info` para el equipo devuelve nueve modelos en cada proxy. Nueve registros exitosos en Fedora y seis en NAS tienen atribucion OAuth del servidor y coste equivalente calculado correctamente. No quedan contenedores ni redes temporales de esta validacion
+
+`defend1` tiene agotada la cuota semanal durante esta validacion. Se comprueba el cambio de perfil, pero la inferencia exitosa de esa cuenta queda pendiente de cuota disponible. Ambas cuentas mantienen Extra usage desactivado
+
+Los apartados siguientes documentan el plan y la investigacion anteriores. El alcance vigente no requiere utilizar las suscripciones desde Codex, OpenCode ni otros clientes
 
 ## Resultado de la investigacion
 

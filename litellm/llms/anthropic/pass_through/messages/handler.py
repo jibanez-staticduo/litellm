@@ -9,7 +9,10 @@ import asyncio
 import contextvars
 from collections.abc import AsyncIterator, Coroutine, Iterator
 from functools import partial
+from types import MappingProxyType
 from typing import Any, Final, cast
+
+from pydantic import TypeAdapter
 
 import litellm
 from litellm.litellm_core_utils.exception_mapping_utils import exception_type
@@ -21,6 +24,7 @@ from litellm.llms.anthropic.common_utils import (
     strip_provider_specific_fields_from_anthropic_messages,
 )
 from litellm.llms.anthropic.native_transport import is_anthropic_native_sdk
+from litellm.llms.anthropic.oauth_policy import is_anthropic_native_client
 from litellm.llms.base_llm.anthropic_messages.transformation import (
     BaseAnthropicMessagesConfig,
 )
@@ -42,6 +46,8 @@ from .interceptors import get_messages_interceptors
 from .utils import AnthropicMessagesRequestUtils, mock_response
 
 __all__ = ("anthropic_messages", "anthropic_messages_handler")
+_NATIVE_REQUEST_PARAMS: Final = TypeAdapter(dict[str, object])
+_REQUEST_PROVIDER: Final = TypeAdapter(str | None)
 
 # Providers that are routed directly to the OpenAI Responses API instead of
 # going through chat/completions.
@@ -263,7 +269,7 @@ async def anthropic_messages(
     # 400.  /v1/chat/completions already handles this in
     # anthropic_messages_pt; sanitize the native Anthropic Messages path
     # here for the same guarantee.  See #22930.
-    if not is_anthropic_native_sdk(kwargs):
+    if not is_anthropic_native_sdk(kwargs) and not is_anthropic_native_client(kwargs):
         messages = strip_empty_content_blocks_from_anthropic_messages(messages)
         # Replay of cross-provider tool history (e.g. kimi -> Anthropic) may carry
         # ids like ``functions.Bash:0`` that violate Anthropic's id pattern.
@@ -274,9 +280,16 @@ async def anthropic_messages(
         AnthropicCacheControlHook,
     )
 
-    messages, system = AnthropicCacheControlHook.maybe_inject_cache_control(
-        messages, system, kwargs, model=model, custom_llm_provider=custom_llm_provider, tools=tools, api_base=api_base
-    )
+    if not is_anthropic_native_client(kwargs):
+        messages, system = AnthropicCacheControlHook.maybe_inject_cache_control(
+            messages,
+            system,
+            kwargs,
+            model=model,
+            custom_llm_provider=custom_llm_provider,
+            tools=tools,
+            api_base=api_base,
+        )
 
     original_stream: Final = stream or kwargs.get("_websearch_interception_converted_stream", False)
 
@@ -284,14 +297,18 @@ async def anthropic_messages(
     # tool_choice is forwarded explicitly (it is a named param, not in kwargs)
     # so hooks that rename tools — e.g. websearch_interception converting
     # web_search -> litellm_web_search — can keep a forced tool_choice in sync.
-    request_kwargs: Final = await _execute_pre_request_hooks(
-        model=model,
-        messages=messages,
-        tools=tools,
-        stream=stream,
-        custom_llm_provider=custom_llm_provider,
-        tool_choice=tool_choice,
-        **kwargs,
+    request_kwargs: Final = (
+        _NATIVE_REQUEST_PARAMS.validate_python(kwargs)
+        if is_anthropic_native_client(kwargs)
+        else await _execute_pre_request_hooks(
+            model=model,
+            messages=messages,
+            tools=tools,
+            stream=stream,
+            custom_llm_provider=custom_llm_provider,
+            tool_choice=tool_choice,
+            **kwargs,
+        )
     )
 
     # Extract modified parameters. Pop every named param of `anthropic_messages`
@@ -312,7 +329,10 @@ async def anthropic_messages(
     # The litellm_params dict may have been overwritten by **kwargs in
     # _execute_pre_request_hooks, so fall back to get_llm_provider() if needed.
     if not custom_llm_provider:
-        custom_llm_provider = request_kwargs.get("litellm_params", {}).get("custom_llm_provider")
+        hook_params: Final = _NATIVE_REQUEST_PARAMS.validate_python(
+            request_kwargs.get("litellm_params") or MappingProxyType({})
+        )
+        custom_llm_provider = _REQUEST_PROVIDER.validate_python(hook_params.get("custom_llm_provider"))
         if not custom_llm_provider:
             try:
                 _, custom_llm_provider, _, _ = litellm.get_llm_provider(model=model)
@@ -328,13 +348,17 @@ async def anthropic_messages(
     # without ever touching the backend LLM or the adapter path.
     # Use original_stream (not the hook-converted stream) so streaming
     # callers get SSE events instead of a plain dict.
-    short_circuit_response: Final = await _try_websearch_short_circuit(
-        model=model,
-        messages=messages,
-        tools=tools,
-        custom_llm_provider=custom_llm_provider,
-        stream=original_stream,
-        kwargs={**kwargs, "metadata": metadata},
+    short_circuit_response: Final = (
+        None
+        if is_anthropic_native_client(kwargs)
+        else await _try_websearch_short_circuit(
+            model=model,
+            messages=messages,
+            tools=tools,
+            custom_llm_provider=custom_llm_provider,
+            stream=original_stream,
+            kwargs={**kwargs, "metadata": metadata},
+        )
     )
     if short_circuit_response is not None:
         return short_circuit_response
@@ -342,7 +366,7 @@ async def anthropic_messages(
     # Run registered MessagesInterceptors (e.g. advisor orchestration loop).
     # Named params on `anthropic_messages` are bound to locals, not `**kwargs`,
     # so forward them explicitly — otherwise interceptor sub-calls drop them.
-    for interceptor in get_messages_interceptors():
+    for interceptor in () if is_anthropic_native_client(kwargs) else get_messages_interceptors():
         if interceptor.can_handle(tools, custom_llm_provider):
             return await interceptor.handle(
                 model=model,
@@ -462,7 +486,11 @@ def anthropic_messages_handler(
     # does not reassign messages before dispatch, so it sets
     # ``_litellm_messages_presanitized`` to skip this redundant second
     # full-messages scan. Pop it so it never leaks into provider params.
-    if not kwargs.pop("_litellm_messages_presanitized", False) and not is_anthropic_native_sdk(kwargs):
+    if (
+        not kwargs.pop("_litellm_messages_presanitized", False)
+        and not is_anthropic_native_sdk(kwargs)
+        and not is_anthropic_native_client(kwargs)
+    ):
         messages = strip_empty_content_blocks_from_anthropic_messages(messages)
         messages = sanitize_tool_use_ids_in_anthropic_messages(messages)
         messages = flatten_unencrypted_web_search_results_in_anthropic_messages(messages)
@@ -471,9 +499,16 @@ def anthropic_messages_handler(
         AnthropicCacheControlHook,
     )
 
-    messages, system = AnthropicCacheControlHook.maybe_inject_cache_control(
-        messages, system, kwargs, model=model, custom_llm_provider=custom_llm_provider, tools=tools, api_base=api_base
-    )
+    if not is_anthropic_native_client(kwargs):
+        messages, system = AnthropicCacheControlHook.maybe_inject_cache_control(
+            messages,
+            system,
+            kwargs,
+            model=model,
+            custom_llm_provider=custom_llm_provider,
+            tools=tools,
+            api_base=api_base,
+        )
 
     metadata = validate_anthropic_api_metadata(metadata)
 
@@ -642,12 +677,12 @@ def anthropic_messages_handler(
     anthropic_messages_optional_request_params: Final = (
         AnthropicMessagesRequestUtils.get_requested_anthropic_messages_optional_param(
             params=local_vars,
-            model=model,
+            model=None if is_anthropic_native_client(kwargs) else model,
             drop_params=litellm_params.get("drop_params") is True,
             custom_llm_provider=custom_llm_provider,
         )
     )
-    if is_reasoning_auto_summary_enabled():
+    if is_reasoning_auto_summary_enabled() and not is_anthropic_native_client(kwargs):
         thinking_param: Final = anthropic_messages_optional_request_params.get("thinking")
         if isinstance(thinking_param, dict) and thinking_param.get("type") != "disabled":
             anthropic_messages_optional_request_params["thinking"] = {
@@ -662,7 +697,9 @@ def anthropic_messages_handler(
     )
     return base_llm_http_handler.anthropic_messages_handler(
         model=model,
-        messages=strip_provider_specific_fields_from_anthropic_messages(messages),
+        messages=messages
+        if is_anthropic_native_client(kwargs)
+        else strip_provider_specific_fields_from_anthropic_messages(messages),
         anthropic_messages_provider_config=anthropic_messages_provider_config,
         anthropic_messages_optional_request_params=dict(anthropic_messages_optional_request_params),
         _is_async=is_async,

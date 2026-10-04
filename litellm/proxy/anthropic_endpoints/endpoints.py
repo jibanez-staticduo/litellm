@@ -72,6 +72,7 @@ class _OAuthCountTokensParams(BaseModel):
     use_anthropic_oauth: bool = False
     anthropic_auth_profile: str | None = None
     anthropic_token_dir: str | None = None
+    anthropic_credential_mode: str | None = None
     anthropic_oauth_compatibility: str | None = None
     anthropic_execution_mode: str | None = None
 
@@ -184,8 +185,11 @@ async def _count_tokens_with_oauth(
             api_key=oauth_token,
             tools=_NATIVE_COUNT_MESSAGES.validate_python(body.tools) if body.tools is not None else None,
             system=oauth_policy.apply_anthropic_oauth_system(body.system, oauth_params),
-            optional_params=MappingProxyType(data),
+            optional_params=oauth_policy.native_client_request_body(data, oauth_params, upstream_model)
+            if oauth_policy.is_anthropic_native_client(oauth_params)
+            else MappingProxyType(data),
             extra_headers=request.headers,
+            native_client=oauth_policy.is_anthropic_native_client(oauth_params),
         )
     except AnthropicError as exc:
         try:
@@ -303,6 +307,9 @@ async def anthropic_response(
     )
 
     data: Final = await _read_request_body(request=request)
+    data["anthropic_native_request_body"] = _NATIVE_COUNT_BODY.validate_python(
+        MappingProxyType({key: value for key, value in data.items() if key != "anthropic_native_request_body"})
+    )
     base_llm_response_processor: Final = ProxyBaseLLMRequestProcessing(data=data)
     try:
         result: Final = await base_llm_response_processor.base_process_llm_request(

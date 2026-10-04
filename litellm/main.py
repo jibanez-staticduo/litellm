@@ -5708,6 +5708,7 @@ def completion(
             use_anthropic_oauth=kwargs.get("use_anthropic_oauth"),
             anthropic_auth_profile=kwargs.get("anthropic_auth_profile"),
             anthropic_token_dir=kwargs.get("anthropic_token_dir"),
+            anthropic_credential_mode=kwargs.get("anthropic_credential_mode"),
             anthropic_oauth_compatibility=kwargs.get("anthropic_oauth_compatibility"),
             anthropic_execution_mode=kwargs.get("anthropic_execution_mode"),
             _anthropic_native_identity=kwargs.get("_anthropic_native_identity"),

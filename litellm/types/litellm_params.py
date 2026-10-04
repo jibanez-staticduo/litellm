@@ -93,6 +93,7 @@ class ProviderConnection:
     use_anthropic_oauth: bool | None = None
     anthropic_auth_profile: str | None = None
     anthropic_token_dir: str | None = None
+    anthropic_credential_mode: str | None = None
     anthropic_oauth_compatibility: str | None = None
     anthropic_execution_mode: str | None = None
     chatgpt_auth_profile: str | None = None

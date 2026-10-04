@@ -5,6 +5,7 @@
 import json
 import logging
 from functools import partial
+from pathlib import Path
 from typing import Final
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -33,6 +34,81 @@ from litellm.proxy.proxy_server import token_counter
 from litellm.types.utils import TokenCountResponse
 
 verbose_proxy_logger.setLevel(level=logging.DEBUG)
+
+
+@pytest.mark.asyncio
+async def test_native_client_count_endpoint_uses_profile_identity_and_preserves_client_body(tmp_path: Path):
+    from litellm.proxy.anthropic_endpoints.endpoints import _count_tokens_with_oauth
+    from litellm.llms.anthropic.count_tokens.handler import AnthropicCountTokensHandler
+    from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
+
+    profile: Final = tmp_path / "account_b"
+    profile.mkdir()
+    (profile / ".credentials.json").write_text(
+        json.dumps(
+            {
+                "claudeAiOauth": {
+                    "accessToken": "sk-ant-oat01-account-b",
+                    "expiresAt": 99999999999999,
+                    "scopes": ["user:inference"],
+                }
+            }
+        )
+    )
+    (profile / ".claude.json").write_text(json.dumps({"oauthAccount": {"accountUuid": "account-b-uuid"}}))
+    identity: Final = {"device_id": "device", "account_uuid": "account-a-uuid", "session_id": "session"}
+    body: Final = {
+        "model": "native-alias",
+        "messages": [{"role": "user", "content": "hello"}],
+        "metadata": {"user_id": json.dumps(identity)},
+        "native_feature": {"keep": True},
+    }
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "native-alias",
+                "litellm_params": {
+                    "model": "anthropic/native-model",
+                    "use_anthropic_oauth": True,
+                    "anthropic_execution_mode": "native_client",
+                    "anthropic_credential_mode": "claude_code",
+                    "anthropic_token_dir": str(tmp_path),
+                    "anthropic_auth_profile": "account_b",
+                },
+            }
+        ]
+    )
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        assert request.headers["authorization"] == "Bearer sk-ant-oat01-account-b"
+        assert request.headers["user-agent"] == "claude-cli/native"
+        assert request.headers["anthropic-beta"] == "native-beta"
+        payload: Final = json.loads(request.content)
+        assert json.loads(payload["metadata"]["user_id"]) == {**identity, "account_uuid": "account-b-uuid"}
+        assert {**payload, "metadata": body["metadata"]} == {**body, "model": "native-model"}
+        return httpx.Response(200, json={"input_tokens": 7})
+
+    client: Final = AsyncHTTPHandler(transport=httpx.MockTransport(upstream))
+    request: Final = Request(
+        {"type": "http", "headers": [(b"user-agent", b"claude-cli/native"), (b"anthropic-beta", b"native-beta")]}
+    )
+    try:
+        with (
+            patch("litellm.proxy.proxy_server.llm_router", router),
+            patch(
+                "litellm.proxy.anthropic_endpoints.endpoints.anthropic_count_tokens_handler",
+                AnthropicCountTokensHandler(http_client=client),
+            ),
+        ):
+            result: Final = await _count_tokens_with_oauth(
+                request,
+                body,
+                UserAPIKeyAuth(models=["native-alias"]),
+                "Bearer client-account-a",
+            )
+            assert result == {"input_tokens": 7}
+    finally:
+        await client.client.aclose()
 
 
 @pytest.mark.asyncio

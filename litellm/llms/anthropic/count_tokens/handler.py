@@ -45,6 +45,7 @@ class AnthropicCountTokensHandler(AnthropicCountTokensConfig):
         optional_params: Mapping[str, JsonValue] | None = None,
         extra_headers: Mapping[str, str] | None = None,
         native_params: Mapping[str, object] | None = None,
+        native_client: bool = False,
     ) -> dict[str, JsonValue]:
         """
         Handle a CountTokens request using httpx.
@@ -69,12 +70,20 @@ class AnthropicCountTokensHandler(AnthropicCountTokensConfig):
             verbose_logger.debug("Processing Anthropic CountTokens request for model: %s", model)
 
             # Transform request to Anthropic format
-            request_body: Final = self.transform_request_to_count_tokens(
-                model=model,
-                messages=messages,
-                tools=tools,
-                system=system,
-                optional_params=optional_params,
+            request_body: Final = (
+                _COUNT_RESPONSE.validate_python(
+                    MappingProxyType(
+                        {**(optional_params or MappingProxyType({})), "model": model, "messages": messages}
+                    )
+                )
+                if native_client
+                else self.transform_request_to_count_tokens(
+                    model=model,
+                    messages=messages,
+                    tools=tools,
+                    system=system,
+                    optional_params=optional_params,
+                )
             )
 
             verbose_logger.debug("Transformed request: %s", request_body)
@@ -117,6 +126,11 @@ class AnthropicCountTokensHandler(AnthropicCountTokensConfig):
                     )
                 )
             )
+            from litellm.llms.anthropic.oauth_policy import native_client_auth_headers
+
+            request_headers: Final = (
+                native_client_auth_headers(extra_headers or MappingProxyType({}), api_key) if native_client else headers
+            )
 
             # Use LiteLLM's async httpx client
             async_client: Final = self._http_client or get_async_httpx_client(
@@ -128,7 +142,7 @@ class AnthropicCountTokensHandler(AnthropicCountTokensConfig):
 
             response: Final = await async_client.post(
                 endpoint_url,
-                headers=headers,
+                headers=request_headers,
                 json=request_body,
                 timeout=request_timeout,
             )

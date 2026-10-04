@@ -10,6 +10,7 @@ import threading
 import warnings
 from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable, Mapping
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Final, Literal
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -64,6 +65,92 @@ from litellm.types.router import (
     PreRoutingHookResponse,
     RetryPolicy,
 )
+
+
+@pytest.mark.asyncio
+async def test_native_client_router_selects_profile_and_never_reuses_cached_account_response(tmp_path: Path) -> None:
+    from itertools import count
+    from litellm.caching.caching import Cache
+    from litellm.caching.llm_caching_handler import LLMClientCache
+    from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
+
+    profile: Final = tmp_path / "account_b"
+    profile.mkdir()
+    (profile / ".credentials.json").write_text(
+        json.dumps(
+            {
+                "claudeAiOauth": {
+                    "accessToken": "sk-ant-oat01-account-b",
+                    "expiresAt": 99999999999999,
+                    "scopes": ["user:inference"],
+                }
+            }
+        )
+    )
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "native-alias",
+                "litellm_params": {
+                    "model": "anthropic/native-model",
+                    "use_anthropic_oauth": True,
+                    "anthropic_execution_mode": "native_client",
+                    "anthropic_credential_mode": "claude_code",
+                    "anthropic_token_dir": str(tmp_path),
+                    "anthropic_auth_profile": "account_b",
+                },
+            }
+        ],
+        num_retries=0,
+        default_litellm_params={"caching": True},
+    )
+    sequence: Final = count(1)
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        assert request.headers["authorization"] == "Bearer sk-ant-oat01-account-b"
+        assert request.headers["user-agent"] == "claude-cli/native"
+        assert request.headers["anthropic-beta"] == "native-beta"
+        assert json.loads(request.content)["model"] == "native-model"
+        return httpx.Response(
+            200,
+            json={
+                "id": "msg_native",
+                "type": "message",
+                "role": "assistant",
+                "model": "native-model",
+                "content": [{"type": "text", "text": f"response-{next(sequence)}"}],
+                "stop_reason": "end_turn",
+                "stop_sequence": None,
+                "usage": {"input_tokens": 3, "output_tokens": 1},
+            },
+        )
+
+    client: Final = AsyncHTTPHandler(transport=httpx.MockTransport(upstream))
+    clients: Final = LLMClientCache()
+    clients.set_cache("async_httpx_clientanthropic", client)
+    params: Final = {
+        "model": "native-alias",
+        "messages": [{"role": "user", "content": "hello"}],
+        "max_tokens": 32,
+        "caching": True,
+        "extra_headers": {
+            "Authorization": "Bearer wrong-account",
+            "User-Agent": "claude-cli/native",
+            "anthropic-beta": "native-beta",
+        },
+    }
+    try:
+        with patch("litellm.in_memory_llm_clients_cache", clients), patch("litellm.cache", Cache(type="local")):
+            first: Final = await router.aanthropic_messages(**params)
+            second: Final = await router.aanthropic_messages(**params)
+            assert first["content"][0]["text"] == "response-1"
+            assert second["content"][0]["text"] == "response-2"
+            from litellm.llms.anthropic.common_utils import AnthropicError
+
+            with pytest.raises(AnthropicError, match="deployment policy"):
+                await router.aanthropic_messages(**params, anthropic_auth_profile="account_a")
+    finally:
+        await client.client.aclose()
 
 
 @pytest.mark.asyncio

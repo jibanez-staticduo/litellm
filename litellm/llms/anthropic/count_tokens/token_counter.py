@@ -80,6 +80,8 @@ class AnthropicTokenCounter(BaseTokenCounter):
         try:
             from litellm.llms.anthropic.native_transport import is_anthropic_native_sdk
 
+            if oauth_policy.is_anthropic_native_client(litellm_params):
+                raise AnthropicError(400, "Native Claude Code profiles require /v1/messages/count_tokens")
             native: Final = is_anthropic_native_sdk(litellm_params)
             api_base: Final = (
                 _COUNT_STRING.validate_python(litellm_params.get("api_base"), strict=True) if managed else None

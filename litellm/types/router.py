@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Final, Generic, Lite
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
 from typing_extensions import Protocol, ReadOnly, Required, TypedDict, runtime_checkable
 
 from litellm._logging import verbose_logger
@@ -426,8 +426,10 @@ class GenericLiteLLMParams(CredentialLiteLLMParams, CustomPricingLiteLLMParams):
     use_anthropic_oauth: bool | None = None
     anthropic_auth_profile: str | None = None
     anthropic_token_dir: str | None = None
+    anthropic_credential_mode: str | None = None
     anthropic_oauth_compatibility: str | None = None
     anthropic_execution_mode: str | None = None
+    anthropic_native_request_body: Mapping[str, JsonValue] | None = None
     chatgpt_auth_profile: str | None = None
     chatgpt_token_dir: str | None = None
     chatgpt_auth_file: str | None = None
@@ -615,6 +617,7 @@ class LiteLLMParamsTypedDict(TypedDict, total=False):
     use_anthropic_oauth: ReadOnly[bool | None]
     anthropic_auth_profile: ReadOnly[str | None]
     anthropic_token_dir: ReadOnly[str | None]
+    anthropic_credential_mode: ReadOnly[str | None]
     anthropic_oauth_compatibility: ReadOnly[str | None]
     anthropic_execution_mode: ReadOnly[str | None]
     chatgpt_auth_profile: str | None

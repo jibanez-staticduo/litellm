@@ -77,6 +77,8 @@ OPTIONAL_KWARGS_KEYS: Final = (
             "use_anthropic_oauth",
             "anthropic_auth_profile",
             "anthropic_token_dir",
+            "anthropic_credential_mode",
+            "anthropic_native_request_body",
             "anthropic_oauth_compatibility",
             "anthropic_execution_mode",
             "_anthropic_native_identity",

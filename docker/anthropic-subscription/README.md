@@ -1,8 +1,22 @@
 # Claude Code subscription gateway
 
-The verified phase 1 NAS gateway at `https://litellm.staticduo.com` keeps Anthropic OAuth login and refresh in Claude Code and records API-equivalent usage in LiteLLM. The isolated pilot at `127.0.0.1:14001` supplied the initial evidence and was retired after shared-route verification. The HTTP managed candidate passed Codex and refresh checks, but Anthropic rejected OpenCode through that transport. The native Agent SDK broker provides separate `*-subscription` aliases, dedicated subscription authorizations and server-owned refresh. Native Codex tool use and resume pass in isolation; the complete OpenCode request remains rejected by Anthropic, so promotion to Fedora and NAS is blocked
+The current flow uses native Claude Code with two account profiles, selected by LiteLLM. Native Claude Code owns login and credential renewal on Fedora. LiteLLM reads credentials and records API-equivalent usage. The earlier HTTP and Agent SDK experiments are recorded below as historical evidence
 
-## Shared deployment
+## Native Claude Code accounts
+
+`native-client-models.json` defines three neutral aliases and three explicit aliases per account. The neutral `claude-sonnet-5-5`, `claude-opus-5-5` and `claude-haiku-4-5` aliases initially select `staticduo`. Prefix an alias with `claude-staticduo/` or `claude-defend1/` to select that account explicitly
+
+Each deployment selects `anthropic_execution_mode=native_client`, `anthropic_credential_mode=claude_code` and `use_anthropic_oauth=true`. The proxy preserves the native Messages body and headers, replaces authorization with the selected account's access token and aligns the account UUID in native request metadata. Messages and their native count endpoint support this mode. Chat Completions, Responses and the generic token counter reject it
+
+Fedora mounts `~/.claude-homes` read-only. The NAS uses access snapshots described in `native-profiles/README.md`. Only access tokens and the required account identity reach those snapshots. The proxy reads both sources without writing credentials or renewing them. Run `claude_staticduo` or `claude_defend1` on Fedora to let native Claude renew its profile, then synchronize NAS access. An expired profile returns an authentication error
+
+The Fedora selector extends the existing signed journal and lock. Run `litellm_fallbacks claude --status`, `litellm_fallbacks claude staticduo` or `litellm_fallbacks claude defend1`. A switch changes only the neutral aliases' `anthropic_auth_profile` on Fedora and NAS. Explicit account aliases, ChatGPT routing and fallback arrays stay intact. `deploy/quota-sidecar/anthropic-primary.patch` and its manifest contain the reviewed controller changes
+
+`claude_litellm` starts the native client through each host's shared proxy. The NAS launcher synchronizes access snapshots before launch. `claude_usage` displays five-hour and weekly percentages, reset times and the extra usage state for both accounts. `claude_usage --json` provides the same data in a sanitized versioned format. These commands do not enable extra usage or perform inference
+
+The isolated candidate passed real native Read-tool and resume checks with Sonnet, and Read-tool checks with Opus and Haiku. Shared Fedora and NAS passed native Read-tool and resume checks. Both hosts' spend records carry the selected account and server OAuth attribution, and their costs match the deployed LiteLLM calculator. At validation, `defend1` had exhausted its weekly quota and both accounts reported extra usage disabled. Successful inference on that account requires quota availability
+
+## Earlier Shared Deployment
 
 `shared-models.json` is the deployment template for `claude-sonnet-5-5`, `claude-opus-5-5` and `claude-haiku-4-5`. They are visible to team `49cfd117-ef74-4eec-b26e-2d2ff083f5be` through its `all-proxy-models` access. Each deployment has the deliberately invalid sentinel `sk-ant-oat01-client-oauth-required` rather than a usable server credential. Its subscription metadata describes the intended use and does not enforce an immutable server policy. The inspected shared configuration has no global Anthropic API credential or fallback for these aliases, and header forwarding is limited to their model groups
 

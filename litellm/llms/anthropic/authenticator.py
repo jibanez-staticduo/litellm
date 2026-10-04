@@ -30,6 +30,7 @@ class AnthropicOAuthConfig(BaseModel):
     use_anthropic_oauth: bool = False
     anthropic_auth_profile: str = "default"
     anthropic_token_dir: str | None = None
+    anthropic_credential_mode: Literal["managed", "claude_code"] = "managed"
 
 
 class AnthropicAuthError(AnthropicError):
@@ -62,6 +63,16 @@ class _NativeImport(BaseModel):
     claudeAiOauth: _NativeCredential
 
 
+class _NativeAccount(BaseModel):
+    model_config = ConfigDict(frozen=True, strict=True, hide_input_in_errors=True)
+    accountUuid: str = Field(min_length=1)
+
+
+class _NativeSettings(BaseModel):
+    model_config = ConfigDict(frozen=True, strict=True, hide_input_in_errors=True)
+    oauthAccount: _NativeAccount
+
+
 class _RefreshResponse(BaseModel):
     model_config = ConfigDict(frozen=True, strict=True, hide_input_in_errors=True)
 
@@ -92,7 +103,9 @@ class _RefreshRequest(BaseModel):
 
 @dataclass(frozen=True, slots=True)
 class _AuthFailure:
-    kind: Literal["disabled", "profile", "missing", "invalid", "scope", "refresh", "storage"]
+    kind: Literal[
+        "disabled", "profile", "missing", "invalid", "scope", "refresh", "storage", "expired", "read_only", "account"
+    ]
 
 
 def _raise_public(failure: _AuthFailure) -> NoReturn:
@@ -111,6 +124,18 @@ def _raise_public(failure: _AuthFailure) -> NoReturn:
             raise AnthropicAuthError(401, "Anthropic OAuth refresh failed; authorize the profile again") from None
         case "storage":
             raise AnthropicError(503, "Anthropic OAuth credential storage is unavailable") from None
+        case "expired":
+            raise AnthropicAuthError(
+                401, "Claude Code profile login expired; refresh or log in with the native client"
+            ) from None
+        case "read_only":
+            raise AnthropicAuthError(
+                400, "Claude Code credential profiles are read-only; log in with the native client"
+            ) from None
+        case "account":
+            raise AnthropicAuthError(
+                401, "Claude Code profile account identity is missing or invalid; log in with the native client"
+            ) from None
     assert_never(failure.kind)
 
 
@@ -215,6 +240,11 @@ class AnthropicAuthenticator:
         profile: Final = self._config.anthropic_auth_profile
         if _PROFILE_PATTERN.fullmatch(profile) is None:
             return _AuthFailure("profile")
+        if self._config.anthropic_credential_mode == "claude_code":
+            native_directory: Final = (self._token_dir / profile).resolve()
+            if native_directory.parent != self._token_dir or native_directory.name != profile:
+                return _AuthFailure("profile")
+            return native_directory / ".credentials.json"
         filename: Final = "auth.json" if profile == "default" else f"{profile}.json"
         path: Final = (self._token_dir / filename).resolve()
         if path.parent != self._token_dir:
@@ -242,6 +272,13 @@ class AnthropicAuthenticator:
         path: Final = self._profile_path()
         if isinstance(path, _AuthFailure):
             _raise_public(path)
+        if self._config.anthropic_credential_mode == "claude_code":
+            native_credential: Final = _read_credential(path, native_import=True)
+            if isinstance(native_credential, _AuthFailure):
+                _raise_public(native_credential)
+            if self._clock() >= native_credential.expires_at - TOKEN_EXPIRY_SKEW_SECONDS:
+                _raise_public(_AuthFailure("expired"))
+            return native_credential.access_token.get_secret_value()
         try:
             with self._profile_lock(path):
                 result: Final = self._get_access_token_locked(path)
@@ -250,6 +287,22 @@ class AnthropicAuthenticator:
         if isinstance(result, _AuthFailure):
             _raise_public(result)
         return result
+
+    def get_account_uuid(self) -> str:
+        path: Final = self._profile_path()
+        if isinstance(path, _AuthFailure):
+            _raise_public(path)
+        if self._config.anthropic_credential_mode != "claude_code":
+            _raise_public(_AuthFailure("account"))
+        try:
+            descriptor: Final = os.open(path.parent / ".claude.json", os.O_RDONLY | os.O_NOFOLLOW)
+            with os.fdopen(descriptor, "rb") as handle:
+                account: Final = _NativeSettings.model_validate_json(handle.read()).oauthAccount.accountUuid
+        except (OSError, ValidationError):
+            _raise_public(_AuthFailure("account"))
+        if any(char.isspace() for char in account):
+            _raise_public(_AuthFailure("account"))
+        return account
 
     def _get_access_token_locked(self, path: Path) -> str | _AuthFailure:
         credential: Final = _read_credential(path)
@@ -300,6 +353,8 @@ class AnthropicAuthenticator:
         )
 
     def import_credentials(self, source_path: str | Path) -> None:
+        if self._config.anthropic_credential_mode == "claude_code":
+            _raise_public(_AuthFailure("read_only"))
         path: Final = self._profile_path()
         if isinstance(path, _AuthFailure):
             _raise_public(path)

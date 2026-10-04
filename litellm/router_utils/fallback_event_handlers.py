@@ -78,15 +78,16 @@ def validate_anthropic_model_group_profiles(
         raise ValueError(f"Anthropic OAuth model group {model_group!r} contains mixed authentication profiles")
 
 
-def _anthropic_oauth_deployment_identity(deployment: Mapping[str, object]) -> tuple[str, str, str]:
+def _anthropic_oauth_deployment_identity(deployment: Mapping[str, object]) -> tuple[str, str, str, str]:
     params: Final = deployment.get("litellm_params")
     if not isinstance(params, Mapping):
-        return ("default", "", "")
+        return ("default", "", "", "managed")
     parsed_params: Final = _ANTHROPIC_OAUTH_PARAMS_ADAPTER.validate_python(params)
     return (
         str(parsed_params.get("anthropic_auth_profile") or "default"),
         str(parsed_params.get("anthropic_token_dir") or ""),
         str(parsed_params.get("anthropic_execution_mode") or ""),
+        str(parsed_params.get("anthropic_credential_mode") or "managed"),
     )
 
 

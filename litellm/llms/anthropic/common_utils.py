@@ -1017,12 +1017,15 @@ class AnthropicModelInfo(BaseLLMModelInfo):
     ) -> dict:
         from litellm.llms.anthropic.native_transport import is_anthropic_native_sdk, native_sdk_connection
         from litellm.llms.anthropic.oauth_policy import (
+            is_anthropic_native_client,
             normalize_anthropic_oauth_headers,
             resolve_anthropic_oauth_access_token,
         )
 
         if is_anthropic_native_sdk(litellm_params):
             return native_sdk_connection(litellm_params).request_headers()
+        if is_anthropic_native_client(litellm_params):
+            raise AnthropicError(400, "Native Claude Code profiles require the Anthropic Messages or count_tokens API")
 
         if api_base is None and isinstance(litellm_params, dict):
             api_base = litellm_params.get("api_base")

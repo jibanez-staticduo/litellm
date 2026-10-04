@@ -4163,6 +4163,7 @@ class Router:
             "use_anthropic_oauth",
             "anthropic_auth_profile",
             "anthropic_token_dir",
+            "anthropic_credential_mode",
             "anthropic_oauth_compatibility",
             "anthropic_execution_mode",
         }
@@ -4206,9 +4207,12 @@ class Router:
         managed: Final = deployment_params.get("use_anthropic_oauth") is True
         validate_anthropic_oauth_request_overrides(request_params, deployment_params)
         native: Final = is_anthropic_native_sdk(deployment_params)
+        from litellm.llms.anthropic.oauth_policy import is_anthropic_native_client
+
+        native_client: Final = is_anthropic_native_client(deployment_params)
         native_cache_controls: Final[Mapping[str, object]] = (
             MappingProxyType({"caching": False, "cache": MappingProxyType({"no-cache": True, "no-store": True})})
-            if native
+            if native or native_client
             else MappingProxyType({})
         )
         controls: Final[Mapping[str, object]] = MappingProxyType(
@@ -4216,6 +4220,7 @@ class Router:
                 "use_anthropic_oauth": managed,
                 "anthropic_auth_profile": deployment_params.get("anthropic_auth_profile") or "default",
                 "anthropic_token_dir": deployment_params.get("anthropic_token_dir"),
+                "anthropic_credential_mode": deployment_params.get("anthropic_credential_mode"),
                 "anthropic_oauth_compatibility": deployment_params.get("anthropic_oauth_compatibility"),
                 "anthropic_execution_mode": deployment_params.get("anthropic_execution_mode"),
                 **native_cache_controls,
@@ -4237,7 +4242,7 @@ class Router:
         stripped: Final[frozenset[str]] = (
             Router._ANTHROPIC_OAUTH_PARAMS
             | (Router._ANTHROPIC_OAUTH_CREDENTIAL_PARAMS if managed else frozenset[str]())
-            | (frozenset({"cache", "caching"}) if native else frozenset({NATIVE_IDENTITY_FIELD}))
+            | (frozenset({"cache", "caching"}) if native or native_client else frozenset({NATIVE_IDENTITY_FIELD}))
         )
         sanitized: Final = Router._anthropic_oauth_strip_carrier(request_params, stripped, managed)
         nested: Final[Mapping[str, object]] = (

@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import uuid
+from pathlib import Path
 from datetime import datetime
 from typing import Any, Dict, Final, List
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -22,6 +23,89 @@ from litellm.types.utils import (
     StandardLoggingPayloadErrorInformation,
     StreamingChoices,
 )
+
+
+@pytest.mark.asyncio
+async def test_native_client_profile_replaces_auth_and_preserves_native_request(tmp_path: Path) -> None:
+    profile: Final = tmp_path / "account_b"
+    profile.mkdir()
+    (profile / ".credentials.json").write_text(
+        json.dumps(
+            {
+                "claudeAiOauth": {
+                    "accessToken": "sk-ant-oat01-account-b",
+                    "expiresAt": 99999999999999,
+                    "scopes": ["user:inference"],
+                }
+            }
+        )
+    )
+    (profile / ".claude.json").write_text(json.dumps({"oauthAccount": {"accountUuid": "account-b-uuid"}}))
+    identity: Final = {"device_id": "native-device", "account_uuid": "account-a-uuid", "session_id": "native-session"}
+    body: Final = {
+        "messages": [
+            {"role": "user", "content": "first"},
+            {
+                "role": "assistant",
+                "content": [
+                    {"type": "thinking", "thinking": "", "signature": "native-signature"},
+                    {"type": "tool_use", "id": "Native.Tool:0", "name": "Native.Tool", "input": {}},
+                ],
+            },
+            {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "Native.Tool:0", "content": ""}]},
+        ],
+        "max_tokens": 128,
+        "stream": False,
+        "system": [{"type": "text", "text": "native billing and instructions"}],
+        "tools": [{"name": "Native.Tool", "input_schema": {"type": "object"}}],
+        "metadata": {"user_id": json.dumps(identity)},
+        "thinking": {"type": "disabled"},
+    }
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        assert str(request.url) == "https://api.anthropic.com/v1/messages"
+        assert request.headers["authorization"] == "Bearer sk-ant-oat01-account-b"
+        assert "x-api-key" not in request.headers
+        assert request.headers["user-agent"] == "claude-cli/native-client"
+        assert request.headers["anthropic-beta"] == "native-beta"
+        payload: Final = json.loads(request.content)
+        assert json.loads(payload["metadata"]["user_id"]) == {**identity, "account_uuid": "account-b-uuid"}
+        assert {**payload, "metadata": body["metadata"]} == {"model": "native-model", **body}
+        return httpx.Response(
+            200,
+            json={
+                "id": "msg_native",
+                "type": "message",
+                "role": "assistant",
+                "model": "native-model",
+                "content": [{"type": "text", "text": "continued"}],
+                "stop_reason": "end_turn",
+                "stop_sequence": None,
+                "usage": {"input_tokens": 3, "output_tokens": 1},
+            },
+        )
+
+    client: Final = AsyncHTTPHandler(transport=httpx.MockTransport(upstream))
+    try:
+        result: Final = await litellm.anthropic.messages.acreate(
+            model="anthropic/native-model",
+            client=client,
+            use_anthropic_oauth=True,
+            anthropic_execution_mode="native_client",
+            anthropic_credential_mode="claude_code",
+            anthropic_auth_profile="account_b",
+            anthropic_token_dir=str(tmp_path),
+            extra_headers={
+                "Authorization": "Bearer client-account-a",
+                "User-Agent": "claude-cli/native-client",
+                "anthropic-beta": "native-beta",
+                "anthropic-version": "native-version",
+            },
+            **body,
+        )
+        assert result["content"][0]["text"] == "continued"
+    finally:
+        await client.client.aclose()
 
 
 @pytest.mark.asyncio

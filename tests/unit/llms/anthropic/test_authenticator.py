@@ -1,3 +1,4 @@
+import json
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -13,8 +14,8 @@ from pydantic import BaseModel, ConfigDict
 from litellm.llms.anthropic.authenticator import (
     ANTHROPIC_OAUTH_CLIENT_ID,
     ANTHROPIC_OAUTH_TOKEN_URL,
-    AnthropicAuthError,
     AnthropicAuthenticator,
+    AnthropicAuthError,
     AnthropicOAuthConfig,
 )
 from litellm.llms.anthropic.common_utils import AnthropicError
@@ -324,3 +325,83 @@ def test_authenticator_rereads_profile_after_external_rotation(tmp_path: Path) -
     )
 
     assert authenticator.get_access_token() == "sk-ant-oat01-external-access"
+
+
+@pytest.mark.parametrize("expired", (False, True))
+def test_native_profile_is_read_only_and_never_refreshes(tmp_path: Path, expired: bool) -> None:
+    directory: Final = tmp_path / "work"
+    directory.mkdir()
+    path: Final = directory / ".credentials.json"
+    expiration: Final = (_NOW - 100 if expired else _NOW + 200) * 1000
+    path.write_text(
+        json.dumps(
+            {
+                "extra": "preserved",
+                "claudeAiOauth": {
+                    "accessToken": "sk-ant-oat01-native-access",
+                    "expiresAt": expiration,
+                    "scopes": ["user:inference"],
+                    "subscriptionType": "max",
+                },
+            }
+        )
+    )
+    original: Final = path.read_bytes()
+    authenticator: Final = AnthropicAuthenticator(
+        AnthropicOAuthConfig(
+            use_anthropic_oauth=True,
+            anthropic_auth_profile="work",
+            anthropic_token_dir=str(tmp_path),
+            anthropic_credential_mode="claude_code",
+        ),
+        http_client=httpx.Client(transport=httpx.MockTransport(_reject_network)),
+        clock=lambda: _NOW,
+    )
+    if expired:
+        with pytest.raises(AnthropicAuthError, match=r"Claude Code.*expired"):
+            authenticator.get_access_token()
+    else:
+        assert authenticator.get_access_token() == "sk-ant-oat01-native-access"
+    assert path.read_bytes() == original
+    assert tuple(directory.iterdir()) == (path,)
+    with pytest.raises(AnthropicAuthError, match="read-only"):
+        authenticator.import_credentials(path)
+
+
+@pytest.mark.parametrize("symlink_target", ("profile", "credential"))
+def test_native_profile_never_reads_external_symlink(tmp_path: Path, symlink_target: str) -> None:
+    root: Final = tmp_path / "profiles"
+    root.mkdir()
+    outside: Final = tmp_path / "outside"
+    outside.mkdir()
+    secret: Final = outside / ".credentials.json"
+    secret.write_text(
+        json.dumps(
+            {
+                "claudeAiOauth": {
+                    "accessToken": "sk-ant-oat01-external-token",
+                    "expiresAt": 99999999999999,
+                    "scopes": ["user:inference"],
+                }
+            }
+        )
+    )
+    profile: Final = root / "work"
+    if symlink_target == "profile":
+        profile.symlink_to(outside, target_is_directory=True)
+    else:
+        profile.mkdir()
+        (profile / ".credentials.json").symlink_to(secret)
+    authenticator: Final = AnthropicAuthenticator(
+        AnthropicOAuthConfig(
+            use_anthropic_oauth=True,
+            anthropic_auth_profile="work",
+            anthropic_token_dir=str(root),
+            anthropic_credential_mode="claude_code",
+        ),
+        clock=lambda: _NOW,
+    )
+    with pytest.raises(AnthropicError) as caught:
+        authenticator.get_access_token()
+    assert "external-token" not in str(caught.value)
+    assert secret.read_text().startswith('{"claudeAiOauth":')

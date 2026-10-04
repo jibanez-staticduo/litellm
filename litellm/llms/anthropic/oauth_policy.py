@@ -24,11 +24,75 @@ _OAUTH_FIELDS: Final = (
     "anthropic_token_dir",
     "anthropic_oauth_compatibility",
     "anthropic_execution_mode",
+    "anthropic_credential_mode",
 )
 
 
 def is_anthropic_oauth_managed(params: Mapping[str, object]) -> bool:
     return params.get("use_anthropic_oauth") is True
+
+
+def is_anthropic_native_client(params: Mapping[str, object]) -> bool:
+    if params.get("anthropic_execution_mode") != "native_client":
+        return False
+    if not is_anthropic_oauth_managed(params) or params.get("custom_llm_provider") not in (None, "anthropic"):
+        raise AnthropicError(400, "The native client requires a managed Anthropic deployment")
+    return True
+
+
+def native_client_auth_headers(headers: object, token: str) -> dict[str, str]:
+    validated: Final = _HEADERS.validate_python(headers)
+    return _HEADERS.validate_python(
+        MappingProxyType(
+            {
+                **MappingProxyType(
+                    {
+                        name: value
+                        for name, value in validated.items()
+                        if name.lower()
+                        not in ("authorization", "x-api-key", "api-key", "x-litellm-api-key", "host", "content-length")
+                    }
+                ),
+                "authorization": f"Bearer {token}",
+            }
+        )
+    )
+
+
+def native_client_metadata(metadata: object, params: Mapping[str, object]) -> JsonValue:
+    original: Final = _SYSTEM.validate_python(metadata)
+    if not isinstance(original, dict) or not isinstance(user_id := original.get("user_id"), str):
+        return original
+    try:
+        identity: Final = _SYSTEM.validate_json(user_id)
+    except ValidationError:
+        return original
+    if not isinstance(identity, dict) or "account_uuid" not in identity:
+        return original
+    config: Final = anthropic_oauth_config(params)
+    if config is None:
+        raise AnthropicError(400, "Native client account identity requires a managed profile")
+    account_uuid: Final = AnthropicAuthenticator(config).get_account_uuid()
+    aligned: Final = _SYSTEM_BLOCK.validate_python(MappingProxyType({**identity, "account_uuid": account_uuid}))
+    return _SYSTEM_BLOCK.validate_python(MappingProxyType({**original, "user_id": _SYSTEM.dump_json(aligned).decode()}))
+
+
+def native_client_request_body(body: object, params: Mapping[str, object], model: str) -> dict[str, JsonValue]:
+    original: Final = _SYSTEM_BLOCK.validate_python(body)
+    metadata: Final = original.get("metadata")
+    return _SYSTEM_BLOCK.validate_python(
+        MappingProxyType(
+            {
+                **original,
+                **(
+                    MappingProxyType({"metadata": native_client_metadata(metadata, params)})
+                    if metadata is not None
+                    else MappingProxyType({})
+                ),
+                "model": model,
+            }
+        )
+    )
 
 
 def normalize_anthropic_oauth_headers(
@@ -89,7 +153,7 @@ def validate_anthropic_oauth_request_overrides(
         if carrier.get("custom_llm_provider") not in (None, "anthropic"):
             raise AnthropicError(400, "Request cannot override the Anthropic OAuth provider")
         for name in ("headers", "extra_headers"):
-            _validate_oauth_headers(carrier.get(name))
+            _validate_oauth_headers(carrier.get(name), allow_client_auth=is_anthropic_native_client(deployment_params))
 
 
 def _validate_native_overrides(carrier: Mapping[str, object]) -> None:
@@ -122,9 +186,10 @@ def _validate_oauth_setting(
         raise AnthropicError(400, "Request cannot override the Anthropic OAuth deployment policy")
 
 
-def _validate_oauth_headers(headers: object) -> None:
+def _validate_oauth_headers(headers: object, *, allow_client_auth: bool = False) -> None:
     if isinstance(headers, Mapping) and any(
-        header.lower() in ("authorization", "x-api-key") or header.lower().startswith("x-litellm-native-")
+        (not allow_client_auth and header.lower() in ("authorization", "x-api-key"))
+        or header.lower().startswith("x-litellm-native-")
         for header in _OVERRIDES.validate_python(headers)
     ):
         raise AnthropicError(400, "Client credentials cannot override central Anthropic OAuth")
@@ -142,6 +207,8 @@ def anthropic_oauth_config(params: Mapping[str, object]) -> AnthropicOAuthConfig
     compatibility: Final = params.get("anthropic_oauth_compatibility")
     if compatibility not in (None, "claude_code"):
         raise AnthropicError(400, "Unsupported Anthropic OAuth compatibility preset")
+    if params.get("anthropic_credential_mode") == "claude_code" and not is_anthropic_native_client(params):
+        raise AnthropicError(400, "Claude Code credential profiles require the native client execution mode")
     try:
         return AnthropicOAuthConfig.model_validate(
             _OVERRIDES.validate_python(
@@ -150,6 +217,7 @@ def anthropic_oauth_config(params: Mapping[str, object]) -> AnthropicOAuthConfig
                         "use_anthropic_oauth": True,
                         "anthropic_auth_profile": params.get("anthropic_auth_profile") or "default",
                         "anthropic_token_dir": params.get("anthropic_token_dir"),
+                        "anthropic_credential_mode": params.get("anthropic_credential_mode") or "managed",
                     }
                 )
             )
@@ -173,7 +241,11 @@ def resolve_anthropic_oauth_access_token(
     if config is None:
         return None
     validate_anthropic_oauth_destination(api_base)
-    if headers is not None and any(name.lower() in ("authorization", "x-api-key") for name in headers):
+    if (
+        not is_anthropic_native_client(params)
+        and headers is not None
+        and any(name.lower() in ("authorization", "x-api-key") for name in headers)
+    ):
         raise AnthropicError(400, "Client credentials cannot override central Anthropic OAuth")
     return token_provider(config) if token_provider is not None else AnthropicAuthenticator(config).get_access_token()
 
@@ -181,7 +253,7 @@ def resolve_anthropic_oauth_access_token(
 def apply_anthropic_oauth_system(system: object, params: Mapping[str, object]) -> JsonValue:
     from .native_transport import is_anthropic_native_sdk
 
-    if is_anthropic_native_sdk(params):
+    if is_anthropic_native_sdk(params) or is_anthropic_native_client(params):
         return _SYSTEM.validate_python(system)
     config: Final = anthropic_oauth_config(params)
     original: Final = _SYSTEM.validate_python(system)

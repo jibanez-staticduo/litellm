@@ -7,7 +7,7 @@ if [ -n "${ANTHROPIC_API_KEY:-}" ] || [ -n "${ANTHROPIC_AUTH_TOKEN:-}" ]; then
 fi
 
 key_file=${LITELLM_CLAUDE_KEY_FILE:-/volume2/docker/litellm/anthropic-subscription/claude-code-key}
-export ANTHROPIC_BASE_URL=https://litellm.staticduo.com
+export ANTHROPIC_BASE_URL=${LITELLM_CLAUDE_BASE_URL:-https://litellm.staticduo.com}
 export ANTHROPIC_CUSTOM_HEADERS="x-litellm-api-key: Bearer $(cat "$key_file")"
 export ANTHROPIC_MODEL=claude-sonnet-5-5
 export ANTHROPIC_DEFAULT_SONNET_MODEL=claude-sonnet-5-5

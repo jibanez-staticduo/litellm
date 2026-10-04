@@ -101,7 +101,7 @@ class AnthropicNativeConnection:
 
 def is_anthropic_native_sdk(params: Mapping[str, object]) -> bool:
     mode: Final = params.get("anthropic_execution_mode")
-    if mode is None:
+    if mode in (None, "native_client"):
         return False
     if mode != "native_sdk":
         raise AnthropicError(400, "Unsupported Anthropic execution mode")

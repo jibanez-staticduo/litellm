@@ -203,7 +203,7 @@ def _current_format_embedding_entry(entry: object) -> CachedEmbedding | None:
 
 
 def _uses_anthropic_native_sdk(request_params: Mapping[str, object]) -> bool:
-    return request_params.get("anthropic_execution_mode") == "native_sdk"
+    return request_params.get("anthropic_execution_mode") in ("native_sdk", "native_client")
 
 
 class LLMCachingHandler:
