@@ -529,6 +529,10 @@ class AnthropicMessagesHandler(BaseTranslation):
         """
         Process input messages by applying guardrails to text content.
         """
+        from litellm.proxy.guardrails.guardrail_hooks.headroom.headroom import HeadroomGuardrail
+
+        if isinstance(guardrail_to_apply, HeadroomGuardrail):
+            return await guardrail_to_apply.process_native_request(data, "anthropic", litellm_logging_obj)
         messages: Final = data.get("messages")
         if messages is None:
             return data

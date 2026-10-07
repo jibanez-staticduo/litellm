@@ -23,20 +23,26 @@ Tests cover:
 
 import json
 import time
-from typing import Optional
+from collections.abc import Mapping
+from threading import RLock
+from typing import Final, Literal, TypeAlias
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
 import respx
 from fastapi import HTTPException
+from pydantic import TypeAdapter
 
 import litellm
-
+from litellm.llms.anthropic.chat.guardrail_translation.handler import AnthropicMessagesHandler
+from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
+from litellm.llms.openai.chat.guardrail_translation.handler import OpenAIChatCompletionsHandler
+from litellm.llms.openai.responses.guardrail_translation.handler import OpenAIResponsesHandler
 from litellm.proxy.guardrails.guardrail_hooks.headroom.headroom import (
+    HEADROOM_RETRIEVE_TOOL_NAME,
     HeadroomGuardrail,
     has_headroom_retrieve_tool,
-    HEADROOM_RETRIEVE_TOOL_NAME,
 )
 from litellm.proxy.spend_tracking.compression_savings import (
     extract_compression_saved_tokens,
@@ -1082,7 +1088,10 @@ async def test_responses_request_sends_compressed_input_and_retrieve_tool_upstre
         guardrail.async_handler,
         "post",
         new_callable=AsyncMock,
-        return_value=_make_compress_response(COMPRESSED_MESSAGES_WITH_HASH, ccr_hashes=["b573993006976af767214fac"]),
+        return_value=_make_compress_response(
+            [{**COMPRESSED_MESSAGES_WITH_HASH[0], "headroom_native_text_path": ["input", 0, "content"]}],
+            ccr_hashes=["b573993006976af767214fac"],
+        ),
     ):
         result = await OpenAIResponsesHandler().process_input_messages(data=data, guardrail_to_apply=guardrail)
 
@@ -2152,7 +2161,7 @@ async def test_pre_call_deployment_hook_converts_stream_only_for_ccr_chat_comple
     guardrail: HeadroomGuardrail,
     call_type: CallTypes,
     stream: bool,
-    tools: Optional[list],
+    tools: list[object] | None,
     expect_conversion: bool,
 ):
     kwargs = {"model": "gpt-4o", "stream": stream, "tools": tools}
@@ -2207,7 +2216,9 @@ async def test_pre_call_deployment_hook_still_compresses_for_deployment_level_co
         guardrail.async_handler,
         "post",
         new_callable=AsyncMock,
-        return_value=_make_compress_response(COMPRESSED_MESSAGES),
+        return_value=_make_compress_response(
+            [{**COMPRESSED_MESSAGES[0], "headroom_native_text_path": ["messages", 1, "content"]}]
+        ),
     ):
         result = await guardrail.async_pre_call_deployment_hook(kwargs=kwargs, call_type=CallTypes.acompletion)
 
@@ -2231,7 +2242,10 @@ async def test_pre_call_deployment_hook_converts_stream_after_deployment_level_c
         guardrail.async_handler,
         "post",
         new_callable=AsyncMock,
-        return_value=_make_compress_response(COMPRESSED_MESSAGES_WITH_HASH, ccr_hashes=["b573993006976af767214fac"]),
+        return_value=_make_compress_response(
+            [{**COMPRESSED_MESSAGES_WITH_HASH[0], "headroom_native_text_path": ["messages", 1, "content"]}],
+            ccr_hashes=["b573993006976af767214fac"],
+        ),
     ):
         result = await guardrail.async_pre_call_deployment_hook(kwargs=kwargs, call_type=CallTypes.acompletion)
 
@@ -3014,3 +3028,542 @@ def test_unusable_timeout_falls_back_to_the_default(configured: float):
 
     assert guardrail.timeout.read == 60.0
     assert guardrail.timeout.connect == 5.0
+
+
+NativeFormat: TypeAlias = Literal["responses", "anthropic", "chat"]
+NativeReply: TypeAlias = Literal["compress", "unchanged", "unavailable", "role", "count", "nontext", "reorder", "ccr"]
+_NATIVE_OLD_TEXT: Final = "historical log A\n" * 300
+_NATIVE_SECOND_TEXT: Final = "historical log B\n" * 300
+_NATIVE_OBJECT_ADAPTER: Final = TypeAdapter(dict[str, object])
+_NATIVE_ROWS_ADAPTER: Final = TypeAdapter(list[dict[str, object]])
+
+
+def _native_request(request_format: NativeFormat, compressed: bool = False) -> dict[str, object]:
+    first: Final = "short A" if compressed else _NATIVE_OLD_TEXT
+    second: Final = "short B" if compressed else _NATIVE_SECOND_TEXT
+    text_type: Final = "input_text" if request_format == "responses" else "text"
+    image: Final = (
+        {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": "opaque"}}
+        if request_format == "anthropic"
+        else {"type": "input_image" if request_format == "responses" else "image_url", "image_url": "opaque"}
+    )
+    history: Final = [
+        {
+            "role": "user",
+            "content": [{"type": text_type, "text": "cached history", "cache_control": {"type": "ephemeral"}}],
+        },
+        {"role": "assistant", "content": "cached acknowledgement"},
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": text_type,
+                    "text": first,
+                    "annotations": [{"type": "citation", "index": 7}],
+                    "extension": {"keep": [1, 2]},
+                },
+                image,
+                {"type": text_type, "text": second, "extension": {"position": "after image"}},
+            ],
+            "extension": {"unknown_nested": {"keep": True}},
+        },
+    ]
+    function_name: Final = "read_" + "long_tool_name_" * 6
+    parameters: Final = {"type": "object", "properties": {"path": {"type": "string"}}, "additionalProperties": False}
+    common: Final = {
+        "model": "synthetic-model",
+        "stream": False,
+        "litellm_call_id": "native-regression",
+        "metadata": {"caller_field": {"keep": ["unknown", 1]}},
+        "client_extension": {"opaque": [{"future_option": True}]},
+    }
+    if request_format == "responses":
+        return {
+            **common,
+            "instructions": "protected instructions",
+            "tools": [
+                {
+                    "type": "function",
+                    "name": function_name,
+                    "parameters": parameters,
+                    "strict": True,
+                    "extension": {"keep": True},
+                },
+                {"type": "custom", "name": "patch", "format": {"type": "text"}, "extension": {"keep": True}},
+            ],
+            "input": [
+                {
+                    "type": "additional_tools",
+                    "role": "developer",
+                    "tools": [
+                        {
+                            "type": "namespace",
+                            "name": "functions",
+                            "tools": [{"type": "custom", "name": "edit", "format": {"type": "text"}}],
+                        }
+                    ],
+                    "extension": {"keep": True},
+                },
+                *history,
+                {
+                    "type": "reasoning",
+                    "id": "rs_1",
+                    "status": "completed",
+                    "encrypted_content": "opaque encrypted reasoning",
+                    "summary": [{"type": "summary_text", "text": "private summary"}],
+                    "extension": {"keep": True},
+                },
+                {
+                    "type": "function_call",
+                    "id": "fc_1",
+                    "call_id": "call_1",
+                    "name": function_name,
+                    "arguments": '{"path":"one"}',
+                    "status": "completed",
+                    "extension": {"keep": True},
+                },
+                {
+                    "type": "function_call",
+                    "id": "fc_2",
+                    "call_id": "call_2",
+                    "name": function_name,
+                    "arguments": '{"path":"two"}',
+                    "status": "completed",
+                },
+                {
+                    "role": "assistant",
+                    "type": "message",
+                    "id": "msg_1",
+                    "status": "completed",
+                    "phase": "commentary",
+                    "content": [
+                        {
+                            "type": "output_text",
+                            "text": "Reading both files",
+                            "annotations": [{"type": "citation", "index": 1}],
+                        }
+                    ],
+                },
+                {
+                    "type": "function_call_output",
+                    "call_id": "call_1",
+                    "output": [{"type": "input_text", "text": "first tool output", "extension": {"keep": True}}],
+                    "extension": {"keep": True},
+                },
+                {
+                    "type": "function_call_output",
+                    "call_id": "call_2",
+                    "output": "second tool output",
+                    "extension": {"keep": True},
+                },
+                {
+                    "type": "custom_tool_call",
+                    "id": "ct_1",
+                    "call_id": "custom_1",
+                    "name": "patch",
+                    "input": "opaque patch syntax",
+                    "namespace": "functions",
+                    "status": "completed",
+                },
+                {
+                    "type": "custom_tool_call_output",
+                    "call_id": "custom_1",
+                    "output": "opaque custom output",
+                    "extension": {"keep": True},
+                },
+                {"role": "user", "content": "fresh instruction"},
+            ],
+        }
+    if request_format == "anthropic":
+        return {
+            **common,
+            "system": [
+                {
+                    "type": "text",
+                    "text": "protected instructions",
+                    "cache_control": {"type": "ephemeral"},
+                    "extension": {"keep": True},
+                }
+            ],
+            "tools": [
+                {
+                    "name": function_name,
+                    "input_schema": parameters,
+                    "defer_loading": True,
+                    "cache_control": {"type": "ephemeral"},
+                    "extension": {"keep": True},
+                }
+            ],
+            "messages": [
+                *history,
+                {
+                    "role": "assistant",
+                    "content": [
+                        {"type": "thinking", "thinking": "opaque thinking", "signature": "opaque signature"},
+                        {"type": "tool_use", "id": "call_1", "name": function_name, "input": {"path": "one"}},
+                    ],
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": "call_1",
+                            "is_error": True,
+                            "content": [{"type": "text", "text": "tool output", "extension": {"keep": True}}, image],
+                            "extension": {"keep": True},
+                        }
+                    ],
+                },
+                {"role": "user", "content": "fresh instruction"},
+            ],
+        }
+    return {
+        **common,
+        "tools": [
+            {
+                "type": "function",
+                "function": {"name": function_name, "parameters": parameters, "strict": True},
+                "extension": {"keep": True},
+            }
+        ],
+        "messages": [
+            {"role": "system", "content": "protected instructions"},
+            *history,
+            {
+                "role": "assistant",
+                "content": "Reading both files",
+                "tool_calls": [
+                    {
+                        "id": "call_1",
+                        "type": "function",
+                        "function": {"name": function_name, "arguments": '{"path":"one"}'},
+                    }
+                ],
+                "reasoning_content": "opaque reasoning",
+                "extension": {"keep": True},
+            },
+            {"role": "tool", "tool_call_id": "call_1", "content": "tool output", "extension": {"keep": True}},
+            {"role": "user", "content": "fresh instruction"},
+        ],
+    }
+
+
+def _native_handler(
+    request_format: NativeFormat,
+) -> OpenAIResponsesHandler | AnthropicMessagesHandler | OpenAIChatCompletionsHandler:
+    if request_format == "responses":
+        return OpenAIResponsesHandler()
+    if request_format == "anthropic":
+        return AnthropicMessagesHandler()
+    return OpenAIChatCompletionsHandler()
+
+
+def _native_guardrail(router: respx.MockRouter, ccr_retrieval: bool = True) -> HeadroomGuardrail:
+    guardrail: Final = _make_guardrail(unreachable_fallback="fail_open", ccr_retrieval=ccr_retrieval)
+    guardrail.async_handler = AsyncHTTPHandler(transport=httpx.MockTransport(router.async_handler))
+    return guardrail
+
+
+def _native_compress_reply(request: httpx.Request, behavior: NativeReply) -> httpx.Response:
+    if behavior == "unavailable":
+        return httpx.Response(503, json={"error": "unavailable"})
+    body: Final = _NATIVE_OBJECT_ADAPTER.validate_json(request.content)
+    rows: Final = _NATIVE_ROWS_ADAPTER.validate_python(body["messages"])
+    replacements: Final = {_NATIVE_OLD_TEXT: "short A", _NATIVE_SECOND_TEXT: "short B"}
+    changed: Final = [{**row, "content": replacements.get(str(row.get("content")), row.get("content"))} for row in rows]
+    returned: Final = (
+        rows
+        if behavior == "unchanged"
+        else changed[:-1]
+        if behavior == "count"
+        else [{**changed[0], "role": "system"}, *changed[1:]]
+        if behavior == "role"
+        else [{**changed[0], "tool_calls": [{"id": "injected"}]}, *changed[1:]]
+        if behavior == "nontext"
+        else list(reversed(changed))
+        if behavior == "reorder"
+        else changed
+    )
+    return httpx.Response(
+        200,
+        json={
+            "messages": returned,
+            "tokens_before": 1000,
+            "tokens_after": 100,
+            **({"ccr_hashes": [CCR_HASH]} if behavior in {"ccr", "role", "count", "nontext", "reorder"} else {}),
+        },
+    )
+
+
+def _native_payload(data: Mapping[str, object]) -> dict[str, object]:
+    metadata: Final = _NATIVE_OBJECT_ADAPTER.validate_python(data.get("metadata", {}))
+    return {
+        **data,
+        "metadata": {
+            key: value
+            for key, value in metadata.items()
+            if key not in {"standard_logging_guardrail_information", "applied_guardrails"}
+        },
+    }
+
+
+def _native_saved_tokens(data: Mapping[str, object]) -> int:
+    metadata: Final = _NATIVE_OBJECT_ADAPTER.validate_python(data.get("metadata", {}))
+    return extract_compression_saved_tokens(
+        {"guardrail_information": metadata.get("standard_logging_guardrail_information", [])}
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("request_format", ["responses", "anthropic", "chat"])
+async def test_headroom_native_handler_changes_only_separate_text_leaves(
+    request_format: NativeFormat,
+    respx_mock: respx.MockRouter,
+):
+    request: Final = _native_request(request_format)
+    compressor: Final = respx_mock.post(f"{FAKE_API_BASE}/v1/compress").mock(
+        side_effect=lambda outgoing: _native_compress_reply(outgoing, "compress")
+    )
+    result: Final = await _native_handler(request_format).process_input_messages(
+        request, _native_guardrail(respx_mock, ccr_retrieval=False)
+    )
+    assert _native_payload(result) == _native_request(request_format, compressed=True)
+    sent: Final = _NATIVE_OBJECT_ADAPTER.validate_json(compressor.calls.last.request.content)
+    rows: Final = _NATIVE_ROWS_ADAPTER.validate_python(sent["messages"])
+    assert _NATIVE_OLD_TEXT in [row.get("content") for row in rows]
+    assert _NATIVE_SECOND_TEXT in [row.get("content") for row in rows]
+    assert "fresh instruction" not in [row.get("content") for row in rows]
+    assert "cached history" not in [row.get("content") for row in rows]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("request_format", ["responses", "anthropic", "chat"])
+@pytest.mark.parametrize("behavior", ["unchanged", "unavailable"])
+async def test_headroom_native_unchanged_and_failopen_preserve_entire_payload(
+    request_format: NativeFormat,
+    behavior: NativeReply,
+    respx_mock: respx.MockRouter,
+):
+    respx_mock.post(f"{FAKE_API_BASE}/v1/compress").mock(
+        side_effect=lambda outgoing: _native_compress_reply(outgoing, behavior)
+    )
+    result: Final = await _native_handler(request_format).process_input_messages(
+        _native_request(request_format), _native_guardrail(respx_mock)
+    )
+    assert _native_payload(result) == _native_request(request_format)
+    assert _native_saved_tokens(result) == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("behavior", ["role", "count", "nontext", "reorder"])
+async def test_headroom_native_rejects_compressor_structure_mutations_without_savings(
+    behavior: NativeReply,
+    respx_mock: respx.MockRouter,
+):
+    respx_mock.post(f"{FAKE_API_BASE}/v1/compress").mock(
+        side_effect=lambda outgoing: _native_compress_reply(outgoing, behavior)
+    )
+    guardrail: Final = _native_guardrail(respx_mock)
+    result: Final = await OpenAIChatCompletionsHandler().process_input_messages(_native_request("chat"), guardrail)
+    assert _native_payload(result) == _native_request("chat")
+    assert _native_saved_tokens(result) == 0
+    assert guardrail._issued_hashes_by_call_id == {}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("request_format", ["responses", "anthropic", "chat"])
+async def test_headroom_native_ccr_appends_one_tool_preserving_original_definitions(
+    request_format: NativeFormat,
+    respx_mock: respx.MockRouter,
+):
+    respx_mock.post(f"{FAKE_API_BASE}/v1/compress").mock(
+        side_effect=lambda outgoing: _native_compress_reply(outgoing, "ccr")
+    )
+    result: Final = await _native_handler(request_format).process_input_messages(
+        _native_request(request_format), _native_guardrail(respx_mock)
+    )
+    expected: Final = _native_request(request_format, compressed=True)
+    original_tools: Final = _NATIVE_ROWS_ADAPTER.validate_python(expected["tools"])
+    tools: Final = _NATIVE_ROWS_ADAPTER.validate_python(result["tools"])
+    assert len(tools) == len(original_tools) + 1
+    assert tools[:-1] == original_tools
+    assert has_headroom_retrieve_tool(tools)
+    assert _native_payload({**result, "tools": original_tools}) == expected
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("request_format", ["responses", "anthropic", "chat"])
+async def test_headroom_native_text_rewrite_preserves_internal_unpickleable_references(
+    request_format: NativeFormat,
+    respx_mock: respx.MockRouter,
+):
+    internal_lock: Final = RLock()
+    respx_mock.post(f"{FAKE_API_BASE}/v1/compress").mock(
+        side_effect=lambda outgoing: _native_compress_reply(outgoing, "compress")
+    )
+    result: Final = await _native_handler(request_format).process_input_messages(
+        {**_native_request(request_format), "internal_logging": internal_lock},
+        _native_guardrail(respx_mock, ccr_retrieval=False),
+    )
+    assert result["internal_logging"] is internal_lock
+    assert _native_payload(result) == {
+        **_native_request(request_format, compressed=True),
+        "internal_logging": internal_lock,
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("request_format", ["responses", "anthropic", "chat"])
+async def test_headroom_native_bypass_preserves_original_request_without_http(
+    request_format: NativeFormat,
+    respx_mock: respx.MockRouter,
+):
+    request: Final = {
+        **_native_request(request_format),
+        "proxy_server_request": {"headers": {"x-headroom-bypass": "true"}},
+    }
+    result: Final = await _native_handler(request_format).process_input_messages(request, _native_guardrail(respx_mock))
+    assert result == request
+    assert result == {
+        **_native_request(request_format),
+        "proxy_server_request": {"headers": {"x-headroom-bypass": "true"}},
+    }
+    assert len(respx_mock.calls) == 0
+
+
+@pytest.mark.asyncio
+async def test_headroom_native_ccr_does_not_duplicate_retrieve_tool_inside_additional_namespace(
+    respx_mock: respx.MockRouter,
+):
+    original: Final = _native_request("responses")
+    original_input: Final = _NATIVE_ROWS_ADAPTER.validate_python(original["input"])
+    nested: Final = {
+        "type": "additional_tools",
+        "role": "developer",
+        "tools": [
+            {
+                "type": "namespace",
+                "name": "functions",
+                "tools": [
+                    {
+                        "type": "function",
+                        "name": "headroom_retrieve",
+                        "parameters": {"type": "object"},
+                        "extension": {"keep": True},
+                    }
+                ],
+            }
+        ],
+    }
+    respx_mock.post(f"{FAKE_API_BASE}/v1/compress").mock(
+        side_effect=lambda outgoing: _native_compress_reply(outgoing, "ccr")
+    )
+    result: Final = await OpenAIResponsesHandler().process_input_messages(
+        {**original, "input": [nested, *original_input[1:]]}, _native_guardrail(respx_mock)
+    )
+    expected: Final = _native_request("responses", compressed=True)
+    expected_input: Final = _NATIVE_ROWS_ADAPTER.validate_python(expected["input"])
+    assert _native_payload(result) == {**expected, "input": [nested, *expected_input[1:]]}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("legacy", [True, False])
+async def test_headroom_native_preserves_latest_tool_result_without_id_but_compresses_history(
+    legacy: bool,
+    respx_mock: respx.MockRouter,
+):
+    old_call: Final = {"role": "assistant", "content": None, "function_call": {"name": "read", "arguments": "{}"}}
+    old_result: Final = {"role": "function", "name": "read", "content": _NATIVE_OLD_TEXT, "extension": {"keep": True}}
+    current_call: Final = (
+        old_call
+        if legacy
+        else {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [{"id": "current", "type": "function", "function": {"name": "read", "arguments": "{}"}}],
+        }
+    )
+    current_result: Final = {
+        "role": "function" if legacy else "tool",
+        "name": "read",
+        "content": "current tool result without ID",
+        "extension": {"keep": True},
+    }
+    request: Final = {
+        "model": "synthetic-model",
+        "metadata": {},
+        "messages": [
+            {"role": "system", "content": "protected instructions"},
+            old_call,
+            old_result,
+            {"role": "user", "content": "current instruction"},
+            current_call,
+            current_result,
+        ],
+    }
+    compressor: Final = respx_mock.post(f"{FAKE_API_BASE}/v1/compress").mock(
+        side_effect=lambda outgoing: _native_compress_reply(outgoing, "compress")
+    )
+    result: Final = await OpenAIChatCompletionsHandler().process_input_messages(request, _native_guardrail(respx_mock))
+    assert _native_payload(result) == {
+        **_native_payload(request),
+        "messages": [
+            {"role": "system", "content": "protected instructions"},
+            old_call,
+            {**old_result, "content": "short A"},
+            {"role": "user", "content": "current instruction"},
+            current_call,
+            current_result,
+        ],
+    }
+    sent: Final = _NATIVE_OBJECT_ADAPTER.validate_json(compressor.calls.last.request.content)
+    rows: Final = _NATIVE_ROWS_ADAPTER.validate_python(sent["messages"])
+    assert [row.get("content") for row in rows] == [_NATIVE_OLD_TEXT]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("tool_results_only", [True, False])
+async def test_headroom_native_respects_existing_tool_result_scan_scope(
+    tool_results_only: bool,
+    respx_mock: respx.MockRouter,
+):
+    history_user: Final = {"role": "user", "content": _NATIVE_SECOND_TEXT, "extension": {"keep": True}}
+    history_call: Final = {
+        "role": "assistant",
+        "content": None,
+        "tool_calls": [{"id": "old", "type": "function", "function": {"name": "read", "arguments": "{}"}}],
+    }
+    history_result: Final = {
+        "role": "tool",
+        "tool_call_id": "old",
+        "content": _NATIVE_OLD_TEXT,
+        "extension": {"keep": True},
+    }
+    latest_user: Final = {"role": "user", "content": "current instruction"}
+    latest_assistant: Final = {"role": "assistant", "content": "current acknowledgement"}
+    request: Final = {
+        "model": "synthetic-model",
+        "metadata": {},
+        "messages": [history_user, history_call, history_result, latest_user, latest_assistant],
+    }
+    compressor: Final = respx_mock.post(f"{FAKE_API_BASE}/v1/compress").mock(
+        side_effect=lambda outgoing: _native_compress_reply(outgoing, "compress")
+    )
+    guardrail: Final = _native_guardrail(respx_mock)
+    guardrail.scan_only_tool_results = tool_results_only
+    guardrail.skip_tool_message_in_guardrail = not tool_results_only
+    result: Final = await OpenAIChatCompletionsHandler().process_input_messages(request, guardrail)
+    assert _native_payload(result) == {
+        **_native_payload(request),
+        "messages": [
+            history_user if tool_results_only else {**history_user, "content": "short B"},
+            history_call,
+            {**history_result, "content": "short A"} if tool_results_only else history_result,
+            latest_user,
+            latest_assistant,
+        ],
+    }
+    sent: Final = _NATIVE_OBJECT_ADAPTER.validate_json(compressor.calls.last.request.content)
+    rows: Final = _NATIVE_ROWS_ADAPTER.validate_python(sent["messages"])
+    assert [row.get("content") for row in rows] == [_NATIVE_OLD_TEXT if tool_results_only else _NATIVE_SECOND_TEXT]

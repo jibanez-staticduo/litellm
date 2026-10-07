@@ -105,6 +105,18 @@ class OpenAIChatCompletionsHandler(BaseTranslation):
         """
         Process input messages by applying guardrails to text content.
         """
+        from litellm.proxy.guardrails.guardrail_hooks.headroom.headroom import HeadroomGuardrail
+
+        if isinstance(guardrail_to_apply, HeadroomGuardrail):
+            return await guardrail_to_apply.process_native_request(data, "chat", litellm_logging_obj)
+        return await self._process_generic_input_messages(data, guardrail_to_apply, litellm_logging_obj)
+
+    async def _process_generic_input_messages(
+        self,
+        data: dict,  # mutable-ok: generic guardrail handler updates its request out-param
+        guardrail_to_apply: "CustomGuardrail",
+        litellm_logging_obj: "LiteLLMLoggingObj | None",
+    ) -> dict:  # mutable-ok: generic guardrail handler returns the updated request out-param
         messages: Final = data.get("messages")
         if messages is None:
             return data

@@ -524,6 +524,10 @@ class OpenAIResponsesHandler(BaseTranslation):
 
         Handles both string input and list of message objects.
         """
+        from litellm.proxy.guardrails.guardrail_hooks.headroom.headroom import HeadroomGuardrail
+
+        if isinstance(guardrail_to_apply, HeadroomGuardrail):
+            return await guardrail_to_apply.process_native_request(data, "responses", litellm_logging_obj)
         input_data: Final[str | ResponseInputParam | None] = data.get("input")
         if not isinstance(input_data, (str, list)):
             return data

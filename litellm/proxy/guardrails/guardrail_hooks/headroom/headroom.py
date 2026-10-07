@@ -28,6 +28,10 @@ from litellm.litellm_core_utils.prompt_templates.factory import (
     group_tool_exchanges,
     has_tool_with_name,
 )
+from litellm.llms.base_llm.guardrail_translation.utils import (
+    effective_scan_only_tool_results_for_guardrail,
+    effective_skip_tool_message_for_guardrail,
+)
 from litellm.llms.custom_httpx.http_handler import (
     get_async_httpx_client,  # pyright: ignore[reportUnknownVariableType]
     httpxSpecialProvider,
@@ -37,6 +41,12 @@ from litellm.proxy.guardrails.guardrail_hooks.content_text import (
     content_to_text,
     is_all_text_parts,
     merge_rewritten_text_parts,
+)
+from litellm.proxy.guardrails.guardrail_hooks.headroom.native_text import (
+    NativeRequestFormat,
+    extract_native_text_slots,
+    has_native_retrieve_tool,
+    patch_native_text_slots,
 )
 from litellm.proxy.spend_tracking.compression_savings import HEADROOM_GUARDRAIL_PROVIDER
 from litellm.secret_managers.main import get_secret_str
@@ -521,7 +531,7 @@ class HeadroomGuardrail(CustomGuardrail):
         )
         self.timeout = self._resolve_timeout(timeout)
 
-    def _should_bypass(self, request_data: dict) -> bool:
+    def _should_bypass(self, request_data: dict[str, object]) -> bool:
         psr: Final = request_data.get("proxy_server_request")
         if not _is_str_object_dict(psr):
             return False
@@ -679,6 +689,19 @@ class HeadroomGuardrail(CustomGuardrail):
                 {},
             )
 
+        if len(filtered) != len(compressed_messages):
+            return _CompressResult(
+                self._handle_compress_failure(
+                    messages,
+                    "Headroom compression service returned invalid message rows",
+                    {  # mutable-ok: failure JSON detail
+                        "reason": "every compressed message must be an object with string keys"
+                    },
+                ),
+                False,
+                {},  # mutable-ok: failed compression result owns an empty JSON stats object
+            )
+
         if len(filtered) != len(messages):
             # Rows are matched positionally when the never-compressed messages
             # are put back, so a reshaped conversation cannot be applied at all.
@@ -763,6 +786,127 @@ class HeadroomGuardrail(CustomGuardrail):
                 return original_content
 
         return str(body)
+
+    async def process_native_request(
+        self,
+        request_data: dict[str, object],
+        request_format: NativeRequestFormat,
+        logging_obj: LiteLLMLoggingObj | None = None,
+    ) -> dict[str, object]:
+        if self._should_bypass(request_data) or request_data.get("background"):
+            return request_data
+        original: Final = _REQUEST_DATA_ADAPTER.validate_python(request_data)
+        skip_tool: Final = effective_skip_tool_message_for_guardrail(self)
+        only_tool: Final = effective_scan_only_tool_results_for_guardrail(self)
+        slots: Final = tuple(
+            slot
+            for slot in extract_native_text_slots(original, request_format)
+            if not (skip_tool and slot.role in ("tool", "function"))
+            and not (only_tool and slot.role not in ("tool", "function"))
+        )
+        if not slots:
+            return request_data
+        messages: Final = [  # mutable-ok: compressor transport JSON array
+            slot.message() for slot in slots
+        ]
+        model: Final = self.headroom_model or original.get("model")
+        start_time: Final = time.time()
+        result: Final = await self._call_compress(messages=messages, model=model if isinstance(model, str) else None)
+        end_time: Final = time.time()
+        patched: Final = patch_native_text_slots(original, slots, result.messages) if result.succeeded else None
+        changed: Final = patched is not None and any(
+            slot.text != returned["content"] for slot, returned in zip(slots, result.messages)
+        )
+        hashes: Final[frozenset[str]] = result.ccr_hashes if changed and self.ccr_retrieval else frozenset()
+        existing_retrieve: Final = has_native_retrieve_tool(original)
+        tools: Final = original.get("tools")
+        invalid_tools: Final = (
+            bool(hashes) and not existing_retrieve and "tools" in original and not _is_object_list(tools)
+        )
+        from litellm.proxy.common_utils.callback_utils import add_guardrail_to_applied_guardrails_header
+
+        if patched is None or invalid_tools:
+            if result.succeeded:
+                self._handle_compress_failure(
+                    messages,
+                    "Headroom compression cannot be applied to the original request",
+                    {  # mutable-ok: failure handler accepts a JSON detail object
+                        "reason": "invalid native text rewrite" if patched is None else "invalid native tools container"
+                    },
+                )
+            self.add_standard_logging_guardrail_information_to_request_data(
+                guardrail_json_response={  # mutable-ok: standard logging accepts a JSON response object
+                    "error": "headroom compression unavailable; request forwarded uncompressed"
+                },
+                request_data=request_data,
+                guardrail_status="guardrail_failed_to_respond",
+                guardrail_provider=HEADROOM_GUARDRAIL_PROVIDER,
+                start_time=start_time,
+                end_time=end_time,
+                duration=end_time - start_time,
+            )
+            add_guardrail_to_applied_guardrails_header(request_data=request_data, guardrail_name=self.guardrail_name)
+            return request_data
+
+        function: Final = _REQUEST_DATA_ADAPTER.validate_python(_build_headroom_retrieve_tool()["function"])
+        native_tool: Final = (
+            {"type": "function", **function}  # mutable-ok: native Responses tool schema is a JSON object
+            if request_format == "responses"
+            else {  # mutable-ok: native Anthropic tool schema is a JSON object
+                "name": function["name"],
+                "description": function["description"],
+                "input_schema": function["parameters"],
+            }
+            if request_format == "anthropic"
+            else _build_headroom_retrieve_tool()
+        )
+        issued_call_id: Final = (_resolve_call_id(logging_obj, original) or str(uuid.uuid4())) if hashes else None
+        rewritten: Final = {  # mutable-ok: native provider request must keep its JSON object container
+            **patched,
+            **(
+                {  # mutable-ok: provider tools are a JSON array in a JSON object
+                    "tools": [  # mutable-ok: provider tools JSON array
+                        *(tools if _is_object_list(tools) else ()),
+                        native_tool,
+                    ]
+                }
+                if hashes and not existing_retrieve
+                else {}  # mutable-ok: absent optional native JSON fields
+            ),
+            **(
+                {"litellm_call_id": issued_call_id}  # mutable-ok: optional native JSON field
+                if issued_call_id is not None
+                else {}  # mutable-ok: absent native JSON field
+            ),
+        }
+        for key in ("input", "messages", "tools", "litellm_call_id"):
+            if key in rewritten and rewritten[key] is not original.get(key):
+                request_data[key] = rewritten[key]  # rebind-ok: native request is the handler's in-place out-param
+        if issued_call_id is not None:
+            self._prune_expired_hashes()
+            self._issued_hashes_by_call_id[issued_call_id] = (hashes, time.monotonic() + _HASH_CACHE_TTL_SECONDS)
+        stats: Final[dict[str, object]] = (  # mutable-ok: standard logging accepts JSON stats
+            result.stats
+            if changed
+            else {  # mutable-ok: standard logging accepts a JSON stats object
+                **result.stats,
+                "tokens_saved": 0,
+                "tokens_after": result.stats.get("tokens_before", 0),
+                "compression_ratio": 1.0,
+                "transforms_applied": [],  # mutable-ok: standard logging transforms are a JSON array
+            }
+        )
+        self.add_standard_logging_guardrail_information_to_request_data(
+            guardrail_json_response=stats,
+            request_data=request_data,
+            guardrail_status="success",
+            guardrail_provider=HEADROOM_GUARDRAIL_PROVIDER,
+            start_time=start_time,
+            end_time=end_time,
+            duration=end_time - start_time,
+        )
+        add_guardrail_to_applied_guardrails_header(request_data=request_data, guardrail_name=self.guardrail_name)
+        return request_data
 
     @log_guardrail_information
     async def apply_guardrail(
