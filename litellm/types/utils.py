@@ -3186,6 +3186,8 @@ class StandardLoggingMetadata(StandardLoggingUserAPIKeyMetadata):
     team_alias: str | None
     team_id: str | None
     used_client_oauth_token: ReadOnly[bool | None]
+    used_server_oauth_token: ReadOnly[NotRequired[bool | None]]
+    anthropic_auth_profile: ReadOnly[NotRequired[str | None]]
 
 
 class AzureSpillover(TypedDict):
@@ -3510,6 +3512,7 @@ class CostBreakdown(TypedDict, total=False):
     output_cost: float  # Cost of output/completion tokens (includes reasoning if applicable)
     reasoning_cost: float  # Cost of reasoning tokens (subset of output_cost)
     total_cost: ReadOnly[float]  # Total cost (input + output + tool usage + guardrail)
+    pricing_reference_model: ReadOnly[str]  # Canonical model used for internal equivalent pricing
     tool_usage_cost: float  # Cost of usage of built-in tools
     guardrail_cost: ReadOnly[float]  # Cost counted in spend; report-only (guardrail_cost_in_spend=False) is excluded
     additional_costs: dict[str, float]  # Free-form additional costs (e.g., {"azure_model_router_flat_cost": 0.00014})

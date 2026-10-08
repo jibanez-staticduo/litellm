@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+
+if [ -n "${ANTHROPIC_API_KEY:-}" ] || [ -n "${ANTHROPIC_AUTH_TOKEN:-}" ]; then
+    printf '%s\n' 'Start this subscription profile without ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN' >&2
+    exit 1
+fi
+
+key_file=${LITELLM_CLAUDE_KEY_FILE:-/volume2/docker/litellm/anthropic-subscription/claude-code-key}
+export ANTHROPIC_BASE_URL=${LITELLM_CLAUDE_BASE_URL:-https://litellm.staticduo.com}
+export ANTHROPIC_CUSTOM_HEADERS="x-litellm-api-key: Bearer $(cat "$key_file")"
+export ANTHROPIC_MODEL=claude-sonnet-5-5
+export ANTHROPIC_DEFAULT_SONNET_MODEL=claude-sonnet-5-5
+export ANTHROPIC_DEFAULT_OPUS_MODEL=claude-opus-5-5
+export ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-haiku-4-5
+exec "$HOME/.local/bin/claude" "$@"

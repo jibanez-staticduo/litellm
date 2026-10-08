@@ -1,0 +1,172 @@
+{
+  "model_list": [
+    {
+      "model_name": "claude-staticduo/claude-sonnet-5-5",
+      "litellm_params": {
+        "model": "anthropic/claude-sonnet-5-5",
+        "use_anthropic_oauth": true,
+        "anthropic_auth_profile": "staticduo",
+        "anthropic_credential_mode": "claude_code",
+        "anthropic_execution_mode": "native_client",
+        "num_retries": 0
+      },
+      "model_info": {
+        "base_model": "anthropic/claude-sonnet-5-5",
+        "mode": "chat",
+        "subscription_auth_mode": "managed_native_client",
+        "requires_native_claude_code": true
+      }
+    },
+    {
+      "model_name": "claude-staticduo/claude-opus-5-5",
+      "litellm_params": {
+        "model": "anthropic/claude-opus-5-5",
+        "use_anthropic_oauth": true,
+        "anthropic_auth_profile": "staticduo",
+        "anthropic_credential_mode": "claude_code",
+        "anthropic_execution_mode": "native_client",
+        "num_retries": 0
+      },
+      "model_info": {
+        "base_model": "anthropic/claude-opus-5-5",
+        "mode": "chat",
+        "subscription_auth_mode": "managed_native_client",
+        "requires_native_claude_code": true
+      }
+    },
+    {
+      "model_name": "claude-staticduo/claude-haiku-4-5",
+      "litellm_params": {
+        "model": "anthropic/claude-haiku-4-5",
+        "use_anthropic_oauth": true,
+        "anthropic_auth_profile": "staticduo",
+        "anthropic_credential_mode": "claude_code",
+        "anthropic_execution_mode": "native_client",
+        "num_retries": 0
+      },
+      "model_info": {
+        "base_model": "anthropic/claude-haiku-4-5",
+        "mode": "chat",
+        "subscription_auth_mode": "managed_native_client",
+        "requires_native_claude_code": true
+      }
+    },
+    {
+      "model_name": "claude-defend1/claude-sonnet-5-5",
+      "litellm_params": {
+        "model": "anthropic/claude-sonnet-5-5",
+        "use_anthropic_oauth": true,
+        "anthropic_auth_profile": "defend1",
+        "anthropic_credential_mode": "claude_code",
+        "anthropic_execution_mode": "native_client",
+        "num_retries": 0
+      },
+      "model_info": {
+        "base_model": "anthropic/claude-sonnet-5-5",
+        "mode": "chat",
+        "subscription_auth_mode": "managed_native_client",
+        "requires_native_claude_code": true
+      }
+    },
+    {
+      "model_name": "claude-defend1/claude-opus-5-5",
+      "litellm_params": {
+        "model": "anthropic/claude-opus-5-5",
+        "use_anthropic_oauth": true,
+        "anthropic_auth_profile": "defend1",
+        "anthropic_credential_mode": "claude_code",
+        "anthropic_execution_mode": "native_client",
+        "num_retries": 0
+      },
+      "model_info": {
+        "base_model": "anthropic/claude-opus-5-5",
+        "mode": "chat",
+        "subscription_auth_mode": "managed_native_client",
+        "requires_native_claude_code": true
+      }
+    },
+    {
+      "model_name": "claude-defend1/claude-haiku-4-5",
+      "litellm_params": {
+        "model": "anthropic/claude-haiku-4-5",
+        "use_anthropic_oauth": true,
+        "anthropic_auth_profile": "defend1",
+        "anthropic_credential_mode": "claude_code",
+        "anthropic_execution_mode": "native_client",
+        "num_retries": 0
+      },
+      "model_info": {
+        "base_model": "anthropic/claude-haiku-4-5",
+        "mode": "chat",
+        "subscription_auth_mode": "managed_native_client",
+        "requires_native_claude_code": true
+      }
+    },
+    {
+      "model_name": "claude-sonnet-5-5",
+      "litellm_params": {
+        "model": "anthropic/claude-sonnet-5-5",
+        "use_anthropic_oauth": true,
+        "anthropic_auth_profile": "staticduo",
+        "anthropic_credential_mode": "claude_code",
+        "anthropic_execution_mode": "native_client",
+        "num_retries": 0
+      },
+      "model_info": {
+        "base_model": "anthropic/claude-sonnet-5-5",
+        "mode": "chat",
+        "subscription_auth_mode": "managed_native_client",
+        "requires_native_claude_code": true
+      }
+    },
+    {
+      "model_name": "claude-opus-5-5",
+      "litellm_params": {
+        "model": "anthropic/claude-opus-5-5",
+        "use_anthropic_oauth": true,
+        "anthropic_auth_profile": "staticduo",
+        "anthropic_credential_mode": "claude_code",
+        "anthropic_execution_mode": "native_client",
+        "num_retries": 0
+      },
+      "model_info": {
+        "base_model": "anthropic/claude-opus-5-5",
+        "mode": "chat",
+        "subscription_auth_mode": "managed_native_client",
+        "requires_native_claude_code": true
+      }
+    },
+    {
+      "model_name": "claude-haiku-4-5",
+      "litellm_params": {
+        "model": "anthropic/claude-haiku-4-5",
+        "use_anthropic_oauth": true,
+        "anthropic_auth_profile": "staticduo",
+        "anthropic_credential_mode": "claude_code",
+        "anthropic_execution_mode": "native_client",
+        "num_retries": 0
+      },
+      "model_info": {
+        "base_model": "anthropic/claude-haiku-4-5",
+        "mode": "chat",
+        "subscription_auth_mode": "managed_native_client",
+        "requires_native_claude_code": true
+      }
+    }
+  ],
+  "litellm_settings": {
+    "model_group_settings": {
+      "forward_client_headers_to_llm_api": [
+        "claude-staticduo/claude-sonnet-5-5",
+        "claude-staticduo/claude-opus-5-5",
+        "claude-staticduo/claude-haiku-4-5",
+        "claude-defend1/claude-sonnet-5-5",
+        "claude-defend1/claude-opus-5-5",
+        "claude-defend1/claude-haiku-4-5",
+        "claude-sonnet-5-5",
+        "claude-opus-5-5",
+        "claude-haiku-4-5"
+      ]
+    }
+  }
+}

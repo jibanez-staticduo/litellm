@@ -34,6 +34,34 @@ from litellm.types.prompts.init_prompts import PromptSpec
 from litellm.types.utils import Delta, ModelResponseStream, StandardCallbackDynamicParams, StreamingChoices, Usage
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("is_async", (False, True))
+@pytest.mark.parametrize("fallback_source", ("request", "global"))
+async def test_managed_anthropic_missing_profile_never_uses_server_api_credentials(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, is_async: bool, fallback_source: str
+) -> None:
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "server-api-credential")
+    monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "server-auth-credential")
+    if fallback_source == "global":
+        monkeypatch.setattr(litellm, "model_fallbacks", ["openai/non-subscription-target"])
+    request: Final = {
+        "model": "anthropic/claude-subscription-test",
+        "messages": [{"role": "user", "content": "Hello"}],
+        "use_anthropic_oauth": True,
+        "anthropic_auth_profile": "missing-profile",
+        "anthropic_token_dir": str(tmp_path),
+        "anthropic_oauth_compatibility": "claude_code",
+        "max_retries": 0,
+        "fallbacks": ["openai/non-subscription-target"] if fallback_source == "request" else None,
+    }
+    with pytest.raises(litellm.AuthenticationError, match="profile is missing"):
+        await _invoke_chat_completion(request, is_async)
+
+
+async def _invoke_chat_completion(request: Mapping[str, object], is_async: bool) -> object:
+    return await litellm.acompletion(**request) if is_async else litellm.completion(**request)
+
+
 @pytest.fixture(autouse=True)
 def clear_client_cache():
     """
@@ -46,6 +74,47 @@ def clear_client_cache():
     yield
     if cache is not None:
         cache.flush_cache()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("is_async", (False, True))
+async def test_anthropic_chat_keeps_disable_fallbacks_out_of_the_http_body(is_async: bool) -> None:
+    from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        body: Final = json.loads(request.content)
+        assert "disable_fallbacks" not in body
+        assert body["max_tokens"] == 16
+        assert body["messages"] == [{"role": "user", "content": [{"type": "text", "text": "Hello"}]}]
+        return httpx.Response(
+            200,
+            json={
+                "id": "msg_test",
+                "type": "message",
+                "role": "assistant",
+                "model": body["model"],
+                "content": [{"type": "text", "text": "Acknowledged"}],
+                "stop_reason": "end_turn",
+                "stop_sequence": None,
+                "usage": {"input_tokens": 1, "output_tokens": 1},
+            },
+        )
+
+    transport: Final = httpx.MockTransport(upstream)
+    client: Final = (
+        AsyncHTTPHandler(transport=transport) if is_async else HTTPHandler(client=httpx.Client(transport=transport))
+    )
+    request: Final = {
+        "model": "anthropic/claude-subscription-test",
+        "messages": [{"role": "user", "content": "Hello"}],
+        "api_key": "sk-ant-oat01-test-transport",
+        "disable_fallbacks": True,
+        "max_tokens": 16,
+        "max_retries": 0,
+        "client": client,
+    }
+    response: Final = await litellm.acompletion(**request) if is_async else litellm.completion(**request)
+    assert response.choices[0].message.content == "Acknowledged"
 
 
 @pytest.fixture(autouse=True)

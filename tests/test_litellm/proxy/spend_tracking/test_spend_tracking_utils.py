@@ -3573,6 +3573,41 @@ def test_get_logging_payload_reads_used_client_oauth_token_from_the_bucket_the_p
     assert json.loads(payload["metadata"])["used_client_oauth_token"] is expected
 
 
+@pytest.mark.parametrize(
+    "oauth_setting, provider, expected_server",
+    [(True, "anthropic", True), (False, "anthropic", False), ("true", "anthropic", False), (True, "bedrock", False)],
+)
+def test_get_logging_payload_derives_managed_oauth_from_effective_params(
+    oauth_setting: bool | str, provider: str, expected_server: bool
+) -> None:
+    now: Final = datetime.datetime(2026, 1, 1, tzinfo=timezone.utc)
+    selected_profile: Final = "selected-profile"
+    payload: Final = get_logging_payload(
+        kwargs={
+            "model": "unit-test-model",
+            "custom_llm_provider": provider,
+            "litellm_params": {
+                "use_anthropic_oauth": oauth_setting,
+                "anthropic_auth_profile": selected_profile,
+                "metadata": {
+                    "used_server_oauth_token": not expected_server,
+                    "anthropic_auth_profile": "caller-profile",
+                    "used_client_oauth_token": True,
+                },
+            },
+        },
+        response_obj={},
+        start_time=now,
+        end_time=now,
+    )
+    metadata: Final = json.loads(payload["metadata"])
+    assert metadata["used_server_oauth_token"] is expected_server
+    assert metadata["anthropic_auth_profile"] == (selected_profile if expected_server else None)
+    assert metadata["used_client_oauth_token"] is (not expected_server and provider == "anthropic")
+    assert _get_spend_logs_metadata(None)["used_server_oauth_token"] is None
+    assert _get_spend_logs_metadata(None)["anthropic_auth_profile"] is None
+
+
 def test_redact_logged_api_key_bearer_only_returns_none():
     # "bearer " with nothing after stripping is equivalent to no key
     assert _redact_logged_api_key("bearer ") is None

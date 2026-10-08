@@ -5,6 +5,7 @@ Uses httpx for HTTP requests instead of the Anthropic SDK.
 """
 
 from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Final
 
 import httpx
@@ -16,9 +17,10 @@ from litellm.llms.anthropic.common_utils import AnthropicError
 from litellm.llms.anthropic.count_tokens.transformation import (
     AnthropicCountTokensConfig,
 )
-from litellm.llms.custom_httpx.http_handler import get_async_httpx_client
+from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, get_async_httpx_client
 
 _COUNT_RESPONSE: Final = TypeAdapter(dict[str, JsonValue])
+_COUNT_HEADERS: Final = TypeAdapter(dict[str, str])
 
 
 class AnthropicCountTokensHandler(AnthropicCountTokensConfig):
@@ -27,6 +29,9 @@ class AnthropicCountTokensHandler(AnthropicCountTokensConfig):
 
     Uses httpx for HTTP requests, following the same pattern as BedrockCountTokensHandler.
     """
+
+    def __init__(self, http_client: AsyncHTTPHandler | None = None) -> None:
+        self._http_client = http_client
 
     async def handle_count_tokens_request(
         self,
@@ -38,6 +43,9 @@ class AnthropicCountTokensHandler(AnthropicCountTokensConfig):
         tools: list[dict[str, JsonValue]] | None = None,
         system: JsonValue = None,
         optional_params: Mapping[str, JsonValue] | None = None,
+        extra_headers: Mapping[str, str] | None = None,
+        native_params: Mapping[str, object] | None = None,
+        native_client: bool = False,
     ) -> dict[str, JsonValue]:
         """
         Handle a CountTokens request using httpx.
@@ -62,33 +70,79 @@ class AnthropicCountTokensHandler(AnthropicCountTokensConfig):
             verbose_logger.debug("Processing Anthropic CountTokens request for model: %s", model)
 
             # Transform request to Anthropic format
-            request_body: Final = self.transform_request_to_count_tokens(
-                model=model,
-                messages=messages,
-                tools=tools,
-                system=system,
-                optional_params=optional_params,
+            request_body: Final = (
+                _COUNT_RESPONSE.validate_python(
+                    MappingProxyType(
+                        {**(optional_params or MappingProxyType({})), "model": model, "messages": messages}
+                    )
+                )
+                if native_client
+                else self.transform_request_to_count_tokens(
+                    model=model,
+                    messages=messages,
+                    tools=tools,
+                    system=system,
+                    optional_params=optional_params,
+                )
             )
 
             verbose_logger.debug("Transformed request: %s", request_body)
 
             # Get endpoint URL
-            endpoint_url: Final = api_base or self.get_anthropic_count_tokens_endpoint()
+            from litellm.llms.anthropic.native_transport import native_sdk_connection
+
+            native_connection: Final = native_sdk_connection(native_params) if native_params is not None else None
+            endpoint_url: Final = (
+                native_connection.url("count_tokens")
+                if native_connection is not None
+                else api_base or self.get_anthropic_count_tokens_endpoint()
+            )
 
             verbose_logger.debug("Making request to: %s", endpoint_url)
 
             # Get required headers
-            headers: Final = self.get_required_headers(api_key)
+            required_headers: Final = (
+                native_connection.headers if native_connection is not None else self.get_required_headers(api_key)
+            )
+            client_beta: Final = next(
+                (
+                    value
+                    for name, value in (extra_headers or MappingProxyType({})).items()
+                    if name.lower() == "anthropic-beta"
+                ),
+                "",
+            )
+            headers: Final = _COUNT_HEADERS.validate_python(
+                MappingProxyType(
+                    required_headers
+                    if native_connection is not None
+                    else MappingProxyType(
+                        {
+                            **required_headers,
+                            "anthropic-beta": f"{required_headers['anthropic-beta']},{client_beta}"
+                            if client_beta
+                            else required_headers["anthropic-beta"],
+                        }
+                    )
+                )
+            )
+            from litellm.llms.anthropic.oauth_policy import native_client_auth_headers
+
+            request_headers: Final = (
+                native_client_auth_headers(extra_headers or MappingProxyType({}), api_key) if native_client else headers
+            )
 
             # Use LiteLLM's async httpx client
-            async_client: Final = get_async_httpx_client(llm_provider=litellm.LlmProviders.ANTHROPIC)
+            async_client: Final = self._http_client or get_async_httpx_client(
+                llm_provider=litellm.LlmProviders.ANTHROPIC
+            )
 
             # Use provided timeout or fall back to litellm.request_timeout
             request_timeout: Final = timeout if timeout is not None else litellm.request_timeout
 
             response: Final = await async_client.post(
                 endpoint_url,
-                headers=headers,
+                headers=request_headers,
                 json=request_body,
                 timeout=request_timeout,
             )

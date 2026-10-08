@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: bitnami/postgresql@sha256:d92a6bbf5184e327301856457e35cefcc32e19158e46a4012929e20daa9c178d
+    restart: "no"
+    mem_limit: 512m
+    environment:
+      POSTGRESQL_USERNAME: litellm_subscription
+      POSTGRESQL_DATABASE: litellm_subscription
+    volumes:
+      - ./postgresql-data:/bitnami/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "litellm_subscription", "-d", "litellm_subscription"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  proxy:
+    image: ${ANTHROPIC_SUBSCRIPTION_IMAGE:?Set the reviewed candidate image ID}
+    restart: "no"
+    mem_limit: 2g
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      LITELLM_LOCAL_MODEL_COST_MAP: "true"
+    command: ["--host", "0.0.0.0", "--port", "4000", "--config", "/app/config.yaml"]
+    ports:
+      - "127.0.0.1:14001:4000"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/health/readiness', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 90s

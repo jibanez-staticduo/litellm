@@ -1,4 +1,5 @@
 from collections.abc import AsyncIterator, Mapping, Sequence
+from types import MappingProxyType
 from typing import Any, Final
 
 import httpx
@@ -236,7 +237,20 @@ class AnthropicMessagesConfig(BaseAnthropicMessagesConfig):
         litellm_params: dict,
         stream: bool | None = None,
     ) -> str:
-        api_base = AnthropicModelInfo.get_api_base(api_base) or "https://api.anthropic.com"
+        from litellm.llms.anthropic.native_transport import is_anthropic_native_sdk, native_sdk_connection
+        from litellm.llms.anthropic.oauth_policy import (
+            is_anthropic_oauth_managed,
+            validate_anthropic_oauth_destination,
+        )
+
+        if is_anthropic_native_sdk(litellm_params):
+            return native_sdk_connection(litellm_params).url()
+
+        api_base = (
+            validate_anthropic_oauth_destination(api_base)
+            if is_anthropic_oauth_managed(litellm_params)
+            else AnthropicModelInfo.get_api_base(api_base) or "https://api.anthropic.com"
+        )
         if not api_base.endswith("/v1/messages"):
             api_base = f"{api_base}/v1/messages"
         return api_base
@@ -251,8 +265,28 @@ class AnthropicMessagesConfig(BaseAnthropicMessagesConfig):
         api_key: str | None = None,
         api_base: str | None = None,
     ) -> tuple[dict, str | None]:
+        from litellm.llms.anthropic.native_transport import is_anthropic_native_sdk, native_sdk_connection
+        from litellm.llms.anthropic.oauth_policy import (
+            is_anthropic_native_client,
+            is_anthropic_oauth_managed,
+            native_client_auth_headers,
+            normalize_anthropic_oauth_headers,
+            resolve_anthropic_oauth_access_token,
+            validate_anthropic_oauth_destination,
+        )
+
+        if is_anthropic_native_sdk(litellm_params):
+            connection: Final = native_sdk_connection(litellm_params)
+            return connection.request_headers(), connection.api_base
+
+        managed_token: Final = resolve_anthropic_oauth_access_token(litellm_params, api_base, headers)
+        managed_api_base: Final = (
+            validate_anthropic_oauth_destination(api_base) if is_anthropic_oauth_managed(litellm_params) else api_base
+        )
+        if is_anthropic_native_client(litellm_params) and managed_token is not None:
+            return native_client_auth_headers(headers, managed_token), managed_api_base
         # Check for Anthropic OAuth token in Authorization header
-        headers, api_key = optionally_handle_anthropic_oauth(headers=headers, api_key=api_key)
+        headers, api_key = optionally_handle_anthropic_oauth(headers=headers, api_key=managed_token or api_key)
 
         header_names: Final = frozenset(name.lower() for name in headers)
         if "x-api-key" not in header_names and "authorization" not in header_names:
@@ -273,13 +307,12 @@ class AnthropicMessagesConfig(BaseAnthropicMessagesConfig):
         if "content-type" not in headers:
             headers["content-type"] = "application/json"
 
-        headers = self._update_headers_with_anthropic_beta(
+        updated_headers: Final = self._update_headers_with_anthropic_beta(
             headers=headers,
             optional_params=optional_params,
             messages=messages,
         )
-
-        return headers, api_base
+        return normalize_anthropic_oauth_headers(updated_headers, managed_token is not None), managed_api_base
 
     @staticmethod
     def _translate_reasoning_effort_to_anthropic(
@@ -488,6 +521,17 @@ class AnthropicMessagesConfig(BaseAnthropicMessagesConfig):
 
         This takes in a request in the Anthropic /v1/messages API spec -> transforms it to /v1/messages API spec (i.e) no transformation is needed
         """
+        from litellm.llms.anthropic.oauth_policy import is_anthropic_native_client, native_client_request_body
+
+        validated_params: Final = GenericLiteLLMParams.model_validate(litellm_params)
+        if is_anthropic_native_client(validated_params.model_dump()):
+            original: Final = validated_params.anthropic_native_request_body
+            native_body: Final = original if original is not None else anthropic_messages_optional_request_params
+            if native_body.get("max_tokens") is None:
+                raise AnthropicError(400, "max_tokens is required for Anthropic /v1/messages API")
+            return native_client_request_body(
+                MappingProxyType({"messages": messages, **native_body}), validated_params.model_dump(), model
+            )
         max_tokens: Final = anthropic_messages_optional_request_params.pop("max_tokens", None)
         if max_tokens is None:
             raise AnthropicError(
@@ -534,6 +578,15 @@ class AnthropicMessagesConfig(BaseAnthropicMessagesConfig):
                 anthropic_messages_optional_request_params["system"] = filtered_system
             else:
                 anthropic_messages_optional_request_params.pop("system", None)
+
+        from litellm.llms.anthropic.oauth_policy import apply_anthropic_oauth_system
+
+        managed_system: Final = apply_anthropic_oauth_system(
+            anthropic_messages_optional_request_params.get("system"),
+            validated_params.model_dump(),
+        )
+        if managed_system is not None:
+            anthropic_messages_optional_request_params["system"] = managed_system
 
         # Transform context_management from OpenAI format to Anthropic format if needed
         context_management_param: Final = anthropic_messages_optional_request_params.get("context_management")

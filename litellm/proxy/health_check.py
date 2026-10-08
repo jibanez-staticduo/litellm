@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Final, TypeVar
 from pydantic import TypeAdapter, ValidationError
 
 import litellm
+from litellm.litellm_core_utils.health_check_helpers import HealthCheckHelpers
 
 if TYPE_CHECKING:
     from litellm.router import Router
@@ -533,8 +534,12 @@ async def _run_model_health_check(model: dict):
         litellm.ahealth_check(
             litellm_params,
             mode=mode,
-            prompt=DEFAULT_HEALTH_CHECK_PROMPT,
-            input=["test from litellm"],
+            prompt=None if mode == "responses" else DEFAULT_HEALTH_CHECK_PROMPT,
+            input=(
+                HealthCheckHelpers.responses_health_check_input("test from litellm")
+                if mode == "responses"
+                else ["test from litellm"]
+            ),
         ),
         timeout,
     )

@@ -1,0 +1,55 @@
+{
+  "model_list": [
+    {
+      "model_name": "claude-sonnet-5-5-subscription",
+      "litellm_params": {
+        "model": "anthropic/claude-sonnet-5-5",
+        "use_anthropic_oauth": true,
+        "anthropic_auth_profile": "default",
+        "num_retries": 0,
+        "drop_params": true,
+        "anthropic_execution_mode": "native_sdk"
+      },
+      "model_info": {
+        "base_model": "anthropic/claude-sonnet-5-5",
+        "mode": "chat",
+        "subscription_auth_mode": "managed_native_sdk",
+        "anthropic_auth_profile": "default"
+      }
+    },
+    {
+      "model_name": "claude-opus-5-5-subscription",
+      "litellm_params": {
+        "model": "anthropic/claude-opus-5-5",
+        "use_anthropic_oauth": true,
+        "anthropic_auth_profile": "default",
+        "num_retries": 0,
+        "drop_params": true,
+        "anthropic_execution_mode": "native_sdk"
+      },
+      "model_info": {
+        "base_model": "anthropic/claude-opus-5-5",
+        "mode": "chat",
+        "subscription_auth_mode": "managed_native_sdk",
+        "anthropic_auth_profile": "default"
+      }
+    },
+    {
+      "model_name": "claude-haiku-4-5-subscription",
+      "litellm_params": {
+        "model": "anthropic/claude-haiku-4-5",
+        "use_anthropic_oauth": true,
+        "anthropic_auth_profile": "default",
+        "num_retries": 0,
+        "drop_params": true,
+        "anthropic_execution_mode": "native_sdk"
+      },
+      "model_info": {
+        "base_model": "anthropic/claude-haiku-4-5",
+        "mode": "chat",
+        "subscription_auth_mode": "managed_native_sdk",
+        "anthropic_auth_profile": "default"
+      }
+    }
+  ]
+}

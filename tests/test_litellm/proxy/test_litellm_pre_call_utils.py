@@ -16,6 +16,8 @@ from pydantic import ValidationError as PydanticValidationError
 from starlette.datastructures import Headers
 
 import litellm
+
+
 from litellm.proxy._types import AddTeamCallback, ProxyException, TeamCallbackMetadata, UserAPIKeyAuth
 from litellm.proxy.litellm_pre_call_utils import (
     KeyAndTeamLoggingSettings,
@@ -8590,3 +8592,58 @@ def test_signoz_callback_vars_are_scoped_to_the_signoz_callback():
         team_callback_settings_obj=None,
     )
     assert under_other.callback_vars == {"langfuse_host": "https://cloud.langfuse.com"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("global_alias", (False, True))
+async def test_native_sdk_proxy_stamps_authenticated_identity_after_alias_resolution(global_alias: bool):
+    from litellm import Router
+    from litellm.llms.anthropic.native_transport import NATIVE_IDENTITY_FIELD, AnthropicNativeIdentity
+    from litellm.proxy._types import UserAPIKeyAuth
+    from litellm.proxy.common_request_processing import ProxyBaseLLMRequestProcessing
+    from litellm.proxy.common_utils.user_api_key_cache import UserApiKeyCache
+    from litellm.proxy.proxy_server import ProxyConfig
+    from litellm.proxy.utils import ProxyLogging
+
+    caller: Final = UserAPIKeyAuth(
+        api_key="c" * 64, aliases={} if global_alias else {"caller-alias": "native-alias"}
+    ).model_copy(update={"via_virtual_key": True})
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "native-alias",
+                "litellm_params": {
+                    "model": "anthropic/claude-unit-test",
+                    "use_anthropic_oauth": True,
+                    "anthropic_auth_profile": "fixed",
+                    "anthropic_execution_mode": "native_sdk",
+                },
+            }
+        ]
+    )
+    request: Final = Request({"type": "http", "method": "POST", "path": "/v1/chat/completions", "headers": []})
+    data: Final = {
+        "model": "caller-alias",
+        "_anthropic_native_identity": {"owner": "spoof", "deployment": "spoof"},
+        "metadata": {"user_api_key_hash": "spoof"},
+    }
+    processing: Final = ProxyBaseLLMRequestProcessing(data=data)
+    with (
+        patch("litellm.proxy.proxy_server.llm_router", router),
+        patch.dict("litellm.model_alias_map", {"caller-alias": "native-alias"} if global_alias else {}, clear=True),
+    ):
+        result, logging_obj = await processing.common_processing_pre_call_logic(
+            request=request,
+            user_api_key_dict=caller,
+            proxy_config=ProxyConfig(),
+            general_settings={},
+            proxy_logging_obj=ProxyLogging(user_api_key_cache=UserApiKeyCache()),
+            route_type="acompletion",
+            llm_router=router,
+        )
+    assert result["model"] == "native-alias"
+    assert isinstance(result[NATIVE_IDENTITY_FIELD], AnthropicNativeIdentity)
+    assert result[NATIVE_IDENTITY_FIELD].owner == "c" * 64
+    assert result[NATIVE_IDENTITY_FIELD].deployment is None
+    router._update_kwargs_with_deployment(router.model_list[0], result)
+    assert result[NATIVE_IDENTITY_FIELD].deployment == router.model_list[0]["model_info"]["id"]

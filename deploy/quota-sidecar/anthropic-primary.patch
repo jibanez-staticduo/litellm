@@ -1,0 +1,933 @@
+--- a/controller.py
++++ b/controller.py
+@@ -678,0 +679 @@
++        check(not state.get("claude_transaction"), "claude_recovery_required")
+--- a/litellm_fallbacks
++++ b/litellm_fallbacks
+@@ -369,0 +370,2 @@
++    parser.add_argument("family", nargs="?", choices=("claude",))
++    parser.add_argument("profile", nargs="?", choices=("staticduo", "defend1"))
+@@ -370,0 +373,2 @@
++    if args.profile and args.family != "claude":
++        parser.error("una cuenta requiere el argumento claude")
+@@ -371,0 +376,5 @@
++        if args.family == "claude":
++            sys.path.insert(0, str(ROOT))
++            import claude_primary_admin
++            selected = ([args.profile] if args.profile else []) + (["--status"] if args.status else [])
++            return claude_primary_admin.main(selected)
+--- a/test/test_manual_command.py
++++ b/test/test_manual_command.py
+@@ -25,0 +26,21 @@
++    def test_claude_status_and_selection_do_not_start_quota_service(self):
++        import claude_primary_admin
++
++        for argv, delegated in ((["claude", "--status"], ["--status"]),
++                                (["claude", "defend1"], ["defend1"]),
++                                (["claude", "staticduo"], ["staticduo"])):
++            with (patch.object(manual.sys, "argv", ["litellm_fallbacks", *argv]),
++                  patch.object(claude_primary_admin, "main", return_value=7) as selected,
++                  patch.object(manual, "command") as service):
++                self.assertEqual(manual.main(), 7)
++            selected.assert_called_once_with(delegated)
++            service.assert_not_called()
++
++    def test_no_arguments_still_runs_original_quota_check(self):
++        with (patch.object(manual.sys, "argv", ["litellm_fallbacks"]),
++              patch.object(manual, "run_check", return_value=7) as quota,
++              patch.object(manual, "live_status") as status):
++            self.assertEqual(manual.main(), 7)
++        quota.assert_called_once_with()
++        status.assert_not_called()
++
+--- /dev/null
++++ b/claude_primary_admin.py
+@@ -0,0 +1,387 @@
++import argparse
++from collections.abc import Callable, Mapping, Sequence
++from dataclasses import dataclass, replace
++from itertools import chain
++import json
++import sys
++import time
++from typing import Final, Protocol, TypeAlias, Union, cast
++from urllib.parse import quote
++
++import controller as c
++import discover_anthropic_profiles as discovery
++
++Json: TypeAlias = Union[None, bool, int, float, str, list["Json"], dict[str, "Json"]]
++PROFILES: Final = ("staticduo", "defend1")
++MANUAL_DEADLINE: Final = 600
++ROUTE_FIELDS: Final = (*discovery.ROUTE_FIELDS,)
++
++
++def document(value: object) -> dict[str, Json]:
++    decoded: Final = json.loads(c.canonical(value))
++    c.check(isinstance(decoded, dict), "claude_invalid_document")
++    return cast(dict[str, Json], decoded)
++
++
++def mapping(value: Json) -> dict[str, Json]:
++    c.check(isinstance(value, dict), "claude_invalid_document")
++    return cast(dict[str, Json], value)
++
++
++def sequence(value: Json) -> list[Json]:
++    c.check(isinstance(value, list), "claude_invalid_document")
++    return cast(list[Json], value)
++
++
++def text(value: Json) -> str:
++    c.check(isinstance(value, str) and 0 < len(value) <= 512, "claude_invalid_identity")
++    return cast(str, value)
++
++
++class API(Protocol):
++    def request(self, host: str, path: str, method: str = "GET", body: object = None) -> object: ...
++
++
++class Journal(Protocol):
++    def load(self) -> object: ...
++    def save(self, state: object) -> None: ...
++
++
++@dataclass(frozen=True, slots=True)
++class Deployment:
++    identifier: str
++    alias: str
++    upstream: str
++    profile: str
++
++    def payload(self) -> dict[str, Json]:
++        return {"id": self.identifier, "alias": self.alias, "upstream": self.upstream, "profile": self.profile}
++
++
++@dataclass(frozen=True, slots=True)
++class View:
++    rows: tuple[Deployment, ...]
++    routes: bytes
++
++    def payload(self) -> dict[str, Json]:
++        return {"rows": [row.payload() for row in self.rows], "routes": document(c.decode(self.routes))}
++
++
++@dataclass(frozen=True, slots=True)
++class Operation:
++    host: str
++    identifier: str
++    before: str
++    after: str
++
++    def payload(self) -> dict[str, Json]:
++        return {"host": self.host, "id": self.identifier, "before": self.before, "after": self.after}
++
++
++def parse_view(raw: Json) -> View:
++    value: Final = mapping(raw)
++    rows: Final = tuple(mapping(row) for row in sequence(value["rows"]))
++    return View(
++        tuple(
++            Deployment(text(row["id"]), text(row["alias"]), text(row["upstream"]), text(row["profile"])) for row in rows
++        ),
++        c.canonical(value["routes"]),
++    )
++
++
++def parse_operation(raw: Json) -> Operation:
++    value: Final = mapping(raw)
++    return Operation(text(value["host"]), text(value["id"]), text(value["before"]), text(value["after"]))
++
++
++def advance(view: View, op: Operation, inverse: bool = False) -> View:
++    target: Final = op.before if inverse else op.after
++    return replace(
++        view, rows=tuple(replace(row, profile=target) if row.identifier == op.identifier else row for row in view.rows)
++    )
++
++
++class Selector:
++    def __init__(
++        self,
++        api: API,
++        journal: Journal,
++        bindings: Callable[[Sequence[str]], object],
++        hosts: Sequence[str],
++        clock: Callable[[], float] = time.time,
++    ) -> None:
++        self.api = api
++        self.journal = journal
++        self.bindings = bindings
++        self.hosts = tuple(hosts)
++        self.clock = clock
++
++    def snapshot(self, state: Mapping[str, Json]) -> dict[str, View]:
++        attestations: Final = mapping(state.get("anthropic_attestations"))
++        discovered: Final = document(self.bindings(self.hosts))
++        return {
++            host: self.host_view(host, mapping(attestations[host]), mapping(discovered[host])) for host in self.hosts
++        }
++
++    def host_view(self, host: str, att: Mapping[str, Json], bindings: Mapping[str, Json]) -> View:
++        c.check(att.get("exclusive_ownership") is True, "claude_exclusive_ownership_required")
++        c.check(
++            att.get("identity_verified") is True and att.get("credential_sources_read_only") is True,
++            "claude_credentials_attestation_required",
++        )
++        c.check(
++            mapping(att.get("identity_profiles")) == {profile: profile for profile in PROFILES},
++            "claude_identity_profiles_invalid",
++        )
++        models: Final = document(self.api.request(host, "/model/info"))
++        settings: Final = document(self.api.request(host, "/router/settings"))
++        fields: Final = settings.get("fields")
++        flat_fields: Final = tuple(mapping(field) for field in sequence(fields)) if fields is not None else ()
++        c.check(len({text(field["field_name"]) for field in flat_fields}) == len(flat_fields), "duplicate_router_field")
++        flat: Final = (
++            {text(field["field_name"]): field.get("field_value") for field in flat_fields}
++            if fields is not None
++            else settings
++        )
++        routes: Final = {field: flat.get(field) for field in ROUTE_FIELDS}
++        model_rows: Final = tuple(mapping(row) for row in sequence(models["data"]))
++        expected: Final = tuple(mapping(row) for row in sequence(att["deployments"]))
++        owned_names: Final = frozenset(text(row["alias"]) for row in expected)
++        owned_ids: Final = frozenset(text(row["id"]) for row in expected)
++        selected: Final = tuple(
++            row
++            for row in model_rows
++            if row.get("model_name") in owned_names or mapping(row["model_info"]).get("id") in owned_ids
++        )
++        c.check(0 < len(selected) <= 100, "claude_inventory_empty_or_oversized")
++        deployments: Final = tuple(self.deployment(row, bindings) for row in selected)
++        c.check(len({row.identifier for row in deployments}) == len(deployments), "claude_duplicate_id")
++        c.check(len({row.alias for row in deployments}) == len(deployments), "claude_duplicate_alias")
++        live_identity: Final = {
++            c.canonical({"id": row.identifier, "alias": row.alias, "upstream": row.upstream}) for row in deployments
++        }
++        c.check(live_identity == {c.canonical(row) for row in expected}, "claude_inventory_ownership_conflict")
++        by_alias: Final = {row.alias: row for row in deployments}
++        neutral: Final = tuple(row for row in deployments if row.alias.startswith("claude-") and "/" not in row.alias)
++        c.check(bool(neutral), "claude_no_neutral_aliases")
++        aliases: Final = c.alias_map(flat)
++        for row in neutral:
++            c.check(
++                row.alias not in aliases and row.upstream == "anthropic/" + row.alias, "claude_neutral_alias_conflict"
++            )
++            for profile in PROFILES:
++                named: Final = by_alias.get("claude-" + profile + "/" + row.alias)
++                c.check(
++                    named is not None and named.profile == profile and named.upstream == row.upstream,
++                    "claude_explicit_account_conflict",
++                )
++        return View(tuple(sorted(deployments, key=lambda row: row.identifier)), c.canonical(routes))
++
++    @staticmethod
++    def deployment(row: Mapping[str, Json], bindings: Mapping[str, Json]) -> Deployment:
++        params: Final = mapping(row["litellm_params"])
++        identifier: Final = text(mapping(row["model_info"])["id"])
++        alias: Final = text(row["model_name"])
++        upstream: Final = text(params["model"])
++        binding: Final = mapping(bindings.get(identifier))
++        c.check(
++            all(
++                binding.get(key) == value
++                for key, value in (
++                    ("alias", alias),
++                    ("upstream", upstream),
++                    ("observed", params.get("anthropic_auth_profile")),
++                )
++            ),
++            "claude_profile_discovery_conflict",
++        )
++        c.check(
++            params.get("use_anthropic_oauth") is True
++            and binding.get("credential_mode") == "claude_code"
++            and params.get("anthropic_credential_mode") == binding.get("credential_observed"),
++            "claude_credential_mode_required",
++        )
++        c.check(params.get("anthropic_execution_mode") == "native_client", "claude_native_execution_required")
++        c.check(
++            not any(params.get(field) is not None for field in discovery.OVERRIDES), "claude_profile_override_conflict"
++        )
++        profile: Final = text(binding["profile"])
++        c.check(profile in PROFILES, "claude_unknown_profile")
++        return Deployment(identifier, alias, upstream, profile)
++
++    def write(self, op: Operation, inverse: bool = False) -> None:
++        self.api.request(
++            op.host,
++            "/model/" + quote(op.identifier, safe="") + "/update",
++            "PATCH",
++            {"litellm_params": {"anthropic_auth_profile": op.before if inverse else op.after}},
++        )
++
++    def recover(self, state: Mapping[str, Json]) -> dict[str, Json]:
++        transaction: Final = mapping(state["claude_transaction"])
++        attempted: Final = tuple(parse_operation(raw) for raw in sequence(transaction["attempted"]))
++        uncertain_at: Final = transaction.get("uncertain_at")
++        if uncertain_at is not None:
++            c.check(
++                type(uncertain_at) in (int, float) and self.clock() - cast(float, uncertain_at) >= c.RECOVERY_GRACE,
++                "claude_recovery_waiting_revalidation",
++            )
++        before: Final = {host: parse_view(raw) for host, raw in mapping(transaction["before"]).items()}
++        live: Final = self.snapshot(state)
++        recovered: Final = self.recovery_expected(before, live, attempted)
++        for op in reversed(attempted):
++            current: Final = next(row.profile for row in recovered[op.host].rows if row.identifier == op.identifier)
++            if current == op.before:
++                continue
++            latest: Final = self.snapshot(state)
++            self.recovery_expected(before, latest, attempted)
++            pending: Final = {**transaction, "uncertain_at": self.clock()}
++            self.journal.save({**state, "status": "blocked", "claude_transaction": pending})
++            try:
++                self.write(op, inverse=True)
++            except Exception:
++                raise c.Stop("claude_recovery_write_uncertain") from None
++            actual: Final = self.snapshot(state)
++            desired: Final = {**latest, op.host: advance(latest[op.host], op, inverse=True)}
++            c.check(actual == desired, "claude_rollback_unverified")
++        restored: Final = self.snapshot(state)
++        c.check(restored == before, "claude_rollback_conflict")
++        ready: Final = {**state, "status": "ready", "claude_transaction": None}
++        self.journal.save(ready)
++        return ready
++
++    @staticmethod
++    def recovery_expected(
++        before: Mapping[str, View], live: Mapping[str, View], attempted: Sequence[Operation]
++    ) -> dict[str, View]:
++        c.check(len({(op.host, op.identifier) for op in attempted}) == len(attempted), "claude_recovery_invalid")
++        selected: Final = {(op.host, op.identifier): op for op in attempted}
++        expected: Final = {
++            host: replace(view, rows=tuple(Selector.recovery_row(host, row, live, selected) for row in view.rows))
++            for host, view in before.items()
++        }
++        c.check(dict(live) == expected, "claude_recovery_conflict")
++        return expected
++
++    @staticmethod
++    def recovery_row(
++        host: str, row: Deployment, live: Mapping[str, View], selected: Mapping[tuple[str, str], Operation]
++    ) -> Deployment:
++        op: Final = selected.get((host, row.identifier))
++        if op is None:
++            return row
++        actual: Final = next((item for item in live[host].rows if item.identifier == row.identifier), None)
++        c.check(
++            actual is not None and actual.profile in (op.before, op.after) and row.profile == op.before,
++            "claude_recovery_conflict",
++        )
++        return replace(row, profile=cast(Deployment, actual).profile)
++
++    def run(self, profile: str | None) -> dict[str, Json]:
++        state: Final = document(self.journal.load())
++        c.check(not state.get("transaction"), "recovery_required")
++        c.check(state.get("status") == "ready" or state.get("claude_transaction"), "recovery_blocked")
++        if profile is None:
++            current: Final = self.snapshot(state)
++            return {
++                "decision": "status",
++                "controller_status": state["status"],
++                "pending_transaction": bool(state.get("claude_transaction")),
++                "hosts": {
++                    host: {row.alias: row.profile for row in view.rows if "/" not in row.alias}
++                    for host, view in current.items()
++                },
++            }
++        c.check(profile in PROFILES, "claude_unknown_profile")
++        active: Final = self.recover(state) if state.get("claude_transaction") else state
++        before: Final = self.snapshot(active)
++        operations: Final = tuple(self.host_operations(host, view, profile) for host, view in before.items())
++        ops: Final = tuple(chain.from_iterable(operations))
++        c.check(len(ops) <= c.MAX_OPERATIONS, "operation_budget_exceeded")
++        if not ops:
++            return {"decision": "noop", "profile": profile}
++        transaction: Final[dict[str, Json]] = {
++            "before": {host: view.payload() for host, view in before.items()},
++            "attempted": [],
++        }
++        self.journal.save({**active, "status": "blocked", "claude_transaction": transaction})
++        try:
++            self.apply(active, before, ops, transaction)
++        except Exception:
++            failed: Final = document(self.journal.load())
++            pending: Final = mapping(failed.get("claude_transaction"))
++            if not sequence(pending["attempted"]):
++                self.journal.save({**active, "status": "ready", "claude_transaction": None})
++            raise c.Stop("claude_operation_pending_recovery") from None
++        self.journal.save({**active, "status": "ready", "claude_transaction": None})
++        return {"decision": "apply", "profile": profile}
++
++    @staticmethod
++    def host_operations(host: str, view: View, profile: str) -> tuple[Operation, ...]:
++        return tuple(
++            Operation(host, row.identifier, row.profile, profile)
++            for row in view.rows
++            if "/" not in row.alias and row.profile != profile
++        )
++
++    def apply(
++        self,
++        state: Mapping[str, Json],
++        before: Mapping[str, View],
++        ops: Sequence[Operation],
++        transaction: Mapping[str, Json],
++    ) -> None:
++        for index, op in enumerate(ops):
++            expected: Final = self.expected_after(before, ops[:index])
++            c.check(self.snapshot(state) == expected, "claude_live_precondition_conflict")
++            pending: Final = {
++                **transaction,
++                "attempted": [item.payload() for item in ops[: index + 1]],
++                "uncertain_at": self.clock(),
++            }
++            self.journal.save({**state, "status": "blocked", "claude_transaction": pending})
++            self.write(op)
++            c.check(self.snapshot(state) == self.expected_after(before, ops[: index + 1]), "claude_write_unverified")
++            verified: Final = {key: value for key, value in pending.items() if key != "uncertain_at"}
++            self.journal.save({**state, "status": "blocked", "claude_transaction": verified})
++        c.check(self.snapshot(state) == self.expected_after(before, ops), "claude_final_verification_failed")
++
++    @staticmethod
++    def expected_after(before: Mapping[str, View], ops: Sequence[Operation]) -> dict[str, View]:
++        selected: Final = {(op.host, op.identifier): op.after for op in ops}
++        return {
++            host: replace(
++                view,
++                rows=tuple(
++                    replace(row, profile=selected.get((host, row.identifier), row.profile)) for row in view.rows
++                ),
++            )
++            for host, view in before.items()
++        }
++
++
++def main(argv: Sequence[str] | None = None) -> int:
++    from memory_model_admin import host_config
++
++    parser: Final = argparse.ArgumentParser(description="Selecciona la cuenta ClaudeCode en los aliases Claude.")
++    parser.add_argument("profile", nargs="?", choices=PROFILES)
++    parser.add_argument("--status", action="store_true")
++    args: Final = parser.parse_args(argv)
++    if args.status and args.profile:
++        parser.error("--status no admite una cuenta")
++    config: Final = host_config()
++    journal: Final = c.Journal(config["state_directory"], config["journal_key_file"])
++    selector: Final = Selector(c.API(config), journal, discovery.collect_bindings, tuple(config["targets"]))
++    try:
++        with journal.lock(), c.deadline(MANUAL_DEADLINE):
++            result: Final = selector.run(None if args.status else args.profile)
++        print(json.dumps(result, sort_keys=True))
++        return 0
++    except (Exception, c.CycleExpired) as error:
++        code: Final = str(error) if isinstance(error, c.Stop) else "claude_operation_failed"
++        print(json.dumps({"decision": "freeze", "reason_codes": [code]}))
++        return 1
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+--- /dev/null
++++ b/discover_anthropic_profiles.py
+@@ -0,0 +1,140 @@
++from collections.abc import Callable, Sequence
++from concurrent.futures import ThreadPoolExecutor
++import json
++import subprocess
++import time
++from typing import Final
++
++import controller as c
++from discover_profiles import MAX_HOST_OUTPUT, SSH_BASE, parse_host_output
++
++PROFILES: Final = ("staticduo", "defend1")
++OVERRIDES: Final = ("anthropic_auth_file", "anthropic_token_dir", "litellm_credential_name", "api_key", "auth_token")
++ROUTE_FIELDS: Final = (
++    "fallbacks",
++    "context_window_fallbacks",
++    "content_policy_fallbacks",
++    "max_fallbacks",
++    "model_group_alias",
++)
++
++
++def managed(upstream: object) -> bool:
++    return isinstance(upstream, str) and upstream.startswith("anthropic/claude-")
++
++
++INSIDE: Final = r"""
++import asyncio
++import json
++import logging
++import os
++import urllib.request
++logging.disable(logging.CRITICAL)
++
++
++def classify(models, rows, decrypt, mask):
++    bindings = {}
++    for model in models:
++        params = model.get("litellm_params") or {}
++        upstream = params.get("model")
++        if not isinstance(upstream, str) or not upstream.startswith("anthropic/claude-"):
++            continue
++        identifier = (model.get("model_info") or {}).get("id")
++        alias = model.get("model_name")
++        if not isinstance(identifier, str) or not isinstance(alias, str) or identifier in bindings:
++            raise ValueError("invalid_inventory")
++        stored = rows.get(identifier)
++        if stored is None:
++            continue
++        if stored.get("model_name") != alias:
++            raise ValueError("db_identity_missing")
++        raw = stored.get("litellm_params")
++        raw = json.loads(raw) if isinstance(raw, str) else raw
++        if not isinstance(raw, dict):
++            raise ValueError("invalid_db_params")
++        if raw.get("use_anthropic_oauth") is not True or decrypt(raw.get("anthropic_credential_mode"),
++                "anthropic_credential_mode") != "claude_code":
++            continue
++        if decrypt(raw.get("anthropic_execution_mode"), "anthropic_execution_mode") != "native_client":
++            continue
++        if decrypt(raw.get("model"), "model") != upstream:
++            raise ValueError("db_upstream_conflict")
++        if any(raw.get(name) is not None for name in (
++            "anthropic_auth_file", "anthropic_token_dir", "litellm_credential_name", "api_key", "auth_token")):
++            raise ValueError("profile_override_conflict")
++        profile = decrypt(raw.get("anthropic_auth_profile"), "anthropic_auth_profile")
++        if profile not in ("staticduo", "defend1"):
++            raise ValueError("unknown_profile")
++        observed = params.get("anthropic_auth_profile")
++        if observed != mask(profile):
++            raise ValueError("mask_conflict")
++        mode_observed = params.get("anthropic_credential_mode")
++        if mode_observed != mask("claude_code", "anthropic_credential_mode"):
++            raise ValueError("credential_mode_mask_conflict")
++        bindings[identifier] = {"profile": profile, "alias": alias, "upstream": upstream, "observed": observed,
++            "credential_mode": "claude_code", "credential_observed": mode_observed}
++    return bindings
++
++
++def get(path):
++    request = urllib.request.Request("http://127.0.0.1:4000" + path,
++        headers={"Authorization": "Bearer " + os.environ["LITELLM_MASTER_KEY"]})
++    with urllib.request.urlopen(request, timeout=10) as response:
++        return json.load(response)
++
++
++async def run():
++    from prisma import Prisma
++    from litellm.proxy.common_utils.encrypt_decrypt_utils import decrypt_value_helper
++    from litellm.proxy.common_utils.openai_endpoint_utils import remove_sensitive_info_from_deployment
++    db = Prisma()
++    await db.connect()
++    try:
++        rows = await db.query_raw('SELECT model_id, model_name, litellm_params FROM "LiteLLM_ProxyModelTable"')
++    finally:
++        await db.disconnect()
++    bindings = classify(get("/model/info")["data"], {row["model_id"]: row for row in rows},
++        lambda value, field: decrypt_value_helper(value, field, exception_type="debug", return_original_value=True),
++        lambda value, field="anthropic_auth_profile": remove_sensitive_info_from_deployment(
++            {"litellm_params": {field: value}}
++        )["litellm_params"][field])
++    print(json.dumps({"discover": {"bindings": bindings, "skips": {}}}, sort_keys=True))
++
++
++if __name__ == "__main__":
++    try:
++        asyncio.run(run())
++    except Exception:
++        print('{"error":"anthropic_profile_discovery_failed"}')
++        raise SystemExit(1) from None
++"""
++
++
++def collect_host(host: str) -> object:
++    c.check(host in c.HOST_URLS, "target_host_mismatch")
++    local: Final = ("docker", "exec", "-i", "litellm", "python3", "-")
++    command: Final = (*SSH_BASE, "nas", *local) if host == "nas" else local
++    try:
++        result: Final = subprocess.run(
++            command, input=INSIDE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=45
++        )
++    except (OSError, subprocess.TimeoutExpired):
++        raise c.Stop("claude_profile_discovery_failed") from None
++    c.check(result.returncode == 0 and len(result.stdout) <= MAX_HOST_OUTPUT, "claude_profile_discovery_failed")
++    kind, bindings, _ = parse_host_output(result.stdout)
++    c.check(kind == "discover", "claude_profile_discovery_failed")
++    return bindings
++
++
++def collect_bindings(hosts: Sequence[str], collector: Callable[[str], object] = collect_host) -> object:
++    with ThreadPoolExecutor(max_workers=2) as executor:
++        results: Final = tuple(executor.map(collector, hosts))
++    return dict(zip(hosts, results, strict=True))
++
++
++if __name__ == "__main__":
++    try:
++        print(json.dumps({"observed_at": time.time(), "hosts": collect_bindings(tuple(c.HOST_URLS))}, sort_keys=True))
++    except c.Stop:
++        print('{"error":"claude_profile_discovery_failed"}')
++        raise SystemExit(1) from None
+--- /dev/null
++++ b/test/test_claude_primary_admin.py
+@@ -0,0 +1,331 @@
++import copy
++import json
++import tempfile
++import threading
++from pathlib import Path
++import unittest
++
++import controller as c
++import claude_primary_admin as admin
++import discover_anthropic_profiles as discovery
++from test_controller import Store, setup
++
++
++def row(identifier, alias, profile, mode="claude_code"):
++    return {
++        "model_name": alias,
++        "model_info": {"id": identifier},
++        "litellm_params": {
++            "model": "anthropic/claude-test",
++            "anthropic_auth_profile": "*" * len(profile),
++            "anthropic_credential_mode": "*" * len(mode),
++            "use_anthropic_oauth": True,
++            "anthropic_execution_mode": "native_client",
++        },
++    }
++
++
++class FakeAPI:
++    def __init__(self, fail_at=None, commit_failure=False):
++        self.models = {
++            host: [
++                row("neutral-" + host, "claude-test", "staticduo"),
++                row("staticduo-" + host, "claude-staticduo/claude-test", "staticduo"),
++                row("defend1-" + host, "claude-defend1/claude-test", "defend1"),
++                {
++                    "model_name": "gpt-test",
++                    "model_info": {"id": "gpt-" + host},
++                    "litellm_params": {"model": "chatgpt/gpt-test", "chatgpt_auth_profile": "*******"},
++                },
++                {
++                    "model_name": "paid-claude",
++                    "model_info": {"id": "paid-" + host},
++                    "litellm_params": {"model": "anthropic/claude-test"},
++                },
++            ]
++            for host in c.HOST_URLS
++        }
++        self.profiles = {
++            host: {
++                r["model_info"]["id"]: ("defend1" if r["model_name"].startswith("claude-defend1/") else "staticduo")
++                for r in rows
++                if r["model_name"].startswith("claude-")
++            }
++            for host, rows in self.models.items()
++        }
++        self.routes = {
++            host: {
++                "fallbacks": [{"gpt-test": ["gpt-alternate"]}],
++                "max_fallbacks": 4,
++                "model_group_alias": {"memory-model": "gpt-test"},
++                "context_window_fallbacks": [],
++                "content_policy_fallbacks": [],
++            }
++            for host in c.HOST_URLS
++        }
++        self.writes = []
++        self.fail_at = fail_at
++        self.commit_failure = commit_failure
++        self.edit_routes_at = None
++        self.discovery_count = 0
++
++    def request(self, host, path, method="GET", body=None):
++        if method == "GET":
++            return copy.deepcopy({"data": self.models[host]} if path == "/model/info" else self.routes[host])
++        self.writes.append((host, path, method, copy.deepcopy(body)))
++        failure = self.fail_at == len(self.writes)
++        if not failure or self.commit_failure:
++            identifier = path.split("/")[2]
++            profile = body["litellm_params"]["anthropic_auth_profile"]
++            self.profiles[host][identifier] = profile
++            next(r for r in self.models[host] if r["model_info"]["id"] == identifier)["litellm_params"][
++                "anthropic_auth_profile"
++            ] = "*" * len(profile)
++        if failure:
++            raise c.Stop("api_transport_unknown")
++        return {}
++
++    def bindings(self, hosts):
++        self.discovery_count += 1
++        if self.discovery_count == self.edit_routes_at:
++            self.routes["nas"]["model_group_alias"]["external"] = "gpt-test"
++        return {
++            host: {
++                r["model_info"]["id"]: {
++                    "profile": self.profiles[host][r["model_info"]["id"]],
++                    "observed": r["litellm_params"]["anthropic_auth_profile"],
++                    "alias": r["model_name"],
++                    "upstream": r["litellm_params"]["model"],
++                    "credential_mode": "claude_code",
++                    "credential_observed": r["litellm_params"]["anthropic_credential_mode"],
++                }
++                for r in self.models[host]
++                if r["model_name"].startswith("claude-")
++            }
++            for host in hosts
++        }
++
++
++def fixture(fail_at=None, commit_failure=False):
++    api = FakeAPI(fail_at, commit_failure)
++    attestations = {
++        host: {
++            "exclusive_ownership": True,
++            "identity_verified": True,
++            "credential_sources_read_only": True,
++            "identity_profiles": {p: p for p in admin.PROFILES},
++            "deployments": [
++                {"id": r["model_info"]["id"], "alias": r["model_name"], "upstream": r["litellm_params"]["model"]}
++                for r in rows
++                if r["model_name"].startswith("claude-")
++            ],
++        }
++        for host, rows in api.models.items()
++    }
++    store = Store(
++        {
++            "status": "ready",
++            "transaction": None,
++            "policy": {"unrelated": "retained"},
++            "attestations": {"chatgpt": "retained"},
++            "anthropic_attestations": attestations,
++        }
++    )
++    selector = admin.Selector(api, store, api.bindings, tuple(c.HOST_URLS), clock=lambda: 1000)
++    return api, store, selector
++
++
++class ClaudePrimaryTests(unittest.TestCase):
++    def test_apply_noop_status_and_reverse_preserve_routes_explicit_accounts_and_chatgpt(self):
++        api, store, selector = fixture()
++        before_models = copy.deepcopy(api.models)
++        before_routes = copy.deepcopy(api.routes)
++        before_state = copy.deepcopy(store.state)
++        self.assertEqual(selector.run(None)["decision"], "status")
++        self.assertEqual(store.saves, [])
++        self.assertEqual(selector.run("defend1")["decision"], "apply")
++        self.assertEqual(len(api.writes), 2)
++        for host, path, method, body in api.writes:
++            self.assertEqual(path, "/model/neutral-" + host + "/update")
++            self.assertEqual(method, "PATCH")
++            self.assertEqual(body, {"litellm_params": {"anthropic_auth_profile": "defend1"}})
++            self.assertEqual(api.models[host][1:], before_models[host][1:])
++        self.assertEqual(api.routes, before_routes)
++        self.assertEqual(selector.run("defend1")["decision"], "noop")
++        self.assertEqual(len(api.writes), 2)
++        self.assertEqual(store.state["attestations"], before_state["attestations"])
++        self.assertEqual(store.state["policy"], before_state["policy"])
++        self.assertEqual(selector.run("staticduo")["decision"], "apply")
++        self.assertEqual(api.models, before_models)
++
++    def test_uncertain_committed_and_uncommitted_writes_recover_without_forward_replay(self):
++        for committed in (False, True):
++            with self.subTest(committed=committed):
++                api, store, selector = fixture(2, committed)
++                baseline = copy.deepcopy(api.models)
++                with self.assertRaisesRegex(c.Stop, "claude_operation_pending_recovery"):
++                    selector.run("defend1")
++                self.assertEqual(store.state["status"], "blocked")
++                with self.assertRaisesRegex(c.Stop, "claude_recovery_waiting_revalidation"):
++                    selector.recover(store.state)
++                recovery = admin.Selector(api, store, api.bindings, tuple(c.HOST_URLS), clock=lambda: 1100)
++                recovery.recover(store.state)
++                self.assertEqual(api.models, baseline)
++                self.assertEqual(store.state["status"], "ready")
++                self.assertIsNone(store.state["claude_transaction"])
++                self.assertEqual(len(api.writes), 4 if committed else 3)
++
++    def test_recovery_conflict_preserves_unrelated_edit_and_pending_intent(self):
++        api, store, selector = fixture(1, True)
++        with self.assertRaises(c.Stop):
++            selector.run("defend1")
++        api.routes["nas"]["model_group_alias"]["external"] = "gpt-test"
++        recovery = admin.Selector(api, store, api.bindings, tuple(c.HOST_URLS), clock=lambda: 1100)
++        with self.assertRaisesRegex(c.Stop, "claude_recovery_conflict"):
++            recovery.recover(store.state)
++        self.assertEqual(len(api.writes), 1)
++        self.assertEqual(api.routes["nas"]["model_group_alias"]["external"], "gpt-test")
++        self.assertIsNotNone(store.state["claude_transaction"])
++
++    def test_attestation_and_explicit_accounts_required_before_any_write(self):
++        for invalid in (
++            "ownership",
++            "identity",
++            "read_only",
++            "missing_account",
++            "account_profile",
++            "credential_mode",
++            "passthrough",
++            "overrides",
++            "missing_binding",
++        ):
++            with self.subTest(invalid=invalid):
++                api, store, selector = fixture()
++                if invalid == "ownership":
++                    store.state["anthropic_attestations"]["fedora"]["exclusive_ownership"] = False
++                elif invalid == "identity":
++                    store.state["anthropic_attestations"]["fedora"]["identity_verified"] = False
++                elif invalid == "read_only":
++                    store.state["anthropic_attestations"]["fedora"]["credential_sources_read_only"] = False
++                elif invalid == "missing_account":
++                    api.models["fedora"].pop(2)
++                elif invalid == "account_profile":
++                    api.profiles["fedora"]["defend1-fedora"] = "staticduo"
++                elif invalid == "credential_mode":
++                    api.models["fedora"][0]["litellm_params"]["use_anthropic_oauth"] = False
++                elif invalid == "passthrough":
++                    api.models["fedora"][0]["litellm_params"]["anthropic_execution_mode"] = "native_sdk"
++                elif invalid == "overrides":
++                    api.models["fedora"][0]["litellm_params"]["anthropic_token_dir"] = "foreign"
++                else:
++                    selector = admin.Selector(api, store, lambda _: {}, tuple(c.HOST_URLS))
++                with self.assertRaises((c.Stop, KeyError)):
++                    selector.run("defend1")
++                self.assertEqual(api.writes, [])
++                self.assertEqual(store.saves, [])
++
++    def test_concurrent_router_edit_prevents_first_mutation(self):
++        api, store, selector = fixture()
++        api.edit_routes_at = 2
++        with self.assertRaisesRegex(c.Stop, "claude_operation_pending_recovery"):
++            selector.run("defend1")
++        self.assertEqual(api.writes, [])
++        self.assertIn("external", api.routes["nas"]["model_group_alias"])
++        self.assertEqual(store.state["status"], "ready")
++        self.assertIsNone(store.state["claude_transaction"])
++
++    def test_pending_chatgpt_transaction_blocks_selector_and_claude_blocks_chatgpt_cycle(self):
++        api, store, selector = fixture()
++        store.state["transaction"] = {"attempted": []}
++        with self.assertRaisesRegex(c.Stop, "recovery_required"):
++            selector.run("defend1")
++        self.assertEqual(api.writes, [])
++        snapshot, chatgpt_api, chatgpt_store, controller = setup()
++        chatgpt_store.state["claude_transaction"] = {"attempted": []}
++        with self.assertRaisesRegex(c.Stop, "claude_recovery_required"):
++            controller.cycle(snapshot, True)
++        self.assertEqual(chatgpt_api.writes, [])
++
++    def test_real_signed_journal_rejects_tampering_and_shared_lock_contention(self):
++        api, store, _ = fixture()
++        with tempfile.TemporaryDirectory() as directory:
++            root = Path(directory)
++            root.chmod(0o700)
++            key = root / "key"
++            key.write_bytes(b"a" * 32)
++            key.chmod(0o600)
++            journal = c.Journal(root, key)
++            journal.save(store.state)
++            selector = admin.Selector(api, journal, api.bindings, tuple(c.HOST_URLS))
++            with journal.lock():
++                with self.assertRaisesRegex(c.Stop, "already_running"):
++                    with c.Journal(root, key).lock():
++                        pass
++                self.assertEqual(selector.run("defend1")["decision"], "apply")
++            envelope = json.loads(journal.path.read_text())
++            envelope["data"]["status"] = "untrusted"
++            journal.path.write_text(json.dumps(envelope))
++            with self.assertRaisesRegex(c.Stop, "journal_invalid"):
++                selector.run(None)
++
++
++class ClaudeDiscoveryTests(unittest.TestCase):
++    def test_collects_hosts_concurrently_and_preserves_each_host_binding(self):
++        barrier = threading.Barrier(2)
++
++        def collector(host):
++            barrier.wait(timeout=1)
++            return {"deployment-" + host: {"profile": host}}
++
++        self.assertEqual(
++            discovery.collect_bindings(("nas", "fedora"), collector),
++            {
++                "nas": {"deployment-nas": {"profile": "nas"}},
++                "fedora": {"deployment-fedora": {"profile": "fedora"}},
++            },
++        )
++
++    def test_host_collection_failure_prevents_partial_binding_snapshot(self):
++        def collector(host):
++            if host == "nas":
++                raise c.Stop("claude_profile_discovery_failed")
++            return {"deployment": {"profile": "staticduo"}}
++
++        with self.assertRaisesRegex(c.Stop, "claude_profile_discovery_failed"):
++            discovery.collect_bindings(("fedora", "nas"), collector)
++
++    def test_classifies_only_cli_owned_profiles_and_never_emits_credentials(self):
++        namespace = {"__name__": "test_discovery"}
++        exec(discovery.INSIDE, namespace)
++        classify = namespace["classify"]
++        models = [
++            row("cli", "claude-test", "staticduo"),
++            {"model_name": "paid", "model_info": {"id": "paid"}, "litellm_params": {"model": "anthropic/claude-test"}},
++        ]
++        raw = {
++            "model": "anthropic/claude-test",
++            "anthropic_auth_profile": "staticduo",
++            "use_anthropic_oauth": True,
++            "anthropic_credential_mode": "claude_code",
++            "anthropic_execution_mode": "native_client",
++        }
++        db = {
++            "cli": {"model_name": "claude-test", "litellm_params": raw},
++            "paid": {"model_name": "paid", "litellm_params": {"api_key": "SECRET"}},
++        }
++        bindings = classify(models, db, lambda value, _: value, lambda value, field=None: "*" * len(value))
++        self.assertEqual(set(bindings), {"cli"})
++        self.assertEqual(bindings["cli"]["profile"], "staticduo")
++        self.assertNotIn("SECRET", json.dumps(bindings))
++        encrypted = {key: "cipher:" + value if isinstance(value, str) else value for key, value in raw.items()}
++        encoded_db = {**db, "cli": {"model_name": "claude-test", "litellm_params": encrypted}}
++        encoded_bindings = classify(
++            models,
++            encoded_db,
++            lambda value, _: value.removeprefix("cipher:") if isinstance(value, str) else value,
++            lambda value, field=None: "*" * len(value),
++        )
++        self.assertEqual(encoded_bindings, bindings)
++        raw["anthropic_auth_profile"] = "foreign"
++        with self.assertRaises(ValueError):
++            classify(models, db, lambda value, _: value, lambda value, field=None: "*" * len(value))
+--- a/SHA256SUMS
++++ b/SHA256SUMS
+@@ -2 +2 @@
+-aa9c3998282f4138c481f423d4c156793b4d2bc16f38d44d7e1e8d92c61e5320  controller.py
++65cf5344b564c2eff5e9f7b3bf421a4b6fcc41851661bf51aad42288f28c427c  controller.py
+@@ -8 +8 @@
+-bceca954c3ca208d72b3e773fd5046ea86f18f54f5591a30305202b59db0b038  litellm_fallbacks
++40308a02f48fc4aaca4e407960a69d50a81a45cf2378cabefdbd38bdc78669ff  litellm_fallbacks
+@@ -22 +22 @@
+-ea28b9cafbb009c2e754a7763a69ed9e3768845542cba53b93be3747a2b2e092  test/test_manual_command.py
++ccf7cdf0aa4ad25007cc9d3534f964c097abdad579d6e1d43c7584a8a2439a8a  test/test_manual_command.py
+@@ -34,0 +35,3 @@
++515262416016934f956c8a26b73e23ec1320815d2999507605a9ca2b317a1998  claude_primary_admin.py
++1c501429321ad27082494cc3a72347f87d3223a2896883b9567aab6e58e59425  discover_anthropic_profiles.py
++bf9f198da877d6c9b41e9198e4c81e38e2e74ee33f9a625867b6bcf960be2ecd  test/test_claude_primary_admin.py
+--- /dev/null
++++ b/ANTHROPIC_SHA256SUMS
+@@ -0,0 +1,6 @@
++65cf5344b564c2eff5e9f7b3bf421a4b6fcc41851661bf51aad42288f28c427c  controller.py
++40308a02f48fc4aaca4e407960a69d50a81a45cf2378cabefdbd38bdc78669ff  litellm_fallbacks
++ccf7cdf0aa4ad25007cc9d3534f964c097abdad579d6e1d43c7584a8a2439a8a  test/test_manual_command.py
++515262416016934f956c8a26b73e23ec1320815d2999507605a9ca2b317a1998  claude_primary_admin.py
++1c501429321ad27082494cc3a72347f87d3223a2896883b9567aab6e58e59425  discover_anthropic_profiles.py
++bf9f198da877d6c9b41e9198e4c81e38e2e74ee33f9a625867b6bcf960be2ecd  test/test_claude_primary_admin.py

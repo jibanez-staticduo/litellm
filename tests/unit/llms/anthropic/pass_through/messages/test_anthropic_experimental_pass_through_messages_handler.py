@@ -2,15 +2,15 @@ import asyncio
 import json
 import os
 import uuid
+from pathlib import Path
+from datetime import datetime
 from typing import Any, Dict, Final, List
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
-
-
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import litellm
 from litellm.anthropic_interface import messages
@@ -23,6 +23,180 @@ from litellm.types.utils import (
     StandardLoggingPayloadErrorInformation,
     StreamingChoices,
 )
+
+
+@pytest.mark.asyncio
+async def test_native_client_profile_replaces_auth_and_preserves_native_request(tmp_path: Path) -> None:
+    profile: Final = tmp_path / "account_b"
+    profile.mkdir()
+    (profile / ".credentials.json").write_text(
+        json.dumps(
+            {
+                "claudeAiOauth": {
+                    "accessToken": "sk-ant-oat01-account-b",
+                    "expiresAt": 99999999999999,
+                    "scopes": ["user:inference"],
+                }
+            }
+        )
+    )
+    (profile / ".claude.json").write_text(json.dumps({"oauthAccount": {"accountUuid": "account-b-uuid"}}))
+    identity: Final = {"device_id": "native-device", "account_uuid": "account-a-uuid", "session_id": "native-session"}
+    body: Final = {
+        "messages": [
+            {"role": "user", "content": "first"},
+            {
+                "role": "assistant",
+                "content": [
+                    {"type": "thinking", "thinking": "", "signature": "native-signature"},
+                    {"type": "tool_use", "id": "Native.Tool:0", "name": "Native.Tool", "input": {}},
+                ],
+            },
+            {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "Native.Tool:0", "content": ""}]},
+        ],
+        "max_tokens": 128,
+        "stream": False,
+        "system": [{"type": "text", "text": "native billing and instructions"}],
+        "tools": [{"name": "Native.Tool", "input_schema": {"type": "object"}}],
+        "metadata": {"user_id": json.dumps(identity)},
+        "thinking": {"type": "disabled"},
+    }
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        assert str(request.url) == "https://api.anthropic.com/v1/messages"
+        assert request.headers["authorization"] == "Bearer sk-ant-oat01-account-b"
+        assert "x-api-key" not in request.headers
+        assert request.headers["user-agent"] == "claude-cli/native-client"
+        assert request.headers["anthropic-beta"] == "native-beta"
+        payload: Final = json.loads(request.content)
+        assert json.loads(payload["metadata"]["user_id"]) == {**identity, "account_uuid": "account-b-uuid"}
+        assert {**payload, "metadata": body["metadata"]} == {"model": "native-model", **body}
+        return httpx.Response(
+            200,
+            json={
+                "id": "msg_native",
+                "type": "message",
+                "role": "assistant",
+                "model": "native-model",
+                "content": [{"type": "text", "text": "continued"}],
+                "stop_reason": "end_turn",
+                "stop_sequence": None,
+                "usage": {"input_tokens": 3, "output_tokens": 1},
+            },
+        )
+
+    client: Final = AsyncHTTPHandler(transport=httpx.MockTransport(upstream))
+    try:
+        result: Final = await litellm.anthropic.messages.acreate(
+            model="anthropic/native-model",
+            client=client,
+            use_anthropic_oauth=True,
+            anthropic_execution_mode="native_client",
+            anthropic_credential_mode="claude_code",
+            anthropic_auth_profile="account_b",
+            anthropic_token_dir=str(tmp_path),
+            extra_headers={
+                "Authorization": "Bearer client-account-a",
+                "User-Agent": "claude-cli/native-client",
+                "anthropic-beta": "native-beta",
+                "anthropic-version": "native-version",
+            },
+            **body,
+        )
+        assert result["content"][0]["text"] == "continued"
+    finally:
+        await client.client.aclose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("sync", (False, True))
+@pytest.mark.parametrize("native", (False, True))
+async def test_native_messages_preserve_signed_empty_thinking_history(
+    sync: bool, native: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from litellm.llms.anthropic.native_transport import AnthropicNativeIdentity
+
+    monkeypatch.setenv("ANTHROPIC_NATIVE_SDK_BASE_URL", "http://native-broker")
+    monkeypatch.setenv("ANTHROPIC_NATIVE_SDK_KEY", "private-broker-key")
+    thinking: Final = {"type": "thinking", "thinking": "", "signature": "opaque-native-signature"}
+    tool_use: Final = {
+        "type": "tool_use",
+        "id": "toolu_replay",
+        "name": "lookup",
+        "input": {},
+        "caller": {"type": "direct"},
+    }
+    history: Final = [
+        {"role": "user", "content": "Use lookup"},
+        {"role": "assistant", "content": [thinking, tool_use]},
+        {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "toolu_replay", "content": "done"}]},
+    ]
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        body: Final = json.loads(request.content)
+        assert body["messages"][1]["content"] == ([thinking, tool_use] if native else [tool_use])
+        assert str(request.url) == (
+            "http://native-broker/v1/messages" if native else "https://api.anthropic.com/v1/messages"
+        )
+        return httpx.Response(
+            200,
+            json={
+                "id": "msg_replay",
+                "type": "message",
+                "role": "assistant",
+                "model": "claude-test-model",
+                "content": [{"type": "text", "text": "continued"}],
+                "stop_reason": "end_turn",
+                "stop_sequence": None,
+                "usage": {"input_tokens": 3, "output_tokens": 1},
+            },
+        )
+
+    native_params: Final = (
+        {
+            "use_anthropic_oauth": True,
+            "anthropic_auth_profile": "fixed-profile",
+            "anthropic_execution_mode": "native_sdk",
+            "_anthropic_native_identity": AnthropicNativeIdentity("owner", "deployment"),
+        }
+        if native
+        else {"api_key": "test-api-key"}
+    )
+    if sync:
+        from litellm.litellm_core_utils.litellm_logging import Logging
+
+        client: Final = AsyncHTTPHandler(transport=httpx.MockTransport(upstream))
+        logging: Final = Logging(
+            model="claude-test-model",
+            messages=history,
+            stream=False,
+            call_type="anthropic_messages",
+            start_time=datetime(2026, 1, 1),
+            litellm_call_id="native-history-test",
+            function_id="native-history-test",
+        )
+        try:
+            result: Final = await litellm.anthropic.messages.create(
+                model="anthropic/claude-test-model",
+                messages=history,
+                max_tokens=32,
+                client=client,
+                is_async=True,
+                litellm_logging_obj=logging,
+                **native_params,
+            )
+            assert result["content"][0]["text"] == "continued"
+        finally:
+            await client.client.aclose()
+        return
+    async_client: Final = AsyncHTTPHandler(transport=httpx.MockTransport(upstream))
+    try:
+        async_result: Final = await litellm.anthropic.messages.acreate(
+            model="anthropic/claude-test-model", messages=history, max_tokens=32, client=async_client, **native_params
+        )
+        assert async_result["content"][0]["text"] == "continued"
+    finally:
+        await async_client.client.aclose()
 
 
 def test_anthropic_experimental_pass_through_messages_handler():
@@ -1480,6 +1654,7 @@ async def test_provider_messages_api_base_env_is_not_shadowed_by_the_chat_defaul
 
     assert seen_urls == ["https://deepseek.internal.example/anthropic/v1/messages"]
 
+
 @pytest.mark.asyncio
 async def test_anthropic_messages_forwards_safeguards_and_unknown_beta_to_anthropic():
     """Shapes are what Claude Code 2.1.278 sends and api.anthropic.com returns, captured 2026-09-21."""
@@ -1594,7 +1769,9 @@ def _claude_code_auto_mode_request() -> tuple[list[dict[str, object]], list[dict
     return safeguards, safeguard_results
 
 
-def _upstream_answering_with(safeguard_results: list[dict[str, object]], captured: dict[str, object]) -> AsyncHTTPHandler:
+def _upstream_answering_with(
+    safeguard_results: list[dict[str, object]], captured: dict[str, object]
+) -> AsyncHTTPHandler:
     def upstream_records_the_request(request: httpx.Request) -> httpx.Response:
         captured["body"] = json.loads(request.content)
         captured["anthropic-beta"] = request.headers.get("anthropic-beta")
@@ -1620,7 +1797,9 @@ def _upstream_answering_with(safeguard_results: list[dict[str, object]], capture
 
 
 _CLIENT_BETA_HEADERS: Final = (
-    pytest.param({"anthropic-beta": "dangerous-tool-use-2026-09-03,interleaved-thinking-2025-05-14"}, id="client_sends_beta"),
+    pytest.param(
+        {"anthropic-beta": "dangerous-tool-use-2026-09-03,interleaved-thinking-2025-05-14"}, id="client_sends_beta"
+    ),
     pytest.param({"anthropic-beta": "interleaved-thinking-2025-05-14"}, id="client_omits_beta"),
     pytest.param({}, id="client_sends_no_beta_header"),
 )

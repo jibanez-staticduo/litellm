@@ -1,0 +1,47 @@
+{
+  "artifact_revision": 2,
+  "attestation_required": [
+    "exclusive_ownership",
+    "identity_verified",
+    "credential_sources_read_only",
+    "identity_profiles",
+    "deployments"
+  ],
+  "base_files": {
+    "SHA256SUMS": "25d4100900adc6957da6a5acb889009b9e02fad6e3c87f976da1e1a81bc98284",
+    "controller.py": "aa9c3998282f4138c481f423d4c156793b4d2bc16f38d44d7e1e8d92c61e5320",
+    "litellm_fallbacks": "bceca954c3ca208d72b3e773fd5046ea86f18f54f5591a30305202b59db0b038",
+    "test/test_manual_command.py": "ea28b9cafbb009c2e754a7763a69ed9e3768845542cba53b93be3747a2b2e092"
+  },
+  "base_manifest_sha256": "25d4100900adc6957da6a5acb889009b9e02fad6e3c87f976da1e1a81bc98284",
+  "base_release": "quota-sidecar-20260923-recovery60",
+  "candidate_files": {
+    "ANTHROPIC_SHA256SUMS": "26d0996a56730f71901941dc85a55d5b997b0674fc3568f6f2870c6012ee8384",
+    "SHA256SUMS": "47c89c49a3e37fb398c5e3ff8eb0639aa9059457279c06343cc83bbe096d71e7",
+    "claude_primary_admin.py": "515262416016934f956c8a26b73e23ec1320815d2999507605a9ca2b317a1998",
+    "controller.py": "65cf5344b564c2eff5e9f7b3bf421a4b6fcc41851661bf51aad42288f28c427c",
+    "discover_anthropic_profiles.py": "1c501429321ad27082494cc3a72347f87d3223a2896883b9567aab6e58e59425",
+    "litellm_fallbacks": "40308a02f48fc4aaca4e407960a69d50a81a45cf2378cabefdbd38bdc78669ff",
+    "test/test_claude_primary_admin.py": "bf9f198da877d6c9b41e9198e4c81e38e2e74ee33f9a625867b6bcf960be2ecd",
+    "test/test_manual_command.py": "ccf7cdf0aa4ad25007cc9d3534f964c097abdad579d6e1d43c7584a8a2439a8a"
+  },
+  "credential_mode": "claude_code",
+  "discovery_workers": 2,
+  "execution_mode": "native_client",
+  "host_collection_timeout_seconds": 45,
+  "interface": [
+    "litellm_fallbacks claude --status",
+    "litellm_fallbacks claude staticduo",
+    "litellm_fallbacks claude defend1"
+  ],
+  "manual_deadline_seconds": 600,
+  "patch_context_lines": 0,
+  "patch_sha256": "72cbca3628a7e6535b350bdadbca08d960c0fd314cb92f866f159cb4c42a77b2",
+  "profile_field": "anthropic_auth_profile",
+  "validation": {
+    "command": "PYTHONPATH=.:test python3 -m unittest discover -s test -q",
+    "result": "OK",
+    "sequential_mutation": "killed by concurrent barrier regression",
+    "tests": 261
+  }
+}

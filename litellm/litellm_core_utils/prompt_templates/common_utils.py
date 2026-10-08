@@ -1985,7 +1985,7 @@ def is_encrypted_reasoning_block(block: object) -> bool:
     return _carries_encrypted_reasoning(_encrypted_reasoning_field(mapping))
 
 
-def is_unsignable_thinking_block(block: object) -> bool:
+def is_unsignable_thinking_block(block: object, *, preserve_signed_empty: bool = False) -> bool:
     """A thinking block Anthropic cannot accept on input.
 
     Anthropic verifies the signature cryptographically, so a block with a null,
@@ -2007,6 +2007,8 @@ def is_unsignable_thinking_block(block: object) -> bool:
     signature: Final = mapping.get("signature")
     if not (isinstance(signature, str) and len(signature) > 0):
         return True
+    if preserve_signed_empty:
+        return False
     thinking_text: Final = mapping.get("thinking")
     return not (isinstance(thinking_text, str) and len(thinking_text.strip()) > 0)
 

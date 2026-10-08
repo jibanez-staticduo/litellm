@@ -33,6 +33,7 @@ from litellm.constants import (
 from litellm.litellm_core_utils.classifier_logging import classifier_audit_fields, without_classifier_audit
 from litellm.litellm_core_utils.core_helpers import (
     get_litellm_metadata_from_kwargs,
+    managed_anthropic_oauth_attribution,
     proxy_stamped_used_client_oauth_token,
     reconstruct_model_name,
 )
@@ -158,6 +159,8 @@ _STAMPED_METADATA_KEYS: Final = frozenset(
         "autorouter_savings_estimate",
         "autorouter_baseline_observation",
         "used_client_oauth_token",
+        "used_server_oauth_token",
+        "anthropic_auth_profile",
     )
 )
 
@@ -183,6 +186,8 @@ def _get_spend_logs_metadata(
     router_metadata: SpendLogsRouterMetadata | None = None,
     azure_spillover: AzureSpillover | None = None,
     used_client_oauth_token: bool | None = None,
+    used_server_oauth_token: bool | None = None,
+    anthropic_auth_profile: str | None = None,
 ) -> SpendLogsMetadata:
     if metadata is None:
         return SpendLogsMetadata(
@@ -228,6 +233,8 @@ def _get_spend_logs_metadata(
             router_metadata=router_metadata,
             azure_spillover=azure_spillover,
             used_client_oauth_token=used_client_oauth_token,
+            used_server_oauth_token=used_server_oauth_token,
+            anthropic_auth_profile=anthropic_auth_profile,
         )
     verbose_proxy_logger.debug(
         "getting payload for SpendLogs, available keys in metadata: " + str(list(metadata.keys()))
@@ -244,6 +251,8 @@ def _get_spend_logs_metadata(
         router_metadata=router_metadata,
         azure_spillover=azure_spillover,
         used_client_oauth_token=used_client_oauth_token,
+        used_server_oauth_token=used_server_oauth_token,
+        anthropic_auth_profile=anthropic_auth_profile,
     )
     _raw_key: Final = clean_metadata.get("user_api_key")
     _trusted_hash: Final = metadata.get("user_api_key_hash")
@@ -608,6 +617,9 @@ def get_logging_payload(
         or None
     )
     custom_llm_provider: Final = logged_provider or _model_group_provider(_model_group, llm_router)
+    used_server_oauth_token, anthropic_auth_profile = managed_anthropic_oauth_attribution(
+        litellm_params, custom_llm_provider
+    )
     requested_model: Final = cast(object, kwargs.get("model"))
     raw_model: Final = requested_model if isinstance(requested_model, str) else ""
     model_is_malformed: Final = requested_model is not None and not isinstance(requested_model, str)
@@ -722,8 +734,13 @@ def get_logging_payload(
             router_correlation_id=litellm_call_id,
         ),
         used_client_oauth_token=resolve_used_client_oauth_token(
-            proxy_stamped_used_client_oauth_token(litellm_params.get("metadata"), litellm_params), custom_llm_provider
+            False
+            if used_server_oauth_token
+            else proxy_stamped_used_client_oauth_token(litellm_params.get("metadata"), litellm_params),
+            custom_llm_provider,
         ),
+        used_server_oauth_token=used_server_oauth_token,
+        anthropic_auth_profile=anthropic_auth_profile,
         azure_spillover=azure_spillover(
             response_headers=kwargs.get("response_headers")
             if isinstance(kwargs.get("response_headers"), Mapping)

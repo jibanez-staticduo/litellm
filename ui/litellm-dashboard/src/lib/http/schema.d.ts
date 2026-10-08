@@ -34744,6 +34744,20 @@ export interface components {
             annotation_cost_per_page?: number | null;
             /** Annotation Cost Per Page Batches */
             annotation_cost_per_page_batches?: number | null;
+            /** Anthropic Auth Profile */
+            anthropic_auth_profile?: string | null;
+            /** Anthropic Credential Mode */
+            anthropic_credential_mode?: string | null;
+            /** Anthropic Execution Mode */
+            anthropic_execution_mode?: string | null;
+            /** Anthropic Native Request Body */
+            anthropic_native_request_body?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Anthropic Oauth Compatibility */
+            anthropic_oauth_compatibility?: string | null;
+            /** Anthropic Token Dir */
+            anthropic_token_dir?: string | null;
             /** Api Base */
             api_base?: string | null;
             /** Api Key */
@@ -35156,6 +35170,8 @@ export interface components {
             timeout?: number | string | null;
             /** Tpm */
             tpm?: number | null;
+            /** Use Anthropic Oauth */
+            use_anthropic_oauth?: boolean | null;
             /** Use Chat Completions Api */
             use_chat_completions_api?: boolean | null;
             /**
@@ -49160,6 +49176,20 @@ export interface components {
             annotation_cost_per_page?: number | null;
             /** Annotation Cost Per Page Batches */
             annotation_cost_per_page_batches?: number | null;
+            /** Anthropic Auth Profile */
+            anthropic_auth_profile?: string | null;
+            /** Anthropic Credential Mode */
+            anthropic_credential_mode?: string | null;
+            /** Anthropic Execution Mode */
+            anthropic_execution_mode?: string | null;
+            /** Anthropic Native Request Body */
+            anthropic_native_request_body?: {
+                [key: string]: components["schemas"]["JsonValue"];
+            } | null;
+            /** Anthropic Oauth Compatibility */
+            anthropic_oauth_compatibility?: string | null;
+            /** Anthropic Token Dir */
+            anthropic_token_dir?: string | null;
             /** Api Base */
             api_base?: string | null;
             /** Api Key */
@@ -49572,6 +49602,8 @@ export interface components {
             timeout?: number | string | null;
             /** Tpm */
             tpm?: number | null;
+            /** Use Anthropic Oauth */
+            use_anthropic_oauth?: boolean | null;
             /** Use Chat Completions Api */
             use_chat_completions_api?: boolean | null;
             /**

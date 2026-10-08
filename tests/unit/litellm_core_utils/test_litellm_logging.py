@@ -8,6 +8,8 @@ import os
 import sys
 import time
 from collections.abc import Callable, Iterator, Mapping
+from pathlib import Path
+from queue import Queue
 from types import MappingProxyType
 from typing import Final, Literal
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -58,6 +60,36 @@ def logging_obj():
         litellm_call_id="12345",
         function_id="1245",
     )
+
+
+@pytest.mark.parametrize("header_name", ["authorization", "Authorization"])
+@pytest.mark.parametrize("update_from_kwargs", [False, True])
+def test_managed_anthropic_oauth_headers_are_redacted_before_custom_logging(
+    logging_obj: LitellmLogging, header_name: str, update_from_kwargs: bool
+) -> None:
+    captured: Final[Queue[Mapping[str, object]]] = Queue()
+
+    def capture(details: Mapping[str, object]) -> None:
+        captured.put(details)
+
+    if update_from_kwargs:
+        logging_obj.update_from_kwargs(
+            kwargs={"use_anthropic_oauth": True}, litellm_params={"logger_fn": capture}, optional_params={}
+        )
+    else:
+        logging_obj.update_environment_variables(
+            litellm_params={"use_anthropic_oauth": True, "logger_fn": capture}, optional_params={}
+        )
+    token: Final = "sk-ant-oat01-synthetic-managed-logging-token"
+    headers: Final = {header_name: f"Bearer {token}", "x-trace": "trace-value"}
+    transport_args: Final = {"headers": headers, "api_base": "https://api.anthropic.com/v1/messages"}
+    logging_obj.pre_call(input="hello", api_key=None, additional_args=transport_args)
+
+    logged: Final = json.dumps(dict(captured.get_nowait()), default=str)
+    assert token not in logged
+    assert json.loads(logged)["additional_args"]["headers"]["x-trace"] == "trace-value"
+    assert headers[header_name] == f"Bearer {token}"
+    assert transport_args["headers"] is headers
 
 
 @pytest.fixture(scope="module")
@@ -4829,6 +4861,65 @@ def test_get_standard_logging_object_payload_takes_used_client_oauth_token_from_
     assert payload["metadata"]["used_client_oauth_token"] is expected
 
 
+@pytest.mark.parametrize("managed", [False, True])
+@pytest.mark.parametrize("function_name", [None, "_ageneric_api_call_with_fallbacks"])
+def test_managed_anthropic_oauth_attribution_survives_router_logging_and_spend(
+    logging_obj: LitellmLogging, managed: bool, function_name: str | None
+) -> None:
+    from datetime import datetime, timezone
+
+    from litellm.litellm_core_utils.litellm_logging import get_standard_logging_object_payload
+    from litellm.proxy.spend_tracking.spend_tracking_utils import get_logging_payload
+
+    router: Final = litellm.Router(model_list=[])
+    profile: Final = "accounting-profile"
+    deployment: Final = {
+        "model_name": "accounting-model",
+        "litellm_params": {
+            "model": "anthropic/unit-test-model",
+            "use_anthropic_oauth": managed,
+            "anthropic_auth_profile": profile,
+        },
+        "model_info": {"id": "accounting-deployment"},
+    }
+    request: Final = {
+        "metadata": {
+            "used_server_oauth_token": not managed,
+            "anthropic_auth_profile": "caller-profile",
+            "used_client_oauth_token": True,
+        },
+        "litellm_metadata": {
+            "used_server_oauth_token": not managed,
+            "anthropic_auth_profile": "caller-profile",
+            "used_client_oauth_token": True,
+        },
+    }
+    router._update_kwargs_with_deployment(deployment=deployment, kwargs=request, function_name=function_name)
+    logging_obj.update_from_kwargs(kwargs=request, litellm_params={"custom_llm_provider": "anthropic"})
+    kwargs: Final = {
+        "model": deployment["litellm_params"]["model"],
+        "custom_llm_provider": "anthropic",
+        "litellm_params": logging_obj.litellm_params,
+    }
+    now: Final = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    payload: Final = get_standard_logging_object_payload(
+        kwargs=kwargs,
+        init_response_obj={},
+        start_time=now,
+        end_time=now,
+        logging_obj=logging_obj,
+        status="success",
+    )
+    assert payload is not None
+    spend: Final = get_logging_payload(
+        kwargs={**kwargs, "standard_logging_object": payload}, response_obj={}, start_time=now, end_time=now
+    )
+    for metadata in (payload["metadata"], json.loads(spend["metadata"])):
+        assert metadata["used_server_oauth_token"] is managed
+        assert metadata["anthropic_auth_profile"] == (profile if managed else None)
+        assert metadata["used_client_oauth_token"] is (not managed)
+
+
 def test_get_standard_logging_object_payload_carries_matched_access_groups(logging_obj):
     """Access groups stamped at auth time reach the logging payload, so integrations see what a request billed."""
     from datetime import datetime
@@ -9367,3 +9458,163 @@ def test_get_final_response_obj_redacts_the_served_text_when_message_logging_is_
     assert isinstance(logged, dict)
     assert "<CREDIT_CARD>" not in json.dumps(logged), logged
     assert "4111" not in json.dumps(logged), logged
+
+
+@pytest.fixture
+def memory_luna_router(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> litellm.Router:
+    from litellm.proxy import proxy_server
+
+    monkeypatch.setattr(litellm, "model_cost", copy.deepcopy(litellm.model_cost))
+    (tmp_path / "auth.json").write_text(
+        json.dumps({"access_token": "synthetic-unit-test", "expires_at": time.time() + 86400})
+    )
+    monkeypatch.setenv("CHATGPT_TOKEN_DIR", str(tmp_path))
+    router: Final = litellm.Router(
+        model_list=[
+            {
+                "model_name": "gpt-6-luna",
+                "litellm_params": {"model": "chatgpt/gpt-6-luna", "api_key": "synthetic-unit-test"},
+                "model_info": {
+                    "id": "memory-luna-canonical-test",
+                    "input_cost_per_token": 1e-7,
+                    "output_cost_per_token": 5e-7,
+                    "cache_read_input_token_cost": 1e-8,
+                    "input_cost_per_token_above_272k_tokens": 2e-7,
+                    "output_cost_per_token_above_272k_tokens": 7.5e-7,
+                    "cache_read_input_token_cost_above_272k_tokens": 2e-8,
+                },
+            }
+        ]
+    )
+    monkeypatch.setattr(proxy_server, "llm_router", router)
+    return router
+
+
+def _memory_luna_logging(request_model: str = "memory-model") -> LitellmLogging:
+    logging_obj: Final = LitellmLogging(
+        model="hosted_vllm/qwen3.8-flash-next",
+        messages=[{"role": "user", "content": "price control"}],
+        stream=False,
+        call_type="completion",
+        start_time=time.time(),
+        litellm_call_id="memory-luna-pricing",
+        function_id="memory-luna-pricing",
+    )
+    logging_obj.update_environment_variables(
+        litellm_params={
+            "proxy_server_request": {"body": {"model": request_model}},
+            "metadata": {"model_group": "qwen3.8-flash-next", "original_model_group": "memory-model"},
+        },
+        optional_params={},
+        custom_llm_provider="hosted_vllm",
+    )
+    return logging_obj
+
+
+@pytest.mark.parametrize("request_model", ["memory-model", "memory_model"])
+@pytest.mark.parametrize("backend_cost", [0.0, 9.0])
+@pytest.mark.parametrize("prompt_tokens", [100, 300_000])
+def test_memory_luna_prices_fallback_tokens_and_cache_with_canonical_tiers(
+    memory_luna_router: litellm.Router, request_model: str, backend_cost: float, prompt_tokens: int
+) -> None:
+    logging_obj: Final = _memory_luna_logging(request_model)
+    response: Final = ModelResponse(
+        model="qwen3.8-flash-next",
+        usage=litellm.Usage(
+            prompt_tokens=prompt_tokens,
+            completion_tokens=20,
+            total_tokens=prompt_tokens + 20,
+            prompt_tokens_details={"cached_tokens": 40},
+            cost=backend_cost,
+        ),
+    )
+    response._hidden_params = {"response_cost": backend_cost}
+    now: Final = datetime.datetime.now()
+    logging_obj._process_hidden_params_and_response_cost(response, now, now)
+    expected: Final = (
+        (prompt_tokens - 40) * 1e-7 + 40 * 1e-8 + 20 * 5e-7
+        if prompt_tokens <= 272_000
+        else (prompt_tokens - 40) * 2e-7 + 40 * 2e-8 + 20 * 7.5e-7
+    )
+    assert logging_obj.model_call_details["response_cost"] == pytest.approx(expected), str(
+        logging_obj.model_call_details.get("response_cost_failure_debug_information")
+    )
+    assert response._hidden_params["response_cost"] == pytest.approx(expected)
+    assert logging_obj.model_call_details["standard_logging_object"]["response_cost"] == pytest.approx(expected)
+    assert logging_obj.cost_breakdown["total_cost"] == pytest.approx(expected)
+    assert logging_obj.cost_breakdown["pricing_reference_model"] == "gpt-6-luna"
+    assert response.model == "qwen3.8-flash-next"
+    assert response.usage.cost == backend_cost
+
+
+def test_memory_luna_cache_hit_stays_free(memory_luna_router: litellm.Router) -> None:
+    logging_obj: Final = _memory_luna_logging()
+    logging_obj.model_call_details["cache_hit"] = True
+    response: Final = ModelResponse(
+        model="qwen3.8-flash-next", usage=litellm.Usage(prompt_tokens=100, completion_tokens=20)
+    )
+    response._hidden_params = {"response_cost": 9.0}
+    now: Final = datetime.datetime.now()
+    logging_obj._process_hidden_params_and_response_cost(response, now, now, build_logging_payload=False)
+    assert logging_obj.model_call_details["response_cost"] == 0.0
+    assert response._hidden_params["response_cost"] == 0.0
+
+
+def test_memory_luna_original_body_overrides_fallback_metadata(memory_luna_router: litellm.Router) -> None:
+    logging_obj: Final = _memory_luna_logging("qwen3.8-flash-next")
+    response: Final = ModelResponse(
+        model="qwen3.8-flash-next", usage=litellm.Usage(prompt_tokens=100, completion_tokens=20)
+    )
+    response._hidden_params = {"response_cost": 9.0}
+    assert logging_obj._response_cost_calculator(response) == 9.0
+    assert logging_obj._uses_memory_luna_pricing() is False
+
+
+@pytest.mark.parametrize("rate", [None, 0.0, -1.0, float("nan"), float("inf")])
+def test_memory_luna_invalid_reference_fails_closed(
+    memory_luna_router: litellm.Router, monkeypatch: pytest.MonkeyPatch, rate: float | None
+) -> None:
+    registered: Final = litellm.model_cost["memory-luna-canonical-test"]
+    monkeypatch.setitem(registered, "input_cost_per_token", rate)
+    logging_obj: Final = _memory_luna_logging()
+    response: Final = ModelResponse(
+        model="qwen3.8-flash-next", usage=litellm.Usage(prompt_tokens=100, completion_tokens=20)
+    )
+    response._hidden_params = {"response_cost": 9.0}
+    assert logging_obj._response_cost_calculator(response) is None
+    assert logging_obj.model_call_details["response_cost_failure_debug_information"] is not None
+
+
+def test_memory_luna_missing_reference_fails_closed(
+    memory_luna_router: litellm.Router, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from litellm.proxy import proxy_server
+
+    monkeypatch.setattr(proxy_server, "llm_router", None)
+    logging_obj: Final = _memory_luna_logging()
+    response: Final = ModelResponse(
+        model="qwen3.8-flash-next", usage=litellm.Usage(prompt_tokens=100, completion_tokens=20)
+    )
+    response._hidden_params = {"response_cost": 9.0}
+    assert logging_obj._response_cost_calculator(response) is None
+    assert "canonical router unavailable" in str(
+        logging_obj.model_call_details["response_cost_failure_debug_information"]
+    )
+
+
+def test_memory_luna_ambiguous_reference_fails_closed(memory_luna_router: litellm.Router) -> None:
+    memory_luna_router.add_deployment(
+        litellm.Deployment(
+            model_name="gpt-6-luna",
+            litellm_params=litellm.LiteLLM_Params(model="chatgpt/gpt-6-luna", api_key="synthetic-unit-test"),
+            model_info=litellm.ModelInfo(
+                id="memory-luna-conflicting-test", input_cost_per_token=2e-7, output_cost_per_token=5e-7
+            ),
+        )
+    )
+    logging_obj: Final = _memory_luna_logging()
+    response: Final = ModelResponse(
+        model="qwen3.8-flash-next", usage=litellm.Usage(prompt_tokens=100, completion_tokens=20)
+    )
+    assert logging_obj._response_cost_calculator(response) is None
+    assert "ambiguous" in str(logging_obj.model_call_details["response_cost_failure_debug_information"])

@@ -47,6 +47,25 @@ from litellm._internal_context import in_post_response_phase
 from litellm.caching.caching_handler import _PENDING_CACHE_WRITES
 
 
+def test_native_sdk_response_cache_does_not_store_even_when_caller_requests_storage():
+    from typing import Final
+
+    start: Final = datetime.min
+    cache: Final = Cache(type=LiteLLMCacheType.LOCAL)
+    kwargs: Final = {
+        "model": "anthropic/claude-unit-test",
+        "messages": [{"role": "user", "content": "hi"}],
+        "anthropic_execution_mode": "native_sdk",
+        "caching": True,
+        "cache": {"no-store": False},
+    }
+    handler: Final = LLMCachingHandler(original_function=completion, request_kwargs=kwargs, start_time=start)
+    response: Final = ModelResponse(choices=[{"message": {"role": "assistant", "content": "native reply"}}])
+    with patch("litellm.cache", cache):
+        handler.sync_set_cache(response, kwargs)
+        assert cache.get_cache(**kwargs) is None
+
+
 def setup_cache():
     # Set up the cache
     cache = Cache(type=LiteLLMCacheType.LOCAL)

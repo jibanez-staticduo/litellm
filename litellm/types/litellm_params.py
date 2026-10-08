@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from openai import AsyncAzureOpenAI, AsyncOpenAI, AzureOpenAI, OpenAI
 
     from litellm.litellm_core_utils.litellm_logging import Logging
+    from litellm.llms.anthropic.native_transport import AnthropicNativeIdentity
     from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
     from litellm.router_strategy.complexity_router.context_compaction import CompactionState
     from litellm.router_utils.fallback_event_handlers import AttemptedFallbackTargets
@@ -89,6 +90,12 @@ class ProviderConnection:
     use_xai_oauth: bool | None = None
     # ChatGPT OAuth deployment options; read from litellm_params by the ChatGPT
     # adapters and listed as owned so they are never swept into extra_body.
+    use_anthropic_oauth: bool | None = None
+    anthropic_auth_profile: str | None = None
+    anthropic_token_dir: str | None = None
+    anthropic_credential_mode: str | None = None
+    anthropic_oauth_compatibility: str | None = None
+    anthropic_execution_mode: str | None = None
     chatgpt_auth_profile: str | None = None
     chatgpt_token_dir: str | None = None
     chatgpt_auth_file: str | None = None
@@ -127,10 +134,15 @@ class DispatchOptions:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RoutingOptions:
+    disable_fallbacks: bool | None = None
+    include_fallback_errors: bool | None = None
     fallbacks: Sequence[str | Mapping[str, object]] | None = None
+    context_window_fallbacks: Sequence[str | Mapping[str, object]] | None = None
+    content_policy_fallbacks: Sequence[str | Mapping[str, object]] | None = None
     context_window_fallback_dict: Mapping[str, str] | None = None
     num_retries: int | None = None
     retry_policy: "RetryPolicy | Mapping[str, object] | None" = None
+    model_group_retry_policy: "Mapping[str, RetryPolicy] | None" = None
     retry_strategy: RetryStrategy | None = None
     routing_strategy: RoutingStrategyName | None = None
     cooldown_time: float | None = None
@@ -337,6 +349,13 @@ class AgenticLoopState:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RouterState:
     weights: "RouterWeights | None" = field(default=None, metadata=wire("_router_weights"))
+    original_requested_model: str | None = None
+    logical_model_group: str | None = None
+    original_model_group: str | None = None
+    fallback_model_group: Sequence[str] | None = None
+    retry_skipped_deployment_ids: Sequence[str] | None = field(
+        default=None, metadata=wire("_retry_skipped_deployment_ids")
+    )
     fallback_depth: int | None = None
     max_fallbacks: int | None = None
     attempted_targets: "AttemptedFallbackTargets | None" = None
@@ -344,6 +363,9 @@ class RouterState:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ProxyRequestState:
+    anthropic_native_identity: "AnthropicNativeIdentity | None" = field(
+        default=None, metadata=wire("_anthropic_native_identity")
+    )
     proxy_server_request: Mapping[str, object] | None = None
     secret_fields: "SecretFields | None" = None
     trusted_callback_vars: Mapping[str, str] | None = field(default=None, metadata=wire(TRUSTED_CALLBACK_VARS_FIELD))

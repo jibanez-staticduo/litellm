@@ -18,7 +18,7 @@ from types import MappingProxyType, TracebackType
 from typing import TYPE_CHECKING, Any, Final, Literal, Union, cast
 
 from httpx import Response
-from pydantic import BaseModel, JsonValue
+from pydantic import BaseModel, JsonValue, TypeAdapter
 
 import litellm
 from litellm import _custom_logger_compatible_callbacks_literal
@@ -73,6 +73,7 @@ from litellm.litellm_core_utils.classifier_logging import (
 from litellm.litellm_core_utils.core_helpers import (
     get_provider_response_headers_from_hidden_params,
     is_expected_client_error,
+    managed_anthropic_oauth_attribution,
     proxy_stamped_used_client_oauth_token,
     reconstruct_model_name,
     set_response_cost_in_hidden_params,
@@ -100,6 +101,11 @@ from litellm.litellm_core_utils.llm_cost_calc.zero_cost_diagnostic import (
 from litellm.litellm_core_utils.logging_utils import (
     truncate_base64_in_messages,
     truncate_base64_in_messages_async,
+)
+from litellm.litellm_core_utils.memory_luna_pricing import (
+    MEMORY_LUNA_MODEL,
+    memory_luna_reference,
+    memory_luna_response,
 )
 from litellm.litellm_core_utils.model_param_helper import ModelParamHelper
 from litellm.litellm_core_utils.ptu_pricing import is_spilled_over_ptu_request
@@ -286,7 +292,9 @@ else:
     _PAGERDUTY_ALERTING_FACTORY: Final = PagerDutyAlerting
 _in_memory_loggers: Final[list[CustomLogger]] = []
 
-_STANDARD_LOGGING_METADATA_RESOLVED_KEYS: Final[frozenset[str]] = frozenset(("used_client_oauth_token",))
+_STANDARD_LOGGING_METADATA_RESOLVED_KEYS: Final[frozenset[str]] = frozenset(
+    ("used_client_oauth_token", "used_server_oauth_token", "anthropic_auth_profile")
+)
 _STANDARD_LOGGING_METADATA_KEYS: Final[frozenset[str]] = (
     frozenset(StandardLoggingMetadata.__annotations__.keys()) - _STANDARD_LOGGING_METADATA_RESOLVED_KEYS
 )
@@ -975,6 +983,9 @@ class Logging(LiteLLMLoggingBaseClass):
         """
         base_litellm_params: Final[dict[str, Any]] = {}
 
+        for oauth_param in ("use_anthropic_oauth", "anthropic_auth_profile"):
+            if oauth_param in kwargs:
+                base_litellm_params[oauth_param] = kwargs[oauth_param]
         if isinstance(kwargs.get("metadata"), dict):
             base_litellm_params["metadata"] = kwargs["metadata"].copy()
         if "litellm_metadata" in kwargs and isinstance(kwargs["litellm_metadata"], dict):
@@ -1334,7 +1345,14 @@ class Logging(LiteLLMLoggingBaseClass):
 
         self.model_call_details["input"] = input
         self.model_call_details["api_key"] = api_key
-        self.model_call_details["additional_args"] = additional_args
+        self.model_call_details["additional_args"] = (
+            {  # mutable-ok: callback JSON serialization and dict-based integrations require a dict
+                **additional_args,
+                "headers": self._get_masked_headers(additional_args.get("headers") or EMPTY_MAPPING),
+            }
+            if self.litellm_params.get("use_anthropic_oauth") is True
+            else additional_args
+        )
         self.model_call_details["log_event_type"] = "pre_api_call"
         if is_classifier_call(self.call_type, self.model_call_details.get("litellm_params") or EMPTY_MAPPING):
             self.classifier_input = (
@@ -1857,7 +1875,9 @@ class Logging(LiteLLMLoggingBaseClass):
         ):
             hidden_params: Final = result_hidden_params
             if (
-                "response_cost" in hidden_params and hidden_params["response_cost"] is not None
+                "response_cost" in hidden_params
+                and hidden_params["response_cost"] is not None
+                and not self._uses_memory_luna_pricing()
             ):  # use cost if already calculated
                 self._record_zero_cost_diagnostic(
                     priced_result,
@@ -1923,7 +1943,19 @@ class Logging(LiteLLMLoggingBaseClass):
             return None
 
         try:
-            response_cost: Final = litellm.response_cost_calculator(**response_cost_calculator_kwargs)
+            empty_cost_overrides: Final[Mapping[str, object]] = MappingProxyType({})
+            memory_cost_overrides: Final = (
+                self._memory_luna_cost_kwargs(TypeAdapter(object).validate_python(priced_result))
+                if self._uses_memory_luna_pricing()
+                else empty_cost_overrides
+            )
+            resolved_cost_kwargs: Final = MappingProxyType(
+                {
+                    **TypeAdapter(Mapping[str, object]).validate_python(response_cost_calculator_kwargs),
+                    **memory_cost_overrides,
+                }
+            )
+            response_cost: Final = litellm.response_cost_calculator(**resolved_cost_kwargs)
 
             verbose_logger.debug("response_cost: %s", response_cost)
             additional_response_cost: Final[object] = self.model_call_details.get("additional_response_cost")
@@ -1932,6 +1964,13 @@ class Logging(LiteLLMLoggingBaseClass):
                 if isinstance(additional_response_cost, (int, float)) and additional_response_cost > 0
                 else response_cost
             )
+            if self._uses_memory_luna_pricing() and self.cost_breakdown is not None:
+                updated_breakdown: Final[CostBreakdown] = {
+                    **self.cost_breakdown,
+                    "total_cost": total_response_cost,
+                    "pricing_reference_model": "gpt-6-luna",
+                }
+                self.cost_breakdown = updated_breakdown
             self._record_zero_cost_diagnostic(
                 priced_result,
                 total_response_cost,
@@ -1961,6 +2000,41 @@ class Logging(LiteLLMLoggingBaseClass):
             )
 
         return None
+
+    def _uses_memory_luna_pricing(self) -> bool:
+        aliases: Final = ("memory-model", "memory_model")
+        empty_request: Final[Mapping[str, object]] = MappingProxyType({})
+        params: Final = TypeAdapter(Mapping[str, object]).validate_python(self.litellm_params)
+        request: Final = TypeAdapter(Mapping[str, object]).validate_python(
+            params.get("proxy_server_request") or empty_request
+        )
+        body: Final = request.get("body")
+        if (
+            isinstance(body, dict)
+            and (original_model := TypeAdapter(Mapping[str, object]).validate_python(body).get("model")) is not None
+        ):
+            return original_model in aliases
+        metadata: Final = TypeAdapter(Mapping[str, object]).validate_python(
+            StandardLoggingPayloadSetup.merge_litellm_metadata(params)
+        )
+        return metadata.get("model_group") in aliases or metadata.get("original_model_group") in aliases
+
+    def _memory_luna_cost_kwargs(self, result: object) -> Mapping[str, object]:
+        from litellm.proxy import proxy_server
+
+        reference: Final = memory_luna_reference(proxy_server.llm_router)
+        response: Final = memory_luna_response(result, self.model_call_details.get("custom_llm_provider"))
+        self.model_call_details["memory_pricing_reference"] = "gpt-6-luna"
+        return MappingProxyType(
+            {
+                "response_object": response,
+                "model": MEMORY_LUNA_MODEL,
+                "custom_llm_provider": "chatgpt",
+                "base_model": None,
+                "custom_pricing": True,
+                "router_model_id": reference.model_id,
+            }
+        )
 
     def _record_zero_cost_diagnostic(
         self,
@@ -2415,6 +2489,8 @@ class Logging(LiteLLMLoggingBaseClass):
 
         if self.model_call_details.get("cache_hit") is True:
             self.model_call_details["response_cost"] = 0.0
+        elif self._uses_memory_luna_pricing():
+            self.model_call_details["response_cost"] = self._response_cost_calculator(result=logging_result)
         elif "response_cost" in hidden_params:
             self.model_call_details["response_cost"] = hidden_params["response_cost"]
             self._record_zero_cost_diagnostic(logging_result, hidden_params["response_cost"])
@@ -2425,6 +2501,9 @@ class Logging(LiteLLMLoggingBaseClass):
             pass
         else:
             self.model_call_details["response_cost"] = self._response_cost_calculator(result=logging_result)
+
+        if self._uses_memory_luna_pricing():
+            hidden_params["response_cost"] = self.model_call_details.get("response_cost")
 
         if not build_logging_payload:
             return
@@ -5798,6 +5877,10 @@ class StandardLoggingPayloadSetup:
                     prompt_integration=prompt_integration,
                 )
 
+        used_server_oauth_token, anthropic_auth_profile = managed_anthropic_oauth_attribution(
+            litellm_params, custom_llm_provider
+        )
+
         # Initialize with default values
         clean_metadata = StandardLoggingMetadata(
             user_api_key_hash=None,
@@ -5834,8 +5917,10 @@ class StandardLoggingPayloadSetup:
             user_api_key_auth_metadata=None,
             team_alias=None,
             team_id=None,
+            used_server_oauth_token=used_server_oauth_token,
+            anthropic_auth_profile=anthropic_auth_profile,
             used_client_oauth_token=resolve_used_client_oauth_token(
-                proxy_stamped_used_client_oauth_token(metadata, litellm_params),
+                False if used_server_oauth_token else proxy_stamped_used_client_oauth_token(metadata, litellm_params),
                 custom_llm_provider,
             ),
         )
@@ -6883,7 +6968,9 @@ def get_standard_logging_metadata(
     )
     if isinstance(metadata, dict):
         # Update the clean_metadata with values from input metadata that match StandardLoggingMetadata fields
-        for key in StandardLoggingMetadata.__annotations__:
+        for key in StandardLoggingMetadata.__annotations__.keys() - frozenset(
+            ("used_server_oauth_token", "anthropic_auth_profile")
+        ):
             if key in metadata:
                 clean_metadata[key] = metadata[key]
 

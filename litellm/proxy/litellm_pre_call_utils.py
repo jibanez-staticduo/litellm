@@ -46,6 +46,7 @@ from litellm.litellm_core_utils.url_utils import (
     provider_url_destination_candidates,
 )
 from litellm.llms.anthropic.common_utils import ANTHROPIC_OAUTH_FORWARD_PROVIDERS
+from litellm.llms.anthropic.native_transport import AnthropicNativeIdentity
 from litellm.proxy._types import (
     AddTeamCallback,
     CommonProxyErrors,
@@ -166,6 +167,18 @@ def _stampable_key_hash(user_api_key_dict: UserAPIKeyAuth) -> str | None:
     return None
 
 
+def native_sdk_identity_for_authenticated_key(
+    user_api_key_dict: UserAPIKeyAuth, deployment: str
+) -> AnthropicNativeIdentity:
+    from litellm.llms.anthropic.common_utils import AnthropicError
+    from litellm.llms.anthropic.native_transport import AnthropicNativeIdentity
+
+    owner: Final = _stampable_key_hash(user_api_key_dict)
+    if owner is None:
+        raise AnthropicError(401, "The native SDK requires a stable authenticated LiteLLM key identity")
+    return AnthropicNativeIdentity(owner, deployment)
+
+
 _ANTHROPIC_SESSION_ID_VALUE_RE: Final = re.compile(r"^[a-zA-Z0-9_\-]+$")
 
 
@@ -260,6 +273,7 @@ LITELLM_TRACE_CONTROL_METADATA_FIELDS: Final = frozenset(
 )
 
 _UNTRUSTED_ROOT_CONTROL_FIELDS: Final = (
+    "_anthropic_native_identity",
     "weights",
     "_router_weights",
     "proxy_server_request",
@@ -2544,6 +2558,14 @@ async def add_litellm_data_to_request(
         data=data,
         user_api_key_dict=user_api_key_dict,
     )
+
+    from litellm.llms.anthropic.native_transport import NATIVE_IDENTITY_FIELD
+
+    native_owner: Final = _stampable_key_hash(user_api_key_dict)
+    if native_owner is not None:
+        data[NATIVE_IDENTITY_FIELD] = AnthropicNativeIdentity(  # rebind-ok: proxy request out-param
+            native_owner
+        )
 
     verbose_proxy_logger.debug("[PROXY] returned data from litellm_pre_call_utils: %s", data)
 

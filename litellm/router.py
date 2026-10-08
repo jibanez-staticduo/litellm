@@ -107,6 +107,7 @@ from litellm.litellm_core_utils.sensitive_data_masker import (
 )
 from litellm.litellm_core_utils.token_counter import offload_token_count
 from litellm.llms.anthropic.common_utils import AnthropicModelInfo
+from litellm.llms.anthropic.oauth_policy import validate_anthropic_oauth_request_overrides
 from litellm.llms.base_llm.passthrough.transformation import replace_path_segment
 from litellm.llms.base_llm.vector_store.transformation import (
     RouterVectorStoreEmbeddingExecutor,
@@ -212,11 +213,13 @@ from litellm.router_utils.fallback_event_handlers import (
     get_internal_router_fallback_identity,
     get_pre_routing_selection,
     has_unattempted_fallback_target,
+    is_anthropic_oauth_managed_deployment,
     mid_stream_fallback_hop_kwargs,
     per_request_fallback_controls,
     record_disable_fallbacks,
     record_pre_routing_selection,
     run_async_fallback,
+    validate_anthropic_model_group_profiles,
     validate_chatgpt_model_group_profiles,
 )
 from litellm.router_utils.get_retry_from_policy import (
@@ -346,6 +349,7 @@ if TYPE_CHECKING:
     from opentelemetry.trace import Span as _Span
 
     from litellm.exceptions import MidStreamFallbackError
+    from litellm.llms.anthropic.native_transport import AnthropicNativeIdentity
     from litellm.responses.streaming_iterator import (
         BaseResponsesAPIStreamingIterator,
     )
@@ -2487,6 +2491,10 @@ class Router:
         Every changed mapping is copied so the Router's shared deployment config stays immutable.
         """
         sanitized: Final = dict(deployment_params)  # mutable-ok: request-local copy protects shared Router state
+        if deployment_params.get("use_anthropic_oauth") is True and _silent_experiment_targets(
+            deployment_params.get("silent_model")
+        ):
+            raise ValueError("Anthropic OAuth deployments do not support silent model experiments")
         if request_kwargs.get("reasoning_effort") is None:
             return sanitized
 
@@ -4018,6 +4026,11 @@ class Router:
         - Adds default litellm params to kwargs, if set.
         - Merges tools from deployment with request (proxy-configured tools + request tools).
         """
+        oauth_request_params: Final = self._anthropic_oauth_request_params(deployment["litellm_params"], kwargs)
+        anthropic_oauth_managed: Final = is_anthropic_oauth_managed_deployment(deployment)
+        if oauth_request_params is not kwargs:
+            kwargs.clear()
+            kwargs.update(oauth_request_params)
         for key in self._forwarded_alias_marker_keys_the_deployment_sets(
             deployment=deployment, forwarded_keys=kwargs.pop(_ALIAS_MARKER_FORWARDED_PARAMS_KWARG, ())
         ):
@@ -4028,7 +4041,7 @@ class Router:
         deployment_litellm_model_name = deployment["litellm_params"]["model"]
         deployment_api_base = deployment["litellm_params"].get("api_base")
         deployment_model_name: Final = deployment["model_name"]
-        if is_clientside_credential(request_kwargs=kwargs):
+        if not anthropic_oauth_managed and is_clientside_credential(request_kwargs=kwargs):
             deployment_pydantic_obj: Final = self._handle_clientside_credential(
                 deployment=deployment, kwargs=kwargs, function_name=function_name
             )
@@ -4111,6 +4124,188 @@ class Router:
             kwargs["timeout"] = self._get_timeout(kwargs=kwargs, data=deployment["litellm_params"])
 
         self._update_kwargs_with_default_litellm_params(kwargs=kwargs, metadata_variable_name=metadata_variable_name)
+        oauth_effective_params: Final = self._anthropic_oauth_request_params(deployment["litellm_params"], kwargs)
+        if oauth_effective_params is not kwargs:
+            kwargs.clear()
+            kwargs.update(oauth_effective_params)
+        from litellm.llms.anthropic.native_transport import (
+            NATIVE_IDENTITY_FIELD,
+            is_anthropic_native_sdk,
+        )
+
+        if is_anthropic_native_sdk(oauth_effective_params):
+            kwargs[NATIVE_IDENTITY_FIELD] = self._native_sdk_deployment_identity(  # rebind-ok: router request out-param
+                Router._ANTHROPIC_OAUTH_MAPPING_ADAPTER.validate_python(kwargs),
+                Router._ANTHROPIC_OAUTH_MAPPING_ADAPTER.validate_python(model_info),
+            )
+        client_oauth_metadata: Final = (
+            MappingProxyType({"used_client_oauth_token": False}) if anthropic_oauth_managed else MappingProxyType({})
+        )
+        oauth_metadata: Final = MappingProxyType(
+            {
+                "used_server_oauth_token": anthropic_oauth_managed,
+                "anthropic_auth_profile": (
+                    deployment["litellm_params"].get("anthropic_auth_profile") or "default"
+                    if anthropic_oauth_managed
+                    else None
+                ),
+                **client_oauth_metadata,
+            }
+        )
+        for bucket_name in ("metadata", "litellm_metadata"):
+            if isinstance(bucket := kwargs.get(bucket_name), dict):
+                bucket.update(oauth_metadata)
+        if anthropic_oauth_managed:
+            record_disable_fallbacks(kwargs, True)
+
+    _ANTHROPIC_OAUTH_PARAMS: Final[frozenset[str]] = frozenset(
+        {
+            "use_anthropic_oauth",
+            "anthropic_auth_profile",
+            "anthropic_token_dir",
+            "anthropic_credential_mode",
+            "anthropic_oauth_compatibility",
+            "anthropic_execution_mode",
+        }
+    )
+    _ANTHROPIC_OAUTH_CREDENTIAL_PARAMS: Final[frozenset[str]] = frozenset(
+        {
+            "api_key",
+            "api_base",
+            "base_url",
+            "custom_llm_provider",
+            "client",
+            "litellm_credential_name",
+            "anthropic_token_store",
+            "token_store",
+            "anthropic_authenticator",
+            "authorization",
+            "x-api-key",
+        }
+    )
+    _ANTHROPIC_OAUTH_MAPPING_ADAPTER: Final[TypeAdapter[Mapping[str, object]]] = TypeAdapter(Mapping[str, object])
+
+    @staticmethod
+    def _native_sdk_deployment_identity(
+        request_params: Mapping[str, object], model_info: Mapping[str, object]
+    ) -> "AnthropicNativeIdentity":
+        from litellm.llms.anthropic.common_utils import AnthropicError
+        from litellm.llms.anthropic.native_transport import NATIVE_IDENTITY_FIELD, AnthropicNativeIdentity
+
+        identity: Final = request_params.get(NATIVE_IDENTITY_FIELD)
+        deployment: Final = model_info.get("id")
+        if not isinstance(identity, AnthropicNativeIdentity) or not isinstance(deployment, str):
+            raise AnthropicError(401, "The native SDK requires an authenticated server owner and deployment")
+        return AnthropicNativeIdentity(identity.owner, deployment)
+
+    @staticmethod
+    def _anthropic_oauth_request_params(
+        deployment_params: Mapping[str, object], request_params: Mapping[str, object]
+    ) -> Mapping[str, object]:
+        from litellm.llms.anthropic.native_transport import NATIVE_IDENTITY_FIELD, is_anthropic_native_sdk
+
+        managed: Final = deployment_params.get("use_anthropic_oauth") is True
+        validate_anthropic_oauth_request_overrides(request_params, deployment_params)
+        native: Final = is_anthropic_native_sdk(deployment_params)
+        from litellm.llms.anthropic.oauth_policy import is_anthropic_native_client
+
+        native_client: Final = is_anthropic_native_client(deployment_params)
+        native_cache_controls: Final[Mapping[str, object]] = (
+            MappingProxyType({"caching": False, "cache": MappingProxyType({"no-cache": True, "no-store": True})})
+            if native or native_client
+            else MappingProxyType({})
+        )
+        controls: Final[Mapping[str, object]] = MappingProxyType(
+            {
+                "use_anthropic_oauth": managed,
+                "anthropic_auth_profile": deployment_params.get("anthropic_auth_profile") or "default",
+                "anthropic_token_dir": deployment_params.get("anthropic_token_dir"),
+                "anthropic_credential_mode": deployment_params.get("anthropic_credential_mode"),
+                "anthropic_oauth_compatibility": deployment_params.get("anthropic_oauth_compatibility"),
+                "anthropic_execution_mode": deployment_params.get("anthropic_execution_mode"),
+                **native_cache_controls,
+            }
+        )
+        extra_body: Final = request_params.get("extra_body")
+        parsed_extra_body: Final[Mapping[str, object] | None] = (
+            Router._ANTHROPIC_OAUTH_MAPPING_ADAPTER.validate_python(extra_body)
+            if isinstance(extra_body, Mapping)
+            else None
+        )
+        carriers: Final = (request_params, parsed_extra_body)
+        if not managed and not any(
+            carrier is not None
+            and (not Router._ANTHROPIC_OAUTH_PARAMS.isdisjoint(carrier) or NATIVE_IDENTITY_FIELD in carrier)
+            for carrier in carriers
+        ):
+            return request_params
+        stripped: Final[frozenset[str]] = (
+            Router._ANTHROPIC_OAUTH_PARAMS
+            | (Router._ANTHROPIC_OAUTH_CREDENTIAL_PARAMS if managed else frozenset[str]())
+            | (frozenset({"cache", "caching"}) if native or native_client else frozenset({NATIVE_IDENTITY_FIELD}))
+        )
+        sanitized: Final = Router._anthropic_oauth_strip_carrier(request_params, stripped, managed)
+        nested: Final[Mapping[str, object]] = (
+            MappingProxyType(
+                {
+                    "extra_body": dict(  # mutable-ok: providers consume extra_body as a JSON dict
+                        Router._anthropic_oauth_strip_carrier(parsed_extra_body, stripped, managed)
+                    )
+                }
+            )
+            if parsed_extra_body is not None
+            else MappingProxyType({})
+        )
+        if not managed:
+            return MappingProxyType({**sanitized, **nested})
+        return MappingProxyType(
+            {
+                **sanitized,
+                **nested,
+                **controls,
+                "api_key": None,
+                "api_base": deployment_params.get("api_base"),
+                "custom_llm_provider": deployment_params.get("custom_llm_provider") or "anthropic",
+                "client": None,
+                "disable_fallbacks": True,
+                "fallbacks": None,
+                "context_window_fallbacks": None,
+                "content_policy_fallbacks": None,
+                "default_fallbacks": None,
+            }
+        )
+
+    @staticmethod
+    def _anthropic_oauth_strip_carrier(
+        carrier: Mapping[str, object], stripped: frozenset[str], managed: bool
+    ) -> Mapping[str, object]:
+        auth_headers: Final = frozenset({"authorization", "x-api-key", "api-key", "x-litellm-api-key"})
+        return MappingProxyType(
+            {
+                key: (
+                    {  # mutable-ok: HTTP provider adapters consume headers as dictionaries
+                        header: value
+                        for header, value in Router._ANTHROPIC_OAUTH_MAPPING_ADAPTER.validate_python(item).items()
+                        if header.lower() not in auth_headers
+                    }
+                    if managed and key in ("headers", "extra_headers") and isinstance(item, Mapping)
+                    else item
+                )
+                for key, item in carrier.items()
+                if key not in stripped
+            }
+        )
+
+    def anthropic_oauth_model_group_is_managed(self, model_group: str | None) -> bool:
+        if model_group is None:
+            return False
+        deployments: Final = self.get_model_list(model_name=model_group) or ()
+        if deployments:
+            return any(is_anthropic_oauth_managed_deployment(deployment) for deployment in deployments)
+        deployment: Final = self.get_deployment(model_id=model_group)
+        if deployment is not None:
+            return deployment.litellm_params.use_anthropic_oauth is True
+        return self.default_deployment is not None and is_anthropic_oauth_managed_deployment(self.default_deployment)
 
     def _get_async_openai_model_client(self, deployment: dict, kwargs: dict):
         """
@@ -5367,7 +5562,8 @@ class Router:
                     specific_deployment=kwargs.pop("specific_deployment", None),
                 )
             except Exception as e:
-                if passthrough_on_no_deployment:
+                if passthrough_on_no_deployment and not self.anthropic_oauth_model_group_is_managed(model):
+                    validate_anthropic_oauth_request_overrides(kwargs, MappingProxyType({}))
                     return await original_generic_function(model=model, **kwargs)
                 raise e
 
@@ -7306,7 +7502,13 @@ class Router:
         hop_depth: Final = kwargs.get("fallback_depth")
         nested_fallback_hop: Final = isinstance(hop_depth, int) and hop_depth > 0
 
-        if disable_fallbacks is True or original_model_group is None or is_guardrail_intervention(e):
+        if (
+            disable_fallbacks is True
+            or fallbacks_disabled_for_request(kwargs)
+            or self.anthropic_oauth_model_group_is_managed(get_pre_routing_selection(kwargs) or model_group)
+            or original_model_group is None
+            or is_guardrail_intervention(e)
+        ):
             raise e
 
         input_kwargs: Final = {
@@ -7601,7 +7803,10 @@ class Router:
                 if model_group is not None:
                     _fallback_metadata["original_model_group"] = model_group
         include_fallback_errors: Final = kwargs.get("include_fallback_errors", False) is True
-        disable_fallbacks: Final[bool | None] = kwargs.pop("disable_fallbacks", False)
+        caller_disable_fallbacks: Final = kwargs.pop("disable_fallbacks", False)
+        disable_fallbacks: Final[bool] = (
+            caller_disable_fallbacks is True or self.anthropic_oauth_model_group_is_managed(model_group)
+        )
         record_disable_fallbacks(kwargs, disable_fallbacks is True)
         fallbacks: Final[list | None] = kwargs.get("fallbacks", self.fallbacks)
         context_window_fallbacks: list | None = kwargs.get("context_window_fallbacks", self.context_window_fallbacks)
@@ -12859,6 +13064,7 @@ class Router:
             if _routing_group_deployments is not None
             else self._get_all_deployments(model_name=model, team_id=request_team_id)
         )
+        validate_anthropic_model_group_profiles(healthy_deployments, model)
         _pre_model_access_group_filter_len: Final = len(healthy_deployments)
         healthy_deployments = self._filter_reserved_deployments(
             model=model,
@@ -12880,6 +13086,7 @@ class Router:
             # _get_deployment_by_litellm_model does not re-apply that filter.
             if _pre_model_access_group_filter_len == 0:
                 _litellm_model_deployments: Final = self._get_deployment_by_litellm_model(model=model)
+                validate_anthropic_model_group_profiles(_litellm_model_deployments, model)
                 healthy_deployments = self._filter_reserved_deployments(
                     model=model,
                     healthy_deployments=self._filter_deployments_by_model_access_groups(
@@ -12909,12 +13116,19 @@ class Router:
             if self._has_default_fallbacks() and not _access_group_filter_emptied_candidates:
                 fallback_model: Final = self._get_first_default_fallback()
                 if fallback_model:
+                    if self.anthropic_oauth_model_group_is_managed(fallback_model):
+                        raise litellm.BadRequestError(
+                            message="Default fallback cannot select an Anthropic OAuth deployment",
+                            model=model,
+                            llm_provider="anthropic",
+                        )
                     verbose_router_logger.info(
                         "Model '%s' not found. Attempting to use default fallback model '%s'.", model, fallback_model
                     )
                     # Re-assign model to the fallback and try to get deployments again
                     model = fallback_model
                     healthy_deployments = self._get_all_deployments(model_name=model, team_id=request_team_id)
+                    validate_anthropic_model_group_profiles(healthy_deployments, model)
                     healthy_deployments = self._filter_reserved_deployments(
                         model=model,
                         healthy_deployments=self._filter_deployments_by_model_access_groups(
@@ -13055,6 +13269,7 @@ class Router:
             request_kwargs=request_kwargs,
         )
         validate_chatgpt_model_group_profiles(healthy_deployments, model)
+        validate_anthropic_model_group_profiles(healthy_deployments, model)
 
         # IF TEAM ID SPECIFIED ON MODEL, AND REQUEST CONTAINS USER_API_KEY_TEAM_ID, FILTER OUT MODELS THAT ARE NOT IN THE TEAM
         ## THIS PREVENTS WRITING FILES OF OTHER TEAMS TO MODELS THAT ARE TEAM-ONLY MODELS
@@ -14221,6 +14436,7 @@ class Router:
             request_kwargs=request_kwargs,
         )
         validate_chatgpt_model_group_profiles(healthy_deployments, model)
+        validate_anthropic_model_group_profiles(healthy_deployments, model)
         strategy, strategy_selector = self._get_routing_context(model, request_kwargs)
 
         if isinstance(healthy_deployments, dict):

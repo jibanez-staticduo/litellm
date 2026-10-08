@@ -1,5 +1,6 @@
 """Test health check helper functions"""
 
+import json
 import socket
 import struct
 import zlib
@@ -7,7 +8,9 @@ from types import MappingProxyType
 from typing import Final
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
+import respx
 
 import litellm
 from litellm.constants import LITTELM_INTERNAL_HEALTH_SERVICE_ACCOUNT_NAME
@@ -18,6 +21,50 @@ from litellm.litellm_core_utils.health_check_helpers import (
 from litellm.main import ahealth_check
 from litellm.proxy._types import UserAPIKeyAuth
 from litellm.types.utils import LIST_BATCHES_SUPPORTED_PROVIDERS
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "prompt, explicit_input",
+    [
+        (None, None),
+        ("health probe", None),
+        ("ignored prompt", [{"role": "user", "content": [{"type": "input_text", "text": "explicit probe"}]}]),
+    ],
+)
+async def test_responses_health_check_sends_structured_input(prompt, explicit_input, monkeypatch):
+    monkeypatch.setattr(litellm, "disable_aiohttp_transport", True)
+
+    def strict_responses_endpoint(request: httpx.Request) -> httpx.Response:
+        if not isinstance(json.loads(request.content)["input"], list):
+            return httpx.Response(400, json={"detail": "Input must be a list"})
+        return httpx.Response(
+            200,
+            json={
+                "id": "resp_health",
+                "object": "response",
+                "created_at": 1,
+                "status": "completed",
+                "model": "gpt-4o",
+                "output": [],
+                "usage": {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2},
+            },
+        )
+
+    with respx.mock(assert_all_called=True) as upstream:
+        route: Final = upstream.post("https://api.openai.com/v1/responses").mock(side_effect=strict_responses_endpoint)
+        result: Final = await ahealth_check(
+            {"model": "openai/gpt-4o", "api_key": "sk-test", "api_base": "https://api.openai.com/v1"},
+            mode="responses",
+            prompt=prompt,
+            input=explicit_input,
+        )
+
+    assert "error" not in result, result
+    body: Final = json.loads(route.calls.last.request.content)
+    assert body["input"] == (
+        explicit_input or [{"role": "user", "content": [{"type": "input_text", "text": prompt or "test"}]}]
+    )
 
 
 def _png_chunks(png: bytes, offset: int = 8) -> tuple[tuple[bytes, bytes], ...]:

@@ -4,7 +4,11 @@ Helper functions for health check calls.
 
 import base64
 from collections.abc import Awaitable, Callable
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Final, Literal
+
+from openai.types.responses import ResponseInputParam
+from pydantic import TypeAdapter
 
 from litellm.llms.base_llm.ocr.transformation import DocumentType
 from litellm.rust_bridge import runtime
@@ -40,6 +44,12 @@ def _ocr_health_check_document(model: str, custom_llm_provider: str) -> Document
 
 
 class HealthCheckHelpers:
+    @staticmethod
+    def responses_health_check_input(text: str) -> ResponseInputParam:
+        return TypeAdapter(ResponseInputParam).validate_python(
+            (MappingProxyType({"role": "user", "content": (MappingProxyType({"type": "input_text", "text": text}),)}),)
+        )
+
     @staticmethod
     async def ahealth_check_wildcard_models(
         model: str,
@@ -251,7 +261,7 @@ class HealthCheckHelpers:
             ),
             "responses": lambda: litellm.aresponses(
                 **_filter_model_params(model_params=model_params),
-                input=prompt or "test",
+                input=input or HealthCheckHelpers.responses_health_check_input(prompt or "test"),
             ),
             "ocr": lambda: litellm.aocr(
                 **_filter_model_params(model_params=model_params),

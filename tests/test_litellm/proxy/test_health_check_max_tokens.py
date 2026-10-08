@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import Final
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -14,6 +15,68 @@ from litellm.proxy.health_check import (
     _resolve_health_check_mode,
     _update_litellm_params_for_health_check,
 )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "mode, model, path, response, expected_probe",
+    [
+        (
+            "responses",
+            "gpt-4o",
+            "responses",
+            {
+                "id": "resp_health",
+                "object": "response",
+                "created_at": 1,
+                "status": "completed",
+                "model": "gpt-4o",
+                "output": [],
+                "usage": {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2},
+            },
+            {"input": [{"role": "user", "content": [{"type": "input_text", "text": "test from litellm"}]}]},
+        ),
+        (
+            "embedding",
+            "text-embedding-3-small",
+            "embeddings",
+            {
+                "object": "list",
+                "model": "text-embedding-3-small",
+                "data": [{"object": "embedding", "index": 0, "embedding": [0.1]}],
+                "usage": {"prompt_tokens": 1, "total_tokens": 1},
+            },
+            {"input": ["test from litellm"]},
+        ),
+        (
+            "image_generation",
+            "dall-e-3",
+            "images/generations",
+            {"created": 1, "data": [{"url": "https://images.example.test/health.png"}]},
+            {"prompt": hc_module.DEFAULT_HEALTH_CHECK_PROMPT},
+        ),
+    ],
+)
+async def test_proxy_health_check_uses_mode_specific_probe_body(
+    mode, model, path, response, expected_probe, monkeypatch
+):
+    monkeypatch.setattr(litellm, "disable_aiohttp_transport", True)
+    with respx.mock(assert_all_called=True) as upstream:
+        route: Final = upstream.post(f"https://api.openai.com/v1/{path}").respond(json=response)
+        result: Final = await hc_module._run_model_health_check(
+            {
+                "litellm_params": {
+                    "model": f"openai/{model}",
+                    "api_key": "sk-test",
+                    "api_base": "https://api.openai.com/v1",
+                },
+                "model_info": {"mode": mode},
+            }
+        )
+
+    assert "error" not in result, result
+    body: Final = json.loads(route.calls.last.request.content)
+    assert {key: body[key] for key in ("input", "prompt") if key in body} == expected_probe
 
 
 @pytest.mark.asyncio

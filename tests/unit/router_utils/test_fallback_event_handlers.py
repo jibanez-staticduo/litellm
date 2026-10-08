@@ -1,4 +1,5 @@
 import json
+from collections.abc import Mapping
 from datetime import datetime, timedelta
 from typing import Final, NoReturn
 from unittest.mock import MagicMock, patch
@@ -12,14 +13,104 @@ from litellm.router_utils.cooldown_handlers import mark_advisor_orchestration_fa
 from litellm.router_utils.fallback_event_handlers import (
     AttemptedFallbackTargets,
     _trigger_cooldown_for_failed_deployment,
-    fallback_attempt_key,
     clear_pre_routing_selection,
+    fallback_attempt_key,
     get_fallback_model_group,
     get_pre_routing_selection,
     record_pre_routing_selection,
     run_async_fallback,
+    validate_anthropic_model_group_profiles,
     validate_chatgpt_model_group_profiles,
 )
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [
+        (
+            {"litellm_params": {"use_anthropic_oauth": True}},
+            {"litellm_params": {"use_anthropic_oauth": False}},
+        ),
+        (
+            {"litellm_params": {"use_anthropic_oauth": True}},
+            {"litellm_params": {"use_anthropic_oauth": True, "anthropic_auth_profile": "different"}},
+        ),
+        (
+            {"litellm_params": {"use_anthropic_oauth": True}},
+            {"litellm_params": {"use_anthropic_oauth": True, "anthropic_token_dir": "/different/tokens"}},
+        ),
+        (
+            {"litellm_params": {"use_anthropic_oauth": True, "anthropic_auth_profile": "fixed"}},
+            {
+                "litellm_params": {
+                    "use_anthropic_oauth": True,
+                    "anthropic_auth_profile": "fixed",
+                    "anthropic_execution_mode": "native_sdk",
+                }
+            },
+        ),
+    ],
+)
+def test_anthropic_oauth_profile_validation_rejects_mixed_policy(rows: tuple[Mapping[str, object], ...]) -> None:
+    with pytest.raises(ValueError, match="Anthropic OAuth model group"):
+        validate_anthropic_model_group_profiles(rows, "subscription")
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [
+        ({"litellm_params": {"use_anthropic_oauth": True}},),
+        (
+            {"litellm_params": {"use_anthropic_oauth": True}},
+            {"litellm_params": {"use_anthropic_oauth": True, "anthropic_auth_profile": "default"}},
+        ),
+        ({"litellm_params": {"use_anthropic_oauth": "true"}}, {"litellm_params": {"api_key": "test-key"}}),
+    ],
+)
+def test_anthropic_oauth_profile_validation_allows_uniform_and_api_groups(
+    rows: tuple[Mapping[str, object], ...],
+) -> None:
+    validate_anthropic_model_group_profiles(rows, "subscription")
+
+
+@pytest.mark.parametrize(
+    ("source", "target"),
+    [("subscription", "api"), ("api", "subscription"), ("api", "subscription-id"), ("api", "subscription-alias")],
+)
+@pytest.mark.asyncio
+async def test_anthropic_oauth_fallback_walker_cannot_enter_or_leave_managed_group(source: str, target: str) -> None:
+    router: Final = litellm.Router(
+        model_list=[
+            {
+                "model_name": "subscription",
+                "litellm_params": {"model": "anthropic/unit-test-model", "use_anthropic_oauth": True},
+                "model_info": {"id": "subscription-id"},
+            },
+            {
+                "model_name": "api",
+                "litellm_params": {"model": "openai/unit-test-model", "api_key": "test-key"},
+            },
+        ],
+        model_group_alias={"subscription-alias": "subscription"},
+        num_retries=0,
+    )
+    failure: Final = RuntimeError("original request failed")
+
+    async def provider_call(**kwargs: object) -> litellm.ModelResponse:
+        return litellm.ModelResponse()
+
+    with pytest.raises(RuntimeError) as raised:
+        await run_async_fallback(
+            litellm_router=router,
+            fallback_model_group=[target],
+            original_model_group=source,
+            original_exception=failure,
+            max_fallbacks=3,
+            fallback_depth=0,
+            original_function=provider_call,
+            disable_fallbacks=False,
+        )
+    assert raised.value is failure
 
 
 class StreamingWrapper:
@@ -1405,9 +1496,7 @@ class TestOrderedFallbackLookupGroups:
             "smart-router",
             "requested-model",
         )
-        assert fallback_lookup_groups({"metadata": {"model_group": []}}, "requested-model") == (
-            "requested-model",
-        )
+        assert fallback_lookup_groups({"metadata": {"model_group": []}}, "requested-model") == ("requested-model",)
 
     def test_fallback_hop_resumes_the_original_groups_chain_last(self):
         from litellm.router_utils.fallback_event_handlers import fallback_lookup_groups

@@ -638,7 +638,7 @@ async def acompletion(
             api_base=kwargs.get("api_base") or base_url,
         )
 
-    fallbacks = fallbacks or litellm.model_fallbacks
+    fallbacks = None if kwargs.get("use_anthropic_oauth") is True else fallbacks or litellm.model_fallbacks
     if fallbacks is not None:
         response = await async_completion_with_fallbacks(**completion_kwargs, kwargs={"fallbacks": fallbacks, **kwargs})
         if response is None:
@@ -2877,6 +2877,12 @@ def _complete_anthropic_text(
 
 
 def _complete_anthropic(ctx: _CompletionDispatchContext) -> _CompletionDispatchResult:
+    from litellm.llms.anthropic.native_transport import is_anthropic_native_sdk, native_sdk_connection
+    from litellm.llms.anthropic.oauth_policy import (
+        is_anthropic_oauth_managed,
+        validate_anthropic_oauth_destination,
+    )
+
     acompletion: Final = ctx.acompletion
     api_base = ctx.api_base
     api_key = ctx.api_key
@@ -2893,17 +2899,31 @@ def _complete_anthropic(ctx: _CompletionDispatchContext) -> _CompletionDispatchR
     optional_params: Final = ctx.optional_params
     timeout: Final = ctx.timeout
 
-    api_key = api_key or litellm.anthropic_key or litellm.api_key or os.environ.get("ANTHROPIC_API_KEY")
+    managed_oauth: Final = is_anthropic_oauth_managed(litellm_params)
+    native_connection: Final = (
+        native_sdk_connection(litellm_params) if is_anthropic_native_sdk(litellm_params) else None
+    )
+    api_key = (
+        None
+        if managed_oauth
+        else api_key or litellm.anthropic_key or litellm.api_key or os.environ.get("ANTHROPIC_API_KEY")
+    )
     custom_prompt_dict = custom_prompt_dict or litellm.custom_prompt_dict
     # call /messages
     # default route for all anthropic models
-    api_base = cast(
-        str | None,
-        api_base
-        or litellm.api_base
-        or get_secret("ANTHROPIC_API_BASE")
-        or get_secret("ANTHROPIC_BASE_URL")
-        or "https://api.anthropic.com/v1/messages",
+    api_base = (
+        native_connection.url()
+        if native_connection is not None
+        else validate_anthropic_oauth_destination(api_base)
+        if managed_oauth
+        else cast(
+            str | None,
+            api_base
+            or litellm.api_base
+            or get_secret("ANTHROPIC_API_BASE")
+            or get_secret("ANTHROPIC_BASE_URL")
+            or "https://api.anthropic.com/v1/messages",
+        )
     )
 
     # Check if we should disable automatic URL suffix appending
@@ -5446,7 +5466,7 @@ def completion(
         elif num_retries is not None:
             max_retries = num_retries
         logging: Final[LiteLLMLoggingObj] = cast(LiteLLMLoggingObj, litellm_logging_obj)
-        fallbacks = fallbacks or litellm.model_fallbacks
+        fallbacks = None if kwargs.get("use_anthropic_oauth") is True else fallbacks or litellm.model_fallbacks
         if fallbacks is not None:
             return completion_with_fallbacks(  # pyright: ignore[reportReturnType]  # fallback runner is untyped; resolves to ModelResponse|CustomStreamWrapper at runtime
                 **args
@@ -5685,6 +5705,13 @@ def completion(
             merge_reasoning_content_in_choices=kwargs.get("merge_reasoning_content_in_choices", None),
             use_litellm_proxy=kwargs.get("use_litellm_proxy", False),
             api_version=api_version,
+            use_anthropic_oauth=kwargs.get("use_anthropic_oauth"),
+            anthropic_auth_profile=kwargs.get("anthropic_auth_profile"),
+            anthropic_token_dir=kwargs.get("anthropic_token_dir"),
+            anthropic_credential_mode=kwargs.get("anthropic_credential_mode"),
+            anthropic_oauth_compatibility=kwargs.get("anthropic_oauth_compatibility"),
+            anthropic_execution_mode=kwargs.get("anthropic_execution_mode"),
+            _anthropic_native_identity=kwargs.get("_anthropic_native_identity"),
             chatgpt_auth_profile=kwargs.get("chatgpt_auth_profile"),
             chatgpt_token_dir=kwargs.get("chatgpt_token_dir"),
             chatgpt_auth_file=kwargs.get("chatgpt_auth_file"),

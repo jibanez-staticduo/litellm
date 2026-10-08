@@ -1984,6 +1984,11 @@ class AnthropicConfig(AnthropicModelInfo, BaseConfig):
         # Handling anthropic API Prompt Caching
         if len(anthropic_system_message_list) > 0:
             optional_params["system"] = anthropic_system_message_list
+        from litellm.llms.anthropic.oauth_policy import apply_anthropic_oauth_system
+
+        managed_system: Final = apply_anthropic_oauth_system(optional_params.get("system"), litellm_params)
+        if managed_system is not None:
+            optional_params["system"] = managed_system
         conversation: Final = place_mid_conversation_system(
             later_messages,
             supports_mid_conversation_system=supports_mid_conversation_system(
@@ -1991,11 +1996,14 @@ class AnthropicConfig(AnthropicModelInfo, BaseConfig):
             ),
         )
         # Format rest of message according to anthropic guidelines
+        from litellm.llms.anthropic.native_transport import NATIVE_SDK_MAPPING, is_anthropic_native_sdk
+
         try:
             anthropic_messages = anthropic_messages_pt(
                 model=model,
                 messages=list(conversation),  # mutable-ok: anthropic_messages_pt rewrites entries in place
                 llm_provider=self._resolved_provider,
+                native_sdk=is_anthropic_native_sdk(NATIVE_SDK_MAPPING.validate_python(litellm_params)),
             )
         except Exception as e:
             raise AnthropicError(
@@ -2592,6 +2600,7 @@ class AnthropicConfig(AnthropicModelInfo, BaseConfig):
         prefix_prompt: str | None = None,
         speed: str | None = None,
         tool_name_reverse_map: dict[str, str] | None = None,
+        native_sdk: bool = False,
     ):
         _hidden_params: Final[dict] = {}
         _hidden_params["additional_headers"] = process_anthropic_headers(dict(raw_response.headers))
@@ -2613,6 +2622,16 @@ class AnthropicConfig(AnthropicModelInfo, BaseConfig):
             tool_results,
             compaction_blocks,
         ) = self.extract_response_content(completion_response=completion_response)
+        from litellm.llms.anthropic.native_transport import NATIVE_SDK_MAPPING, encode_native_tool_call_id
+
+        replay_tool_calls: Final[list[ChatCompletionToolCallChunk]] = (
+            [
+                {**tool_call, "id": encode_native_tool_call_id(NATIVE_SDK_MAPPING.validate_python(tool_call))}
+                for tool_call in tool_calls
+            ]
+            if native_sdk
+            else tool_calls
+        )
 
         # Reverse-map rewritten tool names back to caller's originals so a
         # downstream OpenAI-style dispatcher can match on the registered name.
@@ -2648,7 +2667,7 @@ class AnthropicConfig(AnthropicModelInfo, BaseConfig):
 
         json_mode_message, tool_calls_for_message, json_extra_content = self._resolve_json_mode_non_streaming(
             json_mode=json_mode,
-            tool_calls=tool_calls,
+            tool_calls=replay_tool_calls,
         )
         merged_text = text_content or ""
         if json_extra_content:
@@ -2722,6 +2741,8 @@ class AnthropicConfig(AnthropicModelInfo, BaseConfig):
         api_key: str | None = None,
         json_mode: bool | None = None,
     ) -> ModelResponse:
+        from litellm.llms.anthropic.native_transport import NATIVE_SDK_MAPPING, is_anthropic_native_sdk
+
         ## LOGGING
         logging_obj.post_call(
             input=messages,
@@ -2757,6 +2778,7 @@ class AnthropicConfig(AnthropicModelInfo, BaseConfig):
             prefix_prompt=prefix_prompt,
             speed=speed,
             tool_name_reverse_map=tool_name_reverse_map,
+            native_sdk=is_anthropic_native_sdk(NATIVE_SDK_MAPPING.validate_python(litellm_params)),
         )
         return model_response
 
