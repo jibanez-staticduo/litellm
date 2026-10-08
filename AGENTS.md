@@ -131,3 +131,15 @@ Before implementing:
 Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify
 
 Before requesting maintainer review, verify the current PR tip passes required CI and code coverage, meets Greptile confidence of at least 4/5, and has acceptable Veria and Bugbot reviews. Inspect warnings and findings, fix actionable issues, and rerun the affected checks and reviewers after changes. Record evidence for any false positive or unavailable review; never treat a pending or missing bot result as a pass. Do not lower coverage thresholds or raise `ANY_CAPS` to satisfy a check
+
+## Custom Docker Images And Production Deployment
+
+Every custom image intended for deployment, including custom base images, must be built from its maintained source and published to `docker.staticduo.com` before deployment on any host. Use existing public images directly from their public registries. Customized or derived images must follow the custom image publication policy
+
+For LiteLLM, verify the published manifest and configure Compose to consume `docker.staticduo.com/litellm@sha256:<verified digest>`. Require a successful registry pull on each target host before changing its image selector. Never deploy local-only tags or use `docker save` / `docker load` as a substitute for publication. If publication, manifest verification or pull fails, stop; no local image fallback
+
+Keep compilation and publication in the release workflow. Compose deployment and UpdateDockers consume published images; they must not rebuild custom services. Deploy only the intended service and preserve the existing Compose project, configuration, credentials, mounts, data and unrelated containers. On the NAS, follow the `docker-ugreen-nas` skill and preserve the UGREEN project registration
+
+Deploy and validate the candidate in Fedora first. Require successful functional checks for inference, streaming, the native launcher, LazyMCP, inventory and accounting, plus healthy runtime and completed migrations. Only then deploy the same published digest in the NAS and verify its functionality. Preserve authentication, including legitimate automatic OAuth renewal; never change credentials manually to make a check pass
+
+Nightly maintenance at 04:00 Europe/Madrid follows this same sequence. Its independent guard must verify the remote registry digest, effective Compose image, actual container image and source revision, matching digests across hosts, and recorded Fedora acceptance before NAS promotion. Missing or failed evidence must fail the run. If there are no new changes and both deployments already match the verified release, skip builds, backups and container recreation
