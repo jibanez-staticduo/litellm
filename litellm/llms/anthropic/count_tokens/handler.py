@@ -13,7 +13,8 @@ from pydantic import JsonValue, TypeAdapter
 
 import litellm
 from litellm._logging import verbose_logger
-from litellm.llms.anthropic.common_utils import AnthropicError
+from litellm.litellm_core_utils.asyncify import asyncify
+from litellm.llms.anthropic.common_utils import AnthropicError, AnthropicModelInfo
 from litellm.llms.anthropic.count_tokens.transformation import (
     AnthropicCountTokensConfig,
 )
@@ -37,7 +38,7 @@ class AnthropicCountTokensHandler(AnthropicCountTokensConfig):
         self,
         model: str,
         messages: list[dict[str, JsonValue]],
-        api_key: str,
+        auth_header: Mapping[str, str] | None = None,
         api_base: str | None = None,
         timeout: float | httpx.Timeout | None = None,
         tools: list[dict[str, JsonValue]] | None = None,
@@ -46,6 +47,7 @@ class AnthropicCountTokensHandler(AnthropicCountTokensConfig):
         extra_headers: Mapping[str, str] | None = None,
         native_params: Mapping[str, object] | None = None,
         native_client: bool = False,
+        api_key: str | None = None,
     ) -> dict[str, JsonValue]:
         """
         Handle a CountTokens request using httpx.
@@ -53,8 +55,8 @@ class AnthropicCountTokensHandler(AnthropicCountTokensConfig):
         Args:
             model: The model identifier (e.g., "claude-3-5-sonnet-20241022")
             messages: The messages to count tokens for
-            api_key: The Anthropic API key
-            api_base: Optional custom API base URL
+            auth_header: The resolved Anthropic auth header (``AnthropicModelInfo.get_auth_header``)
+            api_base: Optional deployment api_base the count-tokens path is appended to
             timeout: Optional timeout for the request (defaults to litellm.request_timeout)
 
         Returns:
@@ -77,7 +79,7 @@ class AnthropicCountTokensHandler(AnthropicCountTokensConfig):
                     )
                 )
                 if native_client
-                else self.transform_request_to_count_tokens(
+                else await asyncify(self.transform_request_to_count_tokens)(
                     model=model,
                     messages=messages,
                     tools=tools,
@@ -95,14 +97,21 @@ class AnthropicCountTokensHandler(AnthropicCountTokensConfig):
             endpoint_url: Final = (
                 native_connection.url("count_tokens")
                 if native_connection is not None
-                else api_base or self.get_anthropic_count_tokens_endpoint()
+                else self.get_anthropic_count_tokens_endpoint(api_base)
             )
 
             verbose_logger.debug("Making request to: %s", endpoint_url)
 
             # Get required headers
+            resolved_auth_header: Final = (
+                auth_header if auth_header is not None else AnthropicModelInfo.get_auth_header(api_key)
+            )
+            if resolved_auth_header is None and native_connection is None:
+                raise AnthropicError(401, "No Anthropic credential available for token counting")
             required_headers: Final = (
-                native_connection.headers if native_connection is not None else self.get_required_headers(api_key)
+                native_connection.headers
+                if native_connection is not None
+                else self.get_count_tokens_headers(resolved_auth_header or MappingProxyType({}))
             )
             client_beta: Final = next(
                 (
@@ -129,7 +138,12 @@ class AnthropicCountTokensHandler(AnthropicCountTokensConfig):
             from litellm.llms.anthropic.oauth_policy import native_client_auth_headers
 
             request_headers: Final = (
-                native_client_auth_headers(extra_headers or MappingProxyType({}), api_key) if native_client else headers
+                native_client_auth_headers(
+                    extra_headers or MappingProxyType[str, str]({}),
+                    (resolved_auth_header or MappingProxyType({})).get("authorization", "").removeprefix("Bearer "),
+                )
+                if native_client
+                else headers
             )
 
             # Use LiteLLM's async httpx client

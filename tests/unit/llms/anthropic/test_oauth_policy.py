@@ -81,6 +81,36 @@ def test_native_client_body_preserves_history_and_all_native_options() -> None:
     assert options == original
 
 
+def test_native_client_preparation_preserves_empty_and_signed_blocks_and_thinking_display() -> None:
+    import litellm
+    from litellm.llms.anthropic.pass_through.messages.utils import (
+        AnthropicMessagesRequestUtils,
+        prepare_native_messages,
+    )
+
+    params: Final = {**_MANAGED, "anthropic_execution_mode": "native_client"}
+    history: Final = [
+        {
+            "role": "assistant",
+            "content": [
+                {"type": "text", "text": ""},
+                {"type": "thinking", "thinking": "signed", "signature": "opaque"},
+            ],
+        }
+    ]
+    system: Final = [{"type": "text", "text": "native instructions"}]
+    prepared, prepared_system = prepare_native_messages(history, system, params, model="native-model")
+    assert prepared is history
+    assert prepared_system is system
+    from unittest.mock import patch
+
+    with patch.object(litellm, "reasoning_auto_summary", True):
+        options: Final = AnthropicMessagesRequestUtils.get_requested_anthropic_messages_optional_param(
+            {**params, "thinking": {"type": "enabled", "budget_tokens": 1024}}
+        )
+    assert options["thinking"] == {"type": "enabled", "budget_tokens": 1024}
+
+
 def test_native_client_original_body_keeps_unrecognized_provider_fields() -> None:
     from litellm.llms.anthropic.pass_through.messages.transformation import AnthropicMessagesConfig
     from litellm.types.router import GenericLiteLLMParams

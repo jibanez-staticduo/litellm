@@ -11,7 +11,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Final, Literal, TypeVar, overload
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import NotRequired, ReadOnly, TypedDict
 
 from litellm._logging import verbose_proxy_logger
@@ -28,6 +28,7 @@ from litellm.repositories.table_repositories import (
     SpendLogGuardrailIndexRepository,
     SpendLogsRepository,
 )
+from litellm.types.llms.base import LiteLLMBaseModel
 
 if TYPE_CHECKING:
     from prisma import models as prisma_models
@@ -248,7 +249,9 @@ class _DailyPassBlocked(TypedDict):
     blocked: int
 
 
-class UsageOverviewRow(BaseModel):
+class UsageOverviewRow(LiteLLMBaseModel):
+    model_config = ConfigDict(frozen=True)
+
     id: str
     name: str
     type: str
@@ -268,9 +271,11 @@ class UsageOverviewRow(BaseModel):
     )
 
 
-class UsageOverviewResponse(BaseModel):
-    rows: list[UsageOverviewRow]
-    chart: list[UsageChartPoint]  # [{ date, passed, blocked }]
+class UsageOverviewResponse(LiteLLMBaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    rows: Sequence[UsageOverviewRow]
+    chart: Sequence[UsageChartPoint]  # [{ date, passed, blocked }]
     totalRequests: int
     totalBlocked: int
     passRate: float
@@ -291,13 +296,17 @@ _EMPTY_OVERVIEW: Final = UsageOverviewResponse(
 )
 
 
-class UsageUnitsDailyPoint(BaseModel):
+class UsageUnitsDailyPoint(LiteLLMBaseModel):
+    model_config = ConfigDict(frozen=True)
+
     date: str
     units: Mapping[str, int]
     cost: float | None
 
 
-class UsageDetailResponse(BaseModel):
+class UsageDetailResponse(LiteLLMBaseModel):
+    model_config = ConfigDict(frozen=True)
+
     guardrail_id: str
     guardrail_name: str
     type: str
@@ -309,7 +318,7 @@ class UsageDetailResponse(BaseModel):
     status: str
     trend: str
     description: str | None
-    time_series: list[UsageChartPoint]
+    time_series: Sequence[UsageChartPoint]
     usage_units: Mapping[str, int]
     usage_units_daily: Sequence[UsageUnitsDailyPoint]
     usage_units_by_team: Mapping[str, Mapping[str, int]]
@@ -323,7 +332,9 @@ class UsageDetailResponse(BaseModel):
     untracked_usage_units_by_key: Mapping[str, Mapping[str, int]]
 
 
-class UsageLogEntry(BaseModel):
+class UsageLogEntry(LiteLLMBaseModel):
+    model_config = ConfigDict(frozen=True)
+
     id: str
     timestamp: str
     action: str  # blocked | passed | flagged | not_run
@@ -335,8 +346,10 @@ class UsageLogEntry(BaseModel):
     reason: str | None
 
 
-class UsageLogsResponse(BaseModel):
-    logs: list[UsageLogEntry]
+class UsageLogsResponse(LiteLLMBaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    logs: Sequence[UsageLogEntry]
     total: int
     page: int
     page_size: int

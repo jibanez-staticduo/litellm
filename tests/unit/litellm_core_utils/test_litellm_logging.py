@@ -1,52 +1,72 @@
+from pathlib import Path
+from queue import Queue
+from litellm.types.llms.openai import ResponsesAPIStreamEvents
 import asyncio
 import contextlib
 import copy
 import datetime
+import importlib.abc
 import json
 import logging
 import os
 import sys
 import time
-from collections.abc import Callable, Iterator, Mapping
-from pathlib import Path
-from queue import Queue
-from types import MappingProxyType
+import traceback
+from collections.abc import AsyncIterator, Callable, Iterator, Mapping, Sequence
+from datetime import datetime as datetime_standard_logging, datetime as datetime_unit_test, datetime as dt_object
+from importlib.machinery import ModuleSpec
+from types import MappingProxyType, ModuleType
 from typing import Final, Literal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
+import pytest_asyncio
 from mcp.types import AudioContent, CallToolResult, ImageContent, TextContent
 from openai import AsyncOpenAI
 from openai._legacy_response import HttpxBinaryResponseContent
+from pydantic import BaseModel
 
 import litellm
 from litellm._internal_context import in_post_response_phase
-from litellm._logging import session_id_var, trace_id_var
-from litellm.constants import REDACTED_BY_LITELLM, SENTRY_PII_DENYLIST
+from litellm._logging import session_id_var, trace_id_var, verbose_logger
+from litellm._service_logger import ServiceLogging
+from litellm.caching.caching import DualCache
+from litellm.constants import LOGGING_WORKER_MAX_TIME_PER_COROUTINE, REDACTED_BY_LITELLM, SENTRY_PII_DENYLIST
 from litellm.cost_calculator import ocr_batch_cost
 from litellm.integrations.custom_logger import CustomLogger
 from litellm.litellm_core_utils.litellm_logging import Logging as LitellmLogging
 from litellm.litellm_core_utils.litellm_logging import (
+    Logging,
+    StandardLoggingPayloadSetup,
     _extract_response_obj_and_hidden_params,
     _get_status_fields,
     set_callbacks,
 )
+from litellm.litellm_core_utils.logging_worker import GLOBAL_LOGGING_WORKER
 from litellm.llms.base_llm.ocr.transformation import OCRUsageInfo
 from litellm.proxy._types import UserAPIKeyAuth
-from litellm.types.llms.openai import (
-    ResponseAPIUsage,
-    ResponseCompletedEvent,
-    ResponsesAPIResponse,
-    ResponsesAPIStreamEvents,
-)
+from litellm.proxy.hooks.cache_control_check import PROXY_CacheControlCheck
+from litellm.proxy.hooks.max_iterations_limiter import PROXY_MaxIterationsHandler
+from litellm.proxy.hooks.parallel_request_limiter_v3 import PROXY_MaxParallelRequestsHandler_v3
+from litellm.proxy.utils import InternalUsageCache
+from litellm.types.llms.openai import ResponseAPIUsage, ResponseCompletedEvent, ResponsesAPIResponse
 from litellm.types.utils import (
     CallTypes,
     ImageResponse,
     LiteLLMRealtimeStreamLoggingObject,
     ModelResponse,
+    StandardLoggingHiddenParams,
+    StandardLoggingMetadata,
+    StandardLoggingModelInformation,
+    StandardLoggingPayload,
     TextCompletionResponse,
+    Usage,
 )
+from tests._vcr_conftest_common import install_live_call_probe, record_vcr_outcome
+import inspect
+from typing import List, Optional
+from litellm.types.utils import LiteLLMCommonStrings
 
 
 @pytest.fixture
@@ -62,96 +82,314 @@ def logging_obj():
     )
 
 
-@pytest.mark.parametrize("header_name", ["authorization", "Authorization"])
-@pytest.mark.parametrize("update_from_kwargs", [False, True])
-def test_managed_anthropic_oauth_headers_are_redacted_before_custom_logging(
-    logging_obj: LitellmLogging, header_name: str, update_from_kwargs: bool
-) -> None:
-    captured: Final[Queue[Mapping[str, object]]] = Queue()
-
-    def capture(details: Mapping[str, object]) -> None:
-        captured.put(details)
-
-    if update_from_kwargs:
-        logging_obj.update_from_kwargs(
-            kwargs={"use_anthropic_oauth": True}, litellm_params={"logger_fn": capture}, optional_params={}
-        )
-    else:
-        logging_obj.update_environment_variables(
-            litellm_params={"use_anthropic_oauth": True, "logger_fn": capture}, optional_params={}
-        )
-    token: Final = "sk-ant-oat01-synthetic-managed-logging-token"
-    headers: Final = {header_name: f"Bearer {token}", "x-trace": "trace-value"}
-    transport_args: Final = {"headers": headers, "api_base": "https://api.anthropic.com/v1/messages"}
-    logging_obj.pre_call(input="hello", api_key=None, additional_args=transport_args)
-
-    logged: Final = json.dumps(dict(captured.get_nowait()), default=str)
-    assert token not in logged
-    assert json.loads(logged)["additional_args"]["headers"]["x-trace"] == "trace-value"
-    assert headers[header_name] == f"Bearer {token}"
-    assert transport_args["headers"] is headers
-
-
-@pytest.fixture(scope="module")
-def signaling_prometheus_logger():
-    from prometheus_client import REGISTRY
-
-    from litellm.integrations.prometheus import PrometheusLogger
-
-    existing = frozenset(REGISTRY._collector_to_names)
-    try:
-        yield PrometheusLogger()
-    finally:
-        for collector in frozenset(REGISTRY._collector_to_names) - existing:
-            REGISTRY.unregister(collector)
-
-
-@pytest.mark.parametrize("provider", ["chatgpt", "openai"])
 @pytest.mark.asyncio
-async def test_realtime_signaling_has_zero_usage_standard_logging(provider, signaling_prometheus_logger, caplog):
-    import datetime as dt
-    import json
+async def test_async_post_mcp_tool_call_hook_preserves_and_returns_content(logging_obj):
+    from litellm.types.mcp import MCPPostCallResponseObject
 
-    logger = LitellmLogging(
-        model="gpt-live-1-codex",
-        messages=[],
-        stream=False,
-        call_type="arealtime_calls",
-        start_time=time.time(),
-        litellm_call_id="signaling-call",
-        function_id="signaling-function",
-    )
-    logger.update_environment_variables(
-        litellm_params={},
-        optional_params={},
-        model="gpt-live-1-codex",
-        custom_llm_provider=provider,
-        input="",
-    )
-    response = httpx.Response(201, text="v=0\r\nprivate-sdp", headers={"location": "/calls/rtc_private"})
-    logger._success_handler_helper_fn(
-        result=response,
-        start_time=dt.datetime.now(),
-        end_time=dt.datetime.now(),
-        cache_hit=False,
-    )
-    payload = logger.model_call_details.get("standard_logging_object")
-    assert payload is not None
-    assert payload["response_cost"] == 0
-    assert payload["total_tokens"] == 0
-    assert "private-sdp" not in json.dumps(payload)
-    assert "rtc_private" not in json.dumps(payload)
-    assert response.text == "v=0\r\nprivate-sdp"
+    class RedactingLogger(CustomLogger):
+        async def async_post_mcp_tool_call_hook(
+            self,
+            kwargs: dict[str, object],
+            response_obj: MCPPostCallResponseObject,
+            start_time: datetime.datetime,
+            end_time: datetime.datetime,
+        ) -> MCPPostCallResponseObject:
+            assert isinstance(response_obj.mcp_tool_call_response, list)
+            assert isinstance(response_obj.mcp_tool_call_response[0], TextContent)
+            response_obj.mcp_tool_call_response = [TextContent(type="text", text="[REDACTED]")]
+            return response_obj
 
-    from litellm.proxy.hooks.proxy_track_cost_callback import _ProxyDBLogger
+    logging_obj.dynamic_success_callbacks = [RedactingLogger()]
+    result = CallToolResult(content=[TextContent(type="text", text="SECRET-1234")], isError=False)
 
-    await signaling_prometheus_logger.async_log_success_event(
-        logger.model_call_details, response, dt.datetime.now(), dt.datetime.now()
+    hooked_content = await logging_obj.async_post_mcp_tool_call_hook(
+        kwargs=logging_obj.model_call_details,
+        response_obj=result,
+        start_time=datetime.datetime.now(),
+        end_time=datetime.datetime.now(),
     )
-    await _ProxyDBLogger()._PROXY_track_cost_callback(
-        logger.model_call_details, response, dt.datetime.now(), dt.datetime.now()
+
+    assert hooked_content.content == [TextContent(type="text", text="[REDACTED]")]
+
+
+def test_response_cost_calculator_preserves_dynamic_call_details(logging_obj, monkeypatch):
+    cache_hit: Final = 1
+
+    class Provider:
+        value: Final = "custom"
+
+        def startswith(self, prefix: str) -> bool:
+            return self.value.startswith(prefix)
+
+    custom_llm_provider: Final = Provider()
+
+    def response_cost_calculator(**kwargs: object) -> float:
+        assert kwargs["cache_hit"] is cache_hit
+        assert kwargs["custom_llm_provider"] is custom_llm_provider
+        return 0.0
+
+    logging_obj.model_call_details["cache_hit"] = cache_hit
+    logging_obj.model_call_details["custom_llm_provider"] = custom_llm_provider
+    logging_obj.optional_params = {}
+    monkeypatch.setattr(litellm, "response_cost_calculator", response_cost_calculator)
+
+    result = ModelResponse(
+        model="gpt-4o-mini",
+        usage={"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
     )
-    assert "Error in tracking cost callback" not in caplog.text
+
+    assert logging_obj.response_cost_calculator(result=result) == 0.0
+
+
+@pytest.mark.asyncio
+async def test_async_post_mcp_tool_call_hook_chains_every_callback(logging_obj):
+    from litellm.types.mcp import MCPPostCallResponseObject
+
+    class ReplacingLogger(CustomLogger):
+        def __init__(self, old: str, new: str) -> None:
+            super().__init__()
+            self.old: Final = old
+            self.new: Final = new
+            self.seen: list[str] = []  # mutable-ok: test records what each callback observed
+
+        async def async_post_mcp_tool_call_hook(
+            self,
+            kwargs: dict[str, object],
+            response_obj: MCPPostCallResponseObject,
+            start_time: datetime.datetime,
+            end_time: datetime.datetime,
+        ) -> MCPPostCallResponseObject:
+            first = response_obj.mcp_tool_call_response[0]
+            assert isinstance(first, TextContent)
+            self.seen.append(first.text)
+            return MCPPostCallResponseObject(
+                mcp_tool_call_response=[TextContent(type="text", text=first.text.replace(self.old, self.new))],
+                hidden_params=response_obj.hidden_params,
+            )
+
+    first_logger: Final = ReplacingLogger("SECRET", "[S]")
+    second_logger: Final = ReplacingLogger("1234", "[N]")
+    logging_obj.dynamic_success_callbacks = [first_logger, second_logger]
+    result = CallToolResult(content=[TextContent(type="text", text="SECRET-1234")], isError=False)
+
+    hooked_content = await logging_obj.async_post_mcp_tool_call_hook(
+        kwargs=logging_obj.model_call_details,
+        response_obj=result,
+        start_time=datetime.datetime.now(),
+        end_time=datetime.datetime.now(),
+    )
+
+    assert first_logger.seen == ["SECRET-1234"]
+    assert second_logger.seen == ["[S]-1234"]
+    assert hooked_content.content == [TextContent(type="text", text="[S]-[N]")]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode", ["replace", "inplace", "empty", "inplace_none", "replace_none"])
+@pytest.mark.parametrize("structured", [False, True])
+async def test_mcp_content_rewrite_never_returns_stale_structured_data(logging_obj, mode, structured):
+    from litellm.types.llms.base import HiddenParams
+    from litellm.types.mcp import MCPPostCallResponseObject
+
+    class Redactor(CustomLogger):
+        async def async_post_mcp_tool_call_hook(self, kwargs, response_obj, start_time, end_time):
+            block = response_obj.mcp_tool_call_response[0]
+            assert isinstance(block, TextContent)
+            if mode in ("inplace", "inplace_none"):
+                block.text = "[REDACTED]"
+                return None if mode == "inplace_none" else response_obj
+            if mode == "replace_none":
+                response_obj.mcp_tool_call_response = [TextContent(type="text", text="[REDACTED]")]
+                return None
+            return MCPPostCallResponseObject(
+                mcp_tool_call_response=[] if mode == "empty" else [TextContent(type="text", text="[REDACTED]")],
+                hidden_params=HiddenParams(response_cost=0.25),
+            )
+
+    logging_obj.dynamic_success_callbacks = [Redactor()]
+    result = CallToolResult(
+        content=[TextContent(type="text", text="SECRET-1234")],
+        structured_content={"nested": {"secret": "SECRET-1234"}} if structured else None,
+        meta={"request": "trace-1"},
+    )
+    logging_obj.model_call_details["original_response"] = result
+    returned = await logging_obj.async_post_mcp_tool_call_hook(
+        kwargs=logging_obj.model_call_details,
+        response_obj=result,
+        start_time=datetime.datetime.now(),
+        end_time=datetime.datetime.now(),
+    )
+    assert "SECRET-1234" not in result.model_dump_json(by_alias=True)
+    assert returned is result
+    assert result.content == ([] if mode == "empty" else [TextContent(type="text", text="[REDACTED]")])
+    assert result.structured_content is None
+    assert result.is_error is structured
+    assert result.meta == {"request": "trace-1"}
+    assert logging_obj.model_call_details["original_response"] is result
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode", ["none", "cost", "direct", "block", "exception"])
+async def test_mcp_callbacks_preserve_effective_result_and_cost(logging_obj, mode):
+    from litellm.types.llms.base import HiddenParams
+    from litellm.types.mcp import MCPPostCallResponseObject
+
+    class Callback(CustomLogger):
+        async def async_post_mcp_tool_call_hook(self, kwargs, response_obj, start_time, end_time):
+            if mode == "exception":
+                response_obj.mcp_tool_call_response[0].text = "discarded"
+                raise ValueError("non-blocking callback")
+            if mode in ("direct", "block"):
+                original = kwargs["original_response"]
+                original.content = [TextContent(type="text", text="safe")]
+                original.structured_content = {"result": "safe"}
+                original.is_error = mode == "block"
+            if mode == "none" or mode == "direct":
+                return None
+            return MCPPostCallResponseObject(
+                mcp_tool_call_response=response_obj.mcp_tool_call_response,
+                hidden_params=HiddenParams(response_cost=0.25),
+            )
+
+    logging_obj.dynamic_success_callbacks = [Callback()]
+    result = CallToolResult(
+        content=[TextContent(type="text", text="original")], structured_content={"result": "original"}
+    )
+    logging_obj.model_call_details["original_response"] = result
+    returned = await logging_obj.async_post_mcp_tool_call_hook(
+        kwargs=logging_obj.model_call_details,
+        response_obj=result,
+        start_time=datetime.datetime.now(),
+        end_time=datetime.datetime.now(),
+    )
+    expected = "safe" if mode in ("direct", "block") else "original"
+    assert result.content == [TextContent(type="text", text=expected)]
+    assert result.structured_content == {"result": expected}
+    assert result.is_error is (mode == "block")
+    assert returned is result
+    assert logging_obj.model_call_details.get("response_cost") == (0.25 if mode in ("cost", "block") else None)
+
+
+@pytest.mark.asyncio
+async def test_mcp_callback_cancellation_propagates_without_mutating_result(logging_obj):
+    class CancelledCallback(CustomLogger):
+        async def async_post_mcp_tool_call_hook(self, kwargs, response_obj, start_time, end_time):
+            response_obj.mcp_tool_call_response[0].text = "partial"
+            raise asyncio.CancelledError
+
+    logging_obj.dynamic_success_callbacks = [CancelledCallback()]
+    result = CallToolResult(content=[TextContent(type="text", text="original")])
+    with pytest.raises(asyncio.CancelledError):
+        await logging_obj.async_post_mcp_tool_call_hook(
+            kwargs={},
+            response_obj=result,
+            start_time=datetime.datetime.now(),
+            end_time=datetime.datetime.now(),
+        )
+    assert result.content == [TextContent(type="text", text="original")]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("callbacks", [[], ["prometheus"]])
+@pytest.mark.parametrize("is_error", [False, True])
+async def test_mcp_without_custom_callbacks_preserves_mixed_content(logging_obj, callbacks, is_error):
+    logging_obj.dynamic_success_callbacks = callbacks
+    result = CallToolResult(
+        content=[
+            TextContent(type="text", text="ok"),
+            ImageContent(type="image", data="aW1n", mime_type="image/png"),
+            AudioContent(type="audio", data="c291bmQ=", mime_type="audio/wav"),
+        ],
+        structured_content={"result": "ok"},
+        is_error=is_error,
+    )
+    before = result.model_dump()
+    returned = await logging_obj.async_post_mcp_tool_call_hook(
+        kwargs={},
+        response_obj=result,
+        start_time=datetime.datetime.now(),
+        end_time=datetime.datetime.now(),
+    )
+    assert returned is result
+    assert returned.model_dump() == before
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("replace_structured", [False, True])
+@pytest.mark.parametrize("same_content", [False, True])
+async def test_mcp_native_structured_replacement_must_match_returned_content(
+    logging_obj, replace_structured, same_content
+):
+    from litellm.types.mcp import MCPPostCallResponseObject
+
+    class NativeReplacement(CustomLogger):
+        async def async_post_mcp_tool_call_hook(self, kwargs, response_obj, start_time, end_time):
+            original = kwargs["original_response"]
+            original.content[0].text = "native-safe"
+            if replace_structured:
+                original.structured_content["result"] = "native-safe"
+            return MCPPostCallResponseObject(
+                mcp_tool_call_response=[TextContent(type="text", text="native-safe" if same_content else "final-safe")],
+                hidden_params=response_obj.hidden_params,
+            )
+
+    result = CallToolResult(
+        content=[TextContent(type="text", text="SECRET-1234")],
+        structured_content={"result": "SECRET-1234"},
+    )
+    logging_obj.dynamic_success_callbacks = [NativeReplacement()]
+    returned = await logging_obj.async_post_mcp_tool_call_hook(
+        kwargs={"original_response": result},
+        response_obj=result,
+        start_time=datetime.datetime.now(),
+        end_time=datetime.datetime.now(),
+    )
+    assert returned is result
+    assert result.content == [TextContent(type="text", text="native-safe" if same_content else "final-safe")]
+    assert result.structured_content == ({"result": "native-safe"} if replace_structured and same_content else None)
+    assert result.is_error is not (replace_structured and same_content)
+    assert "SECRET-1234" not in result.model_dump_json()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode", ["none", "wrapper", "exception"])
+@pytest.mark.parametrize("structured", [False, True])
+async def test_mcp_direct_content_edit_invalidates_stale_structured_data(logging_obj, mode, structured):
+    class DirectRedactor(CustomLogger):
+        async def async_post_mcp_tool_call_hook(self, kwargs, response_obj, start_time, end_time):
+            kwargs["original_response"].content[0].text = "[REDACTED]"
+            if mode == "exception":
+                raise ValueError("non-blocking callback after direct edit")
+            return response_obj if mode == "wrapper" else None
+
+    result = CallToolResult(
+        content=[TextContent(type="text", text="SECRET-1234")],
+        structured_content={"result": "SECRET-1234"} if structured else None,
+    )
+    logging_obj.dynamic_success_callbacks = [DirectRedactor()]
+    returned = await logging_obj.async_post_mcp_tool_call_hook(
+        kwargs={"original_response": result},
+        response_obj=result,
+        start_time=datetime.datetime.now(),
+        end_time=datetime.datetime.now(),
+    )
+    assert returned is result
+    assert result.content == [TextContent(type="text", text="[REDACTED]")]
+    assert result.structured_content is None
+    assert result.is_error is structured
+    assert "SECRET-1234" not in result.model_dump_json()
+
+
+def test_with_client_facing_stream_model_stamps_a_copy_of_the_priced_response(logging_obj):
+    response = ModelResponse(model="claude-opus-4-6@default")
+    logging_obj.client_facing_stream_model = "claude-opus-4.6"
+    logged = logging_obj._with_client_facing_stream_model(response)
+    assert (logged.model, response.model) == ("claude-opus-4.6", "claude-opus-4-6@default")
+
+
+def test_with_client_facing_stream_model_keeps_the_response_when_the_proxy_set_no_model(logging_obj):
+    response = ModelResponse(model="claude-opus-4-6@default")
+    assert logging_obj._with_client_facing_stream_model(response) is response
 
 
 def test_get_combined_callback_list_preserves_insertion_order(logging_obj):
@@ -253,7 +491,7 @@ def test_use_custom_pricing_not_detected_litellm_metadata_no_pricing():
 
 
 def test_response_cost_calculator_uses_router_model_id_from_litellm_metadata():
-    """_response_cost_calculator should extract router_model_id from
+    """response_cost_calculator should extract router_model_id from
     litellm_params.litellm_metadata.model_info.id when the result object
     does not carry _hidden_params (e.g. ResponsesAPIResponse from /v1/responses
     streaming). Regression test for custom pricing on streaming responses."""
@@ -317,13 +555,45 @@ def test_response_cost_calculator_uses_router_model_id_from_litellm_metadata():
             },
         )
 
-        cost = logging_obj._response_cost_calculator(result=response_obj)
+        cost = logging_obj.response_cost_calculator(result=response_obj)
 
         assert cost is not None, "Cost should not be None"
         expected_cost = (10 * custom_input_cost) + (5 * custom_output_cost)
         assert cost == pytest.approx(expected_cost), f"Expected {expected_cost}, got {cost}"
     finally:
         litellm.model_cost.pop(custom_model_id, None)
+
+
+def test_logging_success_path_reads_custom_pydantic_hidden_params() -> None:
+    class CustomLLMResponse(BaseModel):
+        _hidden_params = {"response_cost": 0.25, "custom_field": "preserved"}
+
+    response: Final = CustomLLMResponse()
+    logging_obj: Final = _make_dict_logging_obj()
+    metadata: Final[dict[str, object]] = {"request_tag": "preserved"}
+    logging_obj.model_call_details["litellm_params"] = {"metadata": metadata}
+
+    with (
+        patch.object(
+            logging_obj,
+            "_build_standard_logging_payload",
+            return_value={"response_cost": 0.25},
+        ),
+        patch("litellm.litellm_core_utils.litellm_logging.emit_standard_logging_payload"),
+        patch.object(logging_obj, "_is_recognized_call_type_for_logging", return_value=True),
+        patch.object(logging_obj, "_transform_usage_objects", side_effect=lambda result: result),
+    ):
+        logging_obj.success_handler(
+            result=response,
+            start_time=time.time(),
+            end_time=time.time(),
+        )
+
+    assert logging_obj.model_call_details["response_cost"] == 0.25
+    assert metadata == {
+        "request_tag": "preserved",
+        "hidden_params": {"response_cost": 0.25, "custom_field": "preserved"},
+    }
 
 
 class TestZeroCostDiagnostic:
@@ -420,8 +690,8 @@ class TestZeroCostDiagnostic:
         logging_obj: Final = self._logging_obj(deployment_pricing)
 
         with caplog.at_level(logging.WARNING, logger="LiteLLM"):
-            first_cost: Final = logging_obj._response_cost_calculator(result=self._response(usage))
-            second_cost: Final = logging_obj._response_cost_calculator(result=self._response(usage))
+            first_cost: Final = logging_obj.response_cost_calculator(result=self._response(usage))
+            second_cost: Final = logging_obj.response_cost_calculator(result=self._response(usage))
 
         assert first_cost == 0.0
         assert second_cost == 0.0
@@ -438,8 +708,8 @@ class TestZeroCostDiagnostic:
         logging_obj: Final = self._logging_obj(deployment_pricing, stream=True)
 
         with caplog.at_level(logging.WARNING, logger="LiteLLM"):
-            logging_obj._response_cost_calculator(result=self._response(usage=None))
-            logging_obj._response_cost_calculator(result=self._response(usage))
+            logging_obj.response_cost_calculator(result=self._response(usage=None))
+            logging_obj.response_cost_calculator(result=self._response(usage))
 
         if deployment_pricing is self.FREE_PRICING:
             assert logging_obj.model_call_details["zero_cost_diagnostic"] is None
@@ -465,7 +735,7 @@ class TestZeroCostDiagnostic:
         )
 
         with caplog.at_level(logging.WARNING, logger="LiteLLM"):
-            cost: Final = logging_obj._response_cost_calculator(result=event)
+            cost: Final = logging_obj.response_cost_calculator(result=event)
 
         assert cost == 0.0
         if deployment_pricing is self.FREE_PRICING:
@@ -532,7 +802,7 @@ class TestZeroCostDiagnostic:
         )
 
         with caplog.at_level(logging.WARNING, logger="LiteLLM"):
-            cost: Final = logging_obj._response_cost_calculator(
+            cost: Final = logging_obj.response_cost_calculator(
                 result=self._response(usage, model="lit7898-unmapped-model")
             )
 
@@ -547,7 +817,7 @@ class TestZeroCostDiagnostic:
         logging_obj: Final = self._logging_obj(deployment_pricing)
 
         with caplog.at_level(logging.WARNING, logger="LiteLLM"):
-            cost: Final = logging_obj._response_cost_calculator(
+            cost: Final = logging_obj.response_cost_calculator(
                 result={"model": "gpt-5.4-nano", "usage": {"prompt_tokens": "n/a", "completion_tokens": 3}}
             )
 
@@ -562,10 +832,10 @@ class TestZeroCostDiagnostic:
         logging_obj: Final = self._logging_obj(deployment_pricing, stream=True, call_type="anthropic_messages")
 
         with caplog.at_level(logging.WARNING, logger="LiteLLM"):
-            logging_obj._response_cost_calculator(result=self._response(usage=None))
-            logging_obj._response_cost_calculator(result=self._response(usage))
-            logging_obj._response_cost_calculator(result=self._response(usage=None))
-            logging_obj._response_cost_calculator(result=self._response(usage))
+            logging_obj.response_cost_calculator(result=self._response(usage=None))
+            logging_obj.response_cost_calculator(result=self._response(usage))
+            logging_obj.response_cost_calculator(result=self._response(usage=None))
+            logging_obj.response_cost_calculator(result=self._response(usage))
 
         if deployment_pricing is self.FREE_PRICING:
             assert logging_obj.model_call_details["zero_cost_diagnostic"] is None
@@ -586,15 +856,15 @@ class TestZeroCostDiagnostic:
         try:
             logging_obj: Final = self._logging_obj(self.QUERY_ONLY_PRICING)
             with caplog.at_level(logging.WARNING, logger="LiteLLM"):
-                assert logging_obj._response_cost_calculator(result=self._response(usage)) == 0.0
+                assert logging_obj.response_cost_calculator(result=self._response(usage)) == 0.0
                 self._assert_flagged(logging_obj, caplog)
 
                 self._route_to_deployment(logging_obj, priced_pricing, deployment_id=priced_id)
-                assert logging_obj._response_cost_calculator(result=self._response(usage)) == pytest.approx(5e-05)
+                assert logging_obj.response_cost_calculator(result=self._response(usage)) == pytest.approx(5e-05)
                 assert logging_obj.model_call_details["zero_cost_diagnostic"] is None
 
                 self._route_to_deployment(logging_obj, self.QUERY_ONLY_PRICING)
-                assert logging_obj._response_cost_calculator(result=self._response(usage)) == 0.0
+                assert logging_obj.response_cost_calculator(result=self._response(usage)) == 0.0
 
             assert logging_obj.model_call_details["zero_cost_diagnostic"]["reason"] == "missing_pricing_key"
             assert len(self._zero_cost_warnings(caplog)) == 1
@@ -617,8 +887,8 @@ class TestZeroCostDiagnostic:
                 {}, model=f"openai/{requested_model}", deployment_id="lit7898-cost-map-deployment"
             )
             with caplog.at_level(logging.WARNING, logger="LiteLLM"):
-                assert logging_obj._response_cost_calculator(result=self._response(usage, model=dated_model)) == 0.0
-                assert logging_obj._response_cost_calculator(result=self._response(usage, model=requested_model)) == 0.0
+                assert logging_obj.response_cost_calculator(result=self._response(usage, model=dated_model)) == 0.0
+                assert logging_obj.response_cost_calculator(result=self._response(usage, model=requested_model)) == 0.0
 
             assert logging_obj.model_call_details["zero_cost_diagnostic"]["pricing_model"] == requested_model
             warnings: Final = self._zero_cost_warnings(caplog)
@@ -664,7 +934,7 @@ class TestZeroCostDiagnostic:
         logging_obj.model_call_details["cache_hit"] = True
 
         with caplog.at_level(logging.WARNING, logger="LiteLLM"):
-            assert logging_obj._response_cost_calculator(result=self._response(usage), cache_hit=False) == 0.0
+            assert logging_obj.response_cost_calculator(result=self._response(usage), cache_hit=False) == 0.0
 
         assert logging_obj.model_call_details["zero_cost_diagnostic"] is None
         assert self._zero_cost_warnings(caplog) == []
@@ -680,7 +950,7 @@ class TestZeroCostDiagnostic:
             response: Final = self._response(usage)
             response._response_ms = 1000.0
             with caplog.at_level(logging.WARNING, logger="LiteLLM"):
-                assert logging_obj._response_cost_calculator(result=response) == pytest.approx(0.00042)
+                assert logging_obj.response_cost_calculator(result=response) == pytest.approx(0.00042)
 
             assert logging_obj.model_call_details["zero_cost_diagnostic"] is None
             assert self._zero_cost_warnings(caplog) == []
@@ -718,7 +988,7 @@ class TestZeroCostDiagnostic:
                 usage, model=served_model, custom_llm_provider="azure", additional_headers=spillover_headers
             )
             with caplog.at_level(logging.WARNING, logger="LiteLLM"):
-                assert logging_obj._response_cost_calculator(result=response) == 0.0
+                assert logging_obj.response_cost_calculator(result=response) == 0.0
 
             warnings: Final = self._zero_cost_warnings(caplog)
             if not spilled_over:
@@ -1032,7 +1302,7 @@ class TestRetrieveBatchCostPassesModelIdentity:
                 failed_requests=0,
             )
 
-        monkeypatch.setattr(logging_module, "_handle_completed_batch", fake_handle_completed_batch)
+        monkeypatch.setattr(logging_module, "handle_completed_batch", fake_handle_completed_batch)
 
         obj = LitellmLogging(
             model="bedrock/global.anthropic.claude-sonnet-4-6",
@@ -1063,7 +1333,7 @@ class TestRetrieveBatchCostPassesModelIdentity:
         finally:
             litellm.model_cost.pop(deployment_id, None)
 
-        assert captured, "_handle_completed_batch was never called"
+        assert captured, "handle_completed_batch was never called"
         assert captured["model_name"] == "bedrock/global.anthropic.claude-sonnet-4-6"
         assert captured["model_info"] is not None
         assert captured["model_info"]["input_cost_per_token"] == 0.0
@@ -1115,7 +1385,7 @@ class TestRetrieveBatchPricesOnlyFinalBatches:
         from litellm.litellm_core_utils import litellm_logging as logging_module
 
         handle_completed_batch = AsyncMock()
-        monkeypatch.setattr(logging_module, "_handle_completed_batch", handle_completed_batch)
+        monkeypatch.setattr(logging_module, "handle_completed_batch", handle_completed_batch)
         batch = self._batch(status, output_file_id)
 
         await self._logging_obj()._async_success_handler_body(result=batch, start_time=None, end_time=None)
@@ -1138,7 +1408,7 @@ class TestRetrieveBatchPricesOnlyFinalBatches:
                 failed_requests=0,
             )
         )
-        monkeypatch.setattr(logging_module, "_handle_completed_batch", handle_completed_batch)
+        monkeypatch.setattr(logging_module, "handle_completed_batch", handle_completed_batch)
         batch = self._batch("completed", "file-out")
 
         await self._logging_obj()._async_success_handler_body(result=batch, start_time=None, end_time=None)
@@ -1363,11 +1633,161 @@ def test_logging_prevent_double_logging(logging_obj):
     This is to avoid double logging.
     """
     logging_obj.stream = False
-    logging_obj.has_run_logging(event_type="sync_success")
-    assert logging_obj.should_run_logging(event_type="sync_success") == False
-    assert logging_obj.should_run_logging(event_type="sync_failure") == True
-    assert logging_obj.should_run_logging(event_type="async_success") == True
-    assert logging_obj.should_run_logging(event_type="async_failure") == True
+    logging_obj.mark_logging_complete(event_type="sync_success")
+    assert logging_obj.should_run_logging(event_type="sync_success") is False
+    assert logging_obj.should_run_logging(event_type="sync_failure") is True
+    assert logging_obj.should_run_logging(event_type="async_success") is True
+    assert logging_obj.should_run_logging(event_type="async_failure") is True
+
+
+class _FailureCountingLogger(CustomLogger):
+    def __init__(self) -> None:
+        super().__init__()
+        self.async_failure_events: asyncio.Queue[None] = asyncio.Queue()
+        self.sync_failure_events: asyncio.Queue[None] = asyncio.Queue()
+
+    async def async_log_failure_event(
+        self,
+        kwargs: dict[str, object],
+        response_obj: object,
+        start_time: datetime.datetime,
+        end_time: datetime.datetime,
+    ) -> None:
+        self.async_failure_events.put_nowait(None)
+
+    def log_failure_event(
+        self,
+        kwargs: dict[str, object],
+        response_obj: object,
+        start_time: datetime.datetime,
+        end_time: datetime.datetime,
+    ) -> None:
+        self.sync_failure_events.put_nowait(None)
+
+
+def _register_failure_counting_logger(
+    monkeypatch: pytest.MonkeyPatch,
+    logger: _FailureCountingLogger,
+) -> None:
+    monkeypatch.setattr(litellm, "callbacks", [])
+    monkeypatch.setattr(litellm, "success_callback", [])
+    monkeypatch.setattr(litellm, "_async_success_callback", [])
+    monkeypatch.setattr(litellm, "failure_callback", [logger])
+    monkeypatch.setattr(litellm, "_async_failure_callback", [logger])
+
+
+@pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.parametrize(
+    "event",
+    ["async_success", "sync_success", "async_failure", "sync_failure"],
+)
+def test_mark_logging_complete_flags_by_stream_and_event(
+    logging_obj: LitellmLogging,
+    stream: bool,
+    event: Literal["async_success", "sync_success", "async_failure", "sync_failure"],
+) -> None:
+    events: Final[tuple[Literal["async_success", "sync_success", "async_failure", "sync_failure"], ...]] = (
+        "async_success",
+        "sync_success",
+        "async_failure",
+        "sync_failure",
+    )
+    logging_obj.stream = stream
+
+    logging_obj.mark_logging_complete(event_type=event)
+
+    expected_to_run: Final = stream and event in ("async_success", "sync_success")
+    assert logging_obj.should_run_logging(event_type=event) is expected_to_run
+    assert all(logging_obj.should_run_logging(event_type=other_event) for other_event in events if other_event != event)
+
+
+@pytest.mark.parametrize("stream", [False, True])
+def test_has_run_logging_alias_marks_logging_complete(
+    logging_obj: LitellmLogging,
+    stream: bool,
+) -> None:
+    logging_obj.stream = stream
+
+    logging_obj.has_run_logging(event_type="async_failure")
+    assert logging_obj.should_run_logging(event_type="async_failure") is False
+
+    logging_obj.has_run_logging(event_type="async_success")
+    assert logging_obj.should_run_logging(event_type="async_success") is stream
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.parametrize("concurrent", [False, True])
+async def test_async_failure_handler_dispatches_once_on_repeated_notifications(
+    logging_obj: LitellmLogging,
+    monkeypatch: pytest.MonkeyPatch,
+    stream: bool,
+    concurrent: bool,
+) -> None:
+    failure_logger: Final = _FailureCountingLogger()
+    _register_failure_counting_logger(monkeypatch, failure_logger)
+    logging_obj.stream = stream
+    logging_obj.model_call_details["litellm_params"] = {}
+    error: Final = litellm.ServiceUnavailableError("503", "anthropic", "claude")
+    failure_calls: Final = tuple(logging_obj.async_failure_handler(error, "tb") for _ in range(3))
+
+    if concurrent:
+        await asyncio.gather(*failure_calls)
+    else:
+        for failure_call in failure_calls:
+            await failure_call
+
+    assert failure_logger.async_failure_events.qsize() == 1
+
+
+def test_sync_failure_handler_dispatches_once_on_repeated_streaming_notifications(
+    logging_obj: LitellmLogging,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    failure_logger: Final = _FailureCountingLogger()
+    _register_failure_counting_logger(monkeypatch, failure_logger)
+    logging_obj.stream = True
+    logging_obj.call_type = "completion"
+    logging_obj.model_call_details["litellm_params"] = {}
+    error: Final = litellm.ServiceUnavailableError("503", "anthropic", "claude")
+
+    for _ in range(3):
+        logging_obj.failure_handler(error, "tb")
+
+    assert failure_logger.sync_failure_events.qsize() == 1
+
+
+@pytest.mark.asyncio
+async def test_streaming_sync_and_async_failure_dedupe_independently(
+    logging_obj: LitellmLogging,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    failure_logger: Final = _FailureCountingLogger()
+    _register_failure_counting_logger(monkeypatch, failure_logger)
+    logging_obj.stream = True
+    logging_obj.call_type = "completion"
+    logging_obj.model_call_details["litellm_params"] = {}
+    error: Final = litellm.ServiceUnavailableError("503", "anthropic", "claude")
+
+    await logging_obj.async_failure_handler(error, "tb")
+    await logging_obj.async_failure_handler(error, "tb")
+    logging_obj.failure_handler(error, "tb")
+    logging_obj.failure_handler(error, "tb")
+
+    assert failure_logger.async_failure_events.qsize() == 1
+    assert failure_logger.sync_failure_events.qsize() == 1
+
+
+def test_streaming_success_is_not_marked_complete(logging_obj: LitellmLogging) -> None:
+    logging_obj.stream = True
+
+    logging_obj.mark_logging_complete(event_type="async_success")
+    logging_obj.mark_logging_complete(event_type="sync_success")
+
+    assert logging_obj.should_run_logging(event_type="async_success") is True
+    assert logging_obj.should_run_logging(event_type="sync_success") is True
+    assert "has_logged_async_success" not in logging_obj.model_call_details
+    assert "has_logged_sync_success" not in logging_obj.model_call_details
 
 
 @pytest.mark.asyncio
@@ -1551,7 +1971,7 @@ async def test_anthropic_messages_marks_litellm_params_async():
         await asyncio.wait_for(logged.wait(), timeout=10)
 
         assert captured["litellm_params"].get("aanthropic_messages") is True
-        assert LitellmLogging._is_sync_litellm_request(captured["litellm_params"]) is False
+        assert LitellmLogging.is_sync_litellm_request(captured["litellm_params"]) is False
         logger.log_success_event.assert_not_called()
     finally:
         litellm.callbacks = original_callbacks
@@ -1583,7 +2003,7 @@ async def test_arealtime_marks_litellm_params_async(monkeypatch):
     await asyncio.wait_for(async_logged.wait(), timeout=10)
     logger.log_failure_event.assert_not_called()
     assert captured["litellm_params"].get("_arealtime") is True
-    assert LitellmLogging._is_sync_litellm_request(captured["litellm_params"]) is False
+    assert LitellmLogging.is_sync_litellm_request(captured["litellm_params"]) is False
 
 
 @pytest.mark.asyncio
@@ -1648,7 +2068,7 @@ async def test_agenerate_content_marks_litellm_params_async():
 
     litellm_params = logging_obj.model_call_details.get("litellm_params", {})
     assert litellm_params.get("agenerate_content") is True
-    assert LitellmLogging._is_sync_litellm_request(litellm_params) is False
+    assert LitellmLogging.is_sync_litellm_request(litellm_params) is False
 
 
 @pytest.mark.asyncio
@@ -1905,14 +2325,14 @@ async def test_async_success_handler_runs_async_callbacks_in_the_post_response_p
 
 
 def test_is_sync_litellm_request():
-    assert LitellmLogging._is_sync_litellm_request({}) is True
-    assert LitellmLogging._is_sync_litellm_request({"acompletion": True}) is False
-    assert LitellmLogging._is_sync_litellm_request({"allm_passthrough_route": True}) is False
-    assert LitellmLogging._is_sync_litellm_request({"_arealtime": True}) is False
-    assert LitellmLogging._is_sync_litellm_request({"aanthropic_messages": True}) is False
-    assert LitellmLogging._is_sync_litellm_request({"agenerate_content": True}) is False
-    assert LitellmLogging._is_sync_litellm_request({"agenerate_content_stream": True}) is False
-    assert LitellmLogging._is_sync_litellm_request({"aanthropic_messages": False}) is True
+    assert LitellmLogging.is_sync_litellm_request({}) is True
+    assert LitellmLogging.is_sync_litellm_request({"acompletion": True}) is False
+    assert LitellmLogging.is_sync_litellm_request({"allm_passthrough_route": True}) is False
+    assert LitellmLogging.is_sync_litellm_request({"_arealtime": True}) is False
+    assert LitellmLogging.is_sync_litellm_request({"aanthropic_messages": True}) is False
+    assert LitellmLogging.is_sync_litellm_request({"agenerate_content": True}) is False
+    assert LitellmLogging.is_sync_litellm_request({"agenerate_content_stream": True}) is False
+    assert LitellmLogging.is_sync_litellm_request({"aanthropic_messages": False}) is True
 
 
 def test_get_litellm_params_propagates_allm_passthrough_route():
@@ -1923,7 +2343,7 @@ def test_get_litellm_params_propagates_allm_passthrough_route():
 
     params = get_litellm_params(allm_passthrough_route=True)
     assert params.get("allm_passthrough_route") is True
-    assert LitellmLogging._is_sync_litellm_request(params) is False
+    assert LitellmLogging.is_sync_litellm_request(params) is False
 
 
 @pytest.mark.asyncio
@@ -2570,7 +2990,7 @@ def test_get_user_agent_tags():
 def test_get_request_tags():
     from litellm.litellm_core_utils.litellm_logging import StandardLoggingPayloadSetup
 
-    tags = StandardLoggingPayloadSetup._get_request_tags(
+    tags = StandardLoggingPayloadSetup.get_request_tags(
         litellm_params={"metadata": {"tags": ["test-tag"]}},
         proxy_server_request={
             "headers": {
@@ -2582,6 +3002,17 @@ def test_get_request_tags():
     assert "test-tag" in tags
     assert "User-Agent: litellm" in tags
     assert "User-Agent: litellm/0.1.0" in tags
+
+
+def test_get_request_tags_preserves_non_string_metadata_tags():
+    from litellm.litellm_core_utils.litellm_logging import StandardLoggingPayloadSetup
+
+    tags = StandardLoggingPayloadSetup.get_request_tags(
+        litellm_params={"metadata": {"tags": [7]}},
+        proxy_server_request={},
+    )
+
+    assert 7 in tags
 
 
 def test_get_request_tags_from_metadata_and_litellm_metadata():
@@ -2598,7 +3029,7 @@ def test_get_request_tags_from_metadata_and_litellm_metadata():
     from litellm.litellm_core_utils.litellm_logging import StandardLoggingPayloadSetup
 
     # Test case 1: Tags in metadata only
-    tags = StandardLoggingPayloadSetup._get_request_tags(
+    tags = StandardLoggingPayloadSetup.get_request_tags(
         litellm_params={"metadata": {"tags": ["metadata-tag-1", "metadata-tag-2"]}},
         proxy_server_request={},
     )
@@ -2607,7 +3038,7 @@ def test_get_request_tags_from_metadata_and_litellm_metadata():
     assert len([t for t in tags if not t.startswith("User-Agent:")]) == 2
 
     # Test case 2: Tags in litellm_metadata only
-    tags = StandardLoggingPayloadSetup._get_request_tags(
+    tags = StandardLoggingPayloadSetup.get_request_tags(
         litellm_params={"litellm_metadata": {"tags": ["litellm-metadata-tag-1", "litellm-metadata-tag-2"]}},
         proxy_server_request={},
     )
@@ -2616,7 +3047,7 @@ def test_get_request_tags_from_metadata_and_litellm_metadata():
     assert len([t for t in tags if not t.startswith("User-Agent:")]) == 2
 
     # Test case 3: Tags in both - metadata should take priority
-    tags = StandardLoggingPayloadSetup._get_request_tags(
+    tags = StandardLoggingPayloadSetup.get_request_tags(
         litellm_params={
             "metadata": {"tags": ["metadata-tag"]},
             "litellm_metadata": {"tags": ["litellm-metadata-tag"]},
@@ -2628,14 +3059,14 @@ def test_get_request_tags_from_metadata_and_litellm_metadata():
     assert len([t for t in tags if not t.startswith("User-Agent:")]) == 1
 
     # Test case 4: No tags in either
-    tags = StandardLoggingPayloadSetup._get_request_tags(
+    tags = StandardLoggingPayloadSetup.get_request_tags(
         litellm_params={"metadata": {}, "litellm_metadata": {}},
         proxy_server_request={},
     )
     assert len([t for t in tags if not t.startswith("User-Agent:")]) == 0
 
     # Test case 5: None values for metadata/litellm_metadata
-    tags = StandardLoggingPayloadSetup._get_request_tags(
+    tags = StandardLoggingPayloadSetup.get_request_tags(
         litellm_params={"metadata": None, "litellm_metadata": None},
         proxy_server_request={},
     )
@@ -2643,7 +3074,7 @@ def test_get_request_tags_from_metadata_and_litellm_metadata():
     assert len([t for t in tags if not t.startswith("User-Agent:")]) == 0
 
     # Test case 6: Empty litellm_params
-    tags = StandardLoggingPayloadSetup._get_request_tags(
+    tags = StandardLoggingPayloadSetup.get_request_tags(
         litellm_params={},
         proxy_server_request={},
     )
@@ -2651,7 +3082,7 @@ def test_get_request_tags_from_metadata_and_litellm_metadata():
     assert len([t for t in tags if not t.startswith("User-Agent:")]) == 0
 
     # Test case 7: Metadata tags combined with user-agent tags
-    tags = StandardLoggingPayloadSetup._get_request_tags(
+    tags = StandardLoggingPayloadSetup.get_request_tags(
         litellm_params={"metadata": {"tags": ["custom-tag"]}},
         proxy_server_request={
             "headers": {
@@ -2685,15 +3116,15 @@ def test_get_request_tags_does_not_mutate_original_tags():
     }
 
     # Call _get_request_tags multiple times (simulating multiple callbacks)
-    tags1 = StandardLoggingPayloadSetup._get_request_tags(
+    tags1 = StandardLoggingPayloadSetup.get_request_tags(
         litellm_params=litellm_params,
         proxy_server_request=proxy_server_request,
     )
-    tags2 = StandardLoggingPayloadSetup._get_request_tags(
+    tags2 = StandardLoggingPayloadSetup.get_request_tags(
         litellm_params=litellm_params,
         proxy_server_request=proxy_server_request,
     )
-    tags3 = StandardLoggingPayloadSetup._get_request_tags(
+    tags3 = StandardLoggingPayloadSetup.get_request_tags(
         litellm_params=litellm_params,
         proxy_server_request=proxy_server_request,
     )
@@ -2843,7 +3274,7 @@ def test_response_cost_calculator_with_response_cost_in_hidden_params(logging_ob
         mock_response="Hello, world!",
     )
 
-    response_cost = logging_obj._response_cost_calculator(
+    response_cost = logging_obj.response_cost_calculator(
         result=mock_response,
     )
 
@@ -2892,7 +3323,7 @@ def test_response_cost_calculator_native_generate_content_body_uses_usage_metada
     )
     assert expected_cost > 0
 
-    cost = logging_obj._response_cost_calculator(result=native_body)
+    cost = logging_obj.response_cost_calculator(result=native_body)
     assert cost == pytest.approx(expected_cost)
 
 
@@ -2910,7 +3341,7 @@ def test_response_cost_calculator_does_not_transform_non_generate_content_dict()
     )
     logging_obj.optional_params = {}
 
-    cost = logging_obj._response_cost_calculator(
+    cost = logging_obj.response_cost_calculator(
         result={"usageMetadata": {"promptTokenCount": 1000, "candidatesTokenCount": 500}}
     )
     assert not cost
@@ -2941,7 +3372,7 @@ def test_file_content_call_is_not_billed(call_type):
     """
     result = HttpxBinaryResponseContent(httpx.Response(status_code=200, content=b"file contents"))
 
-    cost = _file_content_logging_obj(call_type)._response_cost_calculator(result=result)
+    cost = _file_content_logging_obj(call_type).response_cost_calculator(result=result)
 
     assert cost == 0.0
 
@@ -2964,7 +3395,7 @@ def test_speech_call_is_still_priced_from_input_characters(call_type):
 
     result = HttpxBinaryResponseContent(httpx.Response(status_code=200, content=b"audio bytes"))
 
-    cost = logging_obj._response_cost_calculator(result=result)
+    cost = logging_obj.response_cost_calculator(result=result)
 
     assert cost is not None
     assert cost > 0
@@ -3006,7 +3437,7 @@ def test_sentry_send_default_pii_opt_in(monkeypatch):
 
 
 def test_get_masked_values():
-    from litellm.litellm_core_utils.litellm_logging import _get_masked_values
+    from litellm.litellm_core_utils.litellm_logging import get_masked_values
 
     sensitive_object = {
         "mode": "pre_call",
@@ -3050,9 +3481,18 @@ def test_get_masked_values():
         "presidio_anonymizer_api_base": None,
         "vertex_credentials": "{sensitive_api_key}",
     }
-    masked_values = _get_masked_values(sensitive_object, unmasked_length=4, number_of_asterisks=4)
+    masked_values = get_masked_values(sensitive_object, unmasked_length=4, number_of_asterisks=4)
     assert masked_values["presidio_anonymizer_api_base"] is None
     assert masked_values["vertex_credentials"] == "{s****y}"
+
+
+def test_get_masked_values_keeps_original_non_string_key_behavior():
+    from typing import cast
+
+    from litellm.litellm_core_utils.litellm_logging import get_masked_values
+
+    with pytest.raises(AttributeError):
+        get_masked_values({"api_key": cast(object, {1: "value"})})
 
 
 @pytest.mark.asyncio
@@ -3088,6 +3528,7 @@ async def test_e2e_generate_cold_storage_object_key_successful():
             prefix="",  # No prefix for cold storage
             start_time=start_time,
             s3_file_name="time-10-30-45-123456_chatcmpl-test-12345",
+            partition_granularity="day",
         )
 
         # Verify the result
@@ -3137,6 +3578,7 @@ async def test_e2e_generate_cold_storage_object_key_with_custom_logger_s3_path()
             prefix="",
             start_time=start_time,
             s3_file_name="time-10-30-45-123456_chatcmpl-test-12345",
+            partition_granularity="day",
         )
 
         # Verify the result
@@ -3181,6 +3623,7 @@ async def test_e2e_generate_cold_storage_object_key_with_logger_no_s3_path():
             prefix="",
             start_time=start_time,
             s3_file_name="time-10-30-45-123456_chatcmpl-test-12345",
+            partition_granularity="day",
         )
 
         # Verify the result
@@ -3252,29 +3695,52 @@ def test_get_final_response_obj_with_empty_response_obj_and_list_init():
     assert result[1].name == "Object2"
 
 
-@pytest.mark.parametrize(
-    "meta,expected_tokens",
-    [
-        ({"billed_units": {"total_tokens": 83}}, 83),
-        ({"tokens": {"input_tokens": 83}}, 83),
-        ({"tokens": {"input_tokens": 0}, "billed_units": {"total_tokens": 83}}, 0),
-        ({"billed_units": {"search_units": 1}}, 0),
-        ({"billed_units": {"total_tokens": None}}, 0),
-        ({}, 0),
-    ],
-)
-def test_rerank_usage_is_preserved_in_logging(meta: dict, expected_tokens: int) -> None:
+def test_get_final_response_obj_stores_the_text_a_post_call_guardrail_served():
     from litellm.litellm_core_utils.litellm_logging import StandardLoggingPayloadSetup
+    from litellm.litellm_core_utils.served_output_texts import SERVED_OUTPUT_TEXTS_KEY
 
-    response: Final = {"id": "rerank-test", "results": [], "meta": meta}
-    usage: Final = StandardLoggingPayloadSetup.get_usage_from_response_obj(response)
-    usage_dict: Final = StandardLoggingPayloadSetup.get_usage_as_dict(response)
-    assert usage.prompt_tokens == expected_tokens
-    assert usage.total_tokens == expected_tokens
-    assert usage.completion_tokens == 0
-    assert usage_dict["prompt_tokens"] == expected_tokens
-    assert usage_dict["total_tokens"] == expected_tokens
-    assert usage_dict["completion_tokens"] == 0
+    raw = {
+        "id": "x",
+        "choices": [
+            {
+                "index": 0,
+                "finish_reason": "stop",
+                "message": {"role": "assistant", "content": "Card: 4111 1111 1111 1111"},
+            }
+        ],
+    }
+
+    logged = StandardLoggingPayloadSetup.get_final_response_obj(
+        response_obj=raw, init_response_obj=raw, kwargs={SERVED_OUTPUT_TEXTS_KEY: ("Card: <CREDIT_CARD>",)}
+    )
+    untouched = StandardLoggingPayloadSetup.get_final_response_obj(response_obj=raw, init_response_obj=raw, kwargs={})
+
+    assert isinstance(logged, dict)
+    assert logged["choices"][0]["message"]["content"] == "Card: <CREDIT_CARD>"
+    assert logged["choices"][0]["finish_reason"] == "stop"
+    assert untouched == raw
+
+
+def test_get_final_response_obj_redacts_the_served_text_when_message_logging_is_off(monkeypatch: pytest.MonkeyPatch):
+    import litellm
+    from litellm.litellm_core_utils.litellm_logging import StandardLoggingPayloadSetup
+    from litellm.litellm_core_utils.served_output_texts import SERVED_OUTPUT_TEXTS_KEY
+
+    monkeypatch.setattr(litellm, "turn_off_message_logging", True)
+    raw = {
+        "id": "x",
+        "choices": [{"index": 0, "finish_reason": "stop", "message": {"role": "assistant", "content": "Card: 4111"}}],
+    }
+
+    logged = StandardLoggingPayloadSetup.get_final_response_obj(
+        response_obj=raw,
+        init_response_obj=raw,
+        kwargs={SERVED_OUTPUT_TEXTS_KEY: ("Card: <CREDIT_CARD>",), "litellm_params": {}},
+    )
+
+    assert isinstance(logged, dict)
+    assert "<CREDIT_CARD>" not in json.dumps(logged), logged
+    assert "4111" not in json.dumps(logged), logged
 
 
 def test_get_usage_as_dict():
@@ -3286,11 +3752,11 @@ def test_get_usage_as_dict():
 
     # Test case 1: None response_obj returns empty usage dict
     result = StandardLoggingPayloadSetup.get_usage_as_dict(response_obj=None)
-    assert result == {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    assert result == {}
 
     # Test case 2: Empty response_obj returns empty usage dict
     result = StandardLoggingPayloadSetup.get_usage_as_dict(response_obj={})
-    assert result == {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    assert result == {}
 
     # Test case 3: combined_usage_object takes priority
     combined = Usage(prompt_tokens=10, completion_tokens=5, total_tokens=15)
@@ -3310,7 +3776,35 @@ def test_get_usage_as_dict():
 
     # Test case 5: response_obj with no usage key returns empty
     result = StandardLoggingPayloadSetup.get_usage_as_dict(response_obj={"id": "resp-1", "choices": []})
-    assert result == {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    assert result == {}
+
+
+@pytest.mark.parametrize(
+    "usage, include_usage",
+    [(None, False), (None, True), ({"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}, True)],
+)
+def test_logging_preserves_missing_usage_without_accepting_request_metadata(
+    logging_obj: Logging, usage: dict[str, int] | None, include_usage: bool
+) -> None:
+    from litellm.litellm_core_utils.litellm_logging import get_standard_logging_object_payload
+    from litellm.litellm_core_utils.llm_response_utils.convert_dict_to_response import convert_to_model_response_object
+
+    now: Final = datetime_unit_test(2026, 1, 1, 12, 0, 0)
+    response: Final[ModelResponse] = convert_to_model_response_object(
+        response_object={"id": "usage-coverage", "choices": [], **({"usage": usage} if include_usage else {})},
+        model_response_object=ModelResponse(),
+    )
+    payload: Final = get_standard_logging_object_payload(
+        kwargs={"litellm_params": {"metadata": {"usage_object": {"prompt_tokens": 99, "completion_tokens": 99}}}},
+        init_response_obj=response,
+        start_time=now,
+        end_time=now,
+        logging_obj=logging_obj,
+        status="success",
+    )
+    assert payload is not None
+    assert payload["metadata"]["usage_object"] == (response.usage.model_dump() if usage is not None else {})
+    assert (payload["prompt_tokens"], payload["completion_tokens"], payload["total_tokens"]) == (0, 0, 0)
 
 
 def test_append_system_prompt_messages():
@@ -3866,102 +4360,6 @@ def test_streaming_success_handler_includes_vertex_ai_metadata_in_standard_loggi
     assert payload is not None
     assert payload["response"]["vertex_ai_grounding_metadata"] == grounding_metadata
     assert payload["response"]["vertex_ai_url_context_metadata"] == url_context_metadata
-
-
-def test_get_assembled_streaming_response_transforms_dict_response_usage():
-    """Responses stream events can carry a dict response during success logging."""
-    import datetime
-
-    logging_obj = _make_logging_obj(stream=True)
-    response = {
-        "id": "resp-1",
-        "object": "response",
-        "output": [],
-        "usage": {
-            "input_tokens": 10,
-            "output_tokens": 5,
-            "total_tokens": 15,
-        },
-    }
-    result = ResponseCompletedEvent.model_construct(
-        type=ResponsesAPIStreamEvents.RESPONSE_COMPLETED,
-        response=response,
-    )
-
-    assembled = logging_obj._get_assembled_streaming_response(
-        result=result,
-        start_time=datetime.datetime.now(),
-        end_time=datetime.datetime.now(),
-        is_async=True,
-        streaming_chunks=[],
-    )
-
-    assert assembled is response
-    assert assembled["usage"]["prompt_tokens"] == 10
-    assert assembled["usage"]["completion_tokens"] == 5
-    assert assembled["usage"]["total_tokens"] == 15
-
-
-def test_get_assembled_streaming_response_transforms_typed_response_usage():
-    """Typed Responses API usage should keep existing chat-usage transformation."""
-    import datetime
-
-    logging_obj = _make_logging_obj(stream=True)
-    response = ResponsesAPIResponse(
-        id="resp-1",
-        created_at=0,
-        object="response",
-        output=[],
-        usage=ResponseAPIUsage(
-            input_tokens=7,
-            output_tokens=3,
-            total_tokens=10,
-        ),
-    )
-    result = ResponseCompletedEvent(
-        type=ResponsesAPIStreamEvents.RESPONSE_COMPLETED,
-        response=response,
-    )
-
-    assembled = logging_obj._get_assembled_streaming_response(
-        result=result,
-        start_time=datetime.datetime.now(),
-        end_time=datetime.datetime.now(),
-        is_async=True,
-        streaming_chunks=[],
-    )
-
-    assert assembled is response
-    assert assembled.usage["prompt_tokens"] == 7
-    assert assembled.usage["completion_tokens"] == 3
-    assert assembled.usage["total_tokens"] == 10
-
-
-def test_response_completed_event_builds_standard_logging_payload():
-    import datetime
-
-    logging_obj = _make_logging_obj(stream=True)
-    response = ResponsesAPIResponse(
-        id="resp-1",
-        created_at=0,
-        object="response",
-        output=[],
-        status="completed",
-        model="openai/codex-mini-latest",
-        usage=ResponseAPIUsage(input_tokens=7, output_tokens=3, total_tokens=10),
-    )
-    result = ResponseCompletedEvent(
-        type=ResponsesAPIStreamEvents.RESPONSE_COMPLETED,
-        response=response,
-    )
-
-    logging_obj.success_handler(
-        result=result,
-        start_time=datetime.datetime.now(),
-        end_time=datetime.datetime.now(),
-    )
-
-    assert logging_obj.model_call_details["standard_logging_object"] is not None
 
 
 def test_get_assembled_streaming_response_returns_none_for_non_streaming_text_completion():
@@ -4861,65 +5259,6 @@ def test_get_standard_logging_object_payload_takes_used_client_oauth_token_from_
     assert payload["metadata"]["used_client_oauth_token"] is expected
 
 
-@pytest.mark.parametrize("managed", [False, True])
-@pytest.mark.parametrize("function_name", [None, "_ageneric_api_call_with_fallbacks"])
-def test_managed_anthropic_oauth_attribution_survives_router_logging_and_spend(
-    logging_obj: LitellmLogging, managed: bool, function_name: str | None
-) -> None:
-    from datetime import datetime, timezone
-
-    from litellm.litellm_core_utils.litellm_logging import get_standard_logging_object_payload
-    from litellm.proxy.spend_tracking.spend_tracking_utils import get_logging_payload
-
-    router: Final = litellm.Router(model_list=[])
-    profile: Final = "accounting-profile"
-    deployment: Final = {
-        "model_name": "accounting-model",
-        "litellm_params": {
-            "model": "anthropic/unit-test-model",
-            "use_anthropic_oauth": managed,
-            "anthropic_auth_profile": profile,
-        },
-        "model_info": {"id": "accounting-deployment"},
-    }
-    request: Final = {
-        "metadata": {
-            "used_server_oauth_token": not managed,
-            "anthropic_auth_profile": "caller-profile",
-            "used_client_oauth_token": True,
-        },
-        "litellm_metadata": {
-            "used_server_oauth_token": not managed,
-            "anthropic_auth_profile": "caller-profile",
-            "used_client_oauth_token": True,
-        },
-    }
-    router._update_kwargs_with_deployment(deployment=deployment, kwargs=request, function_name=function_name)
-    logging_obj.update_from_kwargs(kwargs=request, litellm_params={"custom_llm_provider": "anthropic"})
-    kwargs: Final = {
-        "model": deployment["litellm_params"]["model"],
-        "custom_llm_provider": "anthropic",
-        "litellm_params": logging_obj.litellm_params,
-    }
-    now: Final = datetime(2026, 1, 1, tzinfo=timezone.utc)
-    payload: Final = get_standard_logging_object_payload(
-        kwargs=kwargs,
-        init_response_obj={},
-        start_time=now,
-        end_time=now,
-        logging_obj=logging_obj,
-        status="success",
-    )
-    assert payload is not None
-    spend: Final = get_logging_payload(
-        kwargs={**kwargs, "standard_logging_object": payload}, response_obj={}, start_time=now, end_time=now
-    )
-    for metadata in (payload["metadata"], json.loads(spend["metadata"])):
-        assert metadata["used_server_oauth_token"] is managed
-        assert metadata["anthropic_auth_profile"] == (profile if managed else None)
-        assert metadata["used_client_oauth_token"] is (not managed)
-
-
 def test_get_standard_logging_object_payload_carries_matched_access_groups(logging_obj):
     """Access groups stamped at auth time reach the logging payload, so integrations see what a request billed."""
     from datetime import datetime
@@ -5112,7 +5451,7 @@ def test_success_handler_computes_cost_for_dict_response():
     with (
         patch.object(
             logging_obj,
-            "_response_cost_calculator",
+            "response_cost_calculator",
             return_value=expected_cost,
         ) as mock_calc,
         patch.object(
@@ -5149,7 +5488,7 @@ def test_success_handler_preserves_precomputed_cost_for_dict_response():
     with (
         patch.object(
             logging_obj,
-            "_response_cost_calculator",
+            "response_cost_calculator",
             return_value=9.99,
         ) as mock_calc,
         patch.object(
@@ -5188,7 +5527,7 @@ def test_success_handler_unified_helper_runs_for_typed_results():
     with (
         patch.object(
             logging_obj,
-            "_response_cost_calculator",
+            "response_cost_calculator",
             return_value=expected_cost,
         ) as mock_calc,
         patch.object(
@@ -5801,7 +6140,7 @@ def _interactions_logging_obj(stream: bool, call_type: str = "acreate"):
         messages=[],
         stream=stream,
         call_type=call_type,
-        start_time=time.time(),
+        start_time=datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc).timestamp(),
         litellm_call_id="interactions-call-id",
         function_id="interactions-fn-id",
     )
@@ -6373,8 +6712,8 @@ def test_restore_correlation_context_safe_to_call_repeatedly(monkeypatch):
 
 
 def test_restore_correlation_context_does_not_resanitize(monkeypatch):
-    from litellm._logging import _sanitize_correlation_id
     from litellm.litellm_core_utils.litellm_logging import Logging
+    from litellm._logging import _sanitize_correlation_id
 
     monkeypatch.setattr(litellm, "request_correlation_in_logs", True)
     trace_id_var.set("outer-trace")
@@ -6501,7 +6840,7 @@ class TestNonInferenceCallTypesAreNotBilled:
 
     def test_creating_a_response_is_still_priced(self):
         """Guards the tests below: the same response object must cost money on the create path."""
-        cost = self._logging_obj("aresponses")._response_cost_calculator(result=self._retrieved_response())
+        cost = self._logging_obj("aresponses").response_cost_calculator(result=self._retrieved_response())
         assert cost is not None and cost > 0
 
     @pytest.mark.parametrize(
@@ -6517,15 +6856,15 @@ class TestNonInferenceCallTypesAreNotBilled:
         ],
     )
     def test_read_and_management_calls_cost_nothing(self, call_type):
-        cost = self._logging_obj(call_type)._response_cost_calculator(result=self._retrieved_response())
+        cost = self._logging_obj(call_type).response_cost_calculator(result=self._retrieved_response())
         assert cost == 0.0
 
     def test_retrieved_usage_is_not_re_reported_in_standard_logging_payload(self):
-        from datetime import datetime
-
         from litellm.litellm_core_utils.litellm_logging import (
             get_standard_logging_object_payload,
         )
+
+        from datetime import datetime
 
         logging_obj = self._logging_obj("aget_responses")
         now = datetime.now()
@@ -6554,7 +6893,7 @@ class TestNonInferenceCallTypesAreNotBilled:
         only billable usage. Zeroing it there means background jobs are never billed."""
         cost = self._logging_obj(
             "aget_responses", litellm_metadata=self.BACKGROUND_POLL_METADATA
-        )._response_cost_calculator(result=self._retrieved_response())
+        ).response_cost_calculator(result=self._retrieved_response())
         assert cost is not None and cost > 0
 
     def test_background_cost_poll_reports_usage_in_standard_logging_payload(self):
@@ -6585,7 +6924,7 @@ class TestNonInferenceCallTypesAreNotBilled:
     def test_reading_a_background_response_is_still_priced(self):
         """A background create answers queued with no usage at all, so whoever reads the finished
         job is the first and only caller to see its tokens. Zeroing that read bills the job nothing."""
-        cost = self._logging_obj("aget_responses")._response_cost_calculator(
+        cost = self._logging_obj("aget_responses").response_cost_calculator(
             result=self._retrieved_response(background=True)
         )
         assert cost is not None and cost > 0
@@ -6618,7 +6957,7 @@ class TestNonInferenceCallTypesAreNotBilled:
     def test_reading_a_foreground_response_is_still_free(self):
         """Guards the test above against a blanket exemption: an explicit background=false read was
         already billed by its create and must stay at zero."""
-        cost = self._logging_obj("aget_responses")._response_cost_calculator(
+        cost = self._logging_obj("aget_responses").response_cost_calculator(
             result=self._retrieved_response(background=False)
         )
         assert cost == 0.0
@@ -6882,7 +7221,7 @@ async def test_streaming_success_callbacks_survive_cost_calculation_failure():
     releasing.async_log_success_event = AsyncMock()
 
     patcher, logging_obj = _streaming_logging_obj_with_callbacks([releasing])
-    with patcher, patch.object(logging_obj, "_response_cost_calculator", side_effect=ValueError("bad usage block")):
+    with patcher, patch.object(logging_obj, "response_cost_calculator", side_effect=ValueError("bad usage block")):
         await logging_obj.async_success_handler(result=_assembled_stream_result())
 
     assert logging_obj.model_call_details["response_cost"] is None
@@ -7046,7 +7385,7 @@ def test_response_cost_calculator_prices_mantle_calls_on_the_served_region(monke
             choices=[{"message": {"role": "assistant", "content": "hello"}, "index": 0, "finish_reason": "stop"}],
             usage={"prompt_tokens": 38, "completion_tokens": 20, "total_tokens": 58},
         )
-        return logging_obj._response_cost_calculator(result=response)
+        return logging_obj.response_cost_calculator(result=response)
 
     commercial = litellm.model_cost["bedrock_mantle/xai.grok-4.3"]
     gov = litellm.model_cost["bedrock_mantle/us-gov-west-1/xai.grok-4.3"]
@@ -7100,13 +7439,71 @@ def test_response_cost_calculator_prices_proxy_vertex_calls_on_the_configured_lo
             choices=[{"message": {"role": "assistant", "content": "hello"}, "index": 0, "finish_reason": "stop"}],
             usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
         )
-        return logging_obj._response_cost_calculator(result=response)
+        return logging_obj.response_cost_calculator(result=response)
 
     info = litellm.model_cost["vertex_ai/gemini-3.5-flash"]
     expected_global = 10 * info["input_cost_per_token"] + 5 * info["output_cost_per_token"]
 
     assert cost_at("global") == pytest.approx(expected_global)
     assert cost_at("us-east5") == pytest.approx(info["regional_endpoint_uplift_multiplier"] * expected_global)
+
+
+def test_response_cost_calculator_prices_proxy_vertex_image_calls_on_the_configured_location(monkeypatch):
+    from datetime import datetime
+
+    from litellm.litellm_core_utils.get_model_cost_map import get_model_cost_map
+    from litellm.types.utils import ImageObject, ImageUsage, ImageUsageInputTokensDetails
+
+    monkeypatch.setenv("LITELLM_LOCAL_MODEL_COST_MAP", "True")
+    monkeypatch.setattr(
+        litellm,
+        "model_cost",
+        {
+            **get_model_cost_map(url=""),
+            "vertex_ai/fake-regional-image-model": {
+                "litellm_provider": "vertex_ai-language-models",
+                "mode": "image_generation",
+                "input_cost_per_token": 5e-07,
+                "output_cost_per_image_token": 6e-05,
+                "regional_endpoint_uplift_multiplier": 1.1,
+            },
+        },
+    )
+    monkeypatch.setenv("VERTEXAI_LOCATION", "us-east5")
+    monkeypatch.setattr(litellm, "vertex_location", None)
+
+    def cost_at(location):
+        logging_obj = LitellmLogging(
+            model="fake-regional-image-model",
+            messages=[],
+            stream=False,
+            call_type="image_generation",
+            start_time=datetime.now(),
+            litellm_call_id=f"vertex-image-loc-{location}",
+            function_id="f",
+        )
+        logging_obj.update_environment_variables(
+            model="fake-regional-image-model",
+            user="",
+            optional_params={"vertex_location": location},
+            litellm_params={"api_base": ""},
+            custom_llm_provider="vertex_ai",
+        )
+        response = ImageResponse(
+            data=[ImageObject(b64_json="img")],
+            usage=ImageUsage(
+                input_tokens=100,
+                input_tokens_details=ImageUsageInputTokensDetails(image_tokens=0, text_tokens=100),
+                output_tokens=1120,
+                total_tokens=1220,
+            ),
+        )
+        return logging_obj.response_cost_calculator(result=response)
+
+    expected_global = 100 * 5e-07 + 1120 * 6e-05
+
+    assert cost_at("global") == pytest.approx(expected_global)
+    assert cost_at("us-east5") == pytest.approx(1.1 * expected_global)
 
 
 def test_set_cost_breakdown_stores_vertex_location():
@@ -8564,7 +8961,7 @@ class TestAzurePTUSpilloverCost:
             response = self._response()
             response._hidden_params["additional_headers"] = {"llm_provider-x-ms-is-spilled-over": "true"}
 
-            assert obj._response_cost_calculator(result=response) == pytest.approx(self.EXPECTED_SPILL_COST)
+            assert obj.response_cost_calculator(result=response) == pytest.approx(self.EXPECTED_SPILL_COST)
         finally:
             self._unregister_models()
 
@@ -8577,7 +8974,7 @@ class TestAzurePTUSpilloverCost:
                 "x-ms-spillover-from-deployment": "ptu-dep",
             }
 
-            assert obj._response_cost_calculator(result=self._response()) == pytest.approx(self.EXPECTED_SPILL_COST)
+            assert obj.response_cost_calculator(result=self._response()) == pytest.approx(self.EXPECTED_SPILL_COST)
         finally:
             self._unregister_models()
 
@@ -8586,7 +8983,7 @@ class TestAzurePTUSpilloverCost:
         try:
             obj = self._logging_obj(dict(self.PTU_MODEL_INFO), flag="True", litellm_rate=0.0, monkeypatch=monkeypatch)
 
-            assert obj._response_cost_calculator(result=self._response()) == 0.0
+            assert obj.response_cost_calculator(result=self._response()) == 0.0
         finally:
             self._unregister_models()
 
@@ -8597,7 +8994,7 @@ class TestAzurePTUSpilloverCost:
             response = self._response()
             response._hidden_params["additional_headers"] = {"llm_provider-x-ms-is-spilled-over": "true"}
 
-            assert obj._response_cost_calculator(result=response) == 0.0
+            assert obj.response_cost_calculator(result=response) == 0.0
         finally:
             self._unregister_models()
 
@@ -8616,7 +9013,7 @@ class TestAzurePTUSpilloverCost:
             response = self._response()
             response._hidden_params["additional_headers"] = {"llm_provider-x-ms-is-spilled-over": "true"}
 
-            assert obj._response_cost_calculator(result=response) == pytest.approx(150 * 1e-6)
+            assert obj.response_cost_calculator(result=response) == pytest.approx(150 * 1e-6)
         finally:
             litellm.model_cost.pop(custom_model_id, None)
             self._unregister_models()
@@ -8662,7 +9059,7 @@ def test_get_assembled_streaming_response_bills_a_provider_reported_usage_cost()
     )
 
     assert assembled._hidden_params["additional_headers"]["llm_provider-x-litellm-response-cost"] == 0.0042
-    assert logging_obj._response_cost_calculator(result=assembled) == 0.0042
+    assert logging_obj.response_cost_calculator(result=assembled) == 0.0042
 
 
 def test_response_cost_calculator_prices_terminal_responses_event_from_its_response():
@@ -8678,8 +9075,8 @@ def test_response_cost_calculator_prices_terminal_responses_event_from_its_respo
     )
     event: Final = ResponseCompletedEvent(type="response.completed", response=inner_response)
 
-    event_cost: Final = logging_obj._response_cost_calculator(result=event)
-    inner_cost: Final = logging_obj._response_cost_calculator(result=inner_response)
+    event_cost: Final = logging_obj.response_cost_calculator(result=event)
+    inner_cost: Final = logging_obj.response_cost_calculator(result=inner_response)
 
     assert event_cost is not None and event_cost > 0
     assert event_cost == inner_cost
@@ -8873,6 +9270,46 @@ async def test_async_failure_handler_delivers_failure_payload_to_custom_logger()
     assert events.empty()
 
 
+def test_standard_logging_retries():
+    """
+    know if a request was retried.
+    """
+    from litellm.router import Router
+
+    customHandler = CompletionCustomHandler()
+    litellm.callbacks = [customHandler]
+
+    router = Router(
+        model_list=[
+            {
+                "model_name": "gpt-3.5-turbo",
+                "litellm_params": {
+                    "model": "openai/gpt-3.5-turbo",
+                    "api_key": "test-api-key",
+                },
+            }
+        ]
+    )
+
+    with patch.object(customHandler, "log_failure_event", new=MagicMock()) as mock_client:
+        try:
+            router.completion(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": "Hey, how's it going?"}],
+                num_retries=1,
+                mock_response="litellm.RateLimitError",
+            )
+        except litellm.RateLimitError:
+            pass
+
+        assert mock_client.call_count == 2
+        assert mock_client.call_args_list[0].kwargs["kwargs"]["standard_logging_object"]["trace_id"] is not None
+        assert (
+            mock_client.call_args_list[0].kwargs["kwargs"]["standard_logging_object"]["trace_id"]
+            == mock_client.call_args_list[1].kwargs["kwargs"]["standard_logging_object"]["trace_id"]
+        )
+
+
 def test_responses_completed_event_bills_the_served_service_tier():
     """The served service_tier on response.completed's inner ResponsesAPIResponse
     must reach the cost calculator, so a priority-served stream prices at the
@@ -8905,7 +9342,7 @@ def test_responses_completed_event_bills_the_served_service_tier():
     )
     event: Final = ResponseCompletedEvent(type="response.completed", response=inner)
 
-    cost: Final = logging_obj._response_cost_calculator(result=event)  # pyright: ignore[reportPrivateUsage]  # parity with the suite's own direct calls
+    cost: Final = logging_obj.response_cost_calculator(result=event)
 
     billed_response: Final = ModelResponse(
         model="gpt-5.1",
@@ -9143,321 +9580,2303 @@ def test_signoz_dispatch_requires_an_endpoint(monkeypatch):
         is_otel_v2_enabled.cache_clear()
 
 
-@pytest.mark.asyncio
-async def test_async_post_mcp_tool_call_hook_preserves_and_returns_content(logging_obj):
-    from litellm.types.mcp import MCPPostCallResponseObject
+def test_enterprise_alerting_loggers_resolves_real_classes():
+    from litellm_enterprise.enterprise_callbacks.pagerduty.pagerduty import PagerDutyAlerting
+    from litellm_enterprise.enterprise_callbacks.send_emails.resend_email import ResendEmailLogger
+    from litellm_enterprise.enterprise_callbacks.send_emails.sendgrid_email import SendGridEmailLogger
+    from litellm_enterprise.enterprise_callbacks.send_emails.smtp_email import SMTPEmailLogger
+    from litellm.litellm_core_utils import litellm_logging as logging_module
 
-    class RedactingLogger(CustomLogger):
-        async def async_post_mcp_tool_call_hook(
-            self,
-            kwargs: dict[str, object],
-            response_obj: MCPPostCallResponseObject,
-            start_time: datetime.datetime,
-            end_time: datetime.datetime,
-        ) -> MCPPostCallResponseObject:
-            assert isinstance(response_obj.mcp_tool_call_response, list)
-            assert isinstance(response_obj.mcp_tool_call_response[0], TextContent)
-            response_obj.mcp_tool_call_response = [TextContent(type="text", text="[REDACTED]")]
-            return response_obj
-
-    logging_obj.dynamic_success_callbacks = [RedactingLogger()]
-    result = CallToolResult(content=[TextContent(type="text", text="SECRET-1234")], isError=False)
-
-    hooked_content = await logging_obj.async_post_mcp_tool_call_hook(
-        kwargs=logging_obj.model_call_details,
-        response_obj=result,
-        start_time=datetime.datetime.now(),
-        end_time=datetime.datetime.now(),
-    )
-
-    assert hooked_content.content == [TextContent(type="text", text="[REDACTED]")]
+    logging_module._enterprise_alerting_loggers.cache_clear()
+    try:
+        loggers = logging_module._enterprise_alerting_loggers()
+        assert loggers.pagerduty is PagerDutyAlerting
+        assert loggers.resend_email is ResendEmailLogger
+        assert loggers.sendgrid_email is SendGridEmailLogger
+        assert loggers.smtp_email is SMTPEmailLogger
+    finally:
+        logging_module._enterprise_alerting_loggers.cache_clear()
 
 
-@pytest.mark.asyncio
-async def test_async_post_mcp_tool_call_hook_chains_every_callback(logging_obj):
-    from litellm.types.mcp import MCPPostCallResponseObject
-
-    class ReplacingLogger(CustomLogger):
-        def __init__(self, old: str, new: str) -> None:
-            super().__init__()
-            self.old: Final = old
-            self.new: Final = new
-            self.seen: list[str] = []  # mutable-ok: test records what each callback observed
-
-        async def async_post_mcp_tool_call_hook(
-            self,
-            kwargs: dict[str, object],
-            response_obj: MCPPostCallResponseObject,
-            start_time: datetime.datetime,
-            end_time: datetime.datetime,
-        ) -> MCPPostCallResponseObject:
-            first = response_obj.mcp_tool_call_response[0]
-            assert isinstance(first, TextContent)
-            self.seen.append(first.text)
-            return MCPPostCallResponseObject(
-                mcp_tool_call_response=[TextContent(type="text", text=first.text.replace(self.old, self.new))],
-                hidden_params=response_obj.hidden_params,
-            )
-
-    first_logger: Final = ReplacingLogger("SECRET", "[S]")
-    second_logger: Final = ReplacingLogger("1234", "[N]")
-    logging_obj.dynamic_success_callbacks = [first_logger, second_logger]
-    result = CallToolResult(content=[TextContent(type="text", text="SECRET-1234")], isError=False)
-
-    hooked_content = await logging_obj.async_post_mcp_tool_call_hook(
-        kwargs=logging_obj.model_call_details,
-        response_obj=result,
-        start_time=datetime.datetime.now(),
-        end_time=datetime.datetime.now(),
-    )
-
-    assert first_logger.seen == ["SECRET-1234"]
-    assert second_logger.seen == ["[S]-1234"]
-    assert hooked_content.content == [TextContent(type="text", text="[S]-[N]")]
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("mode", ["replace", "inplace", "empty", "inplace_none", "replace_none"])
-@pytest.mark.parametrize("structured", [False, True])
-async def test_mcp_content_rewrite_never_returns_stale_structured_data(logging_obj, mode, structured):
-    from litellm.types.llms.base import HiddenParams
-    from litellm.types.mcp import MCPPostCallResponseObject
-
-    class Redactor(CustomLogger):
-        async def async_post_mcp_tool_call_hook(self, kwargs, response_obj, start_time, end_time):
-            block = response_obj.mcp_tool_call_response[0]
-            assert isinstance(block, TextContent)
-            if mode in ("inplace", "inplace_none"):
-                block.text = "[REDACTED]"
-                return None if mode == "inplace_none" else response_obj
-            if mode == "replace_none":
-                response_obj.mcp_tool_call_response = [TextContent(type="text", text="[REDACTED]")]
-                return None
-            return MCPPostCallResponseObject(
-                mcp_tool_call_response=[] if mode == "empty" else [TextContent(type="text", text="[REDACTED]")],
-                hidden_params=HiddenParams(response_cost=0.25),
-            )
-
-    logging_obj.dynamic_success_callbacks = [Redactor()]
-    result = CallToolResult(
-        content=[TextContent(type="text", text="SECRET-1234")],
-        structured_content={"nested": {"secret": "SECRET-1234"}} if structured else None,
-        meta={"request": "trace-1"},
-    )
-    logging_obj.model_call_details["original_response"] = result
-    returned = await logging_obj.async_post_mcp_tool_call_hook(
-        kwargs=logging_obj.model_call_details,
-        response_obj=result,
-        start_time=datetime.datetime.now(),
-        end_time=datetime.datetime.now(),
-    )
-    assert "SECRET-1234" not in result.model_dump_json(by_alias=True)
-    assert returned is result
-    assert result.content == ([] if mode == "empty" else [TextContent(type="text", text="[REDACTED]")])
-    assert result.structured_content is None
-    assert result.is_error is structured
-    assert result.meta == {"request": "trace-1"}
-    assert logging_obj.model_call_details["original_response"] is result
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("mode", ["none", "cost", "direct", "block", "exception"])
-async def test_mcp_callbacks_preserve_effective_result_and_cost(logging_obj, mode):
-    from litellm.types.llms.base import HiddenParams
-    from litellm.types.mcp import MCPPostCallResponseObject
-
-    class Callback(CustomLogger):
-        async def async_post_mcp_tool_call_hook(self, kwargs, response_obj, start_time, end_time):
-            if mode == "exception":
-                response_obj.mcp_tool_call_response[0].text = "discarded"
-                raise ValueError("non-blocking callback")
-            if mode in ("direct", "block"):
-                original = kwargs["original_response"]
-                original.content = [TextContent(type="text", text="safe")]
-                original.structured_content = {"result": "safe"}
-                original.is_error = mode == "block"
-            if mode == "none" or mode == "direct":
-                return None
-            return MCPPostCallResponseObject(
-                mcp_tool_call_response=response_obj.mcp_tool_call_response,
-                hidden_params=HiddenParams(response_cost=0.25),
-            )
-
-    logging_obj.dynamic_success_callbacks = [Callback()]
-    result = CallToolResult(
-        content=[TextContent(type="text", text="original")], structured_content={"result": "original"}
-    )
-    logging_obj.model_call_details["original_response"] = result
-    returned = await logging_obj.async_post_mcp_tool_call_hook(
-        kwargs=logging_obj.model_call_details,
-        response_obj=result,
-        start_time=datetime.datetime.now(),
-        end_time=datetime.datetime.now(),
-    )
-    expected = "safe" if mode in ("direct", "block") else "original"
-    assert result.content == [TextContent(type="text", text=expected)]
-    assert result.structured_content == {"result": expected}
-    assert result.is_error is (mode == "block")
-    assert returned is result
-    assert logging_obj.model_call_details.get("response_cost") == (0.25 if mode in ("cost", "block") else None)
-
-
-@pytest.mark.asyncio
-async def test_mcp_callback_cancellation_propagates_without_mutating_result(logging_obj):
-    class CancelledCallback(CustomLogger):
-        async def async_post_mcp_tool_call_hook(self, kwargs, response_obj, start_time, end_time):
-            response_obj.mcp_tool_call_response[0].text = "partial"
-            raise asyncio.CancelledError
-
-    logging_obj.dynamic_success_callbacks = [CancelledCallback()]
-    result = CallToolResult(content=[TextContent(type="text", text="original")])
-    with pytest.raises(asyncio.CancelledError):
-        await logging_obj.async_post_mcp_tool_call_hook(
-            kwargs={},
-            response_obj=result,
-            start_time=datetime.datetime.now(),
-            end_time=datetime.datetime.now(),
-        )
-    assert result.content == [TextContent(type="text", text="original")]
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("callbacks", [[], ["prometheus"]])
-@pytest.mark.parametrize("is_error", [False, True])
-async def test_mcp_without_custom_callbacks_preserves_mixed_content(logging_obj, callbacks, is_error):
-    logging_obj.dynamic_success_callbacks = callbacks
-    result = CallToolResult(
-        content=[
-            TextContent(type="text", text="ok"),
-            ImageContent(type="image", data="aW1n", mime_type="image/png"),
-            AudioContent(type="audio", data="c291bmQ=", mime_type="audio/wav"),
-        ],
-        structured_content={"result": "ok"},
-        is_error=is_error,
-    )
-    before = result.model_dump()
-    returned = await logging_obj.async_post_mcp_tool_call_hook(
-        kwargs={},
-        response_obj=result,
-        start_time=datetime.datetime.now(),
-        end_time=datetime.datetime.now(),
-    )
-    assert returned is result
-    assert returned.model_dump() == before
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("replace_structured", [False, True])
-@pytest.mark.parametrize("same_content", [False, True])
-async def test_mcp_native_structured_replacement_must_match_returned_content(
-    logging_obj, replace_structured, same_content
+def test_enterprise_alerting_loggers_falls_back_without_disabling_callback_controls(
+    monkeypatch,
 ):
-    from litellm.types.mcp import MCPPostCallResponseObject
+    from litellm_enterprise.enterprise_callbacks.callback_controls import (
+        EnterpriseCallbackControls,
+    )
+    from litellm.integrations.custom_logger import CustomLogger
+    from litellm.litellm_core_utils import litellm_logging as logging_module
 
-    class NativeReplacement(CustomLogger):
-        async def async_post_mcp_tool_call_hook(self, kwargs, response_obj, start_time, end_time):
-            original = kwargs["original_response"]
-            original.content[0].text = "native-safe"
-            if replace_structured:
-                original.structured_content["result"] = "native-safe"
-            return MCPPostCallResponseObject(
-                mcp_tool_call_response=[TextContent(type="text", text="native-safe" if same_content else "final-safe")],
-                hidden_params=response_obj.hidden_params,
+    class BlockPagerDutyFinder(importlib.abc.MetaPathFinder):
+        def find_spec(
+            self,
+            fullname: str,
+            path: Sequence[str] | None = None,
+            target: ModuleType | None = None,
+        ) -> ModuleSpec | None:
+            if fullname == "litellm_enterprise.enterprise_callbacks.pagerduty.pagerduty":
+                raise ImportError("blocked pagerduty import")
+            return None
+
+    module_prefixes: Final = (
+        "litellm_enterprise.enterprise_callbacks.pagerduty",
+        "litellm_enterprise.enterprise_callbacks.send_emails",
+    )
+    logging_module._enterprise_alerting_loggers.cache_clear()
+    for module_name in tuple(sys.modules):
+        if any(module_name == prefix or module_name.startswith(f"{prefix}.") for prefix in module_prefixes):
+            monkeypatch.delitem(sys.modules, module_name, raising=False)
+    monkeypatch.setattr(sys, "meta_path", [BlockPagerDutyFinder(), *sys.meta_path])
+
+    try:
+        loggers = logging_module._enterprise_alerting_loggers()
+        assert loggers.pagerduty is CustomLogger
+        assert loggers.resend_email is CustomLogger
+        assert loggers.sendgrid_email is CustomLogger
+        assert loggers.smtp_email is CustomLogger
+        assert logging_module.EnterpriseCallbackControls is EnterpriseCallbackControls
+    finally:
+        logging_module._enterprise_alerting_loggers.cache_clear()
+
+
+@pytest.mark.parametrize("integration", ("smtp_email", "resend_email", "sendgrid_email"))
+def test_init_email_alerting_logger_reuses_instance(
+    integration: Literal["smtp_email", "resend_email", "sendgrid_email"],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from litellm.litellm_core_utils import litellm_logging as logging_module
+    from litellm_enterprise.enterprise_callbacks.send_emails.resend_email import ResendEmailLogger
+    from litellm_enterprise.enterprise_callbacks.send_emails.sendgrid_email import SendGridEmailLogger
+    from litellm_enterprise.enterprise_callbacks.send_emails.smtp_email import SMTPEmailLogger
+
+    logger_class: Final = (
+        SMTPEmailLogger
+        if integration == "smtp_email"
+        else ResendEmailLogger
+        if integration == "resend_email"
+        else SendGridEmailLogger
+    )
+    monkeypatch.setenv("RESEND_API_KEY", "test-resend-key")
+    monkeypatch.setenv("SENDGRID_API_KEY", "test-sendgrid-key")
+    logging_module._in_memory_loggers.clear()
+    try:
+        logger = logging_module._init_custom_logger_compatible_class(
+            logging_integration=integration,
+            internal_usage_cache=None,
+            llm_router=None,
+            custom_logger_init_args={},
+        )
+        assert isinstance(logger, logger_class)
+        assert (
+            logging_module._init_custom_logger_compatible_class(
+                logging_integration=integration,
+                internal_usage_cache=None,
+                llm_router=None,
+                custom_logger_init_args={},
             )
+            is logger
+        )
+        assert logging_module.get_custom_logger_compatible_class(integration) is logger
+    finally:
+        logging_module._in_memory_loggers.clear()
 
-    result = CallToolResult(
-        content=[TextContent(type="text", text="SECRET-1234")],
-        structured_content={"result": "SECRET-1234"},
+
+def test_init_pagerduty_logger_reuses_instance(monkeypatch):
+    from litellm.types.integrations.pagerduty import AlertingConfig
+    from litellm_enterprise.enterprise_callbacks.pagerduty.pagerduty import PagerDutyAlerting
+    from litellm.litellm_core_utils import litellm_logging as logging_module
+
+    monkeypatch.setenv("PAGERDUTY_API_KEY", "test-pagerduty-key")
+    logging_module._in_memory_loggers.clear()
+    try:
+        logger = logging_module._init_custom_logger_compatible_class(
+            logging_integration="pagerduty",
+            internal_usage_cache=None,
+            llm_router=None,
+            custom_logger_init_args={
+                "alerting_args": AlertingConfig(
+                    failure_threshold=1,
+                    failure_threshold_window_seconds=10,
+                )
+            },
+        )
+        assert isinstance(logger, PagerDutyAlerting)
+        assert (
+            logging_module._init_custom_logger_compatible_class(
+                logging_integration="pagerduty",
+                internal_usage_cache=None,
+                llm_router=None,
+                custom_logger_init_args={
+                    "alerting_args": AlertingConfig(
+                        failure_threshold=1,
+                        failure_threshold_window_seconds=10,
+                    )
+                },
+            )
+            is logger
+        )
+        assert logging_module.get_custom_logger_compatible_class("pagerduty") is logger
+    finally:
+        logging_module._in_memory_loggers.clear()
+
+
+@pytest.mark.parametrize("integration", ("smtp_email", "pagerduty", "resend_email", "sendgrid_email"))
+def test_get_custom_logger_compatible_class_does_not_match_generic_api_logger(
+    integration: Literal["smtp_email", "pagerduty", "resend_email", "sendgrid_email"],
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from litellm.integrations.generic_api.generic_api_callback import GenericAPILogger
+    from litellm.litellm_core_utils import litellm_logging as logging_module
+
+    monkeypatch.setenv("GENERIC_LOGGER_ENDPOINT", "https://generic-logger.test")
+    logging_module._in_memory_loggers.clear()
+    try:
+        with patch("asyncio.create_task", side_effect=lambda coro: coro.close()):
+            logging_module._in_memory_loggers.append(GenericAPILogger())
+        assert logging_module.get_custom_logger_compatible_class(integration) is None
+    finally:
+        logging_module._in_memory_loggers.clear()
+
+
+@pytest.fixture()
+def _vcr_outcome_gate(request, vcr):
+    install_live_call_probe(request, vcr)
+    yield
+    record_vcr_outcome(request, vcr)
+
+
+@pytest_asyncio.fixture(loop_scope="function")
+async def drain_logging_worker(isolate_litellm_state: None) -> AsyncIterator[None]:
+    yield
+    await asyncio.wait_for(GLOBAL_LOGGING_WORKER.flush(), timeout=LOGGING_WORKER_DRAIN_TIMEOUT_SECONDS)
+
+
+LOGGING_WORKER_DRAIN_TIMEOUT_SECONDS: Final = LOGGING_WORKER_MAX_TIME_PER_COROUTINE + 5.0
+
+
+@pytest.fixture(scope="function")
+def isolate_litellm_state():
+    """
+    Per-function isolation fixture.
+
+    Resets litellm state to the true defaults captured at conftest import time,
+    then restores after the test. This prevents module-level mutations (e.g.
+    `litellm.num_retries = 3` at the top of test_langfuse_e2e_test.py) from
+    leaking across tests within the same xdist worker.
+    """
+    from litellm.litellm_core_utils import litellm_logging as ll_logging
+    from litellm.proxy.management_helpers import audit_logs as ll_audit_logs
+
+    if hasattr(litellm, "in_memory_llm_clients_cache"):
+        litellm.in_memory_llm_clients_cache.flush_cache()
+    ll_logging._in_memory_loggers.clear()
+    ll_audit_logs._audit_log_callback_cache.clear()
+    for attr in _LIST_ATTRS:
+        if attr in _DEFAULTS:
+            default = _DEFAULTS[attr]
+            setattr(litellm, attr, default.copy() if isinstance(default, list) else default)
+    for attr in _SCALAR_ATTRS:
+        if attr in _DEFAULTS:
+            setattr(litellm, attr, _DEFAULTS[attr])
+    yield
+    if hasattr(litellm, "in_memory_llm_clients_cache"):
+        litellm.in_memory_llm_clients_cache.flush_cache()
+    ll_logging._in_memory_loggers.clear()
+    ll_audit_logs._audit_log_callback_cache.clear()
+    for attr in _LIST_ATTRS:
+        if attr in _DEFAULTS:
+            default = _DEFAULTS[attr]
+            setattr(litellm, attr, default.copy() if isinstance(default, list) else default)
+    for attr in _SCALAR_ATTRS:
+        if attr in _DEFAULTS:
+            setattr(litellm, attr, _DEFAULTS[attr])
+
+
+_LIST_ATTRS = (
+    "callbacks",
+    "success_callback",
+    "failure_callback",
+    "_async_success_callback",
+    "_async_failure_callback",
+    "service_callback",
+    "pre_call_rules",
+    "post_call_rules",
+)
+
+_SCALAR_ATTRS = (
+    "set_verbose",
+    "cache",
+    "num_retries",
+    "num_retries_per_request",
+    "turn_off_message_logging",
+    "redact_messages_in_exceptions",
+    "redact_user_api_key_info",
+    "s3_callback_params",
+    "s3_audit_callback_params",
+    "datadog_params",
+    "vector_store_registry",
+)
+
+_DEFAULTS: dict = {}
+
+
+@pytest.fixture(scope="module")
+def setup_and_teardown():
+    """
+    Module-scoped setup. Reloads litellm only in single-process mode
+    (skipped under xdist to avoid cross-worker interference).
+    """
+    import litellm
+
+    worker_id = os.environ.get("PYTEST_XDIST_WORKER", None)
+    if worker_id is None:
+        importlib.reload(litellm)
+        try:
+            if hasattr(litellm, "proxy") and hasattr(litellm.proxy, "proxy_server"):
+                import litellm.proxy.proxy_server
+
+                importlib.reload(litellm.proxy.proxy_server)
+        except Exception:
+            pass
+        if hasattr(litellm, "in_memory_llm_clients_cache"):
+            litellm.in_memory_llm_clients_cache.flush_cache()
+    yield
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+@pytest.mark.parametrize(
+    "response_obj,expected_values",
+    [
+        # Test None input
+        (None, (0, 0, 0)),
+        # Test empty dict
+        ({}, (0, 0, 0)),
+        # Test valid usage dict
+        (
+            {
+                "usage": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 20,
+                    "total_tokens": 30,
+                }
+            },
+            (10, 20, 30),
+        ),
+        # Test with litellm.Usage object
+        (
+            {"usage": Usage(prompt_tokens=15, completion_tokens=25, total_tokens=40)},
+            (15, 25, 40),
+        ),
+        # Test invalid usage type
+        ({"usage": "invalid"}, (0, 0, 0)),
+        # Test None usage
+        ({"usage": None}, (0, 0, 0)),
+    ],
+)
+def test_get_usage(response_obj, expected_values):
+    """
+    Make sure values returned from get_usage are always integers
+    """
+
+    usage = StandardLoggingPayloadSetup.get_usage_from_response_obj(response_obj)
+
+    # Check types
+    assert isinstance(usage.prompt_tokens, int)
+    assert isinstance(usage.completion_tokens, int)
+    assert isinstance(usage.total_tokens, int)
+
+    # Check values
+    assert usage.prompt_tokens == expected_values[0]
+    assert usage.completion_tokens == expected_values[1]
+    assert usage.total_tokens == expected_values[2]
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_get_usage_from_image_generation_response():
+    """
+    Test that image generation usage (with input_tokens/output_tokens format)
+    is correctly transformed to standard usage format with image_tokens preserved.
+
+    Note: get_usage_from_response_obj() is used by multiple endpoints including
+    /images/generations and Response API (/responses), both of which use the
+    input_tokens/output_tokens format instead of prompt_tokens/completion_tokens.
+
+    This tests the fix for the bug where image_tokens were being lost during
+    spend log creation for /images/generations endpoint.
+    """
+    # Simulating image generation response usage from OpenAI
+    response_obj = {
+        "usage": {
+            "input_tokens": 13,
+            "output_tokens": 372,
+            "total_tokens": 385,
+            "input_tokens_details": {
+                "image_tokens": 0,
+                "text_tokens": 13,
+            },
+            "output_tokens_details": {
+                "image_tokens": 272,
+                "text_tokens": 100,
+            },
+        }
+    }
+
+    usage = StandardLoggingPayloadSetup.get_usage_from_response_obj(response_obj)
+
+    # Check basic token counts are mapped correctly
+    assert usage.prompt_tokens == 13
+    assert usage.completion_tokens == 372
+    assert usage.total_tokens == 385
+
+    # Check that prompt_tokens_details contains image_tokens and text_tokens
+    assert usage.prompt_tokens_details is not None
+    assert usage.prompt_tokens_details.image_tokens == 0
+    assert usage.prompt_tokens_details.text_tokens == 13
+
+    # Check that completion_tokens_details contains image_tokens and text_tokens
+    assert usage.completion_tokens_details is not None
+    assert usage.completion_tokens_details.image_tokens == 272
+    assert usage.completion_tokens_details.text_tokens == 100
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_get_additional_headers():
+    additional_headers = {
+        "x-ratelimit-limit-requests": "2000",
+        "x-ratelimit-remaining-requests": "1999",
+        "x-ratelimit-limit-tokens": "160000",
+        "x-ratelimit-remaining-tokens": "160000",
+        "llm_provider-date": "Tue, 29 Oct 2024 23:57:37 GMT",
+        "llm_provider-content-type": "application/json",
+        "llm_provider-transfer-encoding": "chunked",
+        "llm_provider-connection": "keep-alive",
+        "llm_provider-anthropic-ratelimit-requests-limit": "2000",
+        "llm_provider-anthropic-ratelimit-requests-remaining": "1999",
+        "llm_provider-anthropic-ratelimit-requests-reset": "2024-10-29T23:57:40Z",
+        "llm_provider-anthropic-ratelimit-tokens-limit": "160000",
+        "llm_provider-anthropic-ratelimit-tokens-remaining": "160000",
+        "llm_provider-anthropic-ratelimit-tokens-reset": "2024-10-29T23:57:36Z",
+        "llm_provider-request-id": "req_01F6CycZZPSHKRCCctcS1Vto",
+        "llm_provider-via": "1.1 google",
+        "llm_provider-cf-cache-status": "DYNAMIC",
+        "llm_provider-x-robots-tag": "none",
+        "llm_provider-server": "cloudflare",
+        "llm_provider-cf-ray": "8da71bdbc9b57abb-SJC",
+        "llm_provider-content-encoding": "gzip",
+        "llm_provider-x-ratelimit-limit-requests": "2000",
+        "llm_provider-x-ratelimit-remaining-requests": "1999",
+        "llm_provider-x-ratelimit-limit-tokens": "160000",
+        "llm_provider-x-ratelimit-remaining-tokens": "160000",
+    }
+    additional_logging_headers = StandardLoggingPayloadSetup.get_additional_headers(additional_headers)
+    # Typed rate-limit fields are coerced to int
+    assert additional_logging_headers is not None
+    assert additional_logging_headers.get("x_ratelimit_limit_requests") == 2000
+    assert additional_logging_headers.get("x_ratelimit_remaining_requests") == 1999
+    assert additional_logging_headers.get("x_ratelimit_limit_tokens") == 160000
+    assert additional_logging_headers.get("x_ratelimit_remaining_tokens") == 160000
+    # Provider-specific headers are preserved verbatim (not dropped)
+    assert additional_logging_headers.get("llm_provider-request-id") == "req_01F6CycZZPSHKRCCctcS1Vto"
+    assert additional_logging_headers.get("llm_provider-anthropic-ratelimit-requests-reset") == "2024-10-29T23:57:40Z"
+
+
+def all_fields_present(standard_logging_metadata: StandardLoggingMetadata):
+    for field in StandardLoggingMetadata.__annotations__.keys():
+        assert field in standard_logging_metadata
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+@pytest.mark.parametrize(
+    "metadata_key, metadata_value",
+    [
+        ("user_api_key_alias", "test_alias"),
+        ("user_api_key_hash", "test_hash"),
+        ("user_api_key_team_id", "test_team_id"),
+        ("user_api_key_user_id", "test_user_id"),
+        ("user_api_key_team_alias", "test_team_alias"),
+        ("user_api_key_spend", 10.50),
+        ("spend_logs_metadata", {"key": "value"}),
+        ("requester_ip_address", "127.0.0.1"),
+        ("requester_metadata", {"user_agent": "test_agent"}),
+    ],
+)
+def test_get_standard_logging_metadata(metadata_key, metadata_value):
+    """
+    Test that the get_standard_logging_metadata function correctly sets the metadata fields.
+    All fields in StandardLoggingMetadata should ALWAYS be present.
+    """
+    metadata = {metadata_key: metadata_value}
+    standard_logging_metadata = StandardLoggingPayloadSetup.get_standard_logging_metadata(metadata)
+
+    print("standard_logging_metadata", standard_logging_metadata)
+
+    # Assert that all fields in StandardLoggingMetadata are present
+    all_fields_present(standard_logging_metadata)
+
+    # Assert that the specific metadata field is set correctly
+    assert standard_logging_metadata[metadata_key] == metadata_value
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_get_standard_logging_metadata_user_api_key_hash():
+    valid_hash = "a" * 64  # 64 character string
+    metadata = {"user_api_key": valid_hash}
+    result = StandardLoggingPayloadSetup.get_standard_logging_metadata(metadata)
+    assert result["user_api_key_hash"] == valid_hash
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_get_standard_logging_metadata_invalid_user_api_key():
+    invalid_hash = "not_a_valid_hash"
+    metadata = {"user_api_key": invalid_hash}
+    result = StandardLoggingPayloadSetup.get_standard_logging_metadata(metadata)
+    all_fields_present(result)
+    assert result["user_api_key_hash"] is None
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_get_standard_logging_metadata_non_string_user_api_key():
+    """Non-string user_api_key should not be set as user_api_key_hash."""
+    metadata = {"user_api_key": 12345}
+    result = StandardLoggingPayloadSetup.get_standard_logging_metadata(metadata)
+    all_fields_present(result)
+    assert result["user_api_key_hash"] is None
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_get_standard_logging_metadata_none_user_api_key():
+    """None user_api_key should not be set as user_api_key_hash."""
+    metadata = {"user_api_key": None}
+    result = StandardLoggingPayloadSetup.get_standard_logging_metadata(metadata)
+    all_fields_present(result)
+    assert result["user_api_key_hash"] is None
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_get_standard_logging_metadata_invalid_keys():
+    metadata = {
+        "user_api_key_alias": "test_alias",
+        "invalid_key": "should_be_ignored",
+        "another_invalid_key": 123,
+    }
+    result = StandardLoggingPayloadSetup.get_standard_logging_metadata(metadata)
+    all_fields_present(result)
+    assert result["user_api_key_alias"] == "test_alias"
+    assert "invalid_key" not in result
+    assert "another_invalid_key" not in result
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_cleanup_timestamps():
+    """Test cleanup_timestamps with different input types"""
+    # Test with datetime objects
+    now = dt_object.now()
+    start = now
+    end = now
+    completion = now
+
+    result = StandardLoggingPayloadSetup.cleanup_timestamps(start, end, completion)
+
+    assert all(isinstance(x, float) for x in result)
+    assert len(result) == 3
+
+    # Test with float timestamps
+    start_float = time.time()
+    end_float = start_float + 1
+    completion_float = end_float
+
+    result = StandardLoggingPayloadSetup.cleanup_timestamps(start_float, end_float, completion_float)
+
+    assert all(isinstance(x, float) for x in result)
+    assert result[0] == start_float
+    assert result[1] == end_float
+    assert result[2] == completion_float
+
+    # Test with mixed types
+    result = StandardLoggingPayloadSetup.cleanup_timestamps(start_float, end, completion_float)
+    assert all(isinstance(x, float) for x in result)
+
+    # Test invalid input
+    with pytest.raises(ValueError, match="start_time is required, got=invalid of type <class 'str'>"):
+        StandardLoggingPayloadSetup.cleanup_timestamps("invalid", end_float, completion_float)
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_get_model_cost_information():
+    """Test get_model_cost_information with different inputs"""
+    # Test with None values
+    result = StandardLoggingPayloadSetup.get_model_cost_information(
+        base_model=None,
+        custom_pricing=None,
+        custom_llm_provider=None,
+        init_response_obj={},
     )
-    logging_obj.dynamic_success_callbacks = [NativeReplacement()]
-    returned = await logging_obj.async_post_mcp_tool_call_hook(
-        kwargs={"original_response": result},
-        response_obj=result,
-        start_time=datetime.datetime.now(),
-        end_time=datetime.datetime.now(),
+    assert result["model_map_key"] == ""
+    assert result["model_map_value"] is None  # this was not found in model cost map
+    # assert all fields in StandardLoggingModelInformation are present
+    assert all(field in result for field in StandardLoggingModelInformation.__annotations__)
+
+    # Test with valid model
+    result = StandardLoggingPayloadSetup.get_model_cost_information(
+        base_model="gpt-5-mini",
+        custom_pricing=False,
+        custom_llm_provider="openai",
+        init_response_obj={},
     )
-    assert returned is result
-    assert result.content == [TextContent(type="text", text="native-safe" if same_content else "final-safe")]
-    assert result.structured_content == ({"result": "native-safe"} if replace_structured and same_content else None)
-    assert result.is_error is not (replace_structured and same_content)
-    assert "SECRET-1234" not in result.model_dump_json()
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("mode", ["none", "wrapper", "exception"])
-@pytest.mark.parametrize("structured", [False, True])
-async def test_mcp_direct_content_edit_invalidates_stale_structured_data(logging_obj, mode, structured):
-    class DirectRedactor(CustomLogger):
-        async def async_post_mcp_tool_call_hook(self, kwargs, response_obj, start_time, end_time):
-            kwargs["original_response"].content[0].text = "[REDACTED]"
-            if mode == "exception":
-                raise ValueError("non-blocking callback after direct edit")
-            return response_obj if mode == "wrapper" else None
-
-    result = CallToolResult(
-        content=[TextContent(type="text", text="SECRET-1234")],
-        structured_content={"result": "SECRET-1234"} if structured else None,
+    litellm_info_gpt_3_5_turbo_model_map_value = litellm.get_model_info(
+        model="gpt-5-mini", custom_llm_provider="openai"
     )
-    logging_obj.dynamic_success_callbacks = [DirectRedactor()]
-    returned = await logging_obj.async_post_mcp_tool_call_hook(
-        kwargs={"original_response": result},
-        response_obj=result,
-        start_time=datetime.datetime.now(),
-        end_time=datetime.datetime.now(),
+    print("result", result)
+    assert result["model_map_key"] == "gpt-5-mini"
+    assert result["model_map_value"] is not None
+    assert result["model_map_value"] == litellm_info_gpt_3_5_turbo_model_map_value
+    # assert all fields in StandardLoggingModelInformation are present
+    assert all(field in result for field in StandardLoggingModelInformation.__annotations__)
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_get_model_cost_information_custom_pricing_uses_base_model():
+    result = StandardLoggingPayloadSetup.get_model_cost_information(
+        base_model="bedrock/invoke/global.anthropic.claude-opus-4-6-v1",
+        custom_pricing=True,
+        custom_llm_provider="bedrock",
+        init_response_obj={"model": "invoke_test_claude"},
     )
-    assert returned is result
-    assert result.content == [TextContent(type="text", text="[REDACTED]")]
-    assert result.structured_content is None
-    assert result.is_error is structured
-    assert "SECRET-1234" not in result.model_dump_json()
+    assert result["model_map_value"] is not None
+    assert result["model_map_key"] != "invoke_test_claude"
 
 
-def test_get_final_response_obj_stores_the_text_a_post_call_guardrail_served():
-    from litellm.litellm_core_utils.litellm_logging import StandardLoggingPayloadSetup
-    from litellm.litellm_core_utils.served_output_texts import SERVED_OUTPUT_TEXTS_KEY
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_standard_logging_payload_uses_deployment_when_no_base_model():
+    """metadata["deployment"] is used for cost-map lookup when base_model is not set."""
+    from datetime import datetime as datetime_standard_logging
 
-    raw = {
-        "id": "x",
+    from litellm.litellm_core_utils.litellm_logging import (
+        Logging,
+        get_standard_logging_object_payload,
+    )
+
+    logging_obj = Logging(
+        model="invoke_test_claude",
+        messages=[{"role": "user", "content": "hi"}],
+        stream=False,
+        call_type="completion",
+        start_time=datetime_standard_logging.now(),
+        litellm_call_id="test-deploy-fallback",
+        function_id="test-fn",
+    )
+
+    kwargs = {
+        "model": "invoke_test_claude",
+        "messages": [{"role": "user", "content": "hi"}],
+        "custom_llm_provider": "bedrock",
+        "litellm_params": {
+            "metadata": {
+                "deployment": "bedrock/invoke/global.anthropic.claude-opus-4-6-v1",
+            },
+        },
+    }
+    mock_response = {
+        "id": "chatcmpl-deploy-test",
+        "object": "chat.completion",
+        "model": "invoke_test_claude",
+        "usage": {"prompt_tokens": 5, "completion_tokens": 10, "total_tokens": 15},
         "choices": [
             {
                 "index": 0,
+                "message": {"role": "assistant", "content": "hello"},
                 "finish_reason": "stop",
-                "message": {"role": "assistant", "content": "Card: 4111 1111 1111 1111"},
             }
         ],
     }
 
-    logged = StandardLoggingPayloadSetup.get_final_response_obj(
-        response_obj=raw, init_response_obj=raw, kwargs={SERVED_OUTPUT_TEXTS_KEY: ("Card: <CREDIT_CARD>",)}
+    payload = get_standard_logging_object_payload(
+        kwargs=kwargs,
+        init_response_obj=mock_response,
+        start_time=datetime_standard_logging.now(),
+        end_time=datetime_standard_logging.now(),
+        logging_obj=logging_obj,
+        status="success",
     )
-    untouched = StandardLoggingPayloadSetup.get_final_response_obj(response_obj=raw, init_response_obj=raw, kwargs={})
 
-    assert isinstance(logged, dict)
-    assert logged["choices"][0]["message"]["content"] == "Card: <CREDIT_CARD>"
-    assert logged["choices"][0]["finish_reason"] == "stop"
-    assert untouched == raw
+    assert payload is not None
+    assert payload["model_map_information"]["model_map_value"] is not None
+    assert payload["model_map_information"]["model_map_key"] != "invoke_test_claude"
 
 
-def test_get_final_response_obj_redacts_the_served_text_when_message_logging_is_off(monkeypatch: pytest.MonkeyPatch):
-    import litellm
-    from litellm.litellm_core_utils.litellm_logging import StandardLoggingPayloadSetup
-    from litellm.litellm_core_utils.served_output_texts import SERVED_OUTPUT_TEXTS_KEY
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_get_hidden_params():
+    """Test get_hidden_params with different inputs"""
+    # Test with None
+    result = StandardLoggingPayloadSetup.get_hidden_params(None)
+    assert result["model_id"] is None
+    assert result["cache_key"] is None
+    assert result["api_base"] is None
+    assert result["response_cost"] is None
+    assert result["additional_headers"] is None
 
-    monkeypatch.setattr(litellm, "turn_off_message_logging", True)
-    raw = {
-        "id": "x",
-        "choices": [{"index": 0, "finish_reason": "stop", "message": {"role": "assistant", "content": "Card: 4111"}}],
+    # assert all fields in StandardLoggingHiddenParams are present
+    assert all(field in result for field in StandardLoggingHiddenParams.__annotations__)
+
+    # Test with valid params
+    hidden_params = {
+        "model_id": "test-model",
+        "cache_key": "test-cache",
+        "api_base": "https://api.test.com",
+        "response_cost": 0.001,
+        "additional_headers": {
+            "x-ratelimit-limit-requests": "2000",
+            "x-ratelimit-remaining-requests": "1999",
+        },
+    }
+    result = StandardLoggingPayloadSetup.get_hidden_params(hidden_params)
+    assert result["model_id"] == "test-model"
+    assert result["cache_key"] == "test-cache"
+    assert result["api_base"] == "https://api.test.com"
+    assert result["response_cost"] == 0.001
+    assert result["additional_headers"] is not None
+    assert result["additional_headers"]["x_ratelimit_limit_requests"] == 2000
+    # assert all fields in StandardLoggingHiddenParams are present
+    assert all(field in result for field in StandardLoggingHiddenParams.__annotations__)
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_get_final_response_obj():
+    """Test get_final_response_obj with different input types and redaction scenarios"""
+    # Test with direct response_obj
+    response_obj = {"choices": [{"message": {"content": "test content"}}]}
+    result = StandardLoggingPayloadSetup.get_final_response_obj(
+        response_obj=response_obj, init_response_obj=None, kwargs={}
+    )
+    assert result == response_obj
+
+    # Test redaction when litellm.turn_off_message_logging is True
+    litellm.turn_off_message_logging = True
+    try:
+        model_response = litellm.ModelResponse(
+            choices=[litellm.Choices(message=litellm.Message(content="sensitive content"))]
+        )
+        kwargs = {"messages": [{"role": "user", "content": "original message"}]}
+        result = StandardLoggingPayloadSetup.get_final_response_obj(
+            response_obj=model_response, init_response_obj=model_response, kwargs=kwargs
+        )
+
+        print("result", result)
+        print("type(result)", type(result))
+        # Verify response message content was redacted
+        assert result["choices"][0]["message"]["content"] == "redacted-by-litellm"
+        # Verify that redaction occurred in kwargs
+        assert kwargs["messages"][0]["content"] == "redacted-by-litellm"
+    finally:
+        # Reset litellm.turn_off_message_logging to its original value
+        litellm.turn_off_message_logging = False
+
+
+def testget_standard_logging_payload_trace_id():
+    """Test get_standard_logging_payload_trace_id with different input scenarios"""
+    # Test case 1: When litellm_trace_id is provided in litellm_params
+    from unittest.mock import MagicMock
+
+    # Create a mock Logging object
+    mock_logging_obj = MagicMock()
+    mock_logging_obj.litellm_trace_id = "default-trace-id"
+
+    # Test when litellm_trace_id is in litellm_params
+    litellm_params = {"litellm_trace_id": "dynamic-trace-id"}
+    result = StandardLoggingPayloadSetup.get_standard_logging_payload_trace_id(
+        logging_obj=mock_logging_obj, litellm_params=litellm_params
+    )
+    assert result == "dynamic-trace-id"
+
+    # Test case 2: When litellm_trace_id is not provided in litellm_params
+    litellm_params = {}
+    result = StandardLoggingPayloadSetup.get_standard_logging_payload_trace_id(
+        logging_obj=mock_logging_obj, litellm_params=litellm_params
+    )
+    assert result == "default-trace-id"
+
+    # Test case 3: When litellm_params is None
+    result = StandardLoggingPayloadSetup.get_standard_logging_payload_trace_id(
+        logging_obj=mock_logging_obj, litellm_params={}
+    )
+    assert result == "default-trace-id"
+
+    # Test case 4: When litellm_trace_id in params is not a string
+    litellm_params = {"litellm_trace_id": 12345}
+    result = StandardLoggingPayloadSetup.get_standard_logging_payload_trace_id(
+        logging_obj=mock_logging_obj, litellm_params=litellm_params
+    )
+    assert result == "12345"
+    assert isinstance(result, str)
+
+
+def testget_standard_logging_payload_trace_id_prioritizes_trace_id_when_flag_on(monkeypatch):
+    """With request_correlation_in_logs on, an explicit litellm_trace_id wins over litellm_session_id."""
+    from unittest.mock import MagicMock
+
+    monkeypatch.setattr(litellm, "request_correlation_in_logs", True)
+    mock_logging_obj = MagicMock()
+    mock_logging_obj.litellm_trace_id = "default-trace-id"
+
+    litellm_params = {"litellm_trace_id": "the-trace-id", "litellm_session_id": "the-session-id"}
+    result = StandardLoggingPayloadSetup.get_standard_logging_payload_trace_id(
+        logging_obj=mock_logging_obj, litellm_params=litellm_params
+    )
+    assert result == "the-trace-id"
+
+
+def testget_standard_logging_payload_trace_id_prioritizes_session_id_when_flag_off(monkeypatch):
+    """With request_correlation_in_logs off (default), legacy behavior is preserved:
+    litellm_session_id still wins over litellm_trace_id."""
+    from unittest.mock import MagicMock
+
+    monkeypatch.setattr(litellm, "request_correlation_in_logs", False)
+    mock_logging_obj = MagicMock()
+    mock_logging_obj.litellm_trace_id = "default-trace-id"
+
+    litellm_params = {"litellm_trace_id": "the-trace-id", "litellm_session_id": "the-session-id"}
+    result = StandardLoggingPayloadSetup.get_standard_logging_payload_trace_id(
+        logging_obj=mock_logging_obj, litellm_params=litellm_params
+    )
+    assert result == "the-session-id"
+
+
+def testget_standard_logging_payload_session_id_when_flag_on(monkeypatch):
+    """Test get_standard_logging_payload_session_id with different input scenarios, flag enabled"""
+    from unittest.mock import MagicMock
+
+    monkeypatch.setattr(litellm, "request_correlation_in_logs", True)
+    mock_logging_obj = MagicMock()
+    mock_logging_obj.litellm_session_id = ""
+
+    # Test case 1: litellm_session_id provided directly in litellm_params
+    litellm_params = {"litellm_session_id": "dynamic-session-id"}
+    result = StandardLoggingPayloadSetup.get_standard_logging_payload_session_id(
+        logging_obj=mock_logging_obj, litellm_params=litellm_params
+    )
+    assert result == "dynamic-session-id"
+
+    # Test case 2: falls back to metadata.session_id when not in litellm_params directly
+    litellm_params = {"metadata": {"session_id": "metadata-session-id"}}
+    result = StandardLoggingPayloadSetup.get_standard_logging_payload_session_id(
+        logging_obj=mock_logging_obj, litellm_params=litellm_params
+    )
+    assert result == "metadata-session-id"
+
+    # Test case 3: falls back to logging_obj.litellm_session_id when nothing else is set
+    mock_logging_obj.litellm_session_id = "obj-session-id"
+    result = StandardLoggingPayloadSetup.get_standard_logging_payload_session_id(
+        logging_obj=mock_logging_obj, litellm_params={}
+    )
+    assert result == "obj-session-id"
+
+    # Test case 4: empty string when no session id was supplied anywhere
+    mock_logging_obj.litellm_session_id = ""
+    result = StandardLoggingPayloadSetup.get_standard_logging_payload_session_id(
+        logging_obj=mock_logging_obj, litellm_params={}
+    )
+    assert result == ""
+
+    # Test case 5: non-string session id in params is coerced to str
+    litellm_params = {"litellm_session_id": 98765}
+    result = StandardLoggingPayloadSetup.get_standard_logging_payload_session_id(
+        logging_obj=mock_logging_obj, litellm_params=litellm_params
+    )
+    assert result == "98765"
+    assert isinstance(result, str)
+
+    # Test case 6: trace_id and session_id are independent - passing only a trace id
+    # must not populate session_id
+    litellm_params = {"litellm_trace_id": "some-trace-id"}
+    result = StandardLoggingPayloadSetup.get_standard_logging_payload_session_id(
+        logging_obj=mock_logging_obj, litellm_params=litellm_params
+    )
+    assert result == ""
+
+
+def testget_standard_logging_payload_session_id_empty_when_flag_off(monkeypatch):
+    """When request_correlation_in_logs is off (default), session_id is always empty,
+    even if litellm_session_id was explicitly supplied - preserves the pre-existing
+    StandardLoggingPayload shape for callers who haven't opted in."""
+    from unittest.mock import MagicMock
+
+    monkeypatch.setattr(litellm, "request_correlation_in_logs", False)
+    mock_logging_obj = MagicMock()
+    mock_logging_obj.litellm_session_id = "obj-session-id"
+
+    litellm_params = {"litellm_session_id": "dynamic-session-id"}
+    result = StandardLoggingPayloadSetup.get_standard_logging_payload_session_id(
+        logging_obj=mock_logging_obj, litellm_params=litellm_params
+    )
+    assert result == ""
+
+
+@pytest.fixture
+def restore_verbose_logger_level() -> Iterator[None]:
+    original_level: Final = verbose_logger.level
+    yield
+    verbose_logger.setLevel(original_level)
+
+
+@pytest.mark.usefixtures(
+    "_vcr_outcome_gate",
+    "drain_logging_worker",
+    "isolate_litellm_state",
+    "setup_and_teardown",
+    "restore_verbose_logger_level",
+)
+def test_truncate_standard_logging_payload():
+    """
+    1. the payload passed in is never modified, since every callback of the request shares it
+    2. the `messages`, `response`, and `error_str` in the returned payload are truncated
+    """
+    from tests.local_testing.create_mock_standard_logging_payload import (
+        create_standard_logging_payload_with_long_content,
+    )
+
+    _custom_logger = CustomLogger()
+    standard_logging_payload: StandardLoggingPayload = create_standard_logging_payload_with_long_content()
+    original_messages = standard_logging_payload["messages"]
+    original_response = standard_logging_payload["response"]
+    original_error_str = standard_logging_payload["error_str"]
+
+    truncated = _custom_logger.truncate_standard_logging_payload_content(standard_logging_payload)
+
+    assert standard_logging_payload["messages"] is original_messages
+    assert standard_logging_payload["response"] is original_response
+    assert standard_logging_payload["error_str"] is original_error_str
+
+    assert truncated["messages"] != original_messages
+    assert truncated["response"] != original_response
+    assert truncated["error_str"] != original_error_str
+    assert len(str(truncated["messages"])) < 10_500
+    assert len(str(truncated["response"])) < 10_500
+    assert len(str(truncated["error_str"])) < 10_500
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_truncate_standard_logging_payload_keeps_a_partial_payload_intact():
+    """A payload built with only some of its fields comes back with exactly those keys and values"""
+    _custom_logger = CustomLogger()
+    partial_payload = StandardLoggingPayload(request_tags=["tag"], metadata=StandardLoggingMetadata())
+
+    assert _custom_logger.truncate_standard_logging_payload_content(partial_payload) == partial_payload
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_strip_trailing_slash():
+    common_api_base = "https://api.test.com"
+    assert StandardLoggingPayloadSetup.strip_trailing_slash(common_api_base + "/") == common_api_base
+    assert StandardLoggingPayloadSetup.strip_trailing_slash(common_api_base) == common_api_base
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_get_error_information():
+    """Test get_error_information with different types of exceptions"""
+
+    # Test with None
+    result = StandardLoggingPayloadSetup.get_error_information(None)
+    print("error_information", json.dumps(result, indent=2))
+    assert result["error_code"] == ""
+    assert result["error_class"] == ""
+    assert result["llm_provider"] == ""
+
+    # Test with a basic Exception
+    basic_exception = Exception("Test error")
+    result = StandardLoggingPayloadSetup.get_error_information(basic_exception)
+    print("error_information", json.dumps(result, indent=2))
+    assert result["error_code"] == ""
+    assert result["error_class"] == "Exception"
+    assert result["llm_provider"] == ""
+
+    # Test with litellm exception from provider
+    litellm_exception = litellm.exceptions.RateLimitError(
+        message="Test error",
+        llm_provider="openai",
+        model="gpt-5-mini",
+        response=None,
+        litellm_debug_info=None,
+        max_retries=None,
+        num_retries=None,
+    )
+    result = StandardLoggingPayloadSetup.get_error_information(litellm_exception)
+    print("error_information", json.dumps(result, indent=2))
+    assert result["error_code"] == "429"
+    assert result["error_class"] == "RateLimitError"
+    assert result["llm_provider"] == "openai"
+    assert result["error_message"] == "litellm.RateLimitError: Test error"
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_get_response_time():
+    """Test get_response_time with different streaming scenarios"""
+    # Test case 1: Non-streaming response
+    start_time = 1000.0
+    end_time = 1005.0
+    completion_start_time = 1003.0
+    stream = False
+
+    response_time = StandardLoggingPayloadSetup.get_response_time(
+        start_time_float=start_time,
+        end_time_float=end_time,
+        completion_start_time_float=completion_start_time,
+        stream=stream,
+    )
+
+    # For non-streaming, should return end_time - start_time
+    assert response_time == 5.0
+
+    # Test case 2: Streaming response
+    start_time = 1000.0
+    end_time = 1010.0
+    completion_start_time = 1002.0
+    stream = True
+
+    response_time = StandardLoggingPayloadSetup.get_response_time(
+        start_time_float=start_time,
+        end_time_float=end_time,
+        completion_start_time_float=completion_start_time,
+        stream=stream,
+    )
+
+    # For streaming, should return completion_start_time - start_time
+    assert response_time == 2.0
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+@pytest.mark.parametrize(
+    "metadata, expected_requester_metadata",
+    [
+        ({"metadata": {"test": "test2"}}, {"test": "test2"}),
+        ({"metadata": {"test": "test2"}, "model_id": "test-model"}, {"test": "test2"}),
+        (
+            {
+                "metadata": {
+                    "test": "test2",
+                },
+                "model_id": "test-model",
+                "requester_metadata": {"test": "test2"},
+            },
+            {"test": "test2"},
+        ),
+    ],
+)
+def test_standard_logging_metadata_requester_metadata(metadata, expected_requester_metadata):
+    result = StandardLoggingPayloadSetup.get_standard_logging_metadata(metadata)
+    assert result["requester_metadata"] == expected_requester_metadata
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_cost_breakdown_in_standard_logging_payload():
+    """
+    Test that cost breakdown fields are properly included in StandardLoggingPayload.
+    Tests input_cost, output_cost, tool_usage_cost, and total_cost fields.
+    """
+    import time
+
+    from datetime import datetime as datetime_standard_logging
+
+    from litellm.litellm_core_utils.litellm_logging import (
+        Logging,
+        get_standard_logging_object_payload,
+    )
+    from litellm.types.utils import Usage
+
+    # Create a mock logging object with cost breakdown
+    logging_obj = Logging(
+        model="gpt-5.5",
+        messages=[{"role": "user", "content": "Hello"}],
+        stream=False,
+        call_type="completion",
+        start_time=datetime_standard_logging.now(),
+        litellm_call_id="test-123",
+        function_id="test-function",
+    )
+
+    # Simulate cost breakdown being stored during cost calculation
+    logging_obj.set_cost_breakdown(
+        input_cost=0.001,
+        output_cost=0.002,
+        total_cost=0.0035,
+        cost_for_built_in_tools_cost_usd_dollar=0.0005,
+    )
+
+    # Mock response object
+    mock_response = {
+        "id": "chatcmpl-123",
+        "object": "chat.completion",
+        "model": "gpt-5.5",
+        "usage": {
+            "prompt_tokens": 10,
+            "completion_tokens": 20,
+            "total_tokens": 30,
+        },
+        "choices": [
+            {
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": "Hello! How can I help you today?",
+                },
+                "finish_reason": "stop",
+            }
+        ],
     }
 
-    logged = StandardLoggingPayloadSetup.get_final_response_obj(
-        response_obj=raw,
-        init_response_obj=raw,
-        kwargs={SERVED_OUTPUT_TEXTS_KEY: ("Card: <CREDIT_CARD>",), "litellm_params": {}},
+    # Create kwargs
+    kwargs = {
+        "model": "gpt-5.5",
+        "messages": [{"role": "user", "content": "Hello"}],
+        "response_cost": 0.0035,
+        "custom_llm_provider": "openai",
+    }
+
+    start_time = datetime_standard_logging.now()
+    end_time = datetime_standard_logging.now()
+
+    # Get the standard logging payload
+    payload = get_standard_logging_object_payload(
+        kwargs=kwargs,
+        init_response_obj=mock_response,
+        start_time=start_time,
+        end_time=end_time,
+        logging_obj=logging_obj,
+        status="success",
     )
 
-    assert isinstance(logged, dict)
-    assert "<CREDIT_CARD>" not in json.dumps(logged), logged
-    assert "4111" not in json.dumps(logged), logged
+    # Verify the cost breakdown field is present
+    assert payload is not None
+    assert payload["cost_breakdown"] is not None
+    assert payload["cost_breakdown"]["input_cost"] == 0.001
+    assert payload["cost_breakdown"]["output_cost"] == 0.002
+    assert payload["cost_breakdown"]["tool_usage_cost"] == 0.0005
+    assert payload["cost_breakdown"]["total_cost"] == 0.0035
+    assert payload["response_cost"] == 0.0035
+
+    print("✅ Cost breakdown test passed!")
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_cost_breakdown_missing_in_standard_logging_payload():
+    """
+    Test that cost breakdown field is None when not available (e.g., for embedding calls)
+    """
+    from datetime import datetime as datetime_standard_logging
+
+    from litellm.litellm_core_utils.litellm_logging import (
+        Logging,
+        get_standard_logging_object_payload,
+    )
+
+    # Create a mock logging object without cost breakdown
+    logging_obj = Logging(
+        model="gpt-5.5",
+        messages=[{"role": "user", "content": "Hello"}],
+        stream=False,
+        call_type="embedding",  # Non-completion call type
+        start_time=datetime_standard_logging.now(),
+        litellm_call_id="test-123",
+        function_id="test-function",
+    )
+
+    # No cost breakdown stored
+
+    # Mock response object
+    mock_response = {
+        "object": "list",
+        "data": [{"embedding": [0.1, 0.2, 0.3]}],
+        "model": "text-embedding-3-small",
+        "usage": {"prompt_tokens": 10, "total_tokens": 10},
+    }
+
+    kwargs = {
+        "model": "text-embedding-3-small",
+        "input": ["Hello"],
+        "response_cost": 0.0001,
+        "custom_llm_provider": "openai",
+    }
+
+    start_time = datetime_standard_logging.now()
+    end_time = datetime_standard_logging.now()
+
+    # Get the standard logging payload
+    payload = get_standard_logging_object_payload(
+        kwargs=kwargs,
+        init_response_obj=mock_response,
+        start_time=start_time,
+        end_time=end_time,
+        logging_obj=logging_obj,
+        status="success",
+    )
+
+    # Verify the cost breakdown field is None for non-completion calls
+    assert payload is not None
+    assert payload["cost_breakdown"] is None
+    assert payload["response_cost"] == 0.0001
+
+    print("✅ Cost breakdown missing test passed!")
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+@pytest.mark.parametrize(
+    "use_combined_usage_object",
+    [False, True],
+    ids=["normal_usage_dict", "combined_usage_object"],
+)
+def test_usage_dict_roundtrip_in_payload(use_combined_usage_object):
+    """
+    Regression test: verify that usage data flows correctly through
+    get_standard_logging_object_payload without unnecessary Pydantic round-trips.
+
+    Checks:
+    - usage_object in StandardLoggingMetadata is a plain dict with correct token values
+    - prompt_tokens, completion_tokens, total_tokens on the payload match the usage dict
+    - Works for both normal usage dict path and combined_usage_object (realtime API) path
+    """
+    from datetime import datetime as datetime_standard_logging
+
+    from litellm.litellm_core_utils.litellm_logging import (
+        Logging,
+        get_standard_logging_object_payload,
+    )
+
+    logging_obj = Logging(
+        model="gpt-5.5",
+        messages=[{"role": "user", "content": "Hi"}],
+        stream=False,
+        call_type="completion",
+        start_time=datetime_standard_logging.now(),
+        litellm_call_id="test-usage-roundtrip",
+        function_id="test-fn",
+    )
+
+    mock_response = {
+        "id": "chatcmpl-usage-test",
+        "object": "chat.completion",
+        "model": "gpt-5.5",
+        "usage": {
+            "prompt_tokens": 42,
+            "completion_tokens": 58,
+            "total_tokens": 100,
+        },
+        "choices": [
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": "Hello!"},
+                "finish_reason": "stop",
+            }
+        ],
+    }
+
+    kwargs = {
+        "model": "gpt-5.5",
+        "messages": [{"role": "user", "content": "Hi"}],
+        "response_cost": 0.01,
+        "custom_llm_provider": "openai",
+    }
+
+    if use_combined_usage_object:
+        kwargs["combined_usage_object"] = Usage(prompt_tokens=42, completion_tokens=58, total_tokens=100)
+
+    start_time = datetime_standard_logging.now()
+    end_time = datetime_standard_logging.now()
+
+    payload = get_standard_logging_object_payload(
+        kwargs=kwargs,
+        init_response_obj=mock_response,
+        start_time=start_time,
+        end_time=end_time,
+        logging_obj=logging_obj,
+        status="success",
+    )
+
+    assert payload is not None
+
+    # Top-level token fields must match
+    assert payload["prompt_tokens"] == 42
+    assert payload["completion_tokens"] == 58
+    assert payload["total_tokens"] == 100
+
+    # usage_object in metadata must be a plain dict (not a Pydantic model)
+    usage_obj = payload["metadata"]["usage_object"]
+    assert isinstance(usage_obj, dict)
+    assert usage_obj["prompt_tokens"] == 42
+    assert usage_obj["completion_tokens"] == 58
+    assert usage_obj["total_tokens"] == 100
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_standard_logging_payload_uses_actual_model_for_azure_router():
+    from litellm.litellm_core_utils.litellm_logging import (
+        Logging,
+        get_standard_logging_object_payload,
+    )
+
+    logging_obj = Logging(
+        model="azure_ai/model-router",
+        messages=[{"role": "user", "content": "Hello"}],
+        stream=False,
+        call_type="completion",
+        start_time=datetime_standard_logging.now(),
+        litellm_call_id="test-azure-router-opt-in",
+        function_id="test-fn",
+    )
+
+    kwargs = {
+        "model": "azure_ai/model-router",
+        "messages": [{"role": "user", "content": "Hello"}],
+        "response_cost": 0.00001,
+        "custom_llm_provider": "azure_ai",
+    }
+    mock_response = {
+        "id": "chatcmpl-azure-router-opt-in",
+        "object": "chat.completion",
+        "model": "azure_ai/gpt-5-nano-2025-08-07",
+        "usage": {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
+        "choices": [
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": "hello"},
+                "finish_reason": "stop",
+            }
+        ],
+    }
+
+    payload = get_standard_logging_object_payload(
+        kwargs=kwargs,
+        init_response_obj=mock_response,
+        start_time=datetime_standard_logging.now(),
+        end_time=datetime_standard_logging.now(),
+        logging_obj=logging_obj,
+        status="success",
+    )
+    assert payload is not None
+    assert payload["model"] == "azure_ai/gpt-5-nano-2025-08-07"
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_standard_logging_payload_uses_actual_model_for_azure_router_with_underscore():
+    from litellm.litellm_core_utils.litellm_logging import (
+        Logging,
+        get_standard_logging_object_payload,
+    )
+
+    logging_obj = Logging(
+        model="azure_ai/model_router",
+        messages=[{"role": "user", "content": "Hello"}],
+        stream=False,
+        call_type="completion",
+        start_time=datetime_standard_logging.now(),
+        litellm_call_id="test-azure-router-underscore",
+        function_id="test-fn",
+    )
+
+    kwargs = {
+        "model": "azure_ai/model_router",
+        "messages": [{"role": "user", "content": "Hello"}],
+        "response_cost": 0.00001,
+        "custom_llm_provider": "azure_ai",
+    }
+    mock_response = {
+        "id": "chatcmpl-azure-router-underscore",
+        "object": "chat.completion",
+        "model": "azure_ai/gpt-5-nano-2025-08-07",
+        "usage": {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
+        "choices": [
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": "hello"},
+                "finish_reason": "stop",
+            }
+        ],
+    }
+
+    payload = get_standard_logging_object_payload(
+        kwargs=kwargs,
+        init_response_obj=mock_response,
+        start_time=datetime_standard_logging.now(),
+        end_time=datetime_standard_logging.now(),
+        logging_obj=logging_obj,
+        status="success",
+    )
+    assert payload is not None
+    assert payload["model"] == "azure_ai/gpt-5-nano-2025-08-07"
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_merge_litellm_metadata_basic():
+    """
+    Test that merge_litellm_metadata correctly merges metadata and litellm_metadata.
+    User API key fields (from metadata) should take precedence over model-related fields (from litellm_metadata).
+    """
+    litellm_params = {
+        "metadata": {
+            "user_api_key": "test-key-123",
+            "user_api_key_user_id": "user-456",
+            "user_api_key_team_id": "team-789",
+        },
+        "litellm_metadata": {
+            "model_group": "gpt-4-group",
+            "model_info": {"id": "model-123"},
+            "tags": ["tag1", "tag2"],
+        },
+    }
+
+    result = StandardLoggingPayloadSetup.merge_litellm_metadata(litellm_params)
+
+    # Check that user API key fields are present
+    assert result["user_api_key"] == "test-key-123"
+    assert result["user_api_key_user_id"] == "user-456"
+    assert result["user_api_key_team_id"] == "team-789"
+
+    # Check that model-related fields are present
+    assert result["model_group"] == "gpt-4-group"
+    assert result["model_info"] == {"id": "model-123"}
+    assert result["tags"] == ["tag1", "tag2"]
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_merge_litellm_metadata_precedence():
+    """
+    Test that metadata fields take precedence over litellm_metadata when there are conflicts.
+    """
+    litellm_params = {
+        "metadata": {
+            "tags": ["user-tag1", "user-tag2"],
+            "custom_field": "from_metadata",
+        },
+        "litellm_metadata": {
+            "tags": ["model-tag1", "model-tag2"],  # This should NOT overwrite
+            "custom_field": "from_litellm_metadata",  # This should NOT overwrite
+            "model_group": "gpt-4-group",  # This should be included
+        },
+    }
+
+    result = StandardLoggingPayloadSetup.merge_litellm_metadata(litellm_params)
+
+    # metadata values should take precedence
+    assert result["tags"] == ["user-tag1", "user-tag2"]
+    assert result["custom_field"] == "from_metadata"
+
+    # litellm_metadata values should only be included if not in metadata
+    assert result["model_group"] == "gpt-4-group"
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_merge_litellm_metadata_skip_non_serializable():
+    """
+    Test that non-serializable objects like UserAPIKeyAuth are skipped.
+    """
+    user_api_key_auth = UserAPIKeyAuth(
+        api_key="test-key",
+        user_id="test-user",
+        team_id="test-team",
+    )
+
+    litellm_params = {
+        "metadata": {
+            "user_api_key": "test-key-123",
+            "user_api_key_auth": user_api_key_auth,  # This should be skipped
+            "safe_field": "safe_value",
+        },
+        "litellm_metadata": {
+            "model_group": "gpt-4-group",
+        },
+    }
+
+    result = StandardLoggingPayloadSetup.merge_litellm_metadata(litellm_params)
+
+    # user_api_key_auth should be skipped
+    assert "user_api_key_auth" not in result
+
+    # Other fields should be present
+    assert result["user_api_key"] == "test-key-123"
+    assert result["safe_field"] == "safe_value"
+    assert result["model_group"] == "gpt-4-group"
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_merge_litellm_metadata_empty_params():
+    """
+    Test that merge_litellm_metadata handles empty or missing metadata gracefully.
+    """
+    # Test with empty litellm_params
+    result = StandardLoggingPayloadSetup.merge_litellm_metadata({})
+    assert result == {}
+
+    # Test with only metadata
+    litellm_params = {
+        "metadata": {
+            "user_api_key": "test-key",
+        }
+    }
+    result = StandardLoggingPayloadSetup.merge_litellm_metadata(litellm_params)
+    assert result == {"user_api_key": "test-key"}
+
+    # Test with only litellm_metadata
+    litellm_params = {
+        "litellm_metadata": {
+            "model_group": "gpt-4-group",
+        }
+    }
+    result = StandardLoggingPayloadSetup.merge_litellm_metadata(litellm_params)
+    assert result == {"model_group": "gpt-4-group"}
+
+    # Test with None values
+    litellm_params = {
+        "metadata": None,
+        "litellm_metadata": None,
+    }
+    result = StandardLoggingPayloadSetup.merge_litellm_metadata(litellm_params)
+    assert result == {}
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_merge_litellm_metadata_bedrock_passthrough_scenario():
+    """
+    Test merge_litellm_metadata in a Bedrock passthrough scenario where both
+    user API key metadata and model metadata need to be merged.
+
+    This is the specific scenario that was fixed - bedrock passthrough requests
+    should include complete user authentication metadata in logging.
+    """
+    litellm_params = {
+        "metadata": {
+            # User API key fields from authentication
+            "user_api_key": "sk-bedrock-test-key-123",
+            "user_api_key_hash": "hashed-key-123",
+            "user_api_key_user_id": "bedrock-user-456",
+            "user_api_key_team_id": "bedrock-team-789",
+            "user_api_key_org_id": "bedrock-org-101",
+            "user_api_key_alias": "bedrock-key-alias",
+            "user_api_key_team_alias": "bedrock-team-alias",
+            "user_api_key_end_user_id": "end-user-123",
+            "user_api_key_request_route": "/bedrock/model/invoke",
+        },
+        "litellm_metadata": {
+            # Model-related fields from Bedrock configuration
+            "model_group": "bedrock-claude-group",
+            "model_info": {
+                "id": "anthropic.claude-3-sonnet",
+                "mode": "chat",
+            },
+            "aws_region_name": "us-east-1",
+            "tags": ["production", "bedrock"],
+        },
+    }
+
+    result = StandardLoggingPayloadSetup.merge_litellm_metadata(litellm_params)
+
+    # Verify all user API key fields are present
+    assert result["user_api_key"] == "sk-bedrock-test-key-123"
+    assert result["user_api_key_hash"] == "hashed-key-123"
+    assert result["user_api_key_user_id"] == "bedrock-user-456"
+    assert result["user_api_key_team_id"] == "bedrock-team-789"
+    assert result["user_api_key_org_id"] == "bedrock-org-101"
+    assert result["user_api_key_alias"] == "bedrock-key-alias"
+    assert result["user_api_key_team_alias"] == "bedrock-team-alias"
+    assert result["user_api_key_end_user_id"] == "end-user-123"
+    assert result["user_api_key_request_route"] == "/bedrock/model/invoke"
+
+    # Verify all model-related fields are present
+    assert result["model_group"] == "bedrock-claude-group"
+    assert result["model_info"] == {
+        "id": "anthropic.claude-3-sonnet",
+        "mode": "chat",
+    }
+    assert result["aws_region_name"] == "us-east-1"
+    assert result["tags"] == ["production", "bedrock"]
+
+    # Verify total number of fields (9 user fields + 4 model fields = 13)
+    assert len(result) == 13
+
+
+service_logger = ServiceLogging()
+
+
+def setup_logging():
+    return Logging(
+        model="gpt-5.5",
+        messages=[{"role": "user", "content": "Hello, world!"}],
+        stream=False,
+        call_type="completion",
+        start_time=datetime_unit_test.now(),
+        litellm_call_id="123",
+        function_id="456",
+    )
+
+
+@pytest.fixture
+def datetime_class_as_module_global(monkeypatch):
+    monkeypatch.setattr(sys.modules[__name__], "datetime", datetime_standard_logging)
+
+
+@pytest.mark.usefixtures("datetime_class_as_module_global")
+@pytest.mark.parametrize("disable_no_log_param", [True, False])
+def test_litellm_logging_no_log_param(monkeypatch, disable_no_log_param):
+    monkeypatch.setattr(litellm, "global_disable_no_log_param", disable_no_log_param)
+    from litellm.litellm_core_utils.litellm_logging import Logging
+
+    litellm.success_callback = ["langfuse"]
+    litellm_call_id = "my-unique-call-id"
+    litellm_logging_obj = Logging(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": "hi"}],
+        stream=False,
+        call_type="acompletion",
+        litellm_call_id=litellm_call_id,
+        start_time=datetime.now(),
+        function_id="1234",
+    )
+
+    should_run = litellm_logging_obj.should_run_callback(
+        callback="langfuse",
+        litellm_params={"no-log": True},
+        event_hook="success_handler",
+    )
+
+    if disable_no_log_param:
+        assert should_run is True
+    else:
+        assert should_run is False
+
+    proxy_callback = PROXY_MaxParallelRequestsHandler_v3(internal_usage_cache=InternalUsageCache(DualCache()))
+    should_run_proxy_callback = litellm_logging_obj.should_run_callback(
+        callback=proxy_callback,
+        litellm_params={"no-log": True},
+        event_hook="success_handler",
+    )
+    assert should_run_proxy_callback is True
+
+    from litellm_enterprise.proxy.hooks.managed_files import PROXY_LiteLLMManagedFiles
+
+    managed_files_callback = PROXY_LiteLLMManagedFiles(DualCache(), prisma_client=MagicMock())
+    should_run_managed_files_callback = litellm_logging_obj.should_run_callback(
+        callback=managed_files_callback,
+        litellm_params={"no-log": True},
+        event_hook="success_handler",
+    )
+    assert should_run_managed_files_callback is True
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_get_callback_name():
+    """
+    Ensure we can get the name of a callback
+    """
+    logging = setup_logging()
+
+    # Test function with __name__
+    def test_func():
+        pass
+
+    assert logging._get_callback_name(test_func) == "test_func"
+
+    # Test function with __func__
+    class TestClass:
+        def method(self):
+            pass
+
+    bound_method = TestClass().method
+    assert logging._get_callback_name(bound_method) == "method"
+
+    # Test string callback
+    assert logging._get_callback_name("callback_string") == "callback_string"
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_is_internal_litellm_proxy_callback():
+    """
+    Ensure we can determine if a callback is an internal litellm proxy callback
+
+    eg. `_PROXY_MaxIterationsHandler`, `_PROXY_CacheControlCheck`
+    """
+    logging = setup_logging()
+
+    assert logging._is_internal_litellm_proxy_callback(PROXY_MaxIterationsHandler) == True
+
+    # Test non-internal callbacks
+    def regular_callback():
+        pass
+
+    assert logging._is_internal_litellm_proxy_callback(regular_callback) == False
+
+    # Test string callback
+    assert logging._is_internal_litellm_proxy_callback("callback_string") == False
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_should_run_sync_callbacks_for_async_calls():
+    """
+    Ensure we can determine if we should run sync callbacks for async calls
+
+    Note: We don't want to run sync callbacks for async calls because we don't want to block the event loop
+    """
+    logging = setup_logging()
+
+    # Test with no callbacks
+    logging.dynamic_success_callbacks = None
+    litellm.success_callback = []
+    assert logging._should_run_sync_callbacks_for_async_calls() == False
+
+    # Test with regular callback
+    def regular_callback():
+        pass
+
+    litellm.success_callback = [regular_callback]
+    assert logging._should_run_sync_callbacks_for_async_calls() == True
+
+    # Test with internal callback only
+    litellm.success_callback = [PROXY_MaxIterationsHandler]
+    assert logging._should_run_sync_callbacks_for_async_calls() == False
+
+
+@pytest.mark.usefixtures("_vcr_outcome_gate", "drain_logging_worker", "isolate_litellm_state", "setup_and_teardown")
+def test_remove_internal_litellm_callbacks():
+    logging = setup_logging()
+
+    def regular_callback():
+        pass
+
+    callbacks = [
+        regular_callback,
+        PROXY_MaxIterationsHandler,
+        PROXY_CacheControlCheck,
+        "string_callback",
+    ]
+
+    filtered = logging._remove_internal_litellm_callbacks(callbacks)
+    assert len(filtered) == 2  # Should only keep regular_callback and string_callback
+    assert regular_callback in filtered
+    assert "string_callback" in filtered
+    assert PROXY_MaxIterationsHandler not in filtered
+    assert PROXY_CacheControlCheck not in filtered
+
+
+@pytest.mark.asyncio
+async def test_background_interaction_completion_logs_while_in_progress_handler_is_parked(monkeypatch):
+    """
+    The create's in_progress success handler can still be parked on awaited work when
+    the settlement arrives. The completed result is the only event carrying usage and
+    cost, so it has to reach the success callbacks whatever the one-success-log-per-request
+    dedupe does, or the settlement is marked billed with no spend row behind it.
+    """
+    from litellm.litellm_core_utils import litellm_logging
+    from litellm.types.interactions import InteractionsAPIResponse
+
+    class CountingLogger(CustomLogger):
+        def __init__(self):
+            super().__init__()
+            self.logged_results: list[object] = []
+
+        async def async_log_success_event(self, kwargs, response_obj, start_time, end_time):
+            self.logged_results.append(response_obj)
+
+    counting_logger: Final = CountingLogger()
+    monkeypatch.setattr(litellm, "_async_success_callback", [counting_logger])
+
+    in_progress_parked: Final = asyncio.Event()
+    release_in_progress: Final = asyncio.Event()
+    real_truncate: Final = litellm_logging.truncate_base64_in_messages_async
+    calls: list[int] = []
+
+    async def parked_then_real_truncate(messages):
+        calls.append(1)
+        if len(calls) == 1:
+            in_progress_parked.set()
+            await release_in_progress.wait()
+        return await real_truncate(messages)
+
+    monkeypatch.setattr(litellm_logging, "truncate_base64_in_messages_async", parked_then_real_truncate)
+
+    logging_obj: Final = _interactions_logging_obj(stream=False)
+    in_progress: Final = InteractionsAPIResponse(id="interactions/abc", model="gemini-2.5-flash", status="in_progress")
+    completed: Final = InteractionsAPIResponse(
+        id="interactions/abc",
+        model="gemini-2.5-flash",
+        status="completed",
+        steps=[],
+        usage=dict(INTERACTIONS_USAGE_BLOCK),
+    )
+
+    first: Final = asyncio.create_task(logging_obj.async_success_handler(result=in_progress))
+    await in_progress_parked.wait()
+    completion: Final = asyncio.create_task(logging_obj.async_log_background_interaction_completion(result=completed))
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
+    release_in_progress.set()
+    await first
+    await completion
+
+    assert counting_logger.logged_results == [completed, in_progress], counting_logger.logged_results
+
+
+class CompletionCustomHandler(
+    CustomLogger
+):  # https://docs.litellm.ai/docs/observability/custom_callback#callback-class
+    """
+    The set of expected inputs to a custom handler for a
+    """
+
+    # Class variables or attributes
+    def __init__(self):
+        self.errors = []
+        self.states: List[
+            Literal[
+                "sync_pre_api_call",
+                "async_pre_api_call",
+                "post_api_call",
+                "sync_stream",
+                "async_stream",
+                "sync_success",
+                "async_success",
+                "sync_failure",
+                "async_failure",
+            ]
+        ] = []
+
+    def log_pre_api_call(self, model, messages, kwargs):
+        try:
+            self.states.append("sync_pre_api_call")
+            ## MODEL
+            assert isinstance(model, str)
+            ## MESSAGES
+            assert isinstance(messages, list)
+            ## KWARGS
+            assert isinstance(kwargs["model"], str)
+            assert isinstance(kwargs["messages"], list)
+            assert isinstance(kwargs["optional_params"], dict)
+            assert isinstance(kwargs["litellm_params"], dict)
+            assert isinstance(kwargs["start_time"], (datetime, type(None)))
+            assert isinstance(kwargs["stream"], bool)
+            assert isinstance(kwargs["user"], (str, type(None)))
+            ### METADATA
+            metadata_value = kwargs["litellm_params"].get("metadata")
+            assert metadata_value is None or isinstance(metadata_value, dict)
+            if metadata_value is not None:
+                if litellm.turn_off_message_logging is True:
+                    assert metadata_value["raw_request"] is LiteLLMCommonStrings.redacted_by_litellm.value
+                else:
+                    assert "raw_request" not in metadata_value or isinstance(metadata_value["raw_request"], str)
+        except Exception:
+            print(f"Assertion Error: {traceback.format_exc()}")
+            self.errors.append(traceback.format_exc())
+
+    def log_post_api_call(self, kwargs, response_obj, start_time, end_time):
+        try:
+            self.states.append("post_api_call")
+            ## START TIME
+            assert isinstance(start_time, datetime)
+            ## END TIME
+            assert end_time == None
+            ## RESPONSE OBJECT
+            assert response_obj == None
+            ## KWARGS
+            assert isinstance(kwargs["model"], str)
+            assert isinstance(kwargs["messages"], list)
+            assert isinstance(kwargs["optional_params"], dict)
+            assert isinstance(kwargs["litellm_params"], dict)
+            assert isinstance(kwargs["start_time"], (datetime, type(None)))
+            assert isinstance(kwargs["stream"], bool)
+            assert isinstance(kwargs["user"], (str, type(None)))
+            assert isinstance(kwargs["input"], (list, dict, str))
+            assert isinstance(kwargs["api_key"], (str, type(None)))
+            assert (
+                isinstance(
+                    kwargs["original_response"],
+                    (str, litellm.CustomStreamWrapper, BaseModel),
+                )
+                or inspect.iscoroutine(kwargs["original_response"])
+                or inspect.isasyncgen(kwargs["original_response"])
+            )
+            assert isinstance(kwargs["additional_args"], (dict, type(None)))
+            assert isinstance(kwargs["log_event_type"], str)
+        except Exception:
+            print(f"Assertion Error: {traceback.format_exc()}")
+            self.errors.append(traceback.format_exc())
+
+    async def async_log_stream_event(self, kwargs, response_obj, start_time, end_time):
+        try:
+            self.states.append("async_stream")
+            ## START TIME
+            assert isinstance(start_time, datetime)
+            ## END TIME
+            assert isinstance(end_time, datetime)
+            ## RESPONSE OBJECT
+            assert isinstance(response_obj, litellm.ModelResponseStream)
+            ## KWARGS
+            assert isinstance(kwargs["model"], str)
+            assert isinstance(kwargs["messages"], list) and isinstance(kwargs["messages"][0], dict)
+            assert isinstance(kwargs["optional_params"], dict)
+            assert isinstance(kwargs["litellm_params"], dict)
+            assert isinstance(kwargs["start_time"], (datetime, type(None)))
+            assert isinstance(kwargs["stream"], bool)
+            assert isinstance(kwargs["user"], (str, type(None)))
+            assert (isinstance(kwargs["input"], list) and isinstance(kwargs["input"][0], dict)) or isinstance(
+                kwargs["input"], (dict, str)
+            )
+            assert isinstance(kwargs["api_key"], (str, type(None)))
+            assert (
+                isinstance(kwargs["original_response"], (str, litellm.CustomStreamWrapper))
+                or inspect.isasyncgen(kwargs["original_response"])
+                or inspect.iscoroutine(kwargs["original_response"])
+            )
+            assert isinstance(kwargs["additional_args"], (dict, type(None)))
+            assert isinstance(kwargs["log_event_type"], str)
+        except Exception:
+            print(f"Assertion Error: {traceback.format_exc()}")
+            self.errors.append(traceback.format_exc())
+
+    def log_success_event(self, kwargs, response_obj, start_time, end_time):
+        try:
+            print(f"\n\nkwargs={kwargs}\n\n")
+            print(
+                json.dumps(kwargs, default=str)
+            )  # this is a test to confirm no circular references are in the logging object
+
+            self.states.append("sync_success")
+            ## START TIME
+            assert isinstance(start_time, datetime)
+            ## END TIME
+            assert isinstance(end_time, datetime)
+            ## RESPONSE OBJECT
+            assert isinstance(
+                response_obj,
+                (
+                    litellm.ModelResponse,
+                    litellm.EmbeddingResponse,
+                    litellm.ImageResponse,
+                ),
+            )
+            ## KWARGS
+            assert isinstance(kwargs["model"], str)
+            assert isinstance(kwargs["messages"], list) and isinstance(kwargs["messages"][0], dict)
+            assert isinstance(kwargs["optional_params"], dict)
+            assert isinstance(kwargs["litellm_params"], dict)
+            assert isinstance(kwargs["litellm_params"]["api_base"], str)
+            assert kwargs["cache_hit"] is None or isinstance(kwargs["cache_hit"], bool)
+            assert isinstance(kwargs["start_time"], (datetime, type(None)))
+            assert isinstance(kwargs["stream"], bool)
+            assert isinstance(kwargs["user"], (str, type(None)))
+            assert (
+                isinstance(kwargs["input"], list)
+                and (isinstance(kwargs["input"][0], dict) or isinstance(kwargs["input"][0], str))
+            ) or isinstance(kwargs["input"], (dict, str))
+            assert isinstance(kwargs["api_key"], (str, type(None)))
+            assert isinstance(
+                kwargs["original_response"],
+                (str, litellm.CustomStreamWrapper, BaseModel),
+            ), "Original Response={}. Allowed types=[str, litellm.CustomStreamWrapper, BaseModel]".format(
+                kwargs["original_response"]
+            )
+            assert isinstance(kwargs["additional_args"], (dict, type(None)))
+            assert isinstance(kwargs["log_event_type"], str)
+            assert isinstance(kwargs["response_cost"], (float, type(None)))
+        except Exception:
+            print(f"Assertion Error: {traceback.format_exc()}")
+            self.errors.append(traceback.format_exc())
+
+    def log_failure_event(self, kwargs, response_obj, start_time, end_time):
+        try:
+            print(f"kwargs: {kwargs}")
+            self.states.append("sync_failure")
+            ## START TIME
+            assert isinstance(start_time, datetime)
+            ## END TIME
+            assert isinstance(end_time, datetime)
+            ## RESPONSE OBJECT
+            assert response_obj == None
+            ## KWARGS
+            assert isinstance(kwargs["model"], str)
+            assert isinstance(kwargs["messages"], list) and isinstance(kwargs["messages"][0], dict)
+
+            assert isinstance(kwargs["optional_params"], dict)
+            assert isinstance(kwargs["litellm_params"], dict)
+            assert isinstance(kwargs["litellm_params"]["metadata"], Optional[dict])
+            assert isinstance(kwargs["start_time"], (datetime, type(None)))
+            assert isinstance(kwargs["stream"], bool)
+            assert isinstance(kwargs["user"], (str, type(None)))
+            assert (isinstance(kwargs["input"], list) and isinstance(kwargs["input"][0], dict)) or isinstance(
+                kwargs["input"], (dict, str)
+            )
+            assert isinstance(kwargs["api_key"], (str, type(None)))
+            assert (
+                isinstance(kwargs["original_response"], (str, litellm.CustomStreamWrapper))
+                or kwargs["original_response"] == None
+            )
+            assert isinstance(kwargs["additional_args"], (dict, type(None)))
+            assert isinstance(kwargs["log_event_type"], str)
+        except Exception:
+            print(f"Assertion Error: {traceback.format_exc()}")
+            self.errors.append(traceback.format_exc())
+
+    async def async_log_pre_api_call(self, model, messages, kwargs):
+        try:
+            self.states.append("async_pre_api_call")
+            ## MODEL
+            assert isinstance(model, str)
+            ## MESSAGES
+            assert isinstance(messages, list) and isinstance(messages[0], dict)
+            ## KWARGS
+            assert isinstance(kwargs["model"], str)
+            assert isinstance(kwargs["messages"], list) and isinstance(kwargs["messages"][0], dict)
+            assert isinstance(kwargs["optional_params"], dict)
+            assert isinstance(kwargs["litellm_params"], dict)
+            assert isinstance(kwargs["start_time"], (datetime, type(None)))
+            assert isinstance(kwargs["stream"], bool)
+            assert isinstance(kwargs["user"], (str, type(None)))
+        except Exception as e:
+            print(f"Assertion Error: {traceback.format_exc()}")
+            self.errors.append(traceback.format_exc())
+
+    async def async_log_success_event(self, kwargs, response_obj, start_time, end_time):
+        try:
+            print("in async_log_success_event", kwargs, response_obj, start_time, end_time)
+            self.states.append("async_success")
+            ## START TIME
+            assert isinstance(start_time, datetime)
+            ## END TIME
+            assert isinstance(end_time, datetime)
+            ## RESPONSE OBJECT
+            assert isinstance(
+                response_obj,
+                (
+                    litellm.ModelResponse,
+                    litellm.EmbeddingResponse,
+                    litellm.TextCompletionResponse,
+                ),
+            )
+            ## KWARGS
+            assert isinstance(kwargs["model"], str)
+            assert isinstance(kwargs["messages"], list)
+            assert isinstance(kwargs["optional_params"], dict)
+            assert isinstance(kwargs["litellm_params"], dict)
+            assert isinstance(kwargs["litellm_params"]["api_base"], str)
+            assert isinstance(kwargs["start_time"], (datetime, type(None)))
+            assert isinstance(kwargs["stream"], bool)
+            assert isinstance(kwargs["completion_start_time"], datetime)
+            assert kwargs["cache_hit"] is None or isinstance(kwargs["cache_hit"], bool)
+            assert isinstance(kwargs["user"], (str, type(None)))
+            assert isinstance(kwargs["input"], (list, dict, str))
+            assert isinstance(kwargs["api_key"], (str, type(None)))
+            assert (
+                isinstance(kwargs["original_response"], (str, litellm.CustomStreamWrapper))
+                or inspect.isasyncgen(kwargs["original_response"])
+                or inspect.iscoroutine(kwargs["original_response"])
+            )
+            assert isinstance(kwargs["additional_args"], (dict, type(None)))
+            assert isinstance(kwargs["log_event_type"], str)
+            assert kwargs["cache_hit"] is None or isinstance(kwargs["cache_hit"], bool)
+            assert isinstance(kwargs["response_cost"], (float, type(None)))
+        except Exception:
+            print(f"Assertion Error: {traceback.format_exc()}")
+            self.errors.append(traceback.format_exc())
+
+    async def async_log_failure_event(self, kwargs, response_obj, start_time, end_time):
+        try:
+            self.states.append("async_failure")
+            ## START TIME
+            assert isinstance(start_time, datetime)
+            ## END TIME
+            assert isinstance(end_time, datetime)
+            ## RESPONSE OBJECT
+            assert response_obj == None
+            ## KWARGS
+            assert isinstance(kwargs["model"], str)
+            assert isinstance(kwargs["messages"], list)
+            assert isinstance(kwargs["optional_params"], dict)
+            assert isinstance(kwargs["litellm_params"], dict)
+            assert isinstance(kwargs["start_time"], (datetime, type(None)))
+            assert isinstance(kwargs["stream"], bool)
+            assert isinstance(kwargs["user"], (str, type(None)))
+            assert isinstance(kwargs["input"], (list, str, dict))
+            assert isinstance(kwargs["api_key"], (str, type(None)))
+            assert (
+                isinstance(kwargs["original_response"], (str, litellm.CustomStreamWrapper))
+                or inspect.isasyncgen(kwargs["original_response"])
+                or inspect.iscoroutine(kwargs["original_response"])
+                or kwargs["original_response"] == None
+            )
+            assert isinstance(kwargs["additional_args"], (dict, type(None)))
+            assert isinstance(kwargs["log_event_type"], str)
+        except Exception:
+            print(f"Assertion Error: {traceback.format_exc()}")
+            self.errors.append(traceback.format_exc())
+
+
+@pytest.mark.parametrize("header_name", ["authorization", "Authorization"])
+@pytest.mark.parametrize("update_from_kwargs", [False, True])
+def test_managed_anthropic_oauth_headers_are_redacted_before_custom_logging(
+    logging_obj: LitellmLogging, header_name: str, update_from_kwargs: bool
+) -> None:
+    captured: Final[Queue[Mapping[str, object]]] = Queue()
+
+    def capture(details: Mapping[str, object]) -> None:
+        captured.put(details)
+
+    if update_from_kwargs:
+        logging_obj.update_from_kwargs(
+            kwargs={"use_anthropic_oauth": True}, litellm_params={"logger_fn": capture}, optional_params={}
+        )
+    else:
+        logging_obj.update_environment_variables(
+            litellm_params={"use_anthropic_oauth": True, "logger_fn": capture}, optional_params={}
+        )
+    token: Final = "sk-ant-oat01-synthetic-managed-logging-token"
+    headers: Final = {header_name: f"Bearer {token}", "x-trace": "trace-value"}
+    transport_args: Final = {"headers": headers, "api_base": "https://api.anthropic.com/v1/messages"}
+    logging_obj.pre_call(input="hello", api_key=None, additional_args=transport_args)
+
+    logged: Final = json.dumps(dict(captured.get_nowait()), default=str)
+    assert token not in logged
+    assert json.loads(logged)["additional_args"]["headers"]["x-trace"] == "trace-value"
+    assert headers[header_name] == f"Bearer {token}"
+    assert transport_args["headers"] is headers
+
+
+@pytest.fixture(scope="module")
+def signaling_prometheus_logger():
+    from prometheus_client import REGISTRY
+
+    from litellm.integrations.prometheus import PrometheusLogger
+
+    existing = frozenset(REGISTRY._collector_to_names)
+    try:
+        yield PrometheusLogger()
+    finally:
+        for collector in frozenset(REGISTRY._collector_to_names) - existing:
+            REGISTRY.unregister(collector)
+
+
+@pytest.mark.parametrize("provider", ["chatgpt", "openai"])
+@pytest.mark.asyncio
+async def test_realtime_signaling_has_zero_usage_standard_logging(provider, signaling_prometheus_logger, caplog):
+    import datetime as dt
+    import json
+
+    logger = LitellmLogging(
+        model="gpt-live-1-codex",
+        messages=[],
+        stream=False,
+        call_type="arealtime_calls",
+        start_time=time.time(),
+        litellm_call_id="signaling-call",
+        function_id="signaling-function",
+    )
+    logger.update_environment_variables(
+        litellm_params={},
+        optional_params={},
+        model="gpt-live-1-codex",
+        custom_llm_provider=provider,
+        input="",
+    )
+    response = httpx.Response(201, text="v=0\r\nprivate-sdp", headers={"location": "/calls/rtc_private"})
+    logger._success_handler_helper_fn(
+        result=response,
+        start_time=dt.datetime.now(),
+        end_time=dt.datetime.now(),
+        cache_hit=False,
+    )
+    payload = logger.model_call_details.get("standard_logging_object")
+    assert payload is not None
+    assert payload["response_cost"] == 0
+    assert payload["total_tokens"] == 0
+    assert "private-sdp" not in json.dumps(payload)
+    assert "rtc_private" not in json.dumps(payload)
+    assert response.text == "v=0\r\nprivate-sdp"
+
+    from litellm.proxy.hooks.proxy_track_cost_callback import _ProxyDBLogger
+
+    await signaling_prometheus_logger.async_log_success_event(
+        logger.model_call_details, response, dt.datetime.now(), dt.datetime.now()
+    )
+    await _ProxyDBLogger()._PROXY_track_cost_callback(
+        logger.model_call_details, response, dt.datetime.now(), dt.datetime.now()
+    )
+    assert "Error in tracking cost callback" not in caplog.text
+
+
+@pytest.mark.parametrize(
+    "meta,expected_tokens,has_usage",
+    [
+        ({"billed_units": {"total_tokens": 83}}, 83, True),
+        ({"tokens": {"input_tokens": 83}}, 83, True),
+        ({"tokens": {"input_tokens": 0}, "billed_units": {"total_tokens": 83}}, 0, True),
+        ({"billed_units": {"search_units": 1}}, 0, False),
+        ({"billed_units": {"total_tokens": None}}, 0, False),
+        ({}, 0, False),
+    ],
+)
+def test_rerank_usage_is_preserved_in_logging(meta: dict, expected_tokens: int, has_usage: bool) -> None:
+    from litellm.litellm_core_utils.litellm_logging import StandardLoggingPayloadSetup
+
+    response: Final = {"id": "rerank-test", "results": [], "meta": meta}
+    usage: Final = StandardLoggingPayloadSetup.get_usage_from_response_obj(response)
+    usage_dict: Final = StandardLoggingPayloadSetup.get_usage_as_dict(response)
+    assert usage.prompt_tokens == expected_tokens
+    assert usage.total_tokens == expected_tokens
+    assert usage.completion_tokens == 0
+    if not has_usage:
+        assert usage_dict == {}
+        return
+    assert usage_dict["prompt_tokens"] == expected_tokens
+    assert usage_dict["total_tokens"] == expected_tokens
+    assert usage_dict["completion_tokens"] == 0
+
+
+def test_get_assembled_streaming_response_transforms_dict_response_usage():
+    """Responses stream events can carry a dict response during success logging."""
+    import datetime
+
+    logging_obj = _make_logging_obj(stream=True)
+    response = {
+        "id": "resp-1",
+        "object": "response",
+        "output": [],
+        "usage": {
+            "input_tokens": 10,
+            "output_tokens": 5,
+            "total_tokens": 15,
+        },
+    }
+    result = ResponseCompletedEvent.model_construct(
+        type=ResponsesAPIStreamEvents.RESPONSE_COMPLETED,
+        response=response,
+    )
+
+    assembled = logging_obj._get_assembled_streaming_response(
+        result=result,
+        start_time=datetime.datetime.now(),
+        end_time=datetime.datetime.now(),
+        is_async=True,
+        streaming_chunks=[],
+    )
+
+    assert assembled is response
+    assert assembled["usage"]["prompt_tokens"] == 10
+    assert assembled["usage"]["completion_tokens"] == 5
+    assert assembled["usage"]["total_tokens"] == 15
+
+
+def test_get_assembled_streaming_response_transforms_typed_response_usage():
+    """Typed Responses API usage should keep existing chat-usage transformation."""
+    import datetime
+
+    logging_obj = _make_logging_obj(stream=True)
+    response = ResponsesAPIResponse(
+        id="resp-1",
+        created_at=0,
+        object="response",
+        output=[],
+        usage=ResponseAPIUsage(
+            input_tokens=7,
+            output_tokens=3,
+            total_tokens=10,
+        ),
+    )
+    result = ResponseCompletedEvent(
+        type=ResponsesAPIStreamEvents.RESPONSE_COMPLETED,
+        response=response,
+    )
+
+    assembled = logging_obj._get_assembled_streaming_response(
+        result=result,
+        start_time=datetime.datetime.now(),
+        end_time=datetime.datetime.now(),
+        is_async=True,
+        streaming_chunks=[],
+    )
+
+    assert assembled is response
+    assert assembled.usage["prompt_tokens"] == 7
+    assert assembled.usage["completion_tokens"] == 3
+    assert assembled.usage["total_tokens"] == 10
+
+
+def test_response_completed_event_builds_standard_logging_payload():
+    import datetime
+
+    logging_obj = _make_logging_obj(stream=True)
+    response = ResponsesAPIResponse(
+        id="resp-1",
+        created_at=0,
+        object="response",
+        output=[],
+        status="completed",
+        model="openai/codex-mini-latest",
+        usage=ResponseAPIUsage(input_tokens=7, output_tokens=3, total_tokens=10),
+    )
+    result = ResponseCompletedEvent(
+        type=ResponsesAPIStreamEvents.RESPONSE_COMPLETED,
+        response=response,
+    )
+
+    logging_obj.success_handler(
+        result=result,
+        start_time=datetime.datetime.now(),
+        end_time=datetime.datetime.now(),
+    )
+
+    assert logging_obj.model_call_details["standard_logging_object"] is not None
+
+
+@pytest.mark.parametrize("managed", [False, True])
+@pytest.mark.parametrize("function_name", [None, "_ageneric_api_call_with_fallbacks"])
+def test_managed_anthropic_oauth_attribution_survives_router_logging_and_spend(
+    logging_obj: LitellmLogging, managed: bool, function_name: str | None
+) -> None:
+    from datetime import datetime, timezone
+
+    from litellm.litellm_core_utils.litellm_logging import get_standard_logging_object_payload
+    from litellm.proxy.spend_tracking.spend_tracking_utils import get_logging_payload
+
+    router: Final = litellm.Router(model_list=[])
+    profile: Final = "accounting-profile"
+    deployment: Final = {
+        "model_name": "accounting-model",
+        "litellm_params": {
+            "model": "anthropic/unit-test-model",
+            "use_anthropic_oauth": managed,
+            "anthropic_auth_profile": profile,
+        },
+        "model_info": {"id": "accounting-deployment"},
+    }
+    request: Final = {
+        "metadata": {
+            "used_server_oauth_token": not managed,
+            "anthropic_auth_profile": "caller-profile",
+            "used_client_oauth_token": True,
+        },
+        "litellm_metadata": {
+            "used_server_oauth_token": not managed,
+            "anthropic_auth_profile": "caller-profile",
+            "used_client_oauth_token": True,
+        },
+    }
+    router._update_kwargs_with_deployment(deployment=deployment, kwargs=request, function_name=function_name)
+    logging_obj.update_from_kwargs(kwargs=request, litellm_params={"custom_llm_provider": "anthropic"})
+    kwargs: Final = {
+        "model": deployment["litellm_params"]["model"],
+        "custom_llm_provider": "anthropic",
+        "litellm_params": logging_obj.litellm_params,
+    }
+    now: Final = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    payload: Final = get_standard_logging_object_payload(
+        kwargs=kwargs,
+        init_response_obj={},
+        start_time=now,
+        end_time=now,
+        logging_obj=logging_obj,
+        status="success",
+    )
+    assert payload is not None
+    spend: Final = get_logging_payload(
+        kwargs={**kwargs, "standard_logging_object": payload}, response_obj={}, start_time=now, end_time=now
+    )
+    for metadata in (payload["metadata"], json.loads(spend["metadata"])):
+        assert metadata["used_server_oauth_token"] is managed
+        assert metadata["anthropic_auth_profile"] == (profile if managed else None)
+        assert metadata["used_client_oauth_token"] is (not managed)
 
 
 @pytest.fixture
@@ -9558,6 +11977,22 @@ def test_memory_luna_cache_hit_stays_free(memory_luna_router: litellm.Router) ->
     logging_obj._process_hidden_params_and_response_cost(response, now, now, build_logging_payload=False)
     assert logging_obj.model_call_details["response_cost"] == 0.0
     assert response._hidden_params["response_cost"] == 0.0
+
+
+def test_memory_luna_reads_changed_canonical_rates_for_same_logging_object(
+    memory_luna_router: litellm.Router,
+) -> None:
+    logging_obj: Final = _memory_luna_logging()
+    response: Final = ModelResponse(
+        model="qwen3.8-flash-next", usage=litellm.Usage(prompt_tokens=100, completion_tokens=20)
+    )
+    assert logging_obj.response_cost_calculator(response) == pytest.approx(100 * 1e-7 + 20 * 5e-7)
+    registered: Final = litellm.model_cost["memory-luna-canonical-test"]
+    litellm.register_model(
+        {"memory-luna-canonical-test": {**registered, "input_cost_per_token": 3e-7}},
+        persist_across_reloads=False,
+    )
+    assert logging_obj.response_cost_calculator(response) == pytest.approx(100 * 3e-7 + 20 * 5e-7)
 
 
 def test_memory_luna_original_body_overrides_fallback_metadata(memory_luna_router: litellm.Router) -> None:

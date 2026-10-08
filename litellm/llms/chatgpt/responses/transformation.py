@@ -11,8 +11,9 @@ import httpx
 
 from litellm.exceptions import AuthenticationError
 from litellm.litellm_core_utils.core_helpers import process_response_headers
+from litellm.litellm_core_utils.hidden_params import HIDDEN_PARAMS_ATTR, set_hidden_params
 from litellm.litellm_core_utils.llm_response_utils.convert_dict_to_response import (
-    _safe_convert_created_field,
+    safe_convert_created_field,
 )
 from litellm.llms.openai.common_utils import OpenAIError
 from litellm.llms.openai.responses.transformation import OpenAIResponsesAPIConfig
@@ -41,6 +42,8 @@ from ..common_utils import (
 if TYPE_CHECKING:
     from litellm.litellm_core_utils.litellm_logging import Logging as LiteLLMLoggingObj
 
+_CHATGPT_SERVICE_TIERS: Final = {"default": "default", "priority": "priority", "fast": "priority"}
+
 
 def _chatgpt_replay_item(item: object) -> object | None:
     if not isinstance(item, Mapping):
@@ -55,8 +58,9 @@ def _chatgpt_replay_item(item: object) -> object | None:
 
 
 class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
-    def __init__(self) -> None:
+    def __init__(self, authenticator: Authenticator | None = None) -> None:
         super().__init__()
+        self.authenticator = authenticator
 
     @property
     def custom_llm_provider(self) -> LlmProviders:
@@ -68,8 +72,11 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
         model: str,
         litellm_params: GenericLiteLLMParams | None,
     ) -> dict:
-        authenticator = Authenticator(  # rebind-ok: framework flow intentionally updates request or lifecycle state
-            litellm_params
+        authenticator: Final = (
+            self.authenticator
+            or Authenticator(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                litellm_params
+            )
         )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         try:
             access_token = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
@@ -161,11 +168,16 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
         request_items: Final = (
             (*request.items(), ("parallel_tool_calls", False)) if is_codex_responses_lite else request.items()
         )
-        return {  # mutable-ok: framework contract requires mutable request or response containers
+        filtered: Final = {
             key: value
             for key, value in request_items
             if key in allowed_keys or (is_codex_responses_lite and key == "parallel_tool_calls")
         }
+        requested_service_tier: Final[object] = request.get("service_tier")
+        service_tier: Final = (
+            _CHATGPT_SERVICE_TIERS.get(requested_service_tier) if isinstance(requested_service_tier, str) else None
+        )
+        return {**filtered, **({"service_tier": service_tier} if service_tier is not None else {})}
 
     def transform_response_api_response(
         self,
@@ -267,7 +279,7 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
         if not response_payload.get("output") and streamed_output_items:
             response_payload["output"] = [item for _, item in sorted(streamed_output_items.items())]
         if "created_at" in response_payload:
-            response_payload["created_at"] = _safe_convert_created_field(response_payload["created_at"])
+            response_payload["created_at"] = safe_convert_created_field(response_payload["created_at"])
         try:
             return ResponsesAPIResponse(**response_payload)
         except (TypeError, ValueError):
@@ -288,10 +300,13 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
     ) -> None:
         raw_headers: Final = dict(raw_response.headers)
         processed_headers: Final = process_response_headers(raw_headers)
-        if not hasattr(completed_response, "_hidden_params"):
-            setattr(completed_response, "_hidden_params", {})
-        completed_response._hidden_params["additional_headers"] = processed_headers
-        completed_response._hidden_params["headers"] = raw_headers
+        if not hasattr(completed_response, HIDDEN_PARAMS_ATTR):
+            set_hidden_params(completed_response, {})
+        hidden_params: Final = cast(  # cast-ok: preserve dynamic mapping behavior
+            dict[str, object], getattr(completed_response, HIDDEN_PARAMS_ATTR)
+        )
+        hidden_params["additional_headers"] = processed_headers
+        hidden_params["headers"] = raw_headers
 
     @staticmethod
     def _build_completed_response(
@@ -305,7 +320,7 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
             response_payload[
                 "created_at"
             ] = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
-                _safe_convert_created_field(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                safe_convert_created_field(  # rebind-ok: framework flow intentionally updates request or lifecycle state
                     response_payload["created_at"]
                 )
             )  # rebind-ok: framework flow intentionally updates request or lifecycle state
@@ -321,10 +336,13 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
     def get_complete_url(
         self,
         api_base: str | None,
-        litellm_params: dict,
+        litellm_params: object,
     ) -> str:
-        authenticator = Authenticator(  # rebind-ok: framework flow intentionally updates request or lifecycle state
-            litellm_params
+        authenticator: Final = (
+            self.authenticator
+            or Authenticator(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+                litellm_params
+            )
         )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         api_base = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
             api_base or authenticator.get_api_base() or CHATGPT_API_BASE

@@ -22,6 +22,8 @@ BACKEND_PATH_PREFIXES: tuple[str, ...] = (
     "/customer/",
     "/end_user/",
     "/sso/",
+    "/liteadmin/slack/connect/",
+    "/moyai/connect/",
     "/login",
     "/v2/login",
     "/v3/login",
@@ -65,6 +67,7 @@ BACKEND_PATH_PREFIXES: tuple[str, ...] = (
     "/v1/agents",
     "/agent/",
     "/v1/traces",
+    "/agent/daily/activity/",
     # Guardrails admin
     "/v2/guardrails/",
     "/guardrails/list",
@@ -98,8 +101,9 @@ BACKEND_PATH_PREFIXES: tuple[str, ...] = (
     # Spend / analytics
     "/spend/",
     "/analytics/",
-    "/engine/",
+    "/lens/",
     "/v1/traces",
+    "/v1/logs",
     "/global/",
     "/user_agent",
     "/usage/",
@@ -168,7 +172,7 @@ BACKEND_EXACT_PATHS: frozenset[str] = frozenset(
     {
         "/",
         "/routes",
-        "/engine",
+        "/lens",
         "/openapi.json",
         "/docs",
         "/docs/oauth2-redirect",
@@ -183,6 +187,7 @@ BACKEND_EXACT_PATHS: frozenset[str] = frozenset(
 
 BACKEND_MOUNT_PATHS: frozenset[str] = frozenset(
     {
+        "/admin",
         "/swagger",  # API documentation static assets belong to the backend
         "/mcp",  # lazily-mounted MCP sub-app serves on the backend component
     }

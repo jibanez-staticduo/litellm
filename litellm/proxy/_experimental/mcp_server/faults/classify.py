@@ -36,7 +36,7 @@ def _safe_text(response: httpx.Response) -> str:
 def _safe_json(response: httpx.Response) -> object:
     try:
         return response.json()
-    except Exception:
+    except (ValueError, RecursionError, httpx.ResponseNotRead):
         return None
 
 

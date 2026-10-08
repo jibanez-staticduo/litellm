@@ -232,6 +232,8 @@ class ResponsesToCompletionBridgeHandler:
         if custom_llm_provider == "chatgpt":
             request_data["stream"] = True
         request_data["model"] = _restore_routing_prefix(model, custom_llm_provider)
+        if kwargs.get("cache") is not None:
+            request_data["cache"] = kwargs["cache"]
         result: Final = responses(
             **request_data,
         )
@@ -355,6 +357,8 @@ class ResponsesToCompletionBridgeHandler:
         if custom_llm_provider == "chatgpt":
             request_data["stream"] = True
         request_data["model"] = _restore_routing_prefix(model, custom_llm_provider)
+        if kwargs.get("cache") is not None:
+            request_data["cache"] = kwargs["cache"]
         result: Final = await aresponses(
             **request_data,
             aresponses=True,

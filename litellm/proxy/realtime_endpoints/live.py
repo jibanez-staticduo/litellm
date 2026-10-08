@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException, Request, Response, WebSocket, WebS
 from pydantic import BaseModel, Field, JsonValue, TypeAdapter
 from starlette.types import Message
 
+from litellm._internal_context import with_service_target
 from litellm._logging import verbose_proxy_logger
 
 if TYPE_CHECKING:
@@ -46,6 +47,7 @@ from litellm.proxy.auth.auth_checks import (
 from litellm.proxy.auth.user_api_key_auth import get_websocket_api_key, user_api_key_auth
 from litellm.proxy.common_utils.encrypt_decrypt_utils import decrypt_value_helper, encrypt_value_helper
 from litellm.proxy.common_utils.user_api_key_cache import (
+    AUTH_OBJECTS_TARGET,
     get_management_object_ttl,
     live_model_access_group_limits_cache_key,
 )
@@ -715,6 +717,7 @@ async def _live_team_membership(auth: UserAPIKeyAuth) -> object | None:
     )
 
 
+@with_service_target(AUTH_OBJECTS_TARGET)
 async def _live_cached_object(
     *,
     key: str,
@@ -873,6 +876,7 @@ def _live_group_limits(row: object) -> LiteLLM_BudgetTable:
     )
 
 
+@with_service_target(AUTH_OBJECTS_TARGET)
 async def _live_fetch_group_limits(groups: tuple[str, ...]) -> tuple[LiteLLM_BudgetTable, ...]:
     """Fetch the linked budget of each group in chunked queries and cache one entry per group."""
     if not groups:
@@ -914,6 +918,7 @@ async def _live_fetch_group_limits(groups: tuple[str, ...]) -> tuple[LiteLLM_Bud
     return limits
 
 
+@with_service_target(AUTH_OBJECTS_TARGET)
 async def _live_model_group_limits(groups: tuple[str, ...]) -> tuple[LiteLLM_BudgetTable, ...]:
     """One cached budget entry per group, served from a single row batch on a cold miss."""
     from litellm.proxy import proxy_server as server

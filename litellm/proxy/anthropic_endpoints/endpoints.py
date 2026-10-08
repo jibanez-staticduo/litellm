@@ -40,7 +40,10 @@ from litellm.proxy.common_request_processing import (
     resolve_litellm_call_id,
 )
 from litellm.proxy.common_utils.error_body_call_id import error_body_call_id
-from litellm.proxy.common_utils.http_parsing_utils import _read_request_body
+from litellm.proxy.common_utils.http_parsing_utils import (  # noqa: F401  # legacy module exports
+    _read_request_body,  # pyright: ignore[reportPrivateUsage,reportUnusedImport]  # backwards-compatible package export
+    read_request_body,
+)
 from litellm.proxy.common_utils.openai_error_payload import (
     LITELLM_CALL_ID_HEADER,
     error_status_code,
@@ -306,7 +309,7 @@ async def anthropic_response(
         version,
     )
 
-    data: Final = await _read_request_body(request=request)
+    data: Final = await read_request_body(request=request)
     data["anthropic_native_request_body"] = _NATIVE_COUNT_BODY.validate_python(
         MappingProxyType({key: value for key, value in data.items() if key != "anthropic_native_request_body"})
     )
@@ -483,7 +486,7 @@ async def count_tokens(
 
     litellm_call_id: Final = resolve_litellm_call_id(request.headers.get("x-litellm-call-id"))
     try:
-        request_data: Final = await _read_request_body(request=request)
+        request_data: Final = await read_request_body(request=request)
         native_data: Final = _NATIVE_COUNT_BODY.validate_python(request_data)
         if not native_data.get("model"):
             raise HTTPException(

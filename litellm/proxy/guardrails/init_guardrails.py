@@ -1,4 +1,4 @@
-from typing import Any, Final, cast
+from typing import Final, cast
 
 import litellm
 from litellm import Router
@@ -6,7 +6,7 @@ from litellm._logging import verbose_proxy_logger
 from litellm.proxy.common_utils.callback_utils import initialize_callbacks_on_proxy
 
 # v2 implementation
-from litellm.types.guardrails import Guardrail, GuardrailItem, GuardrailItemSpec
+from litellm.types.guardrails import Guardrail, GuardrailItem, GuardrailItemSpec, LitellmParams
 
 all_guardrails: list[GuardrailItem] = []
 
@@ -69,7 +69,7 @@ def _populate_router_guardrail_list(guardrail_list: list[Guardrail]) -> None:
     for guardrail in guardrail_list:
         guardrail_id = guardrail.get("guardrail_id")
         guardrail_name = guardrail.get("guardrail_name")
-        litellm_params: Any = guardrail.get("litellm_params", {})
+        litellm_params = guardrail.get("litellm_params", {})
 
         # Get the callback instance from the registry
         callback = None
@@ -77,7 +77,7 @@ def _populate_router_guardrail_list(guardrail_list: list[Guardrail]) -> None:
             callback = IN_MEMORY_GUARDRAIL_HANDLER.guardrail_id_to_custom_guardrail.get(guardrail_id)
 
         # Build litellm_params dict for the router
-        params_dict = litellm_params.model_dump() if hasattr(litellm_params, "model_dump") else dict(litellm_params)
+        params_dict = litellm_params.model_dump() if isinstance(litellm_params, LitellmParams) else dict(litellm_params)
 
         router_guardrail: GuardrailTypedDict = GuardrailTypedDict(
             guardrail_name=guardrail_name or "",

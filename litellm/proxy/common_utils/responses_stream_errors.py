@@ -9,10 +9,11 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from litellm._logging import redact_internal_details_from_client_message
 from litellm._uuid import uuid
 from litellm.exceptions import MidStreamFallbackError
+from litellm.types.llms.base import LiteLLMBaseModel
 from litellm.types.llms.openai import ResponseFailedEvent, ResponsesAPIResponse, ResponsesAPIStreamEvents
 
 
-class _ResponseIdentity(BaseModel):
+class _ResponseIdentity(LiteLLMBaseModel):
     model_config = ConfigDict(frozen=True, from_attributes=True)
 
     id: str | None = None
@@ -20,7 +21,7 @@ class _ResponseIdentity(BaseModel):
     created_at: int | None = None
 
 
-class _StreamEvent(BaseModel):
+class _StreamEvent(LiteLLMBaseModel):
     model_config = ConfigDict(frozen=True, from_attributes=True)
 
     type: str | None = None
@@ -28,7 +29,7 @@ class _StreamEvent(BaseModel):
     response: _ResponseIdentity | None = None
 
 
-class _FailureDetails(BaseModel):
+class _FailureDetails(LiteLLMBaseModel):
     model_config = ConfigDict(frozen=True, from_attributes=True)
 
     message: str | None = None
@@ -60,7 +61,9 @@ def _original_failure(exception: Exception) -> Exception:
 
 
 def _failure_details(original: Exception) -> _FailureDetails:
-    mapped: Final = _FailureDetails.model_validate(original)
+    mapped: Final = _FailureDetails.model_validate(
+        MappingProxyType({field: getattr(original, field, None) for field in _FailureDetails.model_fields})
+    )
     body: Final = getattr(original, "body", None)
     if not isinstance(body, Mapping):
         return mapped

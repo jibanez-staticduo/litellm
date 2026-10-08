@@ -9,7 +9,7 @@ from functools import reduce
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Final, Literal, Protocol, cast, runtime_checkable
 
-from pydantic import BaseModel, JsonValue
+from pydantic import BaseModel, JsonValue, TypeAdapter
 
 import litellm
 from litellm._logging import verbose_proxy_logger
@@ -87,7 +87,7 @@ def _get_max_string_length_prompt_in_db() -> int:
         return DEFAULT_MAX_STRING_LENGTH_PROMPT_IN_DB
 
 
-def _is_master_key(api_key: str | None, _master_key: str | None) -> bool:
+def is_master_key(api_key: str | None, _master_key: str | None) -> bool:
     """
     Raw-only constant-time master-key comparison. The hashed form is never
     considered equivalent — only the raw master-key string matches.
@@ -95,6 +95,9 @@ def _is_master_key(api_key: str | None, _master_key: str | None) -> bool:
     if _master_key is None or api_key is None:
         return False
     return secrets.compare_digest(api_key, _master_key)
+
+
+_is_master_key: Final = is_master_key
 
 
 _HASHED_JWT_RE = re.compile(r"hashed-jwt-[a-fA-F0-9]{64}")
@@ -161,6 +164,7 @@ _STAMPED_METADATA_KEYS: Final = frozenset(
         "used_client_oauth_token",
         "used_server_oauth_token",
         "anthropic_auth_profile",
+        "litellm_roi_estimator",
     )
 )
 
@@ -216,6 +220,7 @@ def _get_spend_logs_metadata(
             usage_object=None,
             guardrail_information=None,
             internal_call_origin=None,
+            litellm_roi_estimator=False,
             eval_information=None,
             cold_storage_object_key=cold_storage_object_key,
             litellm_overhead_time_ms=None,
@@ -253,6 +258,7 @@ def _get_spend_logs_metadata(
         used_client_oauth_token=used_client_oauth_token,
         used_server_oauth_token=used_server_oauth_token,
         anthropic_auth_profile=anthropic_auth_profile,
+        litellm_roi_estimator=metadata.get("litellm_roi_estimator") is True,
     )
     _raw_key: Final = clean_metadata.get("user_api_key")
     _trusted_hash: Final = metadata.get("user_api_key_hash")
@@ -1113,53 +1119,78 @@ def _get_messages_for_spend_logs_payload(
 _SENSITIVE_REQUEST_BODY_KEYS: Final = frozenset({"secret_fields"})
 _MAX_SPEND_PAYLOAD_DEPTH: Final = 32
 _REQUEST_BODY_CREDENTIAL_MASKER: Final = SensitiveDataMasker(extra_sensitive_patterns=frozenset({"apikey"}))
+_TOOL_INPUT_BLOCK_TYPES: Final = frozenset({"tool_use", "server_tool_use", "mcp_tool_use"})
+_TOOL_OUTPUT_BLOCK_TYPES: Final = frozenset({"tool_result", "mcp_tool_result", "function_call_output"})
+_SPEND_OBJECT_MAPPING: Final = TypeAdapter(Mapping[object, object])
+_SPEND_OBJECT_SEQUENCE: Final = TypeAdapter(Sequence[object])
+_SPEND_SANITIZED_MAPPING: Final = TypeAdapter(Mapping[str, object])
 
 
 def _is_request_body_credential(key: str, value: object) -> bool:
     return isinstance(value, str) and _REQUEST_BODY_CREDENTIAL_MASKER.is_sensitive_key(key)
 
 
+def _is_spend_log_content(parent: Mapping[object, object], key: str) -> bool:
+    block_type: Final = parent.get("type")
+    block_type_name: Final = block_type if isinstance(block_type, str) else None
+    return (
+        key in ("arguments", "logprobs")
+        or (key == "input" and block_type_name in _TOOL_INPUT_BLOCK_TYPES)
+        or (
+            key in ("content", "output")
+            and (block_type_name in _TOOL_OUTPUT_BLOCK_TYPES or parent.get("role") == "tool")
+        )
+    )
+
+
 def _sanitize_request_body_for_spend_logs_payload(
     request_body: Mapping[str, object],
-    visited: set | None = None,
+    visited: set[int] | None = None,
     max_string_length_prompt_in_db: int | None = None,
-) -> dict:
+    mask_credentials: bool = True,
+) -> dict[str, object]:
     """
     Recursively sanitize request body to prevent logging large base64 strings or other large values.
     Truncates strings longer than MAX_STRING_LENGTH_PROMPT_IN_DB characters and handles nested dictionaries.
 
     At every nesting level, also strips keys listed in _SENSITIVE_REQUEST_BODY_KEYS (e.g. secret_fields,
     which holds raw HTTP headers including Authorization tokens), and replaces string values under keys
-    SensitiveDataMasker classifies as credentials with REDACTED_BY_LITELM_STRING.
+    SensitiveDataMasker classifies as credentials with REDACTED_BY_LITELM_STRING, except inside tool payloads
+    and logprobs.
     """
     from litellm.constants import (
         LITELLM_TRUNCATED_PAYLOAD_FIELD,
         LITELLM_TRUNCATION_DB_SAFEGUARD_NOTE,
     )
 
-    seen: Final = visited if visited is not None else set()
+    seen: Final = visited if visited is not None else set[int]()
     serialized_models: Final[list[object]] = []
     if max_string_length_prompt_in_db is None:
         max_string_length_prompt_in_db = _get_max_string_length_prompt_in_db()
 
-    def _sanitize_value(value: object, depth: int) -> object:
+    def _sanitize_value(value: object, depth: int, mask_credentials: bool) -> object:
+        identity: Final = id(value)
         if isinstance(value, (Mapping, list, tuple, BaseModel)):
-            if id(value) in seen or depth >= _MAX_SPEND_PAYLOAD_DEPTH:
+            if identity in seen or depth >= _MAX_SPEND_PAYLOAD_DEPTH:
                 return [] if isinstance(value, (list, tuple)) else {}
-            seen.add(id(value))
+            seen.add(identity)
             if isinstance(value, Mapping):
+                mapped: Final = _SPEND_OBJECT_MAPPING.validate_python(value)
                 return {
-                    k: REDACTED_BY_LITELM_STRING if _is_request_body_credential(k, v) else _sanitize_value(v, depth + 1)
-                    for k, v in value.items()
+                    k: REDACTED_BY_LITELM_STRING
+                    if mask_credentials and _is_request_body_credential(k, v)
+                    else _sanitize_value(v, depth + 1, mask_credentials and not _is_spend_log_content(mapped, k))
+                    for k, v in mapped.items()
                     if isinstance(k, str) and k not in _SENSITIVE_REQUEST_BODY_KEYS
                 }
             if isinstance(value, (list, tuple)):
-                return [_sanitize_value(item, depth + 1) for item in value]
+                sequence: Final = _SPEND_OBJECT_SEQUENCE.validate_python(value)
+                return [_sanitize_value(item, depth + 1, mask_credentials) for item in sequence]
             try:
                 dumped: Final = value.model_dump()
                 # Keep temporary dumps alive while their identities remain in seen.
                 serialized_models.append(dumped)
-                return _sanitize_value(dumped, depth + 1)
+                return _sanitize_value(dumped, depth + 1, mask_credentials)
             except (ValueError, TypeError, RecursionError):
                 return {}
         elif isinstance(value, str):
@@ -1198,9 +1229,8 @@ def _sanitize_request_body_for_spend_logs_payload(
             return value.isoformat()
         return value if value is None or isinstance(value, (bool, int, float)) else None
 
-    return cast(  # cast-ok: dict root stays a dict after sanitization
-        dict, _sanitize_value(request_body, 0)
-    )
+    sanitized: Final = _SPEND_SANITIZED_MAPPING.validate_python(_sanitize_value(request_body, 0, mask_credentials))
+    return dict(sanitized)
 
 
 # Quoted-key form: ``"input"`` / ``'messages'`` / ``"prompt"`` followed by
@@ -1414,7 +1444,7 @@ def _redact_prompt_fields_in_guardrail_entry(
     return {**redacted, "guardrail_response": preserved_stats}
 
 
-def _sanitize_error_information_for_spend_logs(
+def sanitize_error_information_for_spend_logs(
     error_information: StandardLoggingPayloadErrorInformation | None,
     original_exception: BaseException | None = None,
 ) -> StandardLoggingPayloadErrorInformation | None:
@@ -1453,6 +1483,9 @@ def _sanitize_error_information_for_spend_logs(
 
     sanitized = _sanitize_request_body_for_spend_logs_payload(sanitized)
     return cast(StandardLoggingPayloadErrorInformation, sanitized)
+
+
+_sanitize_error_information_for_spend_logs: Final = sanitize_error_information_for_spend_logs
 
 
 def _convert_to_json_serializable_dict(obj: object, visited: set[int] | None = None, max_depth: int = 20) -> object:

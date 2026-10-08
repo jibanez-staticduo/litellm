@@ -6,12 +6,12 @@ ARG LITELLM_BUILD_IMAGE=cgr.dev/chainguard/wolfi-base@sha256:1d95114038f76513a9a
 # Runtime image
 ARG LITELLM_RUNTIME_IMAGE=cgr.dev/chainguard/wolfi-base@sha256:1d95114038f76513a9ace6fca107d5582b08c65981f81f61cb56bf7fd2ef216d
 ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.11.26@sha256:3d868e555f8f1dbc324afa005066cd11e1053fc4743b9808ca8025283e65efa5
-ARG RUST_TOOLCHAIN_IMAGE=docker.io/library/rust:1.97.1-slim-bookworm@sha256:2775a09d208ff0d7c1f50490c45b62db929e87ba1dcbc3f2132ac71a704bcdd3
+ARG RUST_TOOLCHAIN_IMAGE=docker.io/library/rust:1.98.0-slim-bookworm@sha256:1469a27c125cb5a3aebfa4f4e4665d935b02fb72cc093b2c974b3d740e43f157
 # Pinned by digest like the other base images; bump explicitly on Node upgrades.
 ARG UI_BUILD_IMAGE=node:24.19-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43
 # Checksum from https://www.pgbouncer.org/downloads/ (the Wolfi repo only carries 1.24.x)
-ARG PGBOUNCER_VERSION=1.25.2
-ARG PGBOUNCER_SHA256=924ad35113fd0a71c8e2dbe85b5d03445532e2b7b37a9f8a48983beea238b332
+ARG PGBOUNCER_VERSION=1.26.0
+ARG PGBOUNCER_SHA256=afd25dd61ee6775d37b40629b87ce08736b3e6955f3057bb212e410fbf21c71d
 
 FROM $UV_IMAGE AS uvbin
 
@@ -84,14 +84,14 @@ RUN case "$TARGETARCH" in \
     esac && \
     rustc_version="$(rustc -vV)" && \
     test "$(printf '%s\n' "$rustc_version" | grep -c '^release: ')" -eq 1 && \
-    test "$(printf '%s\n' "$rustc_version" | grep -Fxc 'release: 1.97.1')" -eq 1 && \
+    test "$(printf '%s\n' "$rustc_version" | grep -Fxc 'release: 1.98.0')" -eq 1 && \
     test "$(printf '%s\n' "$rustc_version" | grep -c '^commit-hash: ')" -eq 1 && \
-    test "$(printf '%s\n' "$rustc_version" | grep -Fxc 'commit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452')" -eq 1 && \
+    test "$(printf '%s\n' "$rustc_version" | grep -Fxc 'commit-hash: 88d9e12ae178fab0fb5cc050a94da85685d449ea')" -eq 1 && \
     test "$(printf '%s\n' "$rustc_version" | grep -c '^host: ')" -eq 1 && \
     test "$(printf '%s\n' "$rustc_version" | grep -Fxc "host: ${expected_arch}-unknown-linux-gnu")" -eq 1 && \
     test "$(printf '%s\n' "$rustc_version" | grep -c '^LLVM version: ')" -eq 1 && \
-    test "$(printf '%s\n' "$rustc_version" | grep -Fxc 'LLVM version: 22.1.6')" -eq 1 && \
-    cargo --version | grep -Eq '^cargo 1\.97\.1 ' && \
+    test "$(printf '%s\n' "$rustc_version" | grep -Fxc 'LLVM version: 22.1.8')" -eq 1 && \
+    cargo --version | grep -Eq '^cargo 1\.98\.0 ' && \
     test ! -e /usr/lib/libLLVM.so.22.1 && \
     test ! -L /usr/lib/libLLVM.so.22.1
 
@@ -121,6 +121,7 @@ RUN uv --version | grep -Eq '^uv 0\.11\.26 ' && \
 RUN uv sync --frozen --no-install-project --no-install-workspace --no-default-groups --no-editable \
     --extra proxy \
     --extra proxy-runtime \
+    --group admin-mcp \
     --extra extra_proxy \
     --extra semantic-router \
     --extra saml \
@@ -143,6 +144,7 @@ RUN sed -i 's/\r$//' docker/build_admin_ui.sh && chmod +x docker/build_admin_ui.
 RUN uv sync --frozen --no-default-groups --no-editable \
     --extra proxy \
     --extra proxy-runtime \
+    --group admin-mcp \
     --extra extra_proxy \
     --extra semantic-router \
     --extra saml \
@@ -158,8 +160,20 @@ RUN uv cache clean && test ! -d /root/.cache/uv/archive-v0 && test ! -d /root/.c
 RUN sed -i 's/\r$//' docker/entrypoint.sh && chmod +x docker/entrypoint.sh && \
     sed -i 's/\r$//' docker/prod_entrypoint.sh && chmod +x docker/prod_entrypoint.sh
 
+FROM $LITELLM_BUILD_IMAGE AS liteadmin-builder
+COPY --from=uvbin /uv /usr/local/bin/uv
+RUN apk add --no-cache python-3.13
+ADD --checksum=sha256:2f7ae5cdd9d91731c0990e74a58239dc3e3fd2bf28dab23b55eafcdc47aaf87e \
+    https://github.com/BerriAI/litellm-admin-agent/archive/ef501e94bc9fbacb9233b922abf71427f030408c.tar.gz /tmp/liteadmin.tar.gz
+RUN mkdir /tmp/liteadmin && tar xzf /tmp/liteadmin.tar.gz --strip-components=1 -C /tmp/liteadmin && \
+    uv venv /opt/liteadmin --python python3.13 && \
+    uv pip install --python /opt/liteadmin/bin/python --require-hashes -r /tmp/liteadmin/requirements.txt && \
+    uv pip install --python /opt/liteadmin/bin/python --no-deps /tmp/liteadmin
+
 # Runtime stage
 FROM $LITELLM_RUNTIME_IMAGE AS runtime
+ARG LITELLM_RELEASE_TAG=""
+ENV LITELLM_RELEASE_TAG=${LITELLM_RELEASE_TAG}
 
 USER root
 
@@ -185,6 +199,7 @@ ENV PATH="/app/.venv/bin:${PATH}" \
 # ship (manifest-scanning tools attribute everything in it to this image).
 # entrypoint.sh invokes litellm/proxy/prisma_migration.py by source path.
 COPY --from=builder /app/.venv /app/.venv
+COPY --from=liteadmin-builder /opt/liteadmin /opt/liteadmin
 COPY --from=builder /app/docker /app/docker
 COPY --from=builder /app/schema.prisma /app/schema.prisma
 COPY --from=builder /app/litellm/proxy/prisma_migration.py /app/litellm/proxy/prisma_migration.py

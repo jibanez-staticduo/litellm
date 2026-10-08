@@ -124,3 +124,21 @@ def test_chat_and_messages_select_native_auth_and_url_before_api_or_oauth_resolu
     assert messages_headers == connection.headers
     assert base == connection.api_base
     assert url == connection.url()
+
+
+@pytest.mark.asyncio
+async def test_async_messages_selects_native_identity_before_api_or_federation_resolution() -> None:
+    params: Final = dict(_PARAMS)
+    with patch.dict("os.environ", {**_ENVIRONMENT, "ANTHROPIC_API_KEY": "global-api-key"}):
+        connection: Final = native_sdk_connection(params)
+        headers, base = await AnthropicMessagesConfig().avalidate_anthropic_messages_environment(
+            headers={"authorization": "Bearer caller-token"},
+            model="claude-test",
+            messages=[],
+            optional_params={},
+            litellm_params=params,
+            api_key="caller-key",
+            api_base="https://api.anthropic.com",
+        )
+    assert headers == connection.headers
+    assert base == connection.api_base

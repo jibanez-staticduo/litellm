@@ -7,6 +7,7 @@ Source: litellm/llms/chatgpt/responses/transformation.py
 import json
 from copy import deepcopy
 from collections.abc import Generator
+from typing import Final
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -225,8 +226,52 @@ class TestChatGPTResponsesAPITransformation:
         serialize_history.assert_not_called()
 
     @pytest.mark.parametrize(
+        ("requested_tier", "expected_tier"),
+        [("default", "default"), ("priority", "priority"), ("fast", "priority")],
+    )
+    @pytest.mark.parametrize("effort", ["low", "high"])
+    def test_chatgpt_preserves_service_tier(self, requested_tier: str, expected_tier: str, effort: str) -> None:
+        config: Final = ChatGPTResponsesAPIConfig()
+        request: Final = config.transform_responses_api_request(
+            model="chatgpt/gpt-6.1-sol",
+            input=[{"role": "user", "content": "Reply with OK"}],
+            response_api_optional_request_params={
+                "service_tier": requested_tier,
+                "reasoning": {"effort": effort},
+                "max_output_tokens": 16,
+                "prompt_cache_options": {"ttl": "30m"},
+            },
+            litellm_params=GenericLiteLLMParams(),
+            headers={},
+        )
+
+        assert request["service_tier"] == expected_tier
+        assert request["reasoning"] == {"effort": effort}
+        assert request["stream"] is True
+        assert request["store"] is False
+        assert "max_output_tokens" not in request
+        assert "prompt_cache_options" not in request
+
+    @pytest.mark.parametrize("requested_tier", [None, "auto", "flex", "unknown"])
+    def test_chatgpt_does_not_introduce_unsupported_service_tier(self, requested_tier: str | None) -> None:
+        config: Final = ChatGPTResponsesAPIConfig()
+        request: Final = config.transform_responses_api_request(
+            model="chatgpt/gpt-6.1-sol",
+            input=[{"role": "user", "content": "Reply with OK"}],
+            response_api_optional_request_params={} if requested_tier is None else {"service_tier": requested_tier},
+            litellm_params=GenericLiteLLMParams(),
+            headers={},
+        )
+
+        assert "service_tier" not in request
+
+    @pytest.mark.parametrize(
         "model_name",
         [
+            "chatgpt/gpt-6-sol",
+            "chatgpt/gpt-6-luna",
+            "chatgpt/gpt-6-astra",
+            "chatgpt/gpt-6.1-sol",
             "chatgpt/gpt-5.5",
             "chatgpt/gpt-5.6-luna",
             "chatgpt/gpt-5.6-sol",
@@ -249,10 +294,13 @@ class TestChatGPTResponsesAPITransformation:
         assert isinstance(config, ChatGPTResponsesAPIConfig)
         assert config.custom_llm_provider == LlmProviders.CHATGPT
 
-
     @pytest.mark.parametrize(
         "model_name",
         [
+            "gpt-6-sol",
+            "gpt-6-luna",
+            "gpt-6-astra",
+            "gpt-6.1-sol",
             "gpt-5.5",
             "gpt-5.6-luna",
             "gpt-5.6-sol",
@@ -264,7 +312,7 @@ class TestChatGPTResponsesAPITransformation:
     ) -> None:
         """A chat completions request for these models must take the Responses bridge.
 
-        `gpt-5.6-*` also exists as an openai chat model, so an unregistered
+        These models also exist as openai chat models, so an unregistered
         chatgpt model resolves to mode "chat" here and never reaches the bridge.
         """
         model_info, resolved_model = responses_api_bridge_check(

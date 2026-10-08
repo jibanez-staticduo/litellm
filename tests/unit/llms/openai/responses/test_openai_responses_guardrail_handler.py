@@ -6,20 +6,24 @@ with guardrail transformations.
 """
 
 import copy
-import logging
+import json
 from collections.abc import Callable
-from typing import Any, Final, Literal
+from typing import Any, Final, List, Literal, Optional, Tuple
 from unittest.mock import MagicMock, patch
 
+import logging
+
 import pytest
+
+
 from fastapi import HTTPException
+from pydantic import BaseModel
 from openai.types.responses import (
     ResponseCustomToolCall,
     ResponseCustomToolCallInputDeltaEvent,
     ResponseCustomToolCallInputDoneEvent,
     ResponseFunctionToolCall,
 )
-from pydantic import BaseModel
 
 from litellm.integrations.custom_guardrail import CustomGuardrail
 from litellm.litellm_core_utils.litellm_logging import Logging as LiteLLMLoggingObj
@@ -29,10 +33,11 @@ from litellm.llms.openai.responses.guardrail_translation.handler import (
 )
 from litellm.llms.openai.responses.guardrail_translation.tool_merge import merge_guardrailed_tools
 from litellm.proxy.guardrails.guardrail_hooks.generic_guardrail_api import GenericGuardrailAPI
+from litellm.types.llms.openai import ChatCompletionToolCallChunk
 from litellm.responses.litellm_completion_transformation.transformation import (
     LiteLLMCompletionResponsesConfig,
 )
-from litellm.types.llms.openai import ChatCompletionToolCallChunk, ResponsesAPIResponse
+from litellm.types.llms.openai import ResponsesAPIResponse
 from litellm.types.responses.main import CustomToolCallOutputItem, GenericResponseOutputItem, OutputText
 from litellm.types.utils import CallTypes, GenericGuardrailAPIInputs
 
@@ -45,7 +50,7 @@ class MockGuardrail(CustomGuardrail):
         inputs: GenericGuardrailAPIInputs,
         request_data: dict,
         input_type: Literal["request", "response"],
-        logging_obj: Any | None = None,
+        logging_obj: Optional[Any] = None,
     ) -> GenericGuardrailAPIInputs:
         """
         For requests: Append [GUARDRAILED] to text
@@ -118,7 +123,7 @@ class PersimmonMaskingGuardrail(CustomGuardrail):
         inputs: GenericGuardrailAPIInputs,
         request_data: dict,
         input_type: Literal["request", "response"],
-        logging_obj: LiteLLMLoggingObj | None = None,
+        logging_obj: Optional[LiteLLMLoggingObj] = None,
     ) -> GenericGuardrailAPIInputs:
         tool_calls = [
             {
@@ -139,7 +144,7 @@ class FlatShapeGuardrail(CustomGuardrail):
         inputs: GenericGuardrailAPIInputs,
         request_data: dict,
         input_type: Literal["request", "response"],
-        logging_obj: LiteLLMLoggingObj | None = None,
+        logging_obj: Optional[LiteLLMLoggingObj] = None,
     ) -> GenericGuardrailAPIInputs:
         flat_tool_calls = [{"name": "exec", "input": "rm -rf /"} for _ in inputs.get("tool_calls", [])]
         return {**inputs, "tool_calls": flat_tool_calls}
@@ -151,7 +156,7 @@ class DroppingGuardrail(CustomGuardrail):
         inputs: GenericGuardrailAPIInputs,
         request_data: dict,
         input_type: Literal["request", "response"],
-        logging_obj: LiteLLMLoggingObj | None = None,
+        logging_obj: Optional[LiteLLMLoggingObj] = None,
     ) -> GenericGuardrailAPIInputs:
         return {**inputs, "tool_calls": []}
 
@@ -869,10 +874,10 @@ class TestOpenAIResponsesHandlerToolCallExtraction:
             status="completed",
         )
 
-        texts_to_check: list[str] = []
-        images_to_check: list[str] = []
-        tool_calls_to_check: list[ChatCompletionToolCallChunk] = []
-        task_mappings: list[tuple[int, int]] = []
+        texts_to_check: List[str] = []
+        images_to_check: List[str] = []
+        tool_calls_to_check: List[ChatCompletionToolCallChunk] = []
+        task_mappings: List[Tuple[int, int]] = []
 
         # Extract tool calls
         handler._extract_output_text_and_images(
@@ -893,7 +898,10 @@ class TestOpenAIResponsesHandlerToolCallExtraction:
         assert tool_call["id"] == "call_4SjsMeA6DUHwGKaE87ZojgOF"
         assert tool_call["type"] == "function"
         assert tool_call["function"]["name"] == "get_current_weather"
-        assert tool_call["function"]["arguments"] == '{"location":"Boston, MA","unit":"celsius"}'
+        assert (
+            tool_call["function"]["arguments"]
+            == '{"location":"Boston, MA","unit":"celsius"}'
+        )
         assert tool_call["index"] == 0
 
     def test_extract_tool_call_from_dict_format(self):
@@ -910,10 +918,10 @@ class TestOpenAIResponsesHandlerToolCallExtraction:
             "status": "completed",
         }
 
-        texts_to_check: list[str] = []
-        images_to_check: list[str] = []
-        tool_calls_to_check: list[Any] = []
-        task_mappings: list[tuple[int, int]] = []
+        texts_to_check: List[str] = []
+        images_to_check: List[str] = []
+        tool_calls_to_check: List[Any] = []
+        task_mappings: List[Tuple[int, int]] = []
 
         # Extract tool calls
         handler._extract_output_text_and_images(
@@ -934,7 +942,10 @@ class TestOpenAIResponsesHandlerToolCallExtraction:
         assert tool_call["id"] == "call_4SjsMeA6DUHwGKaE87ZojgOF"
         assert tool_call["type"] == "function"
         assert tool_call["function"]["name"] == "get_current_weather"
-        assert tool_call["function"]["arguments"] == '{"location":"Boston, MA","unit":"celsius"}'
+        assert (
+            tool_call["function"]["arguments"]
+            == '{"location":"Boston, MA","unit":"celsius"}'
+        )
 
     @pytest.mark.parametrize(
         "output_item",
@@ -947,8 +958,8 @@ class TestOpenAIResponsesHandlerToolCallExtraction:
     )
     def test_extract_custom_tool_call_input_as_arguments(self, output_item):
         handler = OpenAIResponsesHandler()
-        texts_to_check: list[str] = []
-        tool_calls_to_check: list[Any] = []
+        texts_to_check: List[str] = []
+        tool_calls_to_check: List[Any] = []
 
         handler._extract_output_text_and_images(
             output_item=output_item,
@@ -1090,10 +1101,10 @@ class TestOpenAIResponsesHandlerToolCallExtraction:
         handler = OpenAIResponsesHandler()
 
         # Create a response with both text and tool call outputs
-        texts_to_check: list[str] = []
-        images_to_check: list[str] = []
-        tool_calls_to_check: list[Any] = []
-        task_mappings: list[tuple[int, int]] = []
+        texts_to_check: List[str] = []
+        images_to_check: List[str] = []
+        tool_calls_to_check: List[Any] = []
+        task_mappings: List[Tuple[int, int]] = []
 
         # First extract from a message output
         text_output = {
@@ -1165,10 +1176,10 @@ class TestOpenAIResponsesHandlerToolCallExtraction:
             ],
         )
 
-        texts_to_check: list[str] = []
-        images_to_check: list[str] = []
-        tool_calls_to_check: list[Any] = []
-        task_mappings: list[tuple[int, int]] = []
+        texts_to_check: List[str] = []
+        images_to_check: List[str] = []
+        tool_calls_to_check: List[Any] = []
+        task_mappings: List[Tuple[int, int]] = []
 
         # Extract text from the BaseModel instance
         handler._extract_output_text_and_images(
@@ -1220,10 +1231,10 @@ class TestOpenAIResponsesHandlerToolCallExtraction:
             ],
         )
 
-        texts_to_check: list[str] = []
-        images_to_check: list[str] = []
-        tool_calls_to_check: list[Any] = []
-        task_mappings: list[tuple[int, int]] = []
+        texts_to_check: List[str] = []
+        images_to_check: List[str] = []
+        tool_calls_to_check: List[Any] = []
+        task_mappings: List[Tuple[int, int]] = []
 
         # Extract all text items
         handler._extract_output_text_and_images(
@@ -1254,7 +1265,7 @@ class MockPassThroughGuardrail(CustomGuardrail):
         inputs: GenericGuardrailAPIInputs,
         request_data: dict,
         input_type: Literal["request", "response"],
-        logging_obj: Any | None = None,
+        logging_obj: Optional[Any] = None,
     ) -> GenericGuardrailAPIInputs:
         """Simply return inputs unchanged"""
         return inputs
@@ -1265,14 +1276,14 @@ class MockRecordingGuardrail(MockPassThroughGuardrail):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.seen_inputs: list[GenericGuardrailAPIInputs] = []
+        self.seen_inputs: List[GenericGuardrailAPIInputs] = []
 
     async def apply_guardrail(
         self,
         inputs: GenericGuardrailAPIInputs,
         request_data: dict,
         input_type: Literal["request", "response"],
-        logging_obj: Any | None = None,
+        logging_obj: Optional[Any] = None,
     ) -> GenericGuardrailAPIInputs:
         self.seen_inputs.append(inputs)
         return inputs
@@ -1467,10 +1478,12 @@ class TestOpenAIResponsesHandlerStreamingOutputProcessing:
                 inputs: GenericGuardrailAPIInputs,
                 request_data: dict,
                 input_type: Literal["request", "response"],
-                logging_obj: Any | None = None,
+                logging_obj: Optional[Any] = None,
             ) -> GenericGuardrailAPIInputs:
                 texts = inputs.get("texts", [])
-                inputs["texts"] = [t.replace("<TOKEN_1>", "john@example.com") for t in texts]
+                inputs["texts"] = [
+                    t.replace("<TOKEN_1>", "john@example.com") for t in texts
+                ]
                 return inputs
 
         handler = OpenAIResponsesHandler()
@@ -1506,11 +1519,15 @@ class TestOpenAIResponsesHandlerStreamingOutputProcessing:
             litellm_logging_obj=None,
         )
 
-        completed_chunk = next(c for c in result if isinstance(c, dict) and c.get("type") == "response.completed")
-        output_text = completed_chunk["response"]["output"][0]["content"][0]["text"]
-        assert output_text == "send to john@example.com", (
-            f"Expected PII token to be unmasked in response.completed output, got: {output_text!r}"
+        completed_chunk = next(
+            c
+            for c in result
+            if isinstance(c, dict) and c.get("type") == "response.completed"
         )
+        output_text = completed_chunk["response"]["output"][0]["content"][0]["text"]
+        assert (
+            output_text == "send to john@example.com"
+        ), f"Expected PII token to be unmasked in response.completed output, got: {output_text!r}"
 
     @pytest.mark.asyncio
     async def test_process_output_streaming_response_pass_through_unchanged(self):
@@ -1549,7 +1566,7 @@ class TestOpenAIResponsesHandlerStreamingOutputProcessing:
         assert output_text == original_text
 
     @staticmethod
-    def _ended_stream_events() -> list[dict]:
+    def _ended_stream_events() -> List[dict]:
         content = [{"type": "output_text", "text": "hello world"}]
         item = {
             "type": "message",
@@ -1588,7 +1605,7 @@ class TestOpenAIResponsesHandlerStreamingOutputProcessing:
                 inputs: GenericGuardrailAPIInputs,
                 request_data: dict,
                 input_type: Literal["request", "response"],
-                logging_obj: Any | None = None,
+                logging_obj: Optional[Any] = None,
             ) -> GenericGuardrailAPIInputs:
                 texts = inputs.get("texts", [])
                 return {**inputs, "texts": [t.replace("world", "[MASKED]") for t in texts]}
@@ -1616,7 +1633,7 @@ class TestOpenAIResponsesHandlerStreamingOutputProcessing:
         assert events[5]["response"]["output"][0]["content"][0]["text"] == "hello [MASKED]"
 
     @staticmethod
-    def _ended_function_call_stream_events() -> list[dict]:
+    def _ended_function_call_stream_events() -> List[dict]:
         def item(arguments: str, status: str) -> dict:
             return {
                 "type": "function_call",
@@ -1701,7 +1718,7 @@ class TestOpenAIResponsesHandlerStreamingOutputProcessing:
         )
 
         handler = OpenAIResponsesHandler()
-        typed_events: list[Any] = [
+        typed_events: List[Any] = [
             model.model_validate(event)
             for model, event in zip(
                 (
@@ -1735,7 +1752,7 @@ class TestOpenAIResponsesHandlerStreamingOutputProcessing:
         assert completed_event.response.output[0].name == "lookup_fruit"
 
     @staticmethod
-    def _ended_custom_tool_call_stream_events() -> list[dict]:
+    def _ended_custom_tool_call_stream_events() -> List[dict]:
         def item(input_text: str, status: str) -> dict:
             return {**CUSTOM_TOOL_CALL_ITEM, "input": input_text, "status": status}
 
@@ -1807,7 +1824,7 @@ class TestOpenAIResponsesHandlerStreamingOutputProcessing:
         )
 
         handler = OpenAIResponsesHandler()
-        typed_events: list[BaseModel] = [
+        typed_events: List[BaseModel] = [
             model.model_validate({**event, "sequence_number": sequence_number})
             for sequence_number, (model, event) in enumerate(
                 zip(
@@ -1858,7 +1875,7 @@ class TestOpenAIResponsesHandlerStreamingOutputProcessing:
         assert undeliverable.value.reason == "no stream event carries the rewritten call_id call_999"
 
     @staticmethod
-    def _bridged_function_call_stream_events() -> list[dict]:
+    def _bridged_function_call_stream_events() -> List[dict]:
         reasoning = {"type": "reasoning", "id": "rs_1", "summary": []}
         text = {"type": "output_text", "text": "Looking that up", "annotations": []}
         message = {"type": "message", "id": "msg_1", "role": "assistant", "status": "completed", "content": [text]}
@@ -2286,7 +2303,9 @@ class TestGetStructuredMessages:
         }
         result = handler.get_structured_messages(data)
         assert result is not None
-        has_system = any(isinstance(msg, dict) and msg.get("role") == "system" for msg in result)
+        has_system = any(
+            isinstance(msg, dict) and msg.get("role") == "system" for msg in result
+        )
         assert has_system, f"Expected system message from instructions, got: {result}"
 
     def test_should_return_none_when_no_input(self):
@@ -2313,7 +2332,7 @@ class ToolAppendingGuardrail(CustomGuardrail):
         inputs: GenericGuardrailAPIInputs,
         request_data: dict,
         input_type: Literal["request", "response"],
-        logging_obj: Any | None = None,
+        logging_obj: Optional[Any] = None,
     ) -> GenericGuardrailAPIInputs:
         tools = list(inputs.get("tools") or [])
         tools.append(
@@ -2382,11 +2401,13 @@ class StructuredRewriteGuardrail(CustomGuardrail):
         inputs: GenericGuardrailAPIInputs,
         request_data: dict,
         input_type: Literal["request", "response"],
-        logging_obj: Any | None = None,
+        logging_obj: Optional[Any] = None,
     ) -> GenericGuardrailAPIInputs:
         messages = list(inputs.get("structured_messages") or [])
         first_user = next(i for i, m in enumerate(messages) if m.get("role") == "user")
-        rewritten = [{**m, "content": COMPRESSED_MARKER} if i == first_user else m for i, m in enumerate(messages)]
+        rewritten = [
+            {**m, "content": COMPRESSED_MARKER} if i == first_user else m for i, m in enumerate(messages)
+        ]
         return {**inputs, "structured_messages": rewritten}
 
 
@@ -2428,11 +2449,13 @@ class ToolOutputRewriteGuardrail(CustomGuardrail):
         inputs: GenericGuardrailAPIInputs,
         request_data: dict,
         input_type: Literal["request", "response"],
-        logging_obj: Any | None = None,
+        logging_obj: Optional[Any] = None,
     ) -> GenericGuardrailAPIInputs:
         messages = list(inputs.get("structured_messages") or [])
         first_tool = next(i for i, m in enumerate(messages) if isinstance(m, dict) and m.get("role") == "tool")
-        rewritten = [{**m, "content": COMPRESSED_MARKER} if i == first_tool else m for i, m in enumerate(messages)]
+        rewritten = [
+            {**m, "content": COMPRESSED_MARKER} if i == first_tool else m for i, m in enumerate(messages)
+        ]
         return {**inputs, "structured_messages": rewritten}
 
 
@@ -2445,11 +2468,13 @@ class DroppingRewriteGuardrail(CustomGuardrail):
         inputs: GenericGuardrailAPIInputs,
         request_data: dict,
         input_type: Literal["request", "response"],
-        logging_obj: Any | None = None,
+        logging_obj: Optional[Any] = None,
     ) -> GenericGuardrailAPIInputs:
         messages = list(inputs.get("structured_messages") or [])
         first_user = next(i for i, m in enumerate(messages) if isinstance(m, dict) and m.get("role") == "user")
-        rewritten = [{**m, "content": COMPRESSED_MARKER} if i == first_user else m for i, m in enumerate(messages)]
+        rewritten = [
+            {**m, "content": COMPRESSED_MARKER} if i == first_user else m for i, m in enumerate(messages)
+        ]
         return {**inputs, "structured_messages": rewritten[:-1]}
 
 
@@ -2673,7 +2698,7 @@ class AllToolOutputsRewriteGuardrail(CustomGuardrail):
         inputs: GenericGuardrailAPIInputs,
         request_data: dict,
         input_type: Literal["request", "response"],
-        logging_obj: Any | None = None,
+        logging_obj: Optional[Any] = None,
     ) -> GenericGuardrailAPIInputs:
         messages = list(inputs.get("structured_messages") or [])
         rewritten = [
@@ -2691,7 +2716,7 @@ class AssistantRewriteGuardrail(CustomGuardrail):
         inputs: GenericGuardrailAPIInputs,
         request_data: dict,
         input_type: Literal["request", "response"],
-        logging_obj: Any | None = None,
+        logging_obj: Optional[Any] = None,
     ) -> GenericGuardrailAPIInputs:
         messages = list(inputs.get("structured_messages") or [])
         first = next(i for i, m in enumerate(messages) if isinstance(m, dict) and m.get("role") == "assistant")
@@ -2708,7 +2733,7 @@ class DictStructuredMessagesGuardrail(CustomGuardrail):
         inputs: GenericGuardrailAPIInputs,
         request_data: dict,
         input_type: Literal["request", "response"],
-        logging_obj: Any | None = None,
+        logging_obj: Optional[Any] = None,
     ) -> GenericGuardrailAPIInputs:
         return {**inputs, "structured_messages": {"evaluation": "allowed", "messages": []}}
 
@@ -3005,11 +3030,13 @@ class SystemRewriteGuardrail(CustomGuardrail):
         inputs: GenericGuardrailAPIInputs,
         request_data: dict,
         input_type: Literal["request", "response"],
-        logging_obj: Any | None = None,
+        logging_obj: Optional[Any] = None,
     ) -> GenericGuardrailAPIInputs:
         messages = list(inputs.get("structured_messages") or [])
         first = next(i for i, m in enumerate(messages) if isinstance(m, dict) and m.get("role") == "system")
-        rewritten = [{**m, "content": self.rewritten_content} if i == first else m for i, m in enumerate(messages)]
+        rewritten = [
+            {**m, "content": self.rewritten_content} if i == first else m for i, m in enumerate(messages)
+        ]
         return {**inputs, "structured_messages": rewritten}
 
 
@@ -3384,7 +3411,9 @@ class TestBuildBlockSseChunks:
             {"type": "message", "id": "msg_live", "status": "in_progress", "role": "assistant", "content": []}
         )
         yielded = [
-            OutputItemAddedEvent(type=ResponsesAPIStreamEvents.OUTPUT_ITEM_ADDED, output_index=0, item=open_item),
+            OutputItemAddedEvent(
+                type=ResponsesAPIStreamEvents.OUTPUT_ITEM_ADDED, output_index=0, item=open_item
+            ),
             ContentPartAddedEvent(
                 type=ResponsesAPIStreamEvents.CONTENT_PART_ADDED,
                 item_id="msg_live",
@@ -3626,6 +3655,88 @@ class TestOpenAIResponsesHandlerStreamingScanKey:
         ended_key = handler.get_streaming_scan_key([self._delta(0, "hi"), added, self._completed(3, [function_call])])
         assert ended_key.tool_calls_in_flight is False
         assert len(ended_key.tool_calls) == 1
+
+    def test_released_stream_as_ended_keys_the_tool_call_the_client_already_received(self):
+        handler = OpenAIResponsesHandler()
+        added = {
+            "type": "response.output_item.added",
+            "sequence_number": 1,
+            "item": {"type": "function_call", "id": "fc_1", "call_id": "call_1", "name": "get_weather", "arguments": ""},
+        }
+        arguments_delta = {
+            "type": "response.function_call_arguments.delta",
+            "sequence_number": 2,
+            "item_id": "fc_1",
+            "delta": '{"city": "Paris"',
+        }
+        ended_key = handler.get_streaming_scan_key(
+            handler.released_stream_as_ended([self._delta(0, "hi"), added, arguments_delta])
+        )
+        assert ended_key.stream_ended is True
+        assert ended_key.texts == ("hi",)
+        assert len(ended_key.tool_calls) == 1 and "Paris" in ended_key.tool_calls[0], ended_key
+
+    def test_released_stream_as_ended_leaves_a_text_only_stream_as_released(self):
+        released = (self._delta(0, "hi"), self._delta(1, " there"))
+        ended = OpenAIResponsesHandler().released_stream_as_ended(released)
+        assert ended == released and all(a is b for a, b in zip(ended, released, strict=True))
+
+    @staticmethod
+    def _finished_function_call(sequence_number: int, item_id: str, city: str) -> tuple[dict[str, object], ...]:
+        arguments = json.dumps({"city": city})
+        pending = {"type": "function_call", "id": item_id, "call_id": "call_" + item_id, "name": "get_weather"}
+        return (
+            {"type": "response.output_item.added", "sequence_number": sequence_number, "item": {**pending, "arguments": ""}},
+            {
+                "type": "response.function_call_arguments.delta",
+                "sequence_number": sequence_number + 1,
+                "item_id": item_id,
+                "delta": arguments,
+            },
+            {
+                "type": "response.output_item.done",
+                "sequence_number": sequence_number + 2,
+                "item": {**pending, "arguments": arguments, "status": "completed"},
+            },
+        )
+
+    def test_released_stream_as_ended_keys_every_tool_call_finished_before_the_disconnect(self):
+        handler = OpenAIResponsesHandler()
+        released = (
+            self._delta(0, "hi"),
+            *self._finished_function_call(1, "fc_1", "Paris"),
+            *self._finished_function_call(4, "fc_2", "Rome"),
+        )
+        ended_key = handler.get_streaming_scan_key(handler.released_stream_as_ended(released))
+        assert ended_key.stream_ended is True
+        assert ended_key.texts == ("hi",)
+        cities = tuple(city for fingerprint in ended_key.tool_calls for city in ("Paris", "Rome") if city in fingerprint)
+        assert cities == ("Paris", "Rome"), ended_key
+
+    def test_released_stream_as_ended_keys_a_message_whose_item_already_finished(self):
+        handler = OpenAIResponsesHandler()
+        message_done = {
+            "type": "response.output_item.done",
+            "sequence_number": 1,
+            "item": {"type": "message", "id": "msg_1", "content": [{"type": "output_text", "text": "hi"}]},
+        }
+        ended_key = handler.get_streaming_scan_key(handler.released_stream_as_ended((self._delta(0, "hi"), message_done)))
+        assert ended_key.stream_ended is True
+        assert ended_key.texts == ("hi",)
+
+    @pytest.mark.asyncio
+    async def test_scan_of_a_stream_released_through_a_finished_tool_call_covers_its_text_too(self):
+        handler = OpenAIResponsesHandler()
+        guardrail = MockRecordingGuardrail(guardrail_name="test")
+        released = (self._delta(0, "hi"), *self._finished_function_call(1, "fc_1", "Paris"))
+        await handler.process_output_streaming_response(
+            responses_so_far=list(handler.released_stream_as_ended(released)),
+            guardrail_to_apply=guardrail,
+            request_data={},
+        )
+        assert [inputs.get("texts") for inputs in guardrail.seen_inputs] == [["hi"]], guardrail.seen_inputs
+        tool_calls = guardrail.seen_inputs[0].get("tool_calls") or []
+        assert [call["function"]["arguments"] for call in tool_calls] == ['{"city": "Paris"}'], tool_calls
 
 
 class ToolRecordingGuardrail(CustomGuardrail):

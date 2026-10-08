@@ -26,6 +26,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 from starlette.types import Message, Receive, Scope, Send
 
+from litellm._internal_context import with_service_target
 from litellm._logging import verbose_logger
 from litellm.constants import (
     MCP_GATEWAY_SESSION_ID_PREFIX_LENGTH,
@@ -35,9 +36,10 @@ from litellm.llms.custom_httpx.http_handler import (
     get_async_httpx_client,
     httpxSpecialProvider,
 )
-from litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp import (
+from litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp import (  # noqa: F401  # legacy module exports
     MCPRequestHandler,
-    _is_mcp_admitted_user_subject,
+    _is_mcp_admitted_user_subject,  # pyright: ignore[reportPrivateUsage,reportUnusedImport]  # backwards-compatible package export
+    is_mcp_admitted_user_subject,
 )
 from litellm.proxy._experimental.mcp_server.client_allowlist import (
     MCPClientAllowlist,
@@ -50,13 +52,16 @@ from litellm.proxy._experimental.mcp_server.discoverable_endpoints import (
 from litellm.proxy._experimental.mcp_server.exceptions import (
     MCPUpstreamAuthError,
 )
-from litellm.proxy._experimental.mcp_server.mcp_context import (
-    _mcp_active_toolset_id,
-    _mcp_gateway_initialize_instructions,
-    _mcp_gateway_server_name,
+from litellm.proxy._experimental.mcp_server.mcp_context import (  # noqa: F401  # legacy module exports
+    _mcp_active_toolset_id,  # pyright: ignore[reportPrivateUsage,reportUnusedImport]  # backwards-compatible package export
+    _mcp_gateway_initialize_instructions,  # pyright: ignore[reportPrivateUsage,reportUnusedImport]  # backwards-compatible package export
+    _mcp_gateway_server_name,  # pyright: ignore[reportPrivateUsage,reportUnusedImport]  # backwards-compatible package export
     _mcp_proxy_mode,  # pyright: ignore[reportPrivateUsage]  # server-owned request mode
     active_mcp_request_ctx_var,
     get_active_mcp_request_ctx,
+    mcp_active_toolset_id,
+    mcp_gateway_initialize_instructions,
+    mcp_gateway_server_name,
 )
 
 _mcp_active_toolset_name: Final[contextvars.ContextVar[str | None]] = contextvars.ContextVar(
@@ -77,11 +82,18 @@ from litellm.proxy._experimental.mcp_server.oauth_utils import (
     redact_mcp_resource_url,
     well_known_root_suffix,
 )
-from litellm.proxy._experimental.mcp_server.ui_session_utils import is_ui_session_credential
+from litellm.proxy._experimental.mcp_server.ui_session_utils import (
+    ActingUser,
+    GrantedToolsetIds,
+    acting_user_auth,
+    granted_toolset_ids,
+    is_ui_session_credential,
+)
 from litellm.proxy._experimental.mcp_server.utils import (
     LITELLM_MCP_SERVER_DESCRIPTION,
     LITELLM_MCP_SERVER_NAME,
     LITELLM_MCP_SERVER_VERSION,
+    MCP_SERVERS_TARGET,
 )
 from litellm.proxy._types import (
     ProxyException,
@@ -99,13 +111,11 @@ from litellm.types.mcp import (
 )
 from litellm.types.mcp_server.mcp_server_manager import MCPServer
 
-_redact_mcp_resource_url = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
-    redact_mcp_resource_url  # rebind-ok: framework flow intentionally updates request or lifecycle state
-)
-
 if TYPE_CHECKING:
     from mcp.server.session import ServerSession as _McpServerSession
 
+
+_redact_mcp_resource_url: Final = redact_mcp_resource_url
 
 _STATEFUL_SESSION_IDLE_TIMEOUT_SECONDS: Final = 30 * 60
 # Upper bound on concurrent stateful sessions a single caller may hold. Each
@@ -495,6 +505,7 @@ if MCP_AVAILABLE:
         "mcp_get_prompt",
         "mcp_read_resource",
         "raise_denied_scoped_mcp_access",
+        "redact_mcp_resource_url",
     )
     from mcp.server import Server
 
@@ -583,20 +594,18 @@ if MCP_AVAILABLE:
         )
         opts: Final = (
             base_options.model_copy(
-                update={  # mutable-ok: Pydantic update payload
-                    "capabilities": base_options.capabilities.model_copy(
-                        update={"prompts": None, "resources": None}  # mutable-ok: Pydantic update payload
-                    )
+                update={
+                    "capabilities": base_options.capabilities.model_copy(update={"prompts": None, "resources": None})
                 }
             )
             if _mcp_proxy_mode.get()
             else base_options
         )
         updates: Final[dict[str, str]] = {}
-        merged: Final = _mcp_gateway_initialize_instructions.get()
+        merged: Final = mcp_gateway_initialize_instructions.get()
         if merged is not None:
             updates["instructions"] = merged
-        scoped_server_name: Final = _mcp_gateway_server_name.get()
+        scoped_server_name: Final = mcp_gateway_server_name.get()
         if scoped_server_name is not None:
             updates["server_name"] = scoped_server_name
         return opts.model_copy(update=updates) if updates else opts
@@ -956,6 +965,8 @@ if MCP_AVAILABLE:
                 return await operations.GatewayOperations(_capture_host_progress_callback(ctx)).execute(
                     ListPromptsRequest(params=params), context
                 )
+        except MCPError:
+            raise
         except Exception as exc:  # noqa: BLE001  # preserve native listing fallback for ingress failures
             verbose_logger.exception("Error in list_prompts endpoint: %s", exc)
             return ListPromptsResult(prompts=[])
@@ -976,6 +987,8 @@ if MCP_AVAILABLE:
                 return await operations.GatewayOperations(_capture_host_progress_callback(ctx)).execute(
                     ListResourcesRequest(params=params), context
                 )
+        except MCPError:
+            raise
         except Exception as exc:  # noqa: BLE001  # preserve native listing fallback for ingress failures
             verbose_logger.exception("Error in list_resources endpoint: %s", exc)
             return ListResourcesResult(resources=[])
@@ -990,6 +1003,8 @@ if MCP_AVAILABLE:
                 return await operations.GatewayOperations(_capture_host_progress_callback(ctx)).execute(
                     ListResourceTemplatesRequest(params=params), context
                 )
+        except MCPError:
+            raise
         except Exception as exc:  # noqa: BLE001  # preserve native listing fallback for ingress failures
             verbose_logger.exception("Error in list_resource_templates endpoint: %s", exc)
             return ListResourceTemplatesResult(resource_templates=[])
@@ -1065,7 +1080,7 @@ if MCP_AVAILABLE:
             # cancel sibling probes or 500 the gateway initialize request.
             await asyncio.gather(
                 *[
-                    operations.global_mcp_server_manager._ensure_upstream_initialize_instructions_cached(s)
+                    operations.global_mcp_server_manager.ensure_upstream_initialize_instructions_cached(s)
                     for s in allowed
                     if s is not None
                 ],
@@ -1078,13 +1093,13 @@ if MCP_AVAILABLE:
             scoped_server_name = (
                 scoped_server.alias or scoped_server.server_name or scoped_server.name or scoped_server.server_id
             )
-        instructions_token: Final = _mcp_gateway_initialize_instructions.set(merged)
-        server_name_token: Final = _mcp_gateway_server_name.set(scoped_server_name)
+        instructions_token: Final = mcp_gateway_initialize_instructions.set(merged)
+        server_name_token: Final = mcp_gateway_server_name.set(scoped_server_name)
         try:
             yield
         finally:
-            _mcp_gateway_initialize_instructions.reset(instructions_token)
-            _mcp_gateway_server_name.reset(server_name_token)
+            mcp_gateway_initialize_instructions.reset(instructions_token)
+            mcp_gateway_server_name.reset(server_name_token)
 
     from litellm.proxy._experimental.mcp_server.operations import (
         _MCP_CREDENTIAL_REQUEST_FIELDS,
@@ -1544,7 +1559,7 @@ if MCP_AVAILABLE:
         if _is_admin_terminated_session_id(_session_id, time.monotonic()):
             terminated_response: Final = JSONResponse(
                 status_code=404,
-                content={  # mutable-ok: JSONResponse content must be a plain dict
+                content={
                     "error": "Not Found",
                     "details": "mcp-session-id was terminated by an administrator. Send initialize to start a new session.",
                 },
@@ -1695,22 +1710,27 @@ if MCP_AVAILABLE:
             client_ip,
         )
 
-    async def _apply_toolset_scope(
+    async def apply_toolset_scope(
         user_api_key_auth: UserAPIKeyAuth,
         toolset_id: str,
+        acting_user: ActingUser = acting_user_auth,
+        granted: GrantedToolsetIds = granted_toolset_ids,
     ) -> UserAPIKeyAuth:
         """
-        Restrict a key's MCP permissions to a single toolset.
+        Pin a principal's MCP permissions to a single toolset for /toolset/{name}/mcp.
 
-        When a request arrives via /toolset/{name}/mcp we override the key's
-        object_permission so that only the toolset's tools are visible.
+        A virtual key (and an admin session) has its object_permission rewritten to
+        the toolset's servers and tools. A keyless subject resolves per grant source,
+        so a non-admin dashboard session first becomes its admitted user and the
+        toolset rides along as ``mcp_toolset_id``, which every source's grant is
+        intersected with; a team-granted toolset is served without the user's own
+        row capping it.
 
-        Raises HTTPException(403) if the key has an explicit toolset grant list
-        that does not include toolset_id (i.e. mcp_toolsets is set but empty,
-        or set to a list that omits this toolset).  Admin keys always pass.
+        Raises HTTPException(403) unless the principal holds toolset_id through one
+        of its grant sources. Admins always pass.
         """
         from litellm.proxy._types import LiteLLM_ObjectPermissionTable
-        from litellm.proxy.management_endpoints.common_utils import _user_has_admin_view
+        from litellm.proxy.management_endpoints.common_utils import user_api_key_has_admin_view
 
         # A key scoped to no MCP servers opts out of every MCP path. Enforce it
         # here too, since toolset scoping replaces mcp_servers and would otherwise
@@ -1723,26 +1743,31 @@ if MCP_AVAILABLE:
                 detail="API key is scoped to no MCP servers; toolset access is denied.",
             )
 
-        # Access control: non-admin keys must have this toolset in their grant list.
-        # Use _user_has_admin_view so that PROXY_ADMIN_VIEW_ONLY is also treated as admin.
-        is_admin: Final = _user_has_admin_view(user_api_key_auth)
-        if not is_admin:
-            op: Final = user_api_key_auth.object_permission
-            granted: Final = getattr(op, "mcp_toolsets", None) if op else None
-            # granted=None → key has no explicit toolset grants → deny (same semantics as
-            # fetch_mcp_toolsets which returns [] for non-admin keys with no grants configured).
-            # granted=[] or list without toolset_id → also deny.
-            if granted is None or toolset_id not in granted:
+        acting: Final = await acting_user(user_api_key_auth)
+        is_admin: Final = user_api_key_has_admin_view(acting)
+        if not is_admin and toolset_id not in await granted(acting):
+            raise HTTPException(
+                status_code=403,
+                detail=f"API key does not have access to toolset '{toolset_id}'.",
+            )
+        if is_mcp_admitted_user_subject(acting):
+            resource_server_id: Final = acting.mcp_session_resource_server_id
+            if resource_server_id is not None and resource_server_id not in (
+                await operations.global_mcp_server_manager.resolve_toolset_tool_permissions(
+                    toolset_ids=[toolset_id], requires_fresh_policy=acting.requires_fresh_policy
+                )
+            ):
                 raise HTTPException(
                     status_code=403,
                     detail=f"API key does not have access to toolset '{toolset_id}'.",
                 )
+            return acting.model_copy(update={"mcp_toolset_id": toolset_id})
 
         tool_permissions = await operations.global_mcp_server_manager.resolve_toolset_tool_permissions(
             toolset_ids=[toolset_id]
         )
         server_ids: Final = list(tool_permissions.keys())
-        existing_op: Final = user_api_key_auth.object_permission
+        existing_op: Final = acting.object_permission
         if existing_op is not None:
             updated_op = existing_op.model_copy(
                 update={
@@ -1759,51 +1784,75 @@ if MCP_AVAILABLE:
                 mcp_servers=server_ids,
                 mcp_tool_permissions=tool_permissions,
             )
-        return user_api_key_auth.model_copy(update={"object_permission": updated_op, "mcp_toolset_id": toolset_id})
+        return acting.model_copy(update={"object_permission": updated_op, "mcp_toolset_id": toolset_id})
 
     async def list_lazymcp_tools(ctx: ServerRequestContext, params: PaginatedRequestParams) -> ListToolsResult:
         return ListToolsResult(tools=_get_lazymcp_gateway_tools())
 
+    from litellm.proxy._experimental.mcp_server.catalog import catalog_operation
+
+    @catalog_operation(lambda: operations.global_mcp_server_manager)
     async def lazymcp_tool_call(ctx: ServerRequestContext, params: CallToolRequestParams) -> CallToolResult:
         name: Final = params.name
         arguments: Final = params.arguments or {}
-        async with _legacy_operation_context(ctx, trace=True):
-            try:
-                if name == "mcp_describe":
-                    return _make_lazymcp_text_result(await _lazymcp_describe(arguments))
-                if name == "mcp_status":
-                    return _make_lazymcp_text_result(await _lazymcp_status())
-                if name == "mcp_call":
-                    return await _lazymcp_call(arguments)
-                return CallToolResult(
-                    content=[  # mutable-ok: framework contract requires mutable request or response containers
-                        TextContent(
-                            text=json.dumps(
-                                {  # mutable-ok: framework contract requires mutable request or response containers
-                                    "error": "Unknown LazyMCP tool."
-                                }  # mutable-ok: framework contract requires mutable request or response containers
-                            ),  # mutable-ok: framework contract requires mutable request or response containers
-                            type="text",
-                        )
-                    ],
-                    is_error=True,
+        async with _legacy_operation_context(ctx, trace=True) as context:
+            with contextlib.ExitStack() as cleanup:
+                cleanup.callback(
+                    operations._mcp_server_admission_memo.reset,
+                    operations._mcp_server_admission_memo.set({}),
                 )
-            except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
-                verbose_logger.exception("LazyMCP tool call failed: %s", e)
-                return CallToolResult(
-                    content=[  # mutable-ok: framework contract requires mutable request or response containers
-                        TextContent(
-                            text=json.dumps(
-                                {  # mutable-ok: framework contract requires mutable request or response containers
-                                    "error": "Upstream MCP tool call failed.",
-                                    "details": str(e),
-                                }
-                            ),
-                            type="text",
+                fresh_auth: Final = await MCPRequestHandler.refresh_catalog_authority(context.user_api_key_auth)
+                legacy_auth: Final = context.legacy_auth()
+                cleanup.callback(
+                    auth_context_var.reset,
+                    auth_context_var.set(
+                        MCPAuthenticatedUser(
+                            user_api_key_auth=fresh_auth,
+                            mcp_auth_header=legacy_auth[1],
+                            mcp_servers=legacy_auth[2],
+                            mcp_server_auth_headers=legacy_auth[3],
+                            oauth2_headers=legacy_auth[4],
+                            raw_headers=legacy_auth[5],
+                            client_ip=legacy_auth[6],
                         )
-                    ],
-                    is_error=True,
+                    ),
                 )
+                try:
+                    if name == "mcp_describe":
+                        return _make_lazymcp_text_result(await _lazymcp_describe(arguments))
+                    if name == "mcp_status":
+                        return _make_lazymcp_text_result(await _lazymcp_status())
+                    if name == "mcp_call":
+                        return await _lazymcp_call(arguments)
+                    return CallToolResult(
+                        content=[  # mutable-ok: framework contract requires mutable request or response containers
+                            TextContent(
+                                text=json.dumps(
+                                    {  # mutable-ok: framework contract requires mutable request or response containers
+                                        "error": "Unknown LazyMCP tool."
+                                    }  # mutable-ok: framework contract requires mutable request or response containers
+                                ),  # mutable-ok: framework contract requires mutable request or response containers
+                                type="text",
+                            )
+                        ],
+                        is_error=True,
+                    )
+                except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
+                    verbose_logger.exception("LazyMCP tool call failed: %s", e)
+                    return CallToolResult(
+                        content=[  # mutable-ok: framework contract requires mutable request or response containers
+                            TextContent(
+                                text=json.dumps(
+                                    {  # mutable-ok: framework contract requires mutable request or response containers
+                                        "error": "Upstream MCP tool call failed.",
+                                        "details": str(e),
+                                    }
+                                ),
+                                type="text",
+                            )
+                        ],
+                        is_error=True,
+                    )
 
     lazymcp_server.add_request_handler("tools/list", PaginatedRequestParams, list_lazymcp_tools)
     lazymcp_server.add_request_handler("tools/call", CallToolRequestParams, lazymcp_tool_call)
@@ -1962,6 +2011,7 @@ if MCP_AVAILABLE:
         )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
+    @with_service_target(MCP_SERVERS_TARGET)
     async def _lazymcp_cache_get(key: str) -> object | None:
         try:
             from litellm.proxy.proxy_server import user_api_key_cache
@@ -1971,6 +2021,7 @@ if MCP_AVAILABLE:
             verbose_logger.debug("LazyMCP cache get failed for %s: %s", key, e)
             return None
 
+    @with_service_target(MCP_SERVERS_TARGET)
     async def _lazymcp_cache_set(key: str, value: object) -> None:
         try:
             from litellm.proxy.proxy_server import user_api_key_cache
@@ -2015,7 +2066,7 @@ if MCP_AVAILABLE:
         if not toolset_ids:
             return user_api_key_auth
         toolset_permissions: Final = await global_mcp_server_manager.resolve_toolset_tool_permissions(
-            toolset_ids=toolset_ids
+            toolset_ids=toolset_ids, requires_fresh_policy=user_api_key_auth.requires_fresh_policy
         )
         if not toolset_permissions:
             return user_api_key_auth
@@ -2070,6 +2121,9 @@ if MCP_AVAILABLE:
         scope_servers: list[MCPServer]  # mutable-ok: framework contract requires mutable request or response containers
         | None = None,  # mutable-ok: framework contract requires mutable request or response containers
     ) -> list[MCPTool]:  # mutable-ok: framework contract requires mutable request or response containers
+        rate_limit_error: Final = await operations._mcp_server_rate_limit_rejection(server, user_api_key_auth)
+        if rate_limit_error is not None:
+            raise rate_limit_error
         server_auth_header, extra_headers = _prepare_mcp_server_headers(
             server=server,
             mcp_server_auth_headers=mcp_server_auth_headers,
@@ -2237,8 +2291,10 @@ if MCP_AVAILABLE:
         | None,  # mutable-ok: framework contract requires mutable request or response containers
         client_ip: str | None,
     ) -> dict[str, Any]:  # mutable-ok: framework contract requires mutable request or response containers
+        effective_auth: Final = await _merge_toolset_permissions(user_api_key_auth)
+        snapshot: Final = global_mcp_server_manager.catalog.current()
         scope_hash = _lazymcp_cache_scope(  # rebind-ok: framework flow intentionally updates request or lifecycle state
-            user_api_key_auth=user_api_key_auth,
+            user_api_key_auth=effective_auth,
             mcp_auth_header=mcp_auth_header,
             mcp_servers=mcp_servers,
             mcp_server_auth_headers=mcp_server_auth_headers,
@@ -2246,12 +2302,13 @@ if MCP_AVAILABLE:
             raw_headers=raw_headers,
             client_ip=client_ip,
         )
-        allowed_servers = await _get_lazymcp_allowed_servers(  # rebind-ok: framework flow intentionally updates request or lifecycle state
-            user_api_key_auth=user_api_key_auth,
+        allowed_servers = await _get_allowed_mcp_servers(  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            user_api_key_auth=effective_auth,
             mcp_servers=mcp_servers,
             client_ip=client_ip,
         )
-        cache_key = f"lazymcp:catalog:{scope_hash}"  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        allowed_scope: Final = _hash_lazymcp_value(tuple(sorted(server.server_id for server in allowed_servers)))
+        cache_key = f"lazymcp:catalog:{snapshot.identity if snapshot is not None else 'uncaptured'}:{scope_hash}:{allowed_scope}"  # rebind-ok: framework flow intentionally updates request or lifecycle state
         has_user_oauth_server: Final = any(server.needs_user_oauth_token for server in allowed_servers)
         if not has_user_oauth_server:
             cached = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
@@ -2642,6 +2699,14 @@ if MCP_AVAILABLE:
             ),
         ]
 
+    _apply_toolset_scope: Final = apply_toolset_scope
+
+    async def _toolset_server_ids(toolset_id: str) -> set[str]:
+        return set(
+            await operations.global_mcp_server_manager.resolve_toolset_tool_permissions(toolset_ids=[toolset_id])
+        )
+
+    @catalog_operation(lambda: operations.global_mcp_server_manager)
     async def _raise_preemptive_401_for_unauthenticated_servers(
         scope: Scope,
         mcp_servers: list[str] | None,
@@ -2708,7 +2773,7 @@ if MCP_AVAILABLE:
                     if await operations.global_mcp_server_manager.has_user_oauth_token(server, user_api_key_auth):
                         continue
 
-                    if _is_mcp_admitted_user_subject(user_api_key_auth):
+                    if is_mcp_admitted_user_subject(user_api_key_auth):
                         raise HTTPException(
                             status_code=401,
                             detail="Unauthorized",
@@ -3031,7 +3096,7 @@ if MCP_AVAILABLE:
                 supported: Final = ", ".join(configured_versions())
                 await JSONResponse(
                     status_code=400,
-                    content={  # mutable-ok: JSON-RPC error payload
+                    content={
                         "jsonrpc": "2.0",
                         "id": None,
                         "error": {
@@ -3067,12 +3132,13 @@ if MCP_AVAILABLE:
 
             # Apply toolset scope if set server-side via ContextVar (set by
             # /toolset/{name}/mcp and /{name}/mcp route handlers in proxy_server.py).
-            active_toolset_id: Final = _mcp_active_toolset_id.get()
+            active_toolset_id: Final = mcp_active_toolset_id.get()
             toolset_allowed_server_ids: set[str] | None = None
             if active_toolset_id and user_api_key_auth is not None:
-                user_api_key_auth = await _apply_toolset_scope(user_api_key_auth, active_toolset_id)
-                op: Final = user_api_key_auth.object_permission
-                toolset_allowed_server_ids = set(op.mcp_servers or []) if op else set()
+                user_api_key_auth = (  # rebind-ok: pre-existing rebinding on a rename-only line
+                    await apply_toolset_scope(user_api_key_auth, active_toolset_id)
+                )
+                toolset_allowed_server_ids = await _toolset_server_ids(active_toolset_id)
 
             # https://datatracker.ietf.org/doc/html/rfc9728#name-www-authenticate-response
             # Must run after toolset scoping so the challenge set is derived
@@ -3512,7 +3578,7 @@ if MCP_AVAILABLE:
                 supported: Final = ", ".join(configured_versions())
                 await JSONResponse(
                     status_code=400,
-                    content={  # mutable-ok: JSON-RPC error payload
+                    content={
                         "jsonrpc": "2.0",
                         "id": None,
                         "error": {
@@ -3551,12 +3617,13 @@ if MCP_AVAILABLE:
             # Apply toolset scope if set server-side via ContextVar so the
             # downstream probe list matches the fully-authorized server set
             # (mirrors the streamable HTTP handler).
-            active_toolset_id: Final = _mcp_active_toolset_id.get()
+            active_toolset_id: Final = mcp_active_toolset_id.get()
             toolset_allowed_server_ids: set[str] | None = None
             if active_toolset_id and user_api_key_auth is not None:
-                user_api_key_auth = await _apply_toolset_scope(user_api_key_auth, active_toolset_id)
-                op: Final = user_api_key_auth.object_permission
-                toolset_allowed_server_ids = set(op.mcp_servers or []) if op else set()
+                user_api_key_auth = (  # rebind-ok: pre-existing rebinding on a rename-only line
+                    await apply_toolset_scope(user_api_key_auth, active_toolset_id)
+                )
+                toolset_allowed_server_ids = await _toolset_server_ids(active_toolset_id)
 
             # https://datatracker.ietf.org/doc/html/rfc9728#name-www-authenticate-response
             # Must run after toolset scoping so the challenge set is derived

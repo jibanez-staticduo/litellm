@@ -55,6 +55,16 @@ class ChatGPTConfig(OpenAIConfig):
             raise auth_error
         return dynamic_api_base, dynamic_api_key, custom_llm_provider
 
+    def get_openai_compatible_provider_info(
+        self,
+        model: str,
+        api_base: str | None,
+        api_key: str | None,
+        custom_llm_provider: str,
+        litellm_params: object | None = None,
+    ) -> tuple[str | None, str | None, str]:
+        return self._get_openai_compatible_provider_info(model, api_base, api_key, custom_llm_provider, litellm_params)
+
     def validate_environment(
         self,
         headers: dict,

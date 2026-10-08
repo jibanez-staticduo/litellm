@@ -18,7 +18,7 @@ from litellm.proxy.common_utils.encrypt_decrypt_utils import (
 )
 from litellm.proxy.common_utils.http_parsing_utils import (
     _normalize_media_type,  # pyright: ignore[reportPrivateUsage]  # reuse the shared HTTP media-type normalization contract
-    _read_request_body,
+    read_request_body,
 )
 from litellm.proxy.common_utils.openai_error_payload import (
     error_status_code,
@@ -31,6 +31,8 @@ from litellm.types.realtime import (
     RealtimeTranscriptionSessionRequest,
     RealtimeTranscriptionSessionResponse,
 )
+
+_read_request_body: Final = read_request_body
 
 if TYPE_CHECKING:
     from litellm.router import Router
@@ -250,7 +252,7 @@ async def create_realtime_client_secret(
 
     data: dict = {}
     try:
-        body: Final = await _read_request_body(request=request)
+        body: Final = await read_request_body(request=request)
         req: Final = RealtimeClientSecretRequest(**body)
 
         model, session_data, session_type = await _prepare_client_secret_session(
@@ -582,7 +584,7 @@ async def create_realtime_transcription_session(
 
     data: dict = {}
     try:
-        body: Final = await _read_request_body(request=request)
+        body: Final = await read_request_body(request=request)
         req: Final = RealtimeTranscriptionSessionRequest(**body)
 
         model: Final[str] = req.resolved_model() or "gpt-realtime-whisper"

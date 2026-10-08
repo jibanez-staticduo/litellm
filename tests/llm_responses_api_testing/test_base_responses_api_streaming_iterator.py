@@ -2,19 +2,17 @@
 Unit tests for BaseResponsesAPIStreamingIterator
 
 Tests core functionality including:
-1. Processing chunks and handling ResponseCompletedEvent 
-2. Ensuring _update_responses_api_response_id_with_model_id is called for final chunk
+1. Processing chunks and handling ResponseCompletedEvent
+2. Ensuring update_responses_api_response_id_with_model_id is called for final chunk
 3. Verifying ID update is NOT called for non-final chunks (delta events)
 4. Edge case handling for invalid JSON, empty chunks, and [DONE] markers
 
-These tests ensure the streaming iterator correctly processes response chunks 
+These tests ensure the streaming iterator correctly processes response chunks
 and applies model ID updates only to completed responses, as required for proper
 response tracking and logging.
 """
 
 import json
-from datetime import datetime
-from typing import Any, Dict, Optional
 from unittest.mock import Mock, patch
 
 import pytest
@@ -72,9 +70,9 @@ class TestBaseResponsesAPIStreamingIterator:
         mock_responses_api_response = Mock(spec=ResponsesAPIResponse)
         mock_responses_api_response.id = "resp_u2028"
         mock_responses_api_response.usage = ResponseAPIUsage(input_tokens=3, output_tokens=2, total_tokens=5)
-        mock_completed_event = Mock(spec=ResponseCompletedEvent)
-        mock_completed_event.type = ResponsesAPIStreamEvents.RESPONSE_COMPLETED
-        mock_completed_event.response = mock_responses_api_response
+        mock_completed_event = ResponseCompletedEvent.model_construct(
+            type=ResponsesAPIStreamEvents.RESPONSE_COMPLETED, response=mock_responses_api_response, sequence_number=1
+        )
         mock_config.transform_streaming_response.return_value = mock_completed_event
 
         iterator = ResponsesAPIStreamingIterator(
@@ -101,7 +99,7 @@ class TestBaseResponsesAPIStreamingIterator:
     def test_process_chunk_with_response_completed_event(self):
         """
         Test that _process_chunk correctly processes a ResponseCompletedEvent
-        and calls _update_responses_api_response_id_with_model_id for the final chunk.
+        and calls update_responses_api_response_id_with_model_id for the final chunk.
         """
         # Mock dependencies
         mock_response = Mock()
@@ -114,16 +112,17 @@ class TestBaseResponsesAPIStreamingIterator:
         # Create a mock ResponsesAPIResponse for the completed event
         mock_responses_api_response = Mock(spec=ResponsesAPIResponse)
         mock_responses_api_response.id = "original_response_id"
+        mock_responses_api_response.usage = ResponseAPIUsage(input_tokens=3, output_tokens=2, total_tokens=5)
 
         # Create a mock ResponseCompletedEvent
-        mock_completed_event = Mock(spec=ResponseCompletedEvent)
-        mock_completed_event.type = ResponsesAPIStreamEvents.RESPONSE_COMPLETED
-        mock_completed_event.response = mock_responses_api_response
+        mock_completed_event = ResponseCompletedEvent.model_construct(
+            type=ResponsesAPIStreamEvents.RESPONSE_COMPLETED, response=mock_responses_api_response, sequence_number=1
+        )
 
         # Set up the mock transform method to return our completed event
         mock_config.transform_streaming_response.return_value = mock_completed_event
 
-        # Mock the _update_responses_api_response_id_with_model_id method
+        # Mock the update_responses_api_response_id_with_model_id method
         updated_response = Mock(spec=ResponsesAPIResponse)
         updated_response.id = "updated_response_id"
         updated_response.usage = ResponseAPIUsage(input_tokens=3, output_tokens=2, total_tokens=5)
@@ -149,7 +148,7 @@ class TestBaseResponsesAPIStreamingIterator:
 
         with patch.object(
             ResponsesAPIRequestUtils,
-            "_update_responses_api_response_id_with_model_id",
+            "update_responses_api_response_id_with_model_id",
             return_value=updated_response,
         ) as mock_update_id:
             # Process the chunk
@@ -159,7 +158,7 @@ class TestBaseResponsesAPIStreamingIterator:
             assert result is not None
             assert result.type == ResponsesAPIStreamEvents.RESPONSE_COMPLETED
 
-            # Verify that _update_responses_api_response_id_with_model_id was called
+            # Verify that update_responses_api_response_id_with_model_id was called
             mock_update_id.assert_called_once_with(
                 responses_api_response=mock_responses_api_response,
                 litellm_metadata={"model_info": {"id": "model_123"}},
@@ -175,7 +174,7 @@ class TestBaseResponsesAPIStreamingIterator:
     def test_process_chunk_with_delta_event_no_id_update(self):
         """
         Test that _process_chunk correctly processes a delta event
-        and does NOT call _update_responses_api_response_id_with_model_id.
+        and does NOT call update_responses_api_response_id_with_model_id.
         """
         # Mock dependencies
         mock_response = Mock()
@@ -190,11 +189,7 @@ class TestBaseResponsesAPIStreamingIterator:
         mock_delta_event.type = ResponsesAPIStreamEvents.OUTPUT_TEXT_DELTA
         mock_delta_event.delta = "Hello"
         # Delta events don't have a response attribute
-        (
-            delattr(mock_delta_event, "response")
-            if hasattr(mock_delta_event, "response")
-            else None
-        )
+        (delattr(mock_delta_event, "response") if hasattr(mock_delta_event, "response") else None)
 
         # Set up the mock transform method to return our delta event
         mock_config.transform_streaming_response.return_value = mock_delta_event
@@ -218,9 +213,7 @@ class TestBaseResponsesAPIStreamingIterator:
             "content_index": 0,
         }
 
-        with patch.object(
-            ResponsesAPIRequestUtils, "_update_responses_api_response_id_with_model_id"
-        ) as mock_update_id:
+        with patch.object(ResponsesAPIRequestUtils, "update_responses_api_response_id_with_model_id") as mock_update_id:
             # Process the chunk
             result = iterator._process_chunk(json.dumps(test_chunk_data))
 
@@ -228,7 +221,7 @@ class TestBaseResponsesAPIStreamingIterator:
             assert result is not None
             assert result.type == ResponsesAPIStreamEvents.OUTPUT_TEXT_DELTA
 
-            # Verify that _update_responses_api_response_id_with_model_id was NOT called
+            # Verify that update_responses_api_response_id_with_model_id was NOT called
             mock_update_id.assert_not_called()
 
             # Verify no completed response was stored (since this is not a completed event)
@@ -327,7 +320,6 @@ class TestBaseResponsesAPIStreamingIterator:
 
         The fix uses model_dump + model_validate instead of copy.deepcopy.
         """
-        import asyncio
         from litellm.responses.streaming_iterator import ResponsesAPIStreamingIterator
 
         # Mock dependencies
@@ -377,9 +369,7 @@ class TestBaseResponsesAPIStreamingIterator:
                 iterator._handle_logging_completed_response()
             except TypeError as e:
                 if "pickle" in str(e):
-                    pytest.fail(
-                        f"_handle_logging_completed_response failed with pickle error: {e}"
-                    )
+                    pytest.fail(f"_handle_logging_completed_response failed with pickle error: {e}")
                 raise
 
     @staticmethod
@@ -585,12 +575,10 @@ class TestBaseResponsesAPIStreamingIterator:
         with (
             patch.object(
                 ResponsesAPIRequestUtils,
-                "_update_responses_api_response_id_with_model_id",
+                "update_responses_api_response_id_with_model_id",
                 return_value=mock_responses_api_response,
             ),
-            patch(
-                "litellm.responses.streaming_iterator.run_async_function"
-            ) as mock_run_async,
+            patch("litellm.responses.streaming_iterator.run_async_function") as mock_run_async,
             patch("litellm.responses.streaming_iterator.executor") as mock_executor,
         ):
             result = iterator._process_chunk(json.dumps(test_chunk_data))
@@ -602,10 +590,7 @@ class TestBaseResponsesAPIStreamingIterator:
             # Failure handler should have been called via _handle_failure
             mock_run_async.assert_called_once()
             call_kwargs = mock_run_async.call_args
-            assert (
-                call_kwargs[1]["async_function"]
-                == mock_logging_obj.async_failure_handler
-            )
+            assert call_kwargs[1]["async_function"] == mock_logging_obj.async_failure_handler
 
             mock_executor.submit.assert_called_once()
             submit_args = mock_executor.submit.call_args
@@ -631,14 +616,19 @@ class TestBaseResponsesAPIStreamingIterator:
         mock_logging_obj.success_handler = Mock()
         mock_config = Mock(spec=BaseResponsesAPIConfig)
 
-        mock_responses_api_response = Mock(spec=ResponsesAPIResponse)
-        mock_responses_api_response.id = "resp_incomplete_123"
-        mock_responses_api_response.incomplete_details = {"reason": "max_output_tokens"}
-        mock_responses_api_response.usage = ResponseAPIUsage(input_tokens=3, output_tokens=2, total_tokens=5)
-
-        mock_incomplete_event = Mock(spec=ResponseIncompleteEvent)
-        mock_incomplete_event.type = ResponsesAPIStreamEvents.RESPONSE_INCOMPLETE
-        mock_incomplete_event.response = mock_responses_api_response
+        mock_responses_api_response = ResponsesAPIResponse(
+            id="resp_incomplete_123",
+            created_at=0,
+            status="incomplete",
+            model="gpt-5.5",
+            object="response",
+            output=[],
+            incomplete_details={"reason": "max_output_tokens"},
+            usage=ResponseAPIUsage(input_tokens=3, output_tokens=2, total_tokens=5),
+        )
+        mock_incomplete_event = ResponseIncompleteEvent(
+            type=ResponsesAPIStreamEvents.RESPONSE_INCOMPLETE, response=mock_responses_api_response
+        )
 
         mock_config.transform_streaming_response.return_value = mock_incomplete_event
 
@@ -662,7 +652,7 @@ class TestBaseResponsesAPIStreamingIterator:
         with (
             patch.object(
                 ResponsesAPIRequestUtils,
-                "_update_responses_api_response_id_with_model_id",
+                "update_responses_api_response_id_with_model_id",
                 return_value=mock_responses_api_response,
             ),
             patch("asyncio.create_task") as mock_create_task,
@@ -675,13 +665,13 @@ class TestBaseResponsesAPIStreamingIterator:
             assert iterator.completed_response == result
 
             mock_create_task.assert_called_once()
-            mock_logging_obj.dispatch_success_handlers.assert_called_once_with(
-                mock_incomplete_event,
-                start_time=iterator.start_time,
-                end_time=mock_logging_obj.dispatch_success_handlers.call_args.kwargs["end_time"],
-                cache_hit=None,
-                prefer_async_handlers=True,
-            )
+            mock_logging_obj.dispatch_success_handlers.assert_called_once()
+            logged_event = mock_logging_obj.dispatch_success_handlers.call_args.args[0]
+            assert logged_event is not result
+            assert logged_event.model_dump() == result.model_dump()
+            assert logged_event.response.usage is not result.response.usage
+            assert mock_logging_obj.dispatch_success_handlers.call_args.kwargs["start_time"] == iterator.start_time
+            assert mock_logging_obj.dispatch_success_handlers.call_args.kwargs["prefer_async_handlers"] is True
             mock_create_task.call_args.args[0].close()
             mock_executor.submit.assert_not_called()
 

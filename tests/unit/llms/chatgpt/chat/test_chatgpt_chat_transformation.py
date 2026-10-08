@@ -23,7 +23,7 @@ def test_chatgpt_chat_auth_uses_litellm_params_for_token_and_account(mock_authen
     }
 
     config = ChatGPTConfig()
-    api_base, api_key, provider = config._get_openai_compatible_provider_info(
+    api_base, api_key, provider = config.get_openai_compatible_provider_info(
         model="gpt-5.4",
         api_base=None,
         api_key=None,

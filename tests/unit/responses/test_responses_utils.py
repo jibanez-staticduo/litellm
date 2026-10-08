@@ -205,13 +205,13 @@ class TestResponsesAPIRequestUtils:
         """Ensure _update_responses_api_response_id_with_model_id works with dict input"""
         responses_api_response = {"id": "resp_abc123"}
         litellm_metadata = {"model_info": {"id": "gpt-4o"}}
-        updated = ResponsesAPIRequestUtils._update_responses_api_response_id_with_model_id(
+        updated = ResponsesAPIRequestUtils.update_responses_api_response_id_with_model_id(
             responses_api_response=responses_api_response,
             custom_llm_provider="openai",
             litellm_metadata=litellm_metadata,
         )
         assert updated["id"] != "resp_abc123"
-        decoded = ResponsesAPIRequestUtils._decode_responses_api_response_id(updated["id"])
+        decoded = ResponsesAPIRequestUtils.decode_responses_api_response_id(updated["id"])
         assert decoded.get("response_id") == "resp_abc123"
         assert decoded.get("model_id") == "gpt-4o"
         assert decoded.get("custom_llm_provider") == "openai"
@@ -220,12 +220,12 @@ class TestResponsesAPIRequestUtils:
         raw = "resp_" + "a" * 48
         litellm_metadata = {"model_info": {"id": "model-123"}}
 
-        once = ResponsesAPIRequestUtils._update_responses_api_response_id_with_model_id(
+        once = ResponsesAPIRequestUtils.update_responses_api_response_id_with_model_id(
             {"id": raw},
             custom_llm_provider="openai",
             litellm_metadata=litellm_metadata,
         )
-        twice = ResponsesAPIRequestUtils._update_responses_api_response_id_with_model_id(
+        twice = ResponsesAPIRequestUtils.update_responses_api_response_id_with_model_id(
             {"id": once["id"]},
             custom_llm_provider="openai",
             litellm_metadata=litellm_metadata,
@@ -233,17 +233,17 @@ class TestResponsesAPIRequestUtils:
 
         assert twice == once
         assert ResponsesAPIRequestUtils.decode_previous_response_id_to_original_previous_response_id(twice["id"]) == raw
-        assert ResponsesAPIRequestUtils._decode_responses_api_response_id(once["id"]).get("response_id") == raw
+        assert ResponsesAPIRequestUtils.decode_responses_api_response_id(once["id"]).get("response_id") == raw
 
     def test_build_decode_container_id_omits_none_model_id(self):
         """model_id=None must not round-trip as the truthy string 'None'."""
-        encoded = ResponsesAPIRequestUtils._build_container_id(
+        encoded = ResponsesAPIRequestUtils.build_container_id(
             custom_llm_provider="azure",
             model_id=None,
             container_id="cntr_upstream_abc",
         )
         assert "None" not in base64.b64decode(encoded.replace("cntr_", "").encode("utf-8")).decode("utf-8")
-        decoded = ResponsesAPIRequestUtils._decode_container_id(encoded)
+        decoded = ResponsesAPIRequestUtils.decode_container_id(encoded)
         assert decoded.get("custom_llm_provider") == "azure"
         assert decoded.get("model_id") is None
         assert decoded.get("response_id") == "cntr_upstream_abc"
@@ -252,7 +252,7 @@ class TestResponsesAPIRequestUtils:
         """IDs encoded before the None fix should decode without a bogus model_id."""
         legacy_inner = "litellm:custom_llm_provider:azure;model_id:None;container_id:cntr_x"
         legacy_id = "cntr_" + base64.b64encode(legacy_inner.encode("utf-8")).decode("utf-8")
-        decoded = ResponsesAPIRequestUtils._decode_container_id(legacy_id)
+        decoded = ResponsesAPIRequestUtils.decode_container_id(legacy_id)
         assert decoded.get("model_id") is None
         assert decoded.get("custom_llm_provider") == "azure"
         assert decoded.get("response_id") == "cntr_x"
@@ -265,7 +265,7 @@ class TestResponseAPILoggingUtils:
         usage = {"input_tokens": 10, "output_tokens": 20}
 
         # Execute
-        result = ResponseAPILoggingUtils._is_response_api_usage(usage)
+        result = ResponseAPILoggingUtils.is_response_api_usage(usage)
 
         # Assert
         assert result is True
@@ -276,7 +276,7 @@ class TestResponseAPILoggingUtils:
         usage = {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30}
 
         # Execute
-        result = ResponseAPILoggingUtils._is_response_api_usage(usage)
+        result = ResponseAPILoggingUtils.is_response_api_usage(usage)
 
         # Assert
         assert result is False
@@ -293,7 +293,7 @@ class TestResponseAPILoggingUtils:
         }
 
         # Execute
-        result = ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(usage)
+        result = ResponseAPILoggingUtils.transform_response_api_usage_to_chat_usage(usage)
 
         # Assert
         assert isinstance(result, Usage)
@@ -337,7 +337,7 @@ class TestResponseAPILoggingUtils:
         }
 
         # Execute
-        result = ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(usage)
+        result = ResponseAPILoggingUtils.transform_response_api_usage_to_chat_usage(usage)
 
         # Assert
         assert result.prompt_tokens == 0
@@ -356,7 +356,7 @@ class TestResponseAPILoggingUtils:
         }
 
         # Execute
-        result = ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(usage)
+        result = ResponseAPILoggingUtils.transform_response_api_usage_to_chat_usage(usage)
 
         # Assert
         assert result.prompt_tokens == 15
@@ -393,7 +393,7 @@ class TestResponseAPILoggingUtils:
         }
 
         # Execute
-        result = ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(usage)
+        result = ResponseAPILoggingUtils.transform_response_api_usage_to_chat_usage(usage)
 
         # Assert - verify basic token counts
         assert isinstance(result, Usage)
@@ -428,7 +428,7 @@ class TestResponseAPILoggingUtils:
             },
         }
 
-        result = ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(usage)
+        result = ResponseAPILoggingUtils.transform_response_api_usage_to_chat_usage(usage)
 
         assert result.prompt_tokens_details is not None
         assert result.prompt_tokens_details.cache_write_tokens == 10059
@@ -457,7 +457,7 @@ class TestResponseAPILoggingUtils:
         }
 
         # Execute
-        result = ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(usage)
+        result = ResponseAPILoggingUtils.transform_response_api_usage_to_chat_usage(usage)
 
         # Assert - all token detail types should be preserved
         assert result.prompt_tokens_details is not None
@@ -489,7 +489,7 @@ class TestResponseAPILoggingUtils:
             },
         }
 
-        result = ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(usage)
+        result = ResponseAPILoggingUtils.transform_response_api_usage_to_chat_usage(usage)
 
         assert result.prompt_tokens_details is not None
         assert result.prompt_tokens_details.text_tokens == 8
@@ -511,7 +511,7 @@ class TestResponseAPILoggingUtils:
             "output_token_details": {"text_tokens": 2, "audio_tokens": 98},
         }
 
-        result = ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(usage)
+        result = ResponseAPILoggingUtils.transform_response_api_usage_to_chat_usage(usage)
 
         assert result.prompt_tokens_details is not None
         assert result.prompt_tokens_details.text_tokens == 10
@@ -531,7 +531,7 @@ class TestResponseAPILoggingUtils:
             "output_token_details": {"text_tokens": 70, "audio_tokens": 0, "reasoning_tokens": 52},
         }
 
-        result = ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(usage)
+        result = ResponseAPILoggingUtils.transform_response_api_usage_to_chat_usage(usage)
 
         assert result.completion_tokens == 70
         assert result.completion_tokens_details is not None
@@ -549,7 +549,7 @@ class TestResponseAPILoggingUtils:
             "output_token_details": {"text_tokens": 39, "audio_tokens": 31, "reasoning_tokens": 23},
         }
 
-        result = ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(usage)
+        result = ResponseAPILoggingUtils.transform_response_api_usage_to_chat_usage(usage)
 
         assert result.completion_tokens_details is not None
         assert result.completion_tokens_details.text_tokens == 16
@@ -565,7 +565,7 @@ class TestResponseAPILoggingUtils:
             "output_tokens_details": {"text_tokens": 12, "reasoning_tokens": 5},
         }
 
-        result = ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(usage)
+        result = ResponseAPILoggingUtils.transform_response_api_usage_to_chat_usage(usage)
 
         assert result.completion_tokens_details is not None
         assert result.completion_tokens_details.text_tokens == 12
@@ -581,7 +581,7 @@ class TestResponseAPILoggingUtils:
             server_side_tool_usage_details=details,
         )
 
-        result = ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(usage)
+        result = ResponseAPILoggingUtils.transform_response_api_usage_to_chat_usage(usage)
 
         assert isinstance(result, Usage)
         assert result.prompt_tokens == 100
@@ -601,7 +601,7 @@ class TestResponseAPILoggingUtils:
             server_side_tool_usage_details={"web_search_calls": 1},
         )
 
-        result = ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(usage)
+        result = ResponseAPILoggingUtils.transform_response_api_usage_to_chat_usage(usage)
 
         assert result.prompt_tokens == 35
         assert result.completion_tokens == 1716
@@ -618,7 +618,7 @@ class TestResponseAPILoggingUtils:
         )
         setattr(usage, "server_side_tool_usage_details", details)
 
-        result = ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(usage)
+        result = ResponseAPILoggingUtils.transform_response_api_usage_to_chat_usage(usage)
 
         assert result is usage
         assert getattr(result, "server_side_tool_usage_details") == details
@@ -645,7 +645,7 @@ class TestResponseAPILoggingUtils:
             "server_side_tool_usage_details": details,
         }
 
-        result = ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(usage)
+        result = ResponseAPILoggingUtils.transform_response_api_usage_to_chat_usage(usage)
 
         assert isinstance(result, Usage)
         assert result.prompt_tokens == 50
@@ -671,7 +671,7 @@ class TestResponseAPILoggingUtils:
             },
         }
 
-        result = ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(usage)
+        result = ResponseAPILoggingUtils.transform_response_api_usage_to_chat_usage(usage)
 
         assert result.prompt_tokens_details is not None
         assert result.prompt_tokens_details.cached_tokens == 192
@@ -692,7 +692,7 @@ class TestResponseAPILoggingUtils:
             },
         )
 
-        result = ResponseAPILoggingUtils._transform_response_api_usage_to_chat_usage(usage)
+        result = ResponseAPILoggingUtils.transform_response_api_usage_to_chat_usage(usage)
 
         assert result.prompt_tokens_details is not None
         assert result.prompt_tokens_details.cached_tokens_details is not None

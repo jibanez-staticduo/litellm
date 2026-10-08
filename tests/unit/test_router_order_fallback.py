@@ -1,3 +1,16 @@
+from collections.abc import Mapping
+from functools import partial
+from pathlib import Path
+from queue import SimpleQueue
+from pydantic import JsonValue, TypeAdapter
+from litellm.llms.anthropic import oauth_policy
+from litellm.llms.anthropic.authenticator import AnthropicAuthenticator
+from litellm.llms.anthropic.chat import handler as anthropic_chat_handler
+from litellm.llms.anthropic.common_utils import AnthropicError
+from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
+from litellm.proxy._types import UserAPIKeyAuth
+from litellm.utils import _get_deployment_order
+
 """
 Tests for order-based fallback routing.
 
@@ -7,29 +20,18 @@ when lower order deployments fail.
 """
 
 import json
-from collections.abc import Mapping
-from functools import partial
-from pathlib import Path
-from queue import SimpleQueue
 from typing import Final, Optional
 
 import httpx
 import pytest
 from openai import AsyncOpenAI
-from pydantic import JsonValue, TypeAdapter
 
 import litellm
 from litellm import Router
 from litellm.integrations.custom_logger import CustomLogger
-from litellm.llms.anthropic import oauth_policy
-from litellm.llms.anthropic.authenticator import AnthropicAuthenticator
-from litellm.llms.anthropic.chat import handler as anthropic_chat_handler
-from litellm.llms.anthropic.common_utils import AnthropicError
-from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
-from litellm.proxy._types import UserAPIKeyAuth
 from litellm.router_utils.prompt_caching_cache import PromptCachingCache
 from litellm.types.router import RouterRateLimitError
-from litellm.utils import _get_deployment_order, get_order_filtered_deployments
+from litellm.utils import get_deployment_order, get_order_filtered_deployments
 
 # ---------------------------------------------------------------------------
 # Unit tests for get_order_filtered_deployments
@@ -103,6 +105,10 @@ class TestGetOrderFilteredDeployments:
         ]
         result = get_order_filtered_deployments(deps)
         assert len(result) == 2
+
+
+def test_get_deployment_order_returns_unvalidated_order():
+    assert get_deployment_order({"litellm_params": {"order": "first"}}) == "first"
 
 
 # ---------------------------------------------------------------------------
@@ -439,7 +445,7 @@ async def test_router_order_fallback_does_not_reselect_order_1_when_order_2_is_f
         async def async_filter_deployments(
             self, model, healthy_deployments, messages, request_kwargs=None, parent_otel_span=None
         ):
-            return [d for d in healthy_deployments if _get_deployment_order(d) != 2]
+            return [d for d in healthy_deployments if get_deployment_order(d) != 2]
 
     drop_order_2: Final = _DropOrder2()
     router = Router(
@@ -654,21 +660,21 @@ async def test_text_completion_order_fallback_hop_does_not_send_target_order_ups
 
 def test_check_non_standard_fallback_format():
     from litellm.router_utils.fallback_event_handlers import (
-        _check_non_standard_fallback_format,
+        check_non_standard_fallback_format,
     )
 
     # Standard formats
-    assert _check_non_standard_fallback_format([{"gpt-3.5-turbo": ["claude-3-haiku"]}]) == False
-    assert _check_non_standard_fallback_format([{"model": ["qwen-backup"]}]) == False
-    assert _check_non_standard_fallback_format([{"model": ["qwen-backup"], "region": ["us-east-1"]}]) == False
+    assert check_non_standard_fallback_format([{"gpt-3.5-turbo": ["claude-3-haiku"]}]) == False
+    assert check_non_standard_fallback_format([{"model": ["qwen-backup"]}]) == False
+    assert check_non_standard_fallback_format([{"model": ["qwen-backup"], "region": ["us-east-1"]}]) == False
 
     # Non-standard formats
-    assert _check_non_standard_fallback_format([{"model": "qwen-backup"}]) == True
+    assert check_non_standard_fallback_format([{"model": "qwen-backup"}]) == True
     assert (
-        _check_non_standard_fallback_format([{"model": "qwen-backup", "messages": [{"role": "user", "content": "hi"}]}])
+        check_non_standard_fallback_format([{"model": "qwen-backup", "messages": [{"role": "user", "content": "hi"}]}])
         == True
     )
-    assert _check_non_standard_fallback_format([{"model": ["qwen-backup"], "api_key": "some-key"}]) == True
+    assert check_non_standard_fallback_format([{"model": ["qwen-backup"], "api_key": "some-key"}]) == True
 
 
 def _anthropic_oauth_policy_router(defaults: Mapping[str, object] | None = None, *, blocked: bool = False) -> Router:
@@ -741,7 +747,7 @@ async def test_anthropic_oauth_router_http_payload_excludes_routing_controls(
     def async_http_client(llm_provider: litellm.LlmProviders) -> AsyncHTTPHandler:
         return async_client
 
-    monkeypatch.setattr(anthropic_chat_handler, "_get_httpx_client", sync_http_client)
+    monkeypatch.setattr(anthropic_chat_handler, "get_httpx_client", sync_http_client)
     monkeypatch.setattr(anthropic_chat_handler, "get_async_httpx_client", async_http_client)
     router: Final = Router(
         model_list=[

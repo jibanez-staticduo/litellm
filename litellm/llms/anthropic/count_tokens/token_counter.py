@@ -2,7 +2,6 @@
 Anthropic Token Counter implementation using the CountTokens API.
 """
 
-import os
 from collections.abc import Mapping, Sequence
 from types import MappingProxyType
 from typing import Final
@@ -10,6 +9,7 @@ from typing import Final
 from pydantic import JsonValue, TypeAdapter
 
 from litellm._logging import verbose_logger
+from litellm.exceptions import AuthenticationError
 from litellm.llms.anthropic import oauth_policy
 from litellm.llms.anthropic.count_tokens.handler import AnthropicCountTokensHandler
 from litellm.llms.anthropic.count_tokens.transformation import COUNT_TOKEN_OPTION_NAMES
@@ -58,7 +58,7 @@ class AnthropicTokenCounter(BaseTokenCounter):
         Returns:
             TokenCountResponse with token count, or None if counting fails
         """
-        from litellm.llms.anthropic.common_utils import AnthropicError
+        from litellm.llms.anthropic.common_utils import AnthropicError, AnthropicModelInfo
 
         litellm_params: Final = _COUNT_PARAMS.validate_python(
             deployment.get("litellm_params", _EMPTY_COUNT_PARAMS) if deployment else _EMPTY_COUNT_PARAMS
@@ -83,24 +83,26 @@ class AnthropicTokenCounter(BaseTokenCounter):
             if oauth_policy.is_anthropic_native_client(litellm_params):
                 raise AnthropicError(400, "Native Claude Code profiles require /v1/messages/count_tokens")
             native: Final = is_anthropic_native_sdk(litellm_params)
-            api_base: Final = (
-                _COUNT_STRING.validate_python(litellm_params.get("api_base"), strict=True) if managed else None
-            )
+            api_base: Final = _COUNT_STRING.validate_python(litellm_params.get("api_base"), strict=True)
             managed_token: Final = (
                 None if native else oauth_policy.resolve_anthropic_oauth_access_token(litellm_params, api_base=api_base)
             )
-            api_key: Final = (
-                ""
+            auth_header: Final = (
+                MappingProxyType({})
                 if native
-                else managed_token
-                if managed
-                else _COUNT_STRING.validate_python(litellm_params.get("api_key"), strict=True)
-                or os.getenv("ANTHROPIC_API_KEY")
+                else await AnthropicModelInfo.aget_auth_header(
+                    api_key=managed_token
+                    if managed
+                    else _COUNT_STRING.validate_python(litellm_params.get("api_key"), strict=True),
+                    api_base=api_base,
+                    litellm_params=litellm_params,
+                    allow_workload_identity=not managed,
+                )
             )
-            if not api_key and not native:
+            if auth_header is None:
                 if managed:
                     raise AnthropicError(401, "No managed Anthropic OAuth credential available for token counting")
-                verbose_logger.warning("No Anthropic API key found for token counting")
+                verbose_logger.warning("No Anthropic credential found for token counting")
                 return None
             optional_params: Final = _COUNT_OPTIONS.validate_python(
                 MappingProxyType(
@@ -110,7 +112,8 @@ class AnthropicTokenCounter(BaseTokenCounter):
             result: Final = await anthropic_count_tokens_handler.handle_count_tokens_request(
                 model=model_to_use,
                 messages=_COUNT_MESSAGES.validate_python(messages),
-                api_key=api_key or "",
+                auth_header=auth_header,
+                api_base=api_base,
                 tools=_COUNT_MESSAGES.validate_python(tools) if tools is not None else None,
                 system=oauth_policy.apply_anthropic_oauth_system(system, litellm_params),
                 optional_params=optional_params,
@@ -123,7 +126,7 @@ class AnthropicTokenCounter(BaseTokenCounter):
                 tokenizer_type="anthropic_api",
                 original_response=result,
             )
-        except AnthropicError as e:
+        except (AnthropicError, AuthenticationError) as e:
             verbose_logger.warning("Anthropic CountTokens API error: status=%s, message=%s", e.status_code, e.message)
             return TokenCountResponse(
                 total_tokens=0,
