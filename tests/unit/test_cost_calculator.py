@@ -8528,8 +8528,6 @@ async def test_cost_calculator_with_custom_pricing_router(model_item, custom_pri
 
 
 def test_json_valid_model_cost_map():
-    import json
-
     os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"
 
     model_cost = litellm.get_model_cost_map(url="")

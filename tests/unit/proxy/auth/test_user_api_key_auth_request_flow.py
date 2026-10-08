@@ -38,7 +38,7 @@ from litellm.proxy._types import (
     ProxyException,
     UserAPIKeyAuth,
 )
-from litellm.proxy.auth.auth_checks import TeamNotFoundError, UserNotFoundError, _cache_key_object, get_key_object
+from litellm.proxy.auth.auth_checks import _cache_key_object
 from litellm.proxy.auth.handle_jwt import JWTHandler
 from litellm.proxy.auth.auth_checks import (
     OrganizationNotFoundError,

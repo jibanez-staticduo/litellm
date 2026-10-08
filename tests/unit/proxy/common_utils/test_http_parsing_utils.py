@@ -167,7 +167,7 @@ async def test_disconnected_body_stops_request_without_empty_payload(content_typ
         receive=disconnected_receive,
     )
     with pytest.raises(ProxyException) as error:
-        await _read_request_body(request)
+        await read_request_body(request)
     assert error.value.code == "499"
     assert "parsed_body" not in request.scope
 

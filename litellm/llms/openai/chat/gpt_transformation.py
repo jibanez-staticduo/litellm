@@ -395,13 +395,21 @@ class OpenAIGPTConfig(BaseLLMModelInfo, BaseConfig):
 
     @overload
     def transform_messages(
-        self, messages: list[AllMessageValues], model: str, is_async: Literal[True]
-    ) -> Coroutine[object, object, list[AllMessageValues]]: ...
+        self,
+        messages: list[AllMessageValues],  # mutable-ok: message transformation mutates the caller's list
+        model: str,
+        is_async: Literal[True],
+    ) -> Coroutine[  # mutable-ok: resolves to the mutable message list
+        object, object, list[AllMessageValues]
+    ]: ...
 
     @overload
     def transform_messages(
-        self, messages: list[AllMessageValues], model: str, is_async: Literal[False] = False
-    ) -> list[AllMessageValues]: ...
+        self,
+        messages: list[AllMessageValues],  # mutable-ok: message transformation mutates the caller's list
+        model: str,
+        is_async: Literal[False] = False,
+    ) -> list[AllMessageValues]: ...  # mutable-ok: returns the transformed mutable message list
 
     def transform_messages(
         self,
