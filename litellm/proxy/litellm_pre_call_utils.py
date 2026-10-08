@@ -965,10 +965,11 @@ def _get_validated_callback_metadata(item: dict, *, source: str) -> AddTeamCallb
     try:
         return AddTeamCallback(**item)
     except (PydanticValidationError, ValueError) as e:
+        # Validation error messages can include callback credentials from the input.
         verbose_proxy_logger.warning(
-            "Ignoring invalid %s callback metadata: %s",
+            "Ignoring invalid %s callback metadata (%s)",
             source,
-            _sanitize_for_log(str(e)),
+            type(e).__name__,
         )
         return None
 
@@ -1006,8 +1007,11 @@ def _get_dynamic_logging_metadata(
     #########################################################################################
     if key_dynamic_logging_settings is not None:
         for item in key_dynamic_logging_settings:
+            callback = _get_validated_callback_metadata(item=item, source="key-level")
+            if callback is None:
+                continue
             callback_settings_obj = convert_key_logging_metadata_to_callback(
-                data=AddTeamCallback(**item),
+                data=callback,
                 team_callback_settings_obj=callback_settings_obj,
             )
     #########################################################################################
@@ -1015,8 +1019,11 @@ def _get_dynamic_logging_metadata(
     #########################################################################################
     elif team_dynamic_logging_settings is not None:
         for item in team_dynamic_logging_settings:
+            callback = _get_validated_callback_metadata(item=item, source="team-level")
+            if callback is None:
+                continue
             callback_settings_obj = convert_key_logging_metadata_to_callback(
-                data=AddTeamCallback(**item),
+                data=callback,
                 team_callback_settings_obj=callback_settings_obj,
             )
     #########################################################################################
@@ -2183,6 +2190,11 @@ async def add_litellm_data_to_request(
             user_api_key_dict.end_user_id = user
         if "user" not in data:
             data["user"] = user
+
+    if litellm.overwrite_user_with_key_hash is True:
+        stampable_hash: Final = _stampable_key_hash(user_api_key_dict)
+        if stampable_hash is not None:
+            data["user"] = stampable_hash  # rebind-ok: proxy request out-param
 
     data["secret_fields"] = SecretFields(  # rebind-ok: framework flow intentionally updates request or lifecycle state
         raw_headers=_raw_headers,

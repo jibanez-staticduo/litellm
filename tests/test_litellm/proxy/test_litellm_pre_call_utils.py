@@ -5,7 +5,7 @@ import os
 import time
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from typing import Final
+from typing import Final, Literal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -2469,6 +2469,120 @@ def test_get_dynamic_logging_metadata_ignores_env_reference_from_key_metadata(
     )
 
     result = _get_dynamic_logging_metadata(user_api_key_dict=user_api_key_dict, proxy_config=MagicMock())
+
+    assert result is None
+
+
+@pytest.mark.parametrize("source", ("key", "team"))
+@pytest.mark.parametrize("invalid_first", (True, False))
+def test_dynamic_logging_preserves_valid_callback_next_to_invalid_row(
+    source: Literal["key", "team"], invalid_first: bool
+) -> None:
+    from litellm.proxy.proxy_server import ProxyConfig
+
+    valid: Final = {
+        "callback_name": "langfuse",
+        "callback_type": "success",
+        "callback_vars": {"langfuse_host": "https://logging.test"},
+    }
+    invalid: Final = {
+        "callback_name": "langfuse",
+        "callback_type": "failure",
+        "callback_vars": {"langfuse_secret_key": "os.environ/UNTRUSTED_CALLBACK_SECRET"},
+    }
+    rows: Final = [invalid, valid] if invalid_first else [valid, invalid]
+    caller: Final = UserAPIKeyAuth(
+        api_key="synthetic-key",
+        metadata={"logging": rows} if source == "key" else {},
+        team_metadata={"logging": rows} if source == "team" else {},
+    )
+
+    result: Final = _get_dynamic_logging_metadata(user_api_key_dict=caller, proxy_config=ProxyConfig())
+
+    assert result == TeamCallbackMetadata(
+        success_callback=["langfuse"],
+        failure_callback=[],
+        callbacks=[],
+        callback_vars={"langfuse_host": "https://logging.test"},
+    )
+
+
+@pytest.mark.parametrize("source", ("key", "team"))
+def test_dynamic_logging_returns_none_when_every_callback_row_is_invalid(source: Literal["key", "team"]) -> None:
+    from litellm.proxy.proxy_server import ProxyConfig
+
+    rows: Final = [
+        {
+            "callback_name": "langfuse",
+            "callback_type": "success",
+            "callback_vars": {"langfuse_secret_key": "os.environ/UNTRUSTED_CALLBACK_SECRET"},
+        },
+        {"callback_type": "success", "callback_vars": {}},
+    ]
+    caller: Final = UserAPIKeyAuth(
+        api_key="synthetic-key",
+        metadata={"logging": rows} if source == "key" else {},
+        team_metadata={"logging": rows} if source == "team" else {},
+    )
+
+    result: Final = _get_dynamic_logging_metadata(user_api_key_dict=caller, proxy_config=ProxyConfig())
+
+    assert result is None
+
+
+@pytest.mark.parametrize("source", ("key", "team"))
+def test_invalid_callback_warning_omits_secret_and_its_truncated_tail(
+    source: Literal["key", "team"], caplog: pytest.LogCaptureFixture
+) -> None:
+    import logging
+
+    from litellm.proxy.proxy_server import ProxyConfig
+
+    secret: Final = "synthetic-private-token-TOKEN_TAIL_SENTINEL"
+    rows: Final = [{"callback_type": "success", "callback_vars": {"langfuse_secret_key": secret}}]
+    caller: Final = UserAPIKeyAuth(
+        api_key="synthetic-key",
+        metadata={"logging": rows} if source == "key" else {},
+        team_metadata={"logging": rows} if source == "team" else {},
+    )
+
+    with caplog.at_level(logging.WARNING, logger="LiteLLM Proxy"):
+        result: Final = _get_dynamic_logging_metadata(user_api_key_dict=caller, proxy_config=ProxyConfig())
+
+    warnings: Final = tuple(record.getMessage() for record in caplog.records if record.levelno == logging.WARNING)
+    assert result is None
+    assert warnings
+    assert any(f"Ignoring invalid {source}-level callback metadata" in warning for warning in warnings)
+    assert secret not in caplog.text
+    assert "TOKEN_TAIL_SENTINEL" not in caplog.text
+
+
+def test_invalid_key_logging_does_not_fall_back_to_valid_team_logging() -> None:
+    from litellm.proxy.proxy_server import ProxyConfig
+
+    caller: Final = UserAPIKeyAuth(
+        api_key="synthetic-key",
+        metadata={
+            "logging": [
+                {
+                    "callback_name": "langfuse",
+                    "callback_type": "success",
+                    "callback_vars": {"langfuse_secret_key": "os.environ/UNTRUSTED_CALLBACK_SECRET"},
+                }
+            ]
+        },
+        team_metadata={
+            "logging": [
+                {
+                    "callback_name": "arize",
+                    "callback_type": "success",
+                    "callback_vars": {"arize_space_id": "synthetic-team-space"},
+                }
+            ]
+        },
+    )
+
+    result: Final = _get_dynamic_logging_metadata(user_api_key_dict=caller, proxy_config=ProxyConfig())
 
     assert result is None
 
