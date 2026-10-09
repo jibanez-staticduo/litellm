@@ -7,10 +7,29 @@ they live in one place.
 
 import json
 from collections.abc import Callable, Iterable, Mapping, Sequence
+from dataclasses import dataclass
 from typing import Final
+
+from pydantic import TypeAdapter
 
 from litellm.integrations.otel.mappers.base import AttributeMap, AttrValue
 from litellm.integrations.otel.model.payloads import LLMCallSpanData, ToolDefinition
+
+
+@dataclass(frozen=True, slots=True)
+class MessageToolCall:
+    id: str | None
+    type: str
+    name: str | None
+    arguments: str | None
+
+    def to_openai_dict(self) -> Mapping[str, object]:
+        return {
+            "id": self.id,
+            "type": self.type,
+            "function": {"name": self.name, "arguments": self.arguments},
+        }
+
 
 DEFAULT_SPAN_ATTRIBUTE_LIMIT: Final = 128
 """The OTel SDK's default per-span attribute count limit."""
@@ -121,3 +140,67 @@ def message_content(message: object) -> str | None:
 def output_messages(data: LLMCallSpanData) -> list:
     """The ``message`` payload of each response choice."""
     return [c.get("message") for c in data.choices_out if isinstance(c, dict)]
+
+
+_MESSAGE_DICT: Final = TypeAdapter(Mapping[object, object])
+_TOOL_CALL_SEQUENCE: Final = TypeAdapter(Sequence[object])
+
+
+def message_dict(value: object) -> Mapping[object, object] | None:
+    if not isinstance(value, dict):
+        return None
+    return _MESSAGE_DICT.validate_python(value, strict=True)
+
+
+def _tool_call_sequence(value: object) -> Sequence[object] | None:
+    if not isinstance(value, (list, tuple)):
+        return None
+    return _TOOL_CALL_SEQUENCE.validate_python(value, strict=True)
+
+
+def message_tool_calls(message: object) -> tuple[MessageToolCall, ...]:
+    message_data: Final = message_dict(message)
+    if message_data is None:
+        return ()
+    tool_calls: Final = _tool_call_sequence(message_data.get("tool_calls"))
+    if not tool_calls:
+        return ()
+    return tuple(tool_call for value in tool_calls if (tool_call := _message_tool_call(value)) is not None)
+
+
+def _message_tool_call(value: object) -> MessageToolCall | None:
+    tool_data: Final = message_dict(value)
+    if tool_data is None:
+        return None
+    function_data: Final = message_dict(tool_data.get("function")) or {}
+    raw_type: Final = tool_data.get("type")
+    raw_arguments: Final = function_data.get("arguments")
+    arguments: Final = (
+        raw_arguments
+        if isinstance(raw_arguments, str)
+        else _stringify_tool_arguments(raw_arguments)
+        if raw_arguments is not None
+        else None
+    )
+    name: Final = function_data.get("name")
+    identifier: Final = tool_data.get("id")
+    return MessageToolCall(
+        id=identifier if isinstance(identifier, str) else None,
+        type=raw_type if isinstance(raw_type, str) else "function",
+        name=name if isinstance(name, str) else None,
+        arguments=arguments,
+    )
+
+
+def _stringify_tool_arguments(value: object) -> str:
+    """Serialize non-string tool-call arguments, falling back to ``repr``.
+
+    Arguments normally arrive as already-JSON strings, but provider adapters and
+    ``model_construct`` responses hand over raw Python objects. ``json.dumps``
+    raises on those (tuple-keyed dicts, cycles) and the escaping exception would
+    lose the whole span, so keep a readable ``repr`` instead.
+    """
+    try:
+        return json.dumps(value, default=str)
+    except (TypeError, ValueError):
+        return repr(value)

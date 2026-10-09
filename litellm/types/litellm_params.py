@@ -99,6 +99,7 @@ class ProviderConnection:
     chatgpt_auth_profile: str | None = None
     chatgpt_token_dir: str | None = None
     chatgpt_auth_file: str | None = None
+    fireworks_forward_user_id: bool | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

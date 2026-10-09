@@ -514,6 +514,10 @@ class GenericLiteLLMParams(CredentialLiteLLMParams, CustomPricingLiteLLMParams):
     chatgpt_auth_profile: str | None = None
     chatgpt_token_dir: str | None = None
     chatgpt_auth_file: str | None = None
+    fireworks_forward_user_id: bool | None = Field(
+        default=None,
+        description="Send the LiteLLM user id of the calling key as the `user` field on Fireworks AI chat, responses and messages requests.",
+    )
     model_config = ConfigDict(extra="allow", arbitrary_types_allowed=True)
     merge_reasoning_content_in_choices: bool | None = False
     forward_reasoning_content: bool | None = None

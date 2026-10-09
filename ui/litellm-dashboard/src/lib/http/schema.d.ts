@@ -14454,6 +14454,7 @@ export interface paths {
          * Get Litellm Model Cost Map
          * @description Public endpoint to get the LiteLLM model cost map.
          *     Returns pricing information for all supported models.
+         *     With catalog_only=true, returns the catalog as loaded, without entries registered at runtime for proxy deployments.
          */
         get: operations["get_litellm_model_cost_map_public_litellm_model_cost_map_get"];
         put?: never;
@@ -28178,6 +28179,13 @@ export interface components {
              */
             sticky_session_routing: boolean | null;
             /**
+             * Stream Scope
+             * @description Whether this guardrail runs on streaming requests, non-streaming requests, or both. A string applies to every configured mode. A map overrides named modes (pre_call, during_call, post_call, ...); omitted keys default to both. Unset means both, matching historical behavior.
+             */
+            stream_scope?: ("streaming" | "non_streaming" | "both") | {
+                [key: string]: "streaming" | "non_streaming" | "both";
+            } | null;
+            /**
              * Template Id
              * @description The ID of your Model Armor template
              */
@@ -31110,6 +31118,11 @@ export interface components {
              */
             mcp_internal_ip_ranges?: string[] | null;
             /**
+             * Mcp Prefer Client Id Metadata Document
+             * @description When true, a gateway-managed OAuth2 MCP server whose authorization server advertises Client ID Metadata Document support identifies itself with the gateway's public metadata document URL even when that authorization server also offers dynamic client registration. Requires a public HTTPS PROXY_BASE_URL the authorization server can fetch. Default false: dynamic client registration is used whenever the authorization server offers it, and the metadata document only when it does not.
+             */
+            mcp_prefer_client_id_metadata_document?: boolean | null;
+            /**
              * Mcp Required Fields
              * @description List of MCP server fields that must be filled in for a submission to pass standards checks (e.g. ['description', 'source_url', 'alias']).
              */
@@ -31211,6 +31224,8 @@ export interface components {
             search_tool_deny_by_default: boolean;
             /** @description Daily check of the spend LiteLLM captured against the provider's own bill (OpenAI via OPENAI_ADMIN_KEY). Publishes litellm_spend_capture_rate per provider and alerts when the ratio over the lookback window falls under the threshold (default 0.9). Off unless set. */
             spend_capture_rate_check?: components["schemas"]["SpendCaptureRateCheckSettings"] | null;
+            /** @description Which keys of LiteLLM_SpendLogs.metadata are written to the database. Set exactly one of 'include' (write only these keys) or 'exclude' (drop these keys). 'status' and 'cold_storage_object_key' are always written. Daily spend tables, budgets and logging callbacks still see every key. Unset writes every key */
+            spend_logs_metadata_fields?: components["schemas"]["SpendLogsMetadataFields"] | null;
             /**
              * Store Model In Db
              * @description If True, models and config are stored in and loaded from the database. Default is False.
@@ -36811,6 +36826,11 @@ export interface components {
             default_api_key_tpm_limit?: number | null;
             /** Drop Params */
             drop_params?: boolean | string | null;
+            /**
+             * Fireworks Forward User Id
+             * @description Send the LiteLLM user id of the calling key as the `user` field on Fireworks AI chat, responses and messages requests.
+             */
+            fireworks_forward_user_id?: boolean | null;
             /** Forward Reasoning Content */
             forward_reasoning_content?: boolean | null;
             /** Gcs Bucket Name */
@@ -38604,6 +38624,13 @@ export interface components {
              * @default true
              */
             sticky_session_routing: boolean | null;
+            /**
+             * Stream Scope
+             * @description Whether this guardrail runs on streaming requests, non-streaming requests, or both. A string applies to every configured mode. A map overrides named modes (pre_call, during_call, post_call, ...); omitted keys default to both. Unset means both, matching historical behavior.
+             */
+            stream_scope?: ("streaming" | "non_streaming" | "both") | {
+                [key: string]: "streaming" | "non_streaming" | "both";
+            } | null;
             /**
              * Template Id
              * @description The ID of your Model Armor template
@@ -47126,6 +47153,13 @@ export interface components {
              */
             threshold: number;
         };
+        /** SpendLogsMetadataFields */
+        SpendLogsMetadataFields: {
+            /** Exclude */
+            exclude?: string[] | null;
+            /** Include */
+            include?: string[] | null;
+        };
         /** SpendMetrics */
         SpendMetrics: {
             /**
@@ -52082,6 +52116,11 @@ export interface components {
             default_api_key_tpm_limit?: number | null;
             /** Drop Params */
             drop_params?: boolean | string | null;
+            /**
+             * Fireworks Forward User Id
+             * @description Send the LiteLLM user id of the calling key as the `user` field on Fireworks AI chat, responses and messages requests.
+             */
+            fireworks_forward_user_id?: boolean | null;
             /** Forward Reasoning Content */
             forward_reasoning_content?: boolean | null;
             /** Gcs Bucket Name */
@@ -72901,7 +72940,9 @@ export interface operations {
     };
     get_litellm_model_cost_map_public_litellm_model_cost_map_get: {
         parameters: {
-            query?: never;
+            query?: {
+                catalog_only?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -72915,6 +72956,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

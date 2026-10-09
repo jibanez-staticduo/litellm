@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import json
 import time
 from types import SimpleNamespace
@@ -9,6 +11,63 @@ import pytest
 from litellm._internal_context import current_service_target
 from litellm.caching.dual_cache import DualCache
 from litellm.proxy._types import LitellmUserRoles, UserAPIKeyAuth
+
+
+def _signed_connect_payload(payload: object) -> str:
+    from litellm.proxy.moyai_endpoints import _b64url, _master_key_hmac_key
+
+    raw: Final = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
+    signature: Final = hmac.new(_master_key_hmac_key("sk-master"), raw, hashlib.sha256).digest()
+    return f"{_b64url(raw)}.{_b64url(signature)}"
+
+
+@pytest.mark.parametrize(
+    "invalid_fields",
+    (
+        {"exp": "9999999999"},
+        {"exp": 9999999999.0},
+        {"exp": True},
+        {"exp": None},
+        {"moyai_origin": 123},
+        {"moyai_origin": None},
+        {"nonce": 123},
+        {"nonce": None},
+    ),
+)
+def test_decode_rejects_signed_payload_fields_without_coercion(invalid_fields: dict[str, object]) -> None:
+    from fastapi import HTTPException
+    from litellm.proxy.moyai_endpoints import _decode_connect_code
+
+    payload: Final = {"exp": 9999999999, "moyai_origin": "https://moyai.example.com", "nonce": "n", **invalid_fields}
+
+    with pytest.raises(HTTPException) as exc:
+        _decode_connect_code("sk-master", _signed_connect_payload(payload))
+
+    assert (exc.value.status_code, exc.value.detail) == (400, "Invalid Moyai connect code")
+
+
+@pytest.mark.parametrize("payload", ([], None, {}, {"exp": 9999999999}, {"exp": 9999999999, "nonce": "n"}))
+def test_decode_rejects_signed_payload_without_required_fields(payload: object) -> None:
+    from fastapi import HTTPException
+    from litellm.proxy.moyai_endpoints import _decode_connect_code
+
+    with pytest.raises(HTTPException) as exc:
+        _decode_connect_code("sk-master", _signed_connect_payload(payload))
+
+    assert (exc.value.status_code, exc.value.detail) == (400, "Invalid Moyai connect code")
+
+
+@pytest.mark.parametrize("user_id", ("admin-user", None, 123, {"user": "admin-user"}))
+def test_decode_preserves_optional_user_id_normalization(user_id: object) -> None:
+    from litellm.proxy.moyai_endpoints import _decode_connect_code
+
+    payload: Final = {"exp": 9999999999, "moyai_origin": "https://moyai.example.com", "nonce": "n", "user_id": user_id}
+
+    result: Final = _decode_connect_code("sk-master", _signed_connect_payload(payload))
+
+    assert (result.moyai_origin, result.nonce, result.exp, result.user_id) == (
+        "https://moyai.example.com", "n", 9999999999, user_id if isinstance(user_id, str) else None
+    )
 
 
 def _admin() -> UserAPIKeyAuth:

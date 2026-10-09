@@ -86,6 +86,7 @@ OPTIONAL_KWARGS_KEYS: Final = (
             "chatgpt_auth_profile",
             "chatgpt_token_dir",
             "chatgpt_auth_file",
+            "fireworks_forward_user_id",
             PROVIDER_AFFINITY_HEADER_KWARG_KEY,
         }
     )

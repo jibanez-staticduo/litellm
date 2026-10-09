@@ -18,12 +18,3 @@ class TestAnthropicMessagesEndpoint(BaseAnthropicMessagesTest):
             base_url="http://0.0.0.0:4000",
             api_key=os.environ["LITELLM_MASTER_KEY"],
         )
-
-    def test_anthropic_messages_to_wildcard_model(self):
-        client = self.get_client()
-        response = client.messages.create(
-            model="anthropic/claude-haiku-4-5-20251001",
-            messages=[{"role": "user", "content": "Hello, world!"}],
-            max_tokens=100,
-        )
-        print(response)

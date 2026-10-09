@@ -36,10 +36,11 @@ from typing import Any, Dict
 from unittest.mock import MagicMock, patch
 
 import pytest
-
+from pydantic import ValidationError
 
 import litellm
 from litellm.llms.custom_httpx.llm_http_handler import BaseLLMHTTPHandler
+from litellm.types.router import GenericLiteLLMParams
 from litellm.types.videos.main import CharacterObject, VideoObject
 from litellm.types.videos.utils import encode_video_id_with_provider
 from litellm.videos import main as videos_main
@@ -453,3 +454,68 @@ def test_db_yaml_credentials_reach_every_handler(seams, handler_name, invoke):
     assert litellm_params.get("api_base") == DB_YAML_CREDS["api_base"]
     assert litellm_params.get("api_version") == DB_YAML_CREDS["api_version"]
     assert litellm_params.get("vertex_project") == DB_YAML_CREDS["vertex_project"]
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {},
+        {"fireworks_forward_user_id": True},
+        {"fireworks_forward_user_id": False},
+        {"fireworks_forward_user_id": None},
+        {"fireworks_forward_user_id": "true", "max_retries": "3", "drop_params": "true"},
+        {"video_provider_option": {"nested": ["retained"]}},
+        {"self": "ignored", "params": "ignored", "__class__": "ignored"},
+    ],
+)
+def test_video_params_mapping_validation_preserves_constructor_contract(params):
+    expected = GenericLiteLLMParams(**params)
+    validated = GenericLiteLLMParams.model_validate(params)
+
+    assert validated.model_dump() == expected.model_dump()
+    assert validated.model_fields_set == expected.model_fields_set
+    assert validated.fireworks_forward_user_id is expected.fireworks_forward_user_id
+    if "video_provider_option" in params:
+        assert validated.get("video_provider_option") is params["video_provider_option"]
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"fireworks_forward_user_id": "not-a-bool"},
+        {"fireworks_forward_user_id": {}},
+        {"max_retries": "not-an-int"},
+        {"api_key": ["not-a-string"]},
+    ],
+)
+def test_video_params_mapping_validation_preserves_constructor_errors(params):
+    with pytest.raises(ValidationError) as constructor_error:
+        GenericLiteLLMParams(**params)
+    with pytest.raises(ValidationError) as mapping_error:
+        GenericLiteLLMParams.model_validate(params)
+
+    # Validator contexts contain exception objects with distinct identities.
+    assert mapping_error.value.errors(include_url=False, include_context=False) == constructor_error.value.errors(
+        include_url=False, include_context=False
+    )
+
+
+@pytest.mark.parametrize(
+    "handler_name,invoke",
+    CREDENTIAL_OPERATIONS,
+    ids=[op[0] for op in CREDENTIAL_OPERATIONS],
+)
+def test_video_kwargs_validation_reaches_every_handler(seams, monkeypatch, handler_name, invoke):
+    extra = {"nested": ["retained"]}
+    monkeypatch.setitem(DB_YAML_CREDS, "fireworks_forward_user_id", True)
+    monkeypatch.setitem(DB_YAML_CREDS, "max_retries", "3")
+    monkeypatch.setitem(DB_YAML_CREDS, "video_provider_option", extra)
+
+    invoke()
+
+    params = seams.kwargs_of(handler_name)["litellm_params"]
+    assert isinstance(params, GenericLiteLLMParams)
+    assert params.fireworks_forward_user_id is True
+    assert params.max_retries == 3
+    assert params.use_xai_oauth is False
+    assert params.get("video_provider_option") is extra

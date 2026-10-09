@@ -17,6 +17,7 @@ from litellm.litellm_core_utils.get_litellm_params import (
     get_litellm_params,  # pyright: ignore[reportUnknownVariableType]  # untyped legacy carrier
 )
 from litellm.litellm_core_utils.litellm_logging import Logging
+from litellm.llms.anthropic.native_transport import AnthropicNativeIdentity
 from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
 from litellm.router_strategy.complexity_router.context_compaction import CompactionState
 from litellm.router_utils.fallback_event_handlers import AttemptedFallbackTargets
@@ -85,9 +86,16 @@ CONNECTION_NAMES: Final = (
     "litellm_credential_name",
     "configurable_clientside_auth_params",
     "use_xai_oauth",
+    "use_anthropic_oauth",
+    "anthropic_auth_profile",
+    "anthropic_token_dir",
+    "anthropic_credential_mode",
+    "anthropic_oauth_compatibility",
+    "anthropic_execution_mode",
     "chatgpt_auth_profile",
     "chatgpt_auth_file",
     "chatgpt_token_dir",
+    "fireworks_forward_user_id",
     "aws_batch_role_arn",
     "s3_bucket_name",
     "s3_region_name",
@@ -129,9 +137,14 @@ OPTION_NAMES: Final = (
     "use_in_pass_through",
     "allowed_openai_params",
     "fallbacks",
+    "disable_fallbacks",
+    "include_fallback_errors",
+    "context_window_fallbacks",
+    "content_policy_fallbacks",
     "context_window_fallback_dict",
     "num_retries",
     "retry_policy",
+    "model_group_retry_policy",
     "retry_strategy",
     "routing_strategy",
     "cooldown_time",
@@ -246,6 +259,12 @@ INTERNAL_STATE_NAMES: Final = (
     "fallback_depth",
     "max_fallbacks",
     "attempted_targets",
+    "original_requested_model",
+    "logical_model_group",
+    "original_model_group",
+    "fallback_model_group",
+    "_retry_skipped_deployment_ids",
+    "_anthropic_native_identity",
     "proxy_server_request",
     "secret_fields",
     "litellm_trusted_callback_vars",
@@ -512,6 +531,7 @@ TYPE_HINT_NAMESPACE: Final[Mapping[str, object]] = {
     "CompactionState": CompactionState,
     "RouterWeights": RouterWeights,
     "AttemptedFallbackTargets": AttemptedFallbackTargets,
+    "AnthropicNativeIdentity": AnthropicNativeIdentity,
 }
 
 LEAF_SAMPLES: Final[Mapping[type, Mapping[str, object]]] = {
@@ -698,11 +718,13 @@ NAMES_SHARED_WITH_TYPED_MODELS: Final[Mapping[str, tuple[str, ...]]] = MappingPr
         ),
         "router": (
             "caching_groups",
+            "context_window_fallbacks",
             "cooldown_time",
             "enable_tag_filtering",
             "fallbacks",
             "max_retries",
             "model_list",
+            "model_group_retry_policy",
             "num_retries",
             "retry_policy",
             "routing_strategy",

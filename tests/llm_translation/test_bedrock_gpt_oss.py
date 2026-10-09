@@ -1,8 +1,6 @@
 from base_llm_unit_tests import BaseLLMChatTest
 
-
 class TestBedrockGPTOSS(BaseLLMChatTest):
-    test_json_response_format = None
 
     def get_base_completion_call_args(self) -> dict:
         return {
@@ -16,11 +14,5 @@ class TestBedrockGPTOSS(BaseLLMChatTest):
         tests/unit/llms/bedrock/chat/test_invoke_handler.py::test_transform_tool_calls_index;
         the GPT-OSS-specific request-body transformation is covered by
         test_function_calling_request_body_gpt_oss below.
-        """
-        pass
-
-    async def test_completion_cost(self):
-        """
-        Bedrock GPT-OSS models are flaky and occasionally report 0 token counts in api response
         """
         pass
