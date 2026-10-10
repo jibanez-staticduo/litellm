@@ -41,6 +41,178 @@ from litellm.types.mcp import MCPAuth
 from litellm.types.mcp_server.mcp_server_manager import MCPOAuthMetadata, MCPServer, PinnedMCPTool
 
 
+@pytest.fixture
+def lazy_oauth_gateway(monkeypatch):
+    from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
+
+    from litellm.proxy import proxy_server
+    from litellm.proxy._experimental.mcp_server import server as gateway
+    from litellm.proxy._experimental.mcp_server import upstream
+    from litellm.proxy._experimental.mcp_server.auth import user_api_key_auth_mcp as admission
+    from litellm.proxy._types import LiteLLM_ObjectPermissionTable
+
+    manager: Final = mcp_operations.global_mcp_server_manager
+    public: Final = MCPServer(server_id="public", name="public", url="https://public.example/mcp", transport="http")
+    oauth: Final = MCPServer(
+        server_id="oauth", name="oauth", url="https://oauth.example/mcp", transport="http", auth_type=MCPAuth.oauth2
+    )
+    manager.registry.update({public.server_id: public, oauth.server_id: oauth})
+    principal: Final = UserAPIKeyAuth(
+        api_key="test-key",
+        object_permission=LiteLLM_ObjectPermissionTable(
+            object_permission_id="lazy-oauth-grant",
+            mcp_servers=["public", "oauth"],
+            mcp_tool_permissions={"public": ["read"], "oauth": ["read"]},
+        ),
+    )
+    authenticate: Final = AsyncMock(return_value=principal)
+    client: Final = AsyncMock(spec=upstream.MCPClient)
+    client._last_initialize_instructions = None
+    client.list_tools.return_value = [
+        MCPTool(name="read", input_schema={"type": "object"}),
+        MCPTool(name="hidden", input_schema={"type": "object"}),
+    ]
+    client.call_tool.return_value = CallToolResult(content=[TextContent(type="text", text="read-only result")])
+
+    def connect(**kwargs):
+        assert kwargs["server_url"] == public.url, "Missing OAuth must never invoke that upstream"
+        return client
+
+    transport: Final = StreamableHTTPSessionManager(gateway.lazymcp_server, json_response=True, stateless=True)
+    monkeypatch.setattr(upstream, "MCPClient", connect)
+    monkeypatch.setattr(admission, "user_api_key_auth", authenticate)
+    monkeypatch.setattr(proxy_server, "prisma_client", None)
+    monkeypatch.setattr(proxy_server, "proxy_logging_obj", None)
+    monkeypatch.setattr(gateway, "lazy_session_manager", transport)
+    monkeypatch.setattr(gateway, "_SESSION_MANAGERS_INITIALIZED", True)
+    return gateway, transport, authenticate, client
+
+
+@pytest.mark.asyncio
+async def test_lazymcp_initialization_and_allowed_call_do_not_require_unrelated_oauth(lazy_oauth_gateway):
+    gateway, transport, _, upstream = lazy_oauth_gateway
+    async with (
+        transport.run(),
+        httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=gateway.handle_streamable_http_lazymcp),
+            base_url="https://gateway.example",
+            headers={
+                "x-litellm-api-key": "test-key",
+                "x-mcp-servers": "public,oauth",
+                "accept": "application/json, text/event-stream",
+                "content-type": "application/json",
+            },
+        ) as client,
+    ):
+        initialized = await client.post("/lazymcp", content=_INITIALIZE)
+        assert initialized.status_code == 200, initialized.text
+        assert "serverInfo" in initialized.json()["result"]
+        listed = await client.post("/lazymcp", content=_TOOLS_LIST)
+        assert {tool["name"] for tool in listed.json()["result"]["tools"]} == {"mcp_describe", "mcp_call", "mcp_status"}
+        catalog = await client.post(
+            "/lazymcp",
+            json={"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "mcp_status", "arguments": {}}},
+        )
+        status = json.loads(catalog.json()["result"]["content"][0]["text"])
+        assert {item["name"]: (item["auth_status"], item["tool_count"]) for item in status["servers"]} == {
+            "public": ("not_required", 1),
+            "oauth": ("auth_required", 0),
+        }
+        described = await client.post(
+            "/lazymcp",
+            json={
+                "jsonrpc": "2.0",
+                "id": 4,
+                "method": "tools/call",
+                "params": {"name": "mcp_describe", "arguments": {"server": "public"}},
+            },
+        )
+        assert len(json.loads(described.json()["result"]["content"][0]["text"])["tools"]) == 1
+        called = await client.post(
+            "/lazymcp",
+            json={
+                "jsonrpc": "2.0",
+                "id": 5,
+                "method": "tools/call",
+                "params": {"name": "mcp_call", "arguments": {"server": "public", "tool": "read", "arguments": {}}},
+            },
+        )
+        assert called.json()["result"]["content"] == [{"type": "text", "text": "read-only result"}]
+        assert called.json()["result"]["isError"] is False
+    assert upstream.call_tool.await_args.args[0].name == "read"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("target,tool", [("oauth", "read"), ("public", "hidden"), ("unknown", "read")])
+async def test_lazymcp_unauthorized_target_never_invokes_upstream(lazy_oauth_gateway, target, tool):
+    gateway, transport, _, upstream = lazy_oauth_gateway
+    async with (
+        transport.run(),
+        httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=gateway.handle_streamable_http_lazymcp),
+            base_url="https://gateway.example",
+            headers={
+                "x-litellm-api-key": "test-key",
+                "x-mcp-servers": "public,oauth",
+                "accept": "application/json, text/event-stream",
+            },
+        ) as client,
+    ):
+        response = await client.post(
+            "/lazymcp",
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {"name": "mcp_call", "arguments": {"server": target, "tool": tool, "arguments": {}}},
+            },
+        )
+    assert response.status_code == 200, response.text
+    assert response.json()["result"]["isError"] is True
+    assert "error" in json.loads(response.json()["result"]["content"][0]["text"])
+    upstream.call_tool.assert_not_awaited()
+    if target != "public":
+        upstream.list_tools.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_lazymcp_missing_admission_is_rejected_before_transport(lazy_oauth_gateway):
+    gateway, _, authenticate, upstream = lazy_oauth_gateway
+    authenticate.side_effect = HTTPException(status_code=401, detail="Unauthorized")
+    scope: Final[Scope] = {
+        "type": "http",
+        "method": "POST",
+        "path": "/lazymcp",
+        "scheme": "https",
+        "server": ("gateway.example", 443),
+        "headers": [(b"x-mcp-servers", b"public,oauth")],
+    }
+    with pytest.raises(HTTPException) as denied:
+        await gateway.handle_streamable_http_lazymcp(scope, AsyncMock(), AsyncMock())
+    assert denied.value.status_code == 401
+    upstream.list_tools.assert_not_awaited()
+    upstream.call_tool.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_eager_mcp_still_challenges_selected_oauth_before_transport(lazy_oauth_gateway):
+    gateway, _, _, upstream = lazy_oauth_gateway
+    scope: Final[Scope] = {
+        "type": "http",
+        "method": "POST",
+        "path": "/mcp",
+        "scheme": "https",
+        "server": ("gateway.example", 443),
+        "headers": [(b"x-litellm-api-key", b"test-key"), (b"x-mcp-servers", b"public,oauth")],
+    }
+    with pytest.raises(HTTPException) as denied:
+        await gateway.handle_streamable_http_mcp(scope, AsyncMock(), AsyncMock())
+    assert denied.value.status_code == 401
+    assert "/oauth" in denied.value.headers["www-authenticate"]
+    upstream.list_tools.assert_not_awaited()
+    upstream.call_tool.assert_not_awaited()
+
+
 def test_mcp_available_on_sdk2():
     from importlib.metadata import version
 

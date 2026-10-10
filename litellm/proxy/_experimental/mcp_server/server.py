@@ -1593,6 +1593,8 @@ if MCP_AVAILABLE:
     async def _prepare_mcp_request_context(
         scope: Scope,
         path: str,
+        *,
+        require_upstream_oauth: bool = True,
     ) -> tuple[  # mutable-ok: framework contract requires mutable request or response containers
         UserAPIKeyAuth | None,
         str | None,
@@ -1619,7 +1621,7 @@ if MCP_AVAILABLE:
             mcp_servers or []  # mutable-ok: framework contract requires mutable request or response containers
         ):  # mutable-ok: framework contract requires mutable request or response containers
             server = global_mcp_server_manager.get_mcp_server_by_name(server_name, client_ip=client_ip)
-            if server and server.auth_type == MCPAuth.oauth2 and not oauth2_headers:
+            if require_upstream_oauth and server and server.auth_type == MCPAuth.oauth2 and not oauth2_headers:
                 if server.needs_user_oauth_token:
                     stored_oauth_headers = await _get_user_oauth_extra_headers_from_db(
                         server=server,
@@ -3662,7 +3664,7 @@ if MCP_AVAILABLE:
                 else original_path
             )
             scope["path"] = rewritten_path  # rebind-ok: framework flow intentionally updates request or lifecycle state
-            await _prepare_mcp_request_context(scope, rewritten_path)
+            await _prepare_mcp_request_context(scope, rewritten_path, require_upstream_oauth=False)
 
             if _is_lazymcp_compatibility_request(scope):
                 await Response(status_code=204)(scope, receive, send)
