@@ -35,6 +35,14 @@ test_paths:
       - tests/local_testing/test_disk_cache_unit_tests.py
       - tests/local_testing/test_gcs_cache_unit_tests.py
   - reason: >-
+      Mixed file that no job has ever run in full. Every CircleCI job that globs
+      tests/local_testing deselects it by name ("caching") or keeps only another keyword, so only
+      its router test ran, and that test now lives in tests/unit/router_utils/pre_call_checks.
+      Its two offline tests now live in tests/unit/llms/anthropic/chat, and the five left all need
+      ANTHROPIC_API_KEY or Vertex credentials
+    paths:
+      - tests/local_testing/test_anthropic_prompt_caching.py
+  - reason: >-
       The end-to-end suite runs against a deployed proxy from its own in-cluster rig rather than
       from a pull request; it needs a live gateway and provider credentials no PR job holds
     paths:
@@ -126,3 +134,23 @@ dockerfiles:
       published
     paths:
       - litellm-rust/crates/gateway/Dockerfile
+  - reason: >-
+      Private fleet maintenance overlay requires an approved published BASE_IMAGE and is built
+      and registry-verified by the release operator, not upstream pull-request CI
+    paths:
+      - Dockerfile.chatgpt-codex-overlay
+  - reason: >-
+      Private fleet Anthropic subscription overlay uses a docker.staticduo.com base image;
+      upstream pull-request CI has no private registry access and the release operator validates it
+    paths:
+      - docker/anthropic-subscription/Dockerfile
+  - reason: >-
+      Optional private fleet native SDK sidecar is built from its dedicated docker/anthropic-subscription
+      context and validated with subscription profiles by the release operator, outside gateway CI
+    paths:
+      - docker/anthropic-subscription/Dockerfile.native-sdk
+  - reason: >-
+      Private fleet loopback relay is an operator-deployed auxiliary service built from its own
+      docker/loopback-relay context; its loopback/network deployment checks run during fleet maintenance
+    paths:
+      - docker/loopback-relay/Dockerfile

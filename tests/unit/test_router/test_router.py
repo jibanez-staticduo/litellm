@@ -90,6 +90,7 @@ from litellm.llms.base_llm.vector_store.transformation import (
 from litellm.types.utils import CallTypes, CredentialItem
 from litellm.utils import _invalidate_model_cost_lowercase_map
 from tests._vcr_conftest_common import install_live_call_probe, record_vcr_outcome
+from tests.fake_openai_endpoint import FAKE_OPENAI_API_BASE
 from tests.large_text import text
 import traceback
 import inspect
@@ -6835,6 +6836,39 @@ def test_add_deployment_model_to_endpoint_for_llm_passthrough_route():
     )
 
 
+@pytest.mark.parametrize(
+    ("auth_type", "caller_credential", "rejected"),
+    (
+        ("per_user_oauth", "router-refactor-copilot", False),
+        ("per_user_oauth", "caller-override", True),
+        ("per_user_oauth", None, False),
+        ("shared", "caller-override", False),
+    ),
+)
+def test_update_kwargs_with_deployment_preserves_per_user_credential_policy(
+    auth_type: str, caller_credential: str | None, rejected: bool
+) -> None:
+    router: Final = litellm.Router(model_list=[])
+    deployment: Final = {
+        "model_name": "copilot-alias",
+        "litellm_params": {
+            "model": "github_copilot/test-model",
+            "litellm_credential_name": "router-refactor-copilot",
+            "github_copilot_auth_type": auth_type,
+        },
+        "model_info": {"id": "copilot-deployment"},
+    }
+    kwargs: Final = {"litellm_credential_name": caller_credential}
+    if rejected:
+        with pytest.raises(litellm.BadRequestError, match="cannot be overridden") as error:
+            router._update_kwargs_with_deployment(deployment=deployment, kwargs=kwargs)
+        assert error.value.model == deployment["model_name"]
+    else:
+        router._update_kwargs_with_deployment(deployment=deployment, kwargs=kwargs)
+        assert kwargs["litellm_credential_name"] == caller_credential
+        assert kwargs["model_info"] == deployment["model_info"]
+
+
 def test_update_kwargs_with_deployment_uses_pass_through_request_timeout():
     router = litellm.Router(
         model_list=[
@@ -7951,7 +7985,8 @@ async def test_anthropic_messages_call_type_is_cached():
     assert cached_result["model_id"] == test_model_id, f"Expected {test_model_id}, got {cached_result['model_id']}"
 
 
-def test_update_kwargs_with_deployment_propagates_model_tags():
+@pytest.mark.parametrize("as_mapping", [False, True])
+def test_update_kwargs_with_deployment_propagates_model_tags(as_mapping: bool):
     """
     Test that deployment-level tags from litellm_params are merged into
     kwargs metadata when _update_kwargs_with_deployment is called.
@@ -7974,6 +8009,7 @@ def test_update_kwargs_with_deployment_propagates_model_tags():
 
     kwargs: dict = {"metadata": {}}
     deployment = router.get_deployment_by_model_group_name(model_group_name="gpt-4o-mini")
+    deployment = deployment.model_dump() if as_mapping else deployment
     router._update_kwargs_with_deployment(deployment=deployment, kwargs=kwargs)
 
     # Deployment tags should be propagated to kwargs metadata
@@ -7982,7 +8018,8 @@ def test_update_kwargs_with_deployment_propagates_model_tags():
     assert "production" in kwargs["metadata"]["tags"]
 
 
-def test_update_kwargs_with_deployment_merges_tags_without_duplicates():
+@pytest.mark.parametrize("as_mapping", [False, True])
+def test_update_kwargs_with_deployment_merges_tags_without_duplicates(as_mapping: bool):
     """
     Test that when both request-level and deployment-level tags exist,
     they are merged without duplicates.
@@ -8003,6 +8040,7 @@ def test_update_kwargs_with_deployment_merges_tags_without_duplicates():
     # Simulate request that already has tags (from request body or key/team level)
     kwargs: dict = {"metadata": {"tags": ["user-tag", "shared-tag"]}}
     deployment = router.get_deployment_by_model_group_name(model_group_name="gpt-4o-mini")
+    deployment = deployment.model_dump() if as_mapping else deployment
     router._update_kwargs_with_deployment(deployment=deployment, kwargs=kwargs)
 
     # Both sources should be merged, no duplicates
@@ -8010,6 +8048,51 @@ def test_update_kwargs_with_deployment_merges_tags_without_duplicates():
     assert "openai-account" in kwargs["metadata"]["tags"]
     assert "shared-tag" in kwargs["metadata"]["tags"]
     assert kwargs["metadata"]["tags"].count("shared-tag") == 1
+
+
+@pytest.mark.parametrize("as_mapping", [False, True])
+@pytest.mark.parametrize("same_boundary", [False, True])
+def test_update_kwargs_with_deployment_preserves_fallback_boundary_and_accounting_metadata(
+    as_mapping: bool, same_boundary: bool
+) -> None:
+    router: Final = litellm.Router(
+        model_list=[
+            {
+                "model_name": "source",
+                "litellm_params": {
+                    "model": "openai/test-model",
+                    "api_key": "origin-key",
+                    "api_base": "https://provider.invalid/v1",
+                },
+                "model_info": {"id": "origin"},
+            },
+            {
+                "model_name": "target",
+                "litellm_params": {
+                    "model": "openai/test-model",
+                    "api_key": "origin-key" if same_boundary else "target-key",
+                    "api_base": "https://provider.invalid/v1",
+                },
+                "model_info": {"id": "target"},
+            },
+        ]
+    )
+    selected: Final = router.get_deployment_by_model_group_name(model_group_name="target")
+    deployment: Final = selected.model_dump() if as_mapping else selected
+    summary: Final = [{"type": "summary_text", "text": "preserve readable reasoning"}]
+    reasoning: Final = {"type": "reasoning", "id": "rs_origin", "encrypted_content": "ciphertext", "summary": summary}
+    kwargs: Final = {
+        "fallback_depth": 1,
+        "input": [reasoning],
+        "metadata": {"model_info": {"id": "origin"}, "user_api_key_team_id": "test-team"},
+    }
+
+    router._update_kwargs_with_deployment(deployment=deployment, kwargs=kwargs)
+
+    assert ("encrypted_content" in kwargs["input"][0]) is same_boundary
+    assert kwargs["input"][0]["summary"] == summary
+    assert kwargs["metadata"]["user_api_key_team_id"] == "test-team"
+    assert kwargs["metadata"]["model_info"]["id"] == "target"
 
 
 def test_update_kwargs_with_deployment_no_tags():
@@ -25415,3 +25498,82 @@ async def test_native_sdk_router_bypasses_shared_response_cache_despite_caller_o
             assert second.choices[0].message.content == "native reply 2"
     finally:
         await client.client.aclose()
+
+def _create_custom_routing_router():
+    return Router(
+        model_list=[
+            {
+                "model_name": "azure-model",
+                "litellm_params": {
+                    "model": "openai/very-special-endpoint",
+                    "api_base": FAKE_OPENAI_API_BASE,
+                    "api_key": "fake-key",
+                },
+                "model_info": {"id": "very-special-endpoint"},
+            },
+            {
+                "model_name": "azure-model",
+                "litellm_params": {
+                    "model": "openai/fast-endpoint",
+                    "api_base": FAKE_OPENAI_API_BASE,
+                    "api_key": "fake-key",
+                },
+                "model_info": {"id": "fast-endpoint"},
+            },
+        ],
+        set_verbose=True,
+        debug_level="DEBUG",
+    )
+
+
+class SpecialEndpointRoutingStrategy(CustomRoutingStrategyBase):
+    def __init__(self, router_instance: Router):
+        self._router = router_instance
+
+    async def async_get_available_deployment(
+        self,
+        model: str,
+        messages: list[dict[str, str]] | None = None,
+        input: str | list | None = None,
+        specific_deployment: bool | None = False,
+        request_kwargs: dict | None = None,
+    ):
+        print("In CUSTOM async get available deployment")
+        model_list = self._router.model_list
+        print("router model list=", model_list)
+        for model in model_list:
+            if isinstance(model, dict):
+                if model["litellm_params"]["model"] == "openai/very-special-endpoint":
+                    return model
+        pass
+
+    def get_available_deployment(
+        self,
+        model: str,
+        messages: list[dict[str, str]] | None = None,
+        input: str | list | None = None,
+        specific_deployment: bool | None = False,
+        request_kwargs: dict | None = None,
+    ):
+        pass
+
+
+def test_reset_custom_routing_strategy():
+    """
+    Setting a custom routing strategy installs instance-level overrides for
+    get_available_deployment / async_get_available_deployment. Re-initializing the
+    routing strategy must clear them so the class implementations are used again.
+    """
+    router = _create_custom_routing_router()
+    router.set_custom_routing_strategy(SpecialEndpointRoutingStrategy(router))
+
+    assert "get_available_deployment" in router.__dict__
+    assert "async_get_available_deployment" in router.__dict__
+
+    router._reset_custom_routing_strategy()
+
+    assert "get_available_deployment" not in router.__dict__
+    assert "async_get_available_deployment" not in router.__dict__
+    assert router.async_get_available_deployment.__func__ is Router.async_get_available_deployment
+
+    router._reset_custom_routing_strategy()

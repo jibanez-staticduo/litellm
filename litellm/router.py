@@ -211,6 +211,7 @@ from litellm.router_utils.cooldown_handlers import (
     get_cooldown_deployments,
     is_advisor_orchestration_failure,
     is_background_response_cost_poll_not_found,
+    is_caller_scoped_auth_failure,
     is_caller_timeout_408,
     set_cooldown_deployments,
 )
@@ -508,6 +509,12 @@ _RESOLVED_RETRY_POLICY_ADAPTER: Final = TypeAdapter(RetryPolicy | None)
 _ROUTING_KWARGS_ADAPTER: Final[TypeAdapter[Mapping[str, object] | None]] = TypeAdapter(Mapping[str, object] | None)
 _FALLBACK_HOP_ADAPTER: Final = TypeAdapter(Mapping[str, object])
 _DEPLOYMENT_SELECTED_EVENT: Final = "litellm.request.deployment_selected"
+
+
+def _fallback_deployment_mapping(deployment: Deployment | Mapping[str, object]) -> Mapping[str, object]:
+    return _FALLBACK_HOP_ADAPTER.validate_python(
+        deployment.model_dump() if isinstance(deployment, Deployment) else deployment
+    )
 
 
 def _is_fallback_hop(request_kwargs: Mapping[str, object]) -> bool:
@@ -4175,6 +4182,24 @@ class Router:
         if "tool_choice" not in kwargs and dep_params.get("tool_choice") is not None:
             kwargs["tool_choice"] = dep_params["tool_choice"]
 
+    @staticmethod
+    def _validate_per_user_credential_override(
+        deployment_params: object, caller_credential_name: object, model_name: str
+    ) -> None:
+        from litellm.llms.github_copilot.per_user_auth import github_copilot_per_user_credential_name
+
+        configured_per_user_name: Final = github_copilot_per_user_credential_name(deployment_params)
+        if (
+            configured_per_user_name is not None
+            and isinstance(caller_credential_name, str)
+            and caller_credential_name != configured_per_user_name
+        ):
+            raise litellm.BadRequestError(
+                message="litellm_credential_name cannot be overridden on a deployment that uses per-user GitHub OAuth",
+                model=model_name,
+                llm_provider="",
+            )
+
     def _update_kwargs_with_deployment(
         self,
         deployment: dict,
@@ -4258,6 +4283,12 @@ class Router:
                 existing_tags.append(credential_tag)
             kwargs[metadata_variable_name]["tags"] = existing_tags
 
+        self._validate_per_user_credential_override(
+            deployment_params=deployment.get("litellm_params"),
+            caller_credential_name=kwargs.get("litellm_credential_name"),
+            model_name=deployment_model_name,
+        )
+
         kwargs["model_info"] = model_info
 
         if function_name == "_ageneric_api_call_with_fallbacks":
@@ -4324,7 +4355,7 @@ class Router:
             record_disable_fallbacks(kwargs, True)
 
         self._strip_reasoning_on_fallback(
-            _FALLBACK_HOP_ADAPTER.validate_python(deployment),
+            _fallback_deployment_mapping(deployment),
             _FALLBACK_HOP_ADAPTER.validate_python(kwargs),
             deployment_that_just_failed,
         )
@@ -8865,6 +8896,24 @@ class Router:
                 )
                 return False
 
+            caller_failure_model_info: Final = (
+                _MODEL_INFO_ADAPTER.validate_python(_model_info) if isinstance(_model_info, dict) else None
+            )
+            caller_failure_model_id: Final = (
+                caller_failure_model_info.get("id") if caller_failure_model_info is not None else None
+            )
+            caller_failure_deployment: Final = (
+                self.get_deployment(model_id=caller_failure_model_id)
+                if isinstance(caller_failure_model_id, str)
+                else None
+            )
+            if is_caller_scoped_auth_failure(caller_failure_deployment, exception_status):
+                verbose_router_logger.debug(
+                    "Router: Exiting 'deployment_callback_on_failure' without cooldown. "
+                    "Caller-scoped OAuth authentication failed, not the deployment."
+                )
+                return False
+
             exception_headers: Final = litellm.litellm_core_utils.exception_mapping_utils._get_response_headers(
                 original_exception=exception
             )
@@ -8906,7 +8955,13 @@ class Router:
                     original_exception=exception,
                     deployment=deployment_id,
                     time_to_cooldown=_time_to_cooldown,
-                    requested_model_group=(get_litellm_metadata_from_kwargs(kwargs) or {}).get("model_group"),
+                    requested_model_group=(
+                        get_litellm_metadata_from_kwargs(
+                            cast("dict[str, object]", kwargs)  # cast-ok: untyped kwargs dict
+                        )
+                        or {}
+                    ).get("model_group"),
+                    request_kwargs=cast("dict[str, object]", kwargs),  # cast-ok: kwargs is the untyped request dict
                 )  # setting deployment_id in cooldown deployments
 
                 return result
@@ -10248,6 +10303,7 @@ class Router:
                 model=deployment.litellm_params.model,
                 custom_llm_provider=deployment.litellm_params.get("custom_llm_provider", None),
                 api_base=deployment.litellm_params.api_base,
+                litellm_params=deployment.litellm_params,
             )
             # done reading model["litellm_params"]
             # Check if provider is supported: either in enum or JSON-configured
@@ -10359,10 +10415,21 @@ class Router:
         credential_values: Final = (
             CredentialAccessor.get_credential_values(credential_name) if credential_name is not None else {}
         )
-        vertex_project: Final = credential_values.get("vertex_project") or deployment.litellm_params.vertex_project
-        vertex_location: Final = credential_values.get("vertex_location") or deployment.litellm_params.vertex_location
+        from litellm.types.llms.vertex_ai import VERTEX_CREDENTIALS_TYPES
+
+        vertex_project: Final = (
+            cast("str | None", credential_values.get("vertex_project"))  # cast-ok: vertex credential values are str
+            or deployment.litellm_params.vertex_project
+        )
+        vertex_location: Final = (
+            cast("str | None", credential_values.get("vertex_location"))  # cast-ok: vertex credential values are str
+            or deployment.litellm_params.vertex_location
+        )
         vertex_credentials: Final = (
-            credential_values.get("vertex_credentials") or deployment.litellm_params.vertex_credentials
+            cast(  # cast-ok: vertex_credentials holds the typed credential union
+                "VERTEX_CREDENTIALS_TYPES | None", credential_values.get("vertex_credentials")
+            )
+            or deployment.litellm_params.vertex_credentials
         )
 
         if vertex_project is None or vertex_location is None:
@@ -10713,6 +10780,7 @@ class Router:
                 model_cost={model_id: model_info},
                 persist_across_reloads=False,
                 warning_display_name=model,
+                custom_llm_provider=custom_llm_provider,
             )
 
         ## OLD MODEL REGISTRATION ## Kept to prevent breaking changes
@@ -11657,6 +11725,7 @@ class Router:
                 litellm_model, llm_provider, _, _ = litellm.get_llm_provider(
                     model=litellm_params.model,
                     custom_llm_provider=litellm_params.custom_llm_provider,
+                    litellm_params=litellm_params,
                 )
             except litellm.exceptions.BadRequestError as e:
                 verbose_router_logger.error("litellm.router.py::get_model_group_info() - %s", e)
@@ -12632,6 +12701,7 @@ class Router:
             model, custom_llm_provider, _, _ = litellm.get_llm_provider(
                 model=deployment_params.get("model") or group,
                 custom_llm_provider=deployment_params.get("custom_llm_provider"),
+                litellm_params=LiteLLM_Params.model_validate(deployment_params),
             )
             supported: Final = litellm.get_supported_openai_params(
                 model=model,

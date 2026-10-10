@@ -38,6 +38,14 @@ FORWARDED_KWARGS_KEYS: Final = AWS_CREDENTIAL_KWARGS_KEYS | frozenset(
     {"forward_reasoning_content", "reasoning_content_field"}
 )
 PROVIDER_AFFINITY_HEADER_KWARG_KEY: Final = "provider_affinity_header"
+OAUTH_TOKEN_EXCHANGE_KWARGS_KEYS: Final = frozenset(
+    {
+        "token_exchange_endpoint",
+        "token_exchange_profile",
+        "token_exchange_scope",
+        "token_exchange_audience",
+    }
+)
 
 REASONING_TRANSPORT_KWARGS_KEYS: Final = frozenset({"forward_reasoning_content", "reasoning_content_field"})
 
@@ -86,6 +94,8 @@ OPTIONAL_KWARGS_KEYS: Final = (
             "chatgpt_auth_profile",
             "chatgpt_token_dir",
             "chatgpt_auth_file",
+            "github_copilot_auth_type",
+            "github_copilot_user_session",
             "fireworks_forward_user_id",
             PROVIDER_AFFINITY_HEADER_KWARG_KEY,
         }
@@ -94,6 +104,7 @@ OPTIONAL_KWARGS_KEYS: Final = (
     | REASONING_TRANSPORT_KWARGS_KEYS
     | ANTHROPIC_WIF_KWARGS_KEYS
     | OPENAI_WIF_KWARGS_KEYS
+    | OAUTH_TOKEN_EXCHANGE_KWARGS_KEYS
     | frozenset(CustomPricingLiteLLMParams.model_fields)
 )
 

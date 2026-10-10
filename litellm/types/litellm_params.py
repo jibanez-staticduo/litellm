@@ -99,6 +99,12 @@ class ProviderConnection:
     chatgpt_auth_profile: str | None = None
     chatgpt_token_dir: str | None = None
     chatgpt_auth_file: str | None = None
+    github_copilot_auth_type: str | None = None
+    github_copilot_user_session: object | None = None
+    token_exchange_endpoint: str | None = None
+    token_exchange_profile: str | None = None
+    token_exchange_scope: str | None = None
+    token_exchange_audience: str | None = None
     fireworks_forward_user_id: bool | None = None
 
 
