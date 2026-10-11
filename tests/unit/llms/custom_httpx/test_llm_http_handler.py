@@ -5,6 +5,8 @@ import json
 import logging
 import threading
 import time
+from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Final
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -18,6 +20,10 @@ from litellm.integrations.code_interpreter_interception.handler import (
     LITELLM_CODE_EXECUTION_TOOL_NAME,
     CodeInterpreterInterceptionLogger,
 )
+from litellm.integrations.custom_logger import CustomLogger
+from litellm.integrations.websearch_interception.handler import WebSearchInterceptionLogger
+from litellm.llms.anthropic.skills.transformation import AnthropicSkillsConfig
+from litellm.llms.azure.responses.transformation import AzureOpenAIResponsesAPIConfig
 from litellm.llms.azure.videos.transformation import AzureVideoConfig
 from litellm.llms.base_llm.audio_transcription.transformation import (
     AudioTranscriptionRequestData,
@@ -26,12 +32,16 @@ from litellm.llms.base_llm.audio_transcription.transformation import (
 from litellm.llms.base_llm.batches.transformation import BaseBatchesConfig
 from litellm.llms.base_llm.chat.transformation import BaseConfig, BaseLLMException
 from litellm.llms.base_llm.files.transformation import BaseFilesConfig
-from litellm.llms.base_llm.search.transformation import BaseSearchConfig, SearchResponse
-from litellm.llms.bedrock.base_aws_llm import SignsRequestsWithAWS
-from litellm.llms.brave.search.transformation import BraveSearchConfig
 from litellm.llms.base_llm.image_edit.transformation import BaseImageEditConfig
 from litellm.llms.base_llm.image_generation.transformation import BaseImageGenerationConfig
+from litellm.llms.base_llm.search.transformation import BaseSearchConfig, SearchResponse
 from litellm.llms.base_llm.text_to_speech.transformation import BaseTextToSpeechConfig
+from litellm.llms.bedrock.base_aws_llm import SignsRequestsWithAWS
+from litellm.llms.bedrock.files.transformation import BedrockFilesConfig
+from litellm.llms.bedrock.messages.invoke_transformations.anthropic_claude3_transformation import (
+    AmazonAnthropicClaudeMessagesConfig,
+)
+from litellm.llms.brave.search.transformation import BraveSearchConfig
 from litellm.llms.chatgpt.authenticator import Authenticator as ChatGPTAuthenticator
 from litellm.llms.chatgpt.responses.transformation import ChatGPTResponsesAPIConfig
 from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
@@ -42,13 +52,8 @@ from litellm.llms.custom_httpx.llm_http_handler import (
     _has_pre_call_deployment_hook,
     _rust_responses_websocket_enabled,
 )
-from litellm.llms.bedrock.messages.invoke_transformations.anthropic_claude3_transformation import (
-    AmazonAnthropicClaudeMessagesConfig,
-)
-from litellm.llms.bedrock.files.transformation import BedrockFilesConfig
-from litellm.llms.anthropic.skills.transformation import AnthropicSkillsConfig
-from litellm.llms.openai.evals.transformation import OpenAIEvalsConfig
 from litellm.llms.mistral.files.transformation import MistralFilesConfig
+from litellm.llms.openai.evals.transformation import OpenAIEvalsConfig
 from litellm.llms.openai.vector_store_files.transformation import OpenAIVectorStoreFilesConfig
 from litellm.llms.openai.vector_stores.transformation import OpenAIVectorStoreConfig
 from litellm.llms.openai.videos.transformation import OpenAIVideoConfig
@@ -472,6 +477,87 @@ def test_response_api_handler_runs_responses_pre_call_hook_before_transform():
     hook_litellm_params = transform_kwargs["litellm_params"]
     assert hook_litellm_params.get(_ACTIVE_KEY) is True
     assert hook_litellm_params.get(_SANDBOX_KEY)
+
+
+class _AgenticLoopKwargsRecorder(CustomLogger):
+    def __init__(self) -> None:
+        super().__init__()
+        self.seen_kwargs: Mapping[str, object] = MappingProxyType({})
+
+    async def async_should_run_agentic_loop(
+        self,
+        response: object,
+        model: str,
+        messages: list[dict[str, object]],
+        tools: list[dict[str, object]] | None,
+        stream: bool,
+        custom_llm_provider: str,
+        kwargs: dict[str, object],
+    ) -> tuple[bool, dict[str, object]]:
+        self.seen_kwargs = MappingProxyType(dict(kwargs))
+        return False, {}
+
+
+class _SentRequestRecorder:
+    def __init__(self) -> None:
+        self.body: Mapping[str, object] = MappingProxyType({})
+
+    def respond(self, request: httpx.Request) -> httpx.Response:
+        self.body = MappingProxyType(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={
+                "id": "resp_1",
+                "object": "response",
+                "created_at": 0,
+                "status": "completed",
+                "model": "gpt-4o",
+                "output": [
+                    {
+                        "type": "message",
+                        "id": "msg_1",
+                        "status": "completed",
+                        "role": "assistant",
+                        "content": [{"type": "output_text", "text": "hello", "annotations": []}],
+                    }
+                ],
+                "usage": {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2},
+            },
+        )
+
+
+def test_response_api_handler_sends_no_stream_options_when_web_search_forces_a_non_streaming_call(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    sent: Final = _SentRequestRecorder()
+    recorder: Final = _AgenticLoopKwargsRecorder()
+    monkeypatch.setattr(litellm, "callbacks", [WebSearchInterceptionLogger(enabled_providers=["azure"]), recorder])
+    logging_obj: Final = Mock()
+    logging_obj.dynamic_success_callbacks = []
+
+    BaseLLMHTTPHandler().response_api_handler(
+        model="gpt-4o",
+        input="what is new in litellm?",
+        responses_api_provider_config=AzureOpenAIResponsesAPIConfig(),
+        response_api_optional_request_params={
+            "stream": True,
+            "stream_options": {"include_obfuscation": True},
+            "tools": [{"type": "web_search"}],
+        },
+        custom_llm_provider="azure",
+        litellm_params=GenericLiteLLMParams(
+            api_key="sk-test",
+            api_base="https://example.openai.azure.com",
+            api_version="2025-04-01-preview",
+            stream_options={"include_obfuscation": True},
+        ),
+        logging_obj=logging_obj,
+        client=HTTPHandler(client=httpx.Client(transport=httpx.MockTransport(sent.respond))),
+    )
+
+    assert sent.body["stream"] is False
+    assert "stream_options" not in sent.body
+    assert "stream_options" not in recorder.seen_kwargs
 
 
 @pytest.mark.asyncio
@@ -2290,7 +2376,9 @@ async def test_async_anthropic_messages_handler_passes_deployment_api_base_to_ag
             super().__init__()
             self.hook_kwargs: dict | None = None
 
-        async def async_should_run_agentic_loop(self, response, model, messages, tools, stream, custom_llm_provider, kwargs):
+        async def async_should_run_agentic_loop(
+            self, response, model, messages, tools, stream, custom_llm_provider, kwargs
+        ):
             self.hook_kwargs = dict(kwargs)
             return False, {}
 
@@ -3123,7 +3211,9 @@ def test_vector_store_search_handler_direct_config_sync_skips_http():
     config = _make_stub_direct_vector_store_config(stub_response)
     logging_obj = Mock()
 
-    with patch("litellm.llms.custom_httpx.llm_http_handler.get_httpx_client") as mock_get_client:  # test-quality-ok: isolates the HTTP transport boundary
+    with patch(
+        "litellm.llms.custom_httpx.llm_http_handler.get_httpx_client"
+    ) as mock_get_client:  # test-quality-ok: isolates the HTTP transport boundary
         result = handler.vector_store_search_handler(
             vector_store_id="vs_direct",
             query="q",
@@ -3971,7 +4061,11 @@ async def test_create_batch_says_which_setting_is_missing_when_the_provider_reso
 
     with pytest.raises(ValueError, match="api_base is required for create_batch"):
         await BaseLLMHTTPHandler().create_batch(
-            create_batch_data={"input_file_id": "file_1", "endpoint": "/v1/chat/completions", "completion_window": "24h"},
+            create_batch_data={
+                "input_file_id": "file_1",
+                "endpoint": "/v1/chat/completions",
+                "completion_window": "24h",
+            },
             litellm_params={},
             provider_config=provider_config,
             headers={},
@@ -4449,7 +4543,9 @@ class _ImageGenerationRecordingConfig(BaseImageGenerationConfig):
         optional_params.update(non_default_params)
         return optional_params
 
-    def validate_environment(self, headers, model, messages, optional_params, litellm_params, api_key=None, api_base=None):
+    def validate_environment(
+        self, headers, model, messages, optional_params, litellm_params, api_key=None, api_base=None
+    ):
         return {"authorization": f"Bearer {api_key}"}
 
     def get_complete_url(self, api_base, api_key, model, optional_params, litellm_params, stream=None):
@@ -4458,7 +4554,19 @@ class _ImageGenerationRecordingConfig(BaseImageGenerationConfig):
     def transform_image_generation_request(self, model, prompt, optional_params, litellm_params, headers):
         return {"model": model, "prompt": prompt}
 
-    def transform_image_generation_response(self, model, raw_response, model_response, logging_obj, request_data, optional_params, litellm_params, encoding=None, api_key=None, json_mode=None):
+    def transform_image_generation_response(
+        self,
+        model,
+        raw_response,
+        model_response,
+        logging_obj,
+        request_data,
+        optional_params,
+        litellm_params,
+        encoding=None,
+        api_key=None,
+        json_mode=None,
+    ):
         return ImageResponse(data=[ImageObject(b64_json=raw_response.json()["created"])])
 
 
@@ -4612,7 +4720,9 @@ async def test_async_realtime_bridges_a_transcription_session_through_the_provid
     logging_obj.dispatch_failure_handlers = AsyncMock()
     handler = BaseLLMHTTPHandler()
 
-    with patch.object(handler, "_open_realtime_backend_ws", AsyncMock(side_effect=AssertionError("dialed a websocket"))) as dial:
+    with patch.object(
+        handler, "_open_realtime_backend_ws", AsyncMock(side_effect=AssertionError("dialed a websocket"))
+    ) as dial:
         await handler.async_realtime(
             model="chirp_3",
             websocket=client_ws,

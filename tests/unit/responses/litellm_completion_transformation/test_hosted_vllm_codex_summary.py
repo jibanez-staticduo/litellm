@@ -394,7 +394,7 @@ def test_sync_auxiliary_real_stream_keeps_delayed_logging_alive(monkeypatch):
 async def test_completed_snapshot_preserves_primary_hidden_metadata_and_identity(monkeypatch):
     monkeypatch.setattr(litellm, "acompletion", AsyncMock(return_value=Stream([chunk(content="Brief")])))
     source = bridge([chunk(reasoning="raw"), chunk(content="answer"), chunk(finish="stop")])
-    original_emit = source._emit_response_completed_event
+    original_emit = source._emit_terminal_response_event
     captured = []
     hidden = {
         "custom_llm_provider": "hosted_vllm_codex",
@@ -409,7 +409,7 @@ async def test_completed_snapshot_preserves_primary_hidden_metadata_and_identity
         captured.append(event)
         return event
 
-    monkeypatch.setattr(source, "_emit_response_completed_event", capture_completed)
+    monkeypatch.setattr(source, "_emit_terminal_response_event", capture_completed)
     wrapped = summary.HostedVLLMCodexSummaryStream(source, {"model": "test"})
     events = [event async for event in wrapped]
     assert len(captured) == 1
