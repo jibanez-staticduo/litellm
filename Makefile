@@ -129,10 +129,10 @@ install-hooks:
 # Wrap width is ruff.toml's single source of truth (line-length = 120), shared by the
 # formatter and the import sorter so there's no 88-vs-120 split to reconcile.
 format: install-dev
-	cd litellm && $(UV_RUN) ruff format --exclude '/enterprise/' . && cd ..
+	$(UV_RUN) ruff format --exclude '/enterprise/' litellm extensions/staticduo-litellm/src
 
 format-check: install-dev
-	cd litellm && $(UV_RUN) ruff format --check --exclude '/enterprise/' . && cd ..
+	$(UV_RUN) ruff format --check --exclude '/enterprise/' litellm extensions/staticduo-litellm/src
 
 lint-fetch-base:
 	@$(RESOLVE_BASE)
@@ -153,10 +153,10 @@ lint-install:
 # the same set CI's ':(glob)litellm/**/*.py' selects.
 lint-format-check-changed: $(LINT_DEP_INSTALL) $(LINT_DEP_BASE)
 	@base_ref=$$($(RESOLVE_BASE)) && \
-	changed=$$(git diff --name-only --diff-filter=ACMR "$$base_ref...HEAD" -- 'litellm/*.py') && \
+	changed=$$(git diff --name-only --diff-filter=ACMR "$$base_ref...HEAD" -- 'litellm/*.py' 'extensions/staticduo-litellm/src/*.py') && \
 	files=$$(printf '%s\n' "$$changed" | grep -v '^litellm/enterprise/' || true) || exit $$?; \
 	if [ -z "$$files" ]; then \
-		echo "No changed litellm Python files to format-check."; \
+		echo "No changed Python source files to format-check."; \
 	else \
 		echo "$$files" | xargs $(UV_RUN) ruff format --check --exclude '/enterprise/'; \
 	fi
@@ -164,7 +164,7 @@ lint-format-check-changed: $(LINT_DEP_INSTALL) $(LINT_DEP_BASE)
 # Linting targets
 lint-ruff: $(LINT_DEP_INSTALL)
 	$(UV_RUN) python scripts/check_mcp_operation_boundary.py
-	cd litellm && $(UV_RUN) ruff check . && cd ..
+	$(UV_RUN) ruff check litellm extensions/staticduo-litellm/src
 	$(UV_RUN) ruff check --config ruff-tests.toml tests
 
 # faster linter for developing ...

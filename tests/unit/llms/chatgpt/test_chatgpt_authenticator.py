@@ -5,13 +5,13 @@ import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from unittest.mock import MagicMock, Mock, mock_open, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from staticduo_litellm.providers.chatgpt import authenticator as authenticator_module
 
 import litellm
 from litellm.constants import DEFAULT_REQUEST_TIMEOUT_SECONDS, HTTP_HANDLER_CONNECT_TIMEOUT_SECONDS
-from litellm.llms.chatgpt import authenticator as authenticator_module
 from litellm.llms.chatgpt.authenticator import (
     TOKEN_REFRESH_TIMEOUT_SECONDS,
     Authenticator,
@@ -106,10 +106,10 @@ class TestChatGPTAuthenticator:
         }
         client.post.return_value = response
 
-        with patch(  # test-quality-ok: requested seam for asserting timeout propagation
-            "litellm.llms.chatgpt.authenticator.get_httpx_client", return_value=client
-        ):
-            refreshed = authenticator._refresh_tokens("refresh-123")
+        authenticator = Authenticator(
+            {"chatgpt_auth_file": authenticator.auth_file}, http_client_factory=lambda: client
+        )
+        refreshed = authenticator._refresh_tokens("refresh-123")
 
         assert refreshed["access_token"] == "token-new"
         timeout = client.post.call_args.kwargs["timeout"]

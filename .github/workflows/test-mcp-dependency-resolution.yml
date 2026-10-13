@@ -12,6 +12,7 @@ on:
       - ".python-version"
       - "rust-toolchain.toml"
       - "litellm-rust/**"
+      - "extensions/staticduo-litellm/**"
       - "litellm/__init__.py"
       - "litellm/_version.py"
       - "litellm/_lazy_imports_registry.py"
@@ -159,9 +160,10 @@ jobs:
       - name: Verify isolated core installations
         run: |
           wheel=$(realpath dist/core/litellm_core-*.whl)
+          extension_wheel=$(realpath dist/core/staticduo_litellm-*.whl)
           for resolution in highest lowest-direct; do
             uv venv --python ${{ matrix.python-version }} ".venv-core-$resolution"
-            uv pip install --python ".venv-core-$resolution" --resolution "$resolution" "$wheel"
+            uv pip install --python ".venv-core-$resolution" --resolution "$resolution" --find-links dist/core "$wheel" "$extension_wheel"
             uv pip check --python ".venv-core-$resolution"
             (cd "$RUNNER_TEMP" && "$GITHUB_WORKSPACE/.venv-core-$resolution/bin/python" -I "$GITHUB_WORKSPACE/tests/base_sdk_tests/check_base_sdk_install.py" --profile core)
             (cd "$RUNNER_TEMP" && "$GITHUB_WORKSPACE/.venv-core-$resolution/bin/python" -I "$GITHUB_WORKSPACE/tests/base_sdk_tests/check_sdk_http.py")

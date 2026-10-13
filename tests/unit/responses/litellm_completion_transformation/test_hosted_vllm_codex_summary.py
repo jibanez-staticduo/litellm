@@ -2,9 +2,9 @@ import asyncio
 from unittest.mock import AsyncMock
 
 import pytest
+from staticduo_litellm.codex import summary_runtime as summary
 
 import litellm
-from litellm.responses.litellm_completion_transformation import hosted_vllm_codex_summary as summary
 from litellm.responses.litellm_completion_transformation.streaming_iterator import LiteLLMCompletionStreamingIterator
 from litellm.responses.litellm_completion_transformation.transformation import LiteLLMCompletionResponsesConfig
 from litellm.types.utils import Delta, ModelResponse, ModelResponseStream, StreamingChoices, Usage

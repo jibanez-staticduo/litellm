@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "core_upstream_commit": "541e3ed5305a530ebef74d5684d3aca2632c1009",
+  "effective_baseline_commit": "f5eaab5396f957c5529456bbb545e52ce0b48c46",
+  "features": [
+    {
+      "feature": "catalog-overlay",
+      "purpose": "Preserve four image PDF capability deletions/source corrections and the private ChatGPT Live catalog row",
+      "owned_modules": ["pricing/catalog.py", "pricing/catalog-v1.json", "compatibility/pricing.py"],
+      "core_insertion": "litellm/litellm_core_utils/get_model_cost_map.py::_finalize_model_cost_map before fallback rules and alias expansion",
+      "build_entrypoint": "scripts/generate_staticduo_catalog.py --source model_prices_and_context_window.json --output-dir build/staticduo-catalog",
+      "upstream_equivalent": "Upstream loader/reload, alias expansion and provenance remain authoritative; upstream has no equivalent private delta",
+      "tests": ["tests/local_tests/staticduo/test_pricing_overlay.py", "tests/unit/litellm_core_utils/test_get_model_cost_map.py", "tests/unit/test_model_cost_aliases.py", "tests/unit/test_register_model_zero_cost_persistence.py"]
+    },
+    {
+      "feature": "memory-luna-pricing",
+      "purpose": "Price original memory aliases using current registered canonical Luna rates independently of the actual backend",
+      "owned_modules": ["pricing/memory_luna.py", "compatibility/pricing.py"],
+      "core_adapter": "litellm/litellm_core_utils/memory_luna_pricing.py",
+      "preserved_call_phase": "Existing litellm_logging.py cost calculation before spend and budget recording; no callback migration",
+      "upstream_equivalent": "Upstream cost calculator remains authoritative for token/tier calculation; private policy selects canonical reference and strips monetary provider hints",
+      "tests": ["tests/unit/litellm_core_utils/test_litellm_logging.py -k memory_luna"]
+    }
+  ]
+}

@@ -3757,9 +3757,7 @@ class MCPServerManager:
             for k in keys_to_remove:
                 cache_dict.pop(k, None)
             try:
-                from litellm.proxy._experimental.mcp_server.server import (
-                    invalidate_lazymcp_cache,
-                )
+                from staticduo_litellm.compatibility.mcp import invalidate_lazymcp_cache
 
                 invalidate_lazymcp_cache()
             except (ImportError, RuntimeError) as lazy_exc:
@@ -6634,7 +6632,7 @@ class MCPServerManager:
                 "Failed to drop legacy cached MCP OAuth token for user=%s server=%s: %s", user_id, server_id, exc
             )
         try:
-            from litellm.proxy._experimental.mcp_server.server import invalidate_lazymcp_cache
+            from staticduo_litellm.compatibility.mcp import invalidate_lazymcp_cache
 
             invalidate_lazymcp_cache()
         except Exception as exc:  # noqa: BLE001 - catalog cache TTL remains the backstop

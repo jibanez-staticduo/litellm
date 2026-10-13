@@ -14,6 +14,7 @@ dependencies = [
     # deps. Reproducibility for our Docker/CI comes from `uv.lock`.
     # When changing a floor, verify it installs + imports on every supported
     # Python with: `uv pip install --resolution=lowest-direct .`
+    "staticduo-litellm==0.1.0",
     "fastuuid>=0.14.0,<1.0",
     "filelock>=3.16.1,<4.0",
     "httpx[http2]>=0.28.0,<1.0",
@@ -51,6 +52,7 @@ Documentation = "https://docs.litellm.ai"
 # supply-chain-pinned to a vetted, aged release.
 [project.optional-dependencies]
 proxy = [
+    "staticduo-litellm[proxy]==0.1.0",
     "gunicorn>=23.0.0,<24.0",
     "uvicorn>=0.33.0,<1.0",
     "granian>=2.7.4,<3.0",
@@ -367,11 +369,12 @@ required-version = ">=0.11.26,<0.11.27"
 exclude-newer = "3 days"
 
 [tool.uv.sources]
+staticduo-litellm = { workspace = true }
 litellm-proxy-extras = { workspace = true }
 litellm-enterprise = { workspace = true }
 
 [tool.uv.workspace]
-members = ["enterprise", "litellm-proxy-extras"]
+members = ["enterprise", "litellm-proxy-extras", "extensions/staticduo-litellm"]
 
 [tool.commitizen]
 version = "1.106.0"
@@ -443,5 +446,5 @@ pytest_add_cli_args = [
 ]
 
 [tool.coverage.run]
-source = ["litellm"]
+source = ["litellm", "staticduo_litellm"]
 relative_files = true

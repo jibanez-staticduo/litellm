@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "overlay_version": "1.0.0",
+  "upstream_commit": "541e3ed5305a530ebef74d5684d3aca2632c1009",
+  "upstream_sha256": "9142d8a7a80cfd3f32aa797286157ca9ac81addabbca40ff043051052a2d4482",
+  "effective_baseline_commit": "f5eaab5396f957c5529456bbb545e52ce0b48c46",
+  "operations": [
+    {
+      "op": "add",
+      "model": "chatgpt/gpt-live-1-codex",
+      "value": {
+        "litellm_provider": "chatgpt",
+        "mode": "realtime",
+        "supported_endpoints": [
+          "/v1/realtime/calls",
+          "/v1/live"
+        ],
+        "supports_audio_input": true,
+        "supports_audio_output": true
+      }
+    },
+    {
+      "op": "replace",
+      "model": "gpt-image-2.5-flare",
+      "field": "source",
+      "value": "https://developers.openai.com/api/docs/models/gpt-image-2.5-flare"
+    },
+    {
+      "op": "remove",
+      "model": "gpt-image-2.5-flare",
+      "field": "supports_pdf_input"
+    },
+    {
+      "op": "replace",
+      "model": "gpt-image-2.5-flare-2026-09-08",
+      "field": "source",
+      "value": "https://developers.openai.com/api/docs/models/gpt-image-2.5-flare"
+    },
+    {
+      "op": "remove",
+      "model": "gpt-image-2.5-flare-2026-09-08",
+      "field": "supports_pdf_input"
+    },
+    {
+      "op": "replace",
+      "model": "gpt-image-2.5-sunburst",
+      "field": "source",
+      "value": "https://developers.openai.com/api/docs/models/gpt-image-2.5-sunburst"
+    },
+    {
+      "op": "remove",
+      "model": "gpt-image-2.5-sunburst",
+      "field": "supports_pdf_input"
+    },
+    {
+      "op": "replace",
+      "model": "gpt-image-2.5-sunburst-2026-09-08",
+      "field": "source",
+      "value": "https://developers.openai.com/api/docs/models/gpt-image-2.5-sunburst"
+    },
+    {
+      "op": "remove",
+      "model": "gpt-image-2.5-sunburst-2026-09-08",
+      "field": "supports_pdf_input"
+    }
+  ]
+}

@@ -53,7 +53,7 @@ from lint_base_counts import (
 
 REPO_ROOT: Final = Path(__file__).resolve().parent.parent
 CHECKER: Final = REPO_ROOT / "scripts" / "check_type_discipline.py"
-TARGET: Final = "litellm"
+TARGETS: Final = ("litellm", "extensions/staticduo-litellm/src")
 
 _HUNK: Final = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 _LINE: Final = re.compile(r"^(?P<file>.+?):(?P<line>\d+): (?P<code>LIT\d+) ")
@@ -74,14 +74,17 @@ def _run(cmd: Sequence[str], cwd: Path = REPO_ROOT) -> str:
 
 
 def checker_identity(checker: Path = CHECKER) -> Checker:
-    return Checker("type-discipline", (sha256_of(checker),))
+    return Checker("type-discipline", (sha256_of(checker), *TARGETS))
 
 
 def _check(root: Path, checker: Path) -> list[Violation]:
     # Resolve root first: on macOS tempfile dirs (/var/...) resolve to /private/var/...,
     # and the checker prints already-resolved absolute paths, so relative_to would fail.
     root = root.resolve()
-    out = _run([sys.executable, str(checker), str(root / TARGET)], cwd=root)
+    out = _run(
+        [sys.executable, str(checker), *(str(root / target) for target in TARGETS if (root / target).is_dir())],
+        cwd=root,
+    )
     found = []
     for line in out.splitlines():
         m = _LINE.match(line)
@@ -148,7 +151,7 @@ def cmd_check(base: str) -> None:
     if not breaches:
         print(f"OK: no LIT rule grew past its merge-base count (base {base})")
         return
-    diff: Final = _run(["git", "diff", base_point, "--unified=0", "--no-color", "--", TARGET])
+    diff: Final = _run(["git", "diff", base_point, "--unified=0", "--no-color", "--", *TARGETS])
     new: Final = introduced(head, parse_changed_lines(diff))
     print(f"FAIL: LIT-rule totals grew past their merge-base count (base {base}):")
     for breach in breaches:

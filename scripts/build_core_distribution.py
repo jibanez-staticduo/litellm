@@ -9,7 +9,15 @@ from pathlib import Path
 from typing import Final
 
 ROOT: Final = Path(__file__).resolve().parents[1]
-SOURCES: Final = ("litellm", "litellm-rust", ".cargo", "rust-toolchain.toml", "README.md", "LICENSE")
+SOURCES: Final = (
+    "litellm",
+    "litellm-rust",
+    ".cargo",
+    "rust-toolchain.toml",
+    "README.md",
+    "LICENSE",
+    "extensions/staticduo-litellm",
+)
 
 
 def stage_core_distribution(source: Path, destination: Path) -> None:
@@ -47,6 +55,7 @@ def stage_core_distribution(source: Path, destination: Path) -> None:
     destination.mkdir(parents=True, exist_ok=True)
     for name in SOURCES:
         path: Final = source / name
+        (destination / name).parent.mkdir(parents=True, exist_ok=True)
         if path.is_dir():
             shutil.copytree(
                 path,
@@ -64,6 +73,21 @@ def build_core_distribution(output: Path, *, sdist_only: bool = False) -> None:
     with tempfile.TemporaryDirectory(prefix="litellm-core-") as temporary:
         stage: Final = Path(temporary)
         stage_core_distribution(ROOT, stage)
+        subprocess.run(
+            [
+                "uv",
+                "build",
+                "--python",
+                sys.executable,
+                "--package",
+                "staticduo-litellm",
+                "--out-dir",
+                str(output_path),
+                "--sdist" if sdist_only else "--wheel",
+            ],
+            cwd=stage,
+            check=True,
+        )
         subprocess.run(
             ["uv", "build", "--python", sys.executable, "--out-dir", str(output_path)]
             + (["--sdist"] if sdist_only else []),

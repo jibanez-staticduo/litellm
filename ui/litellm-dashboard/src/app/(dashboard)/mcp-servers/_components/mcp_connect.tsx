@@ -1,6 +1,7 @@
 /* eslint-disable react/no-unescaped-entities */
 
 import React, { useId, useState } from "react";
+import { LAZY_MCP_CONNECTOR } from "./lazy_mcp_connector";
 import { Alert, AlertDescription, AlertTitle } from "@/components/shared/Alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -126,16 +127,37 @@ const FeatureCard: React.FC<FeatureCardProps> = ({
   );
 };
 
-interface MCPConnectProps {
-  currentServerAccessGroups?: string[];
-  mode?: "mcp" | "lazymcp";
+export interface MCPConnector {
+  endpointPath: string;
+  endpointName: string;
+  serverLabel: string;
+  openAIPathSuffix: string;
+  zapierLabel: string;
+  heading: string;
+  description: string;
 }
 
-const MCPConnect: React.FC<MCPConnectProps> = ({ currentServerAccessGroups = [], mode = "mcp" }) => {
+export interface MCPConnectProps {
+  currentServerAccessGroups?: string[];
+  mode?: "mcp" | "lazymcp";
+  connector?: MCPConnector;
+}
+
+const MCP_CONNECTOR: MCPConnector = {
+  endpointPath: "/mcp",
+  endpointName: "MCP",
+  serverLabel: "litellm",
+  openAIPathSuffix: "",
+  zapierLabel: "Zapier_MCP",
+  heading: "Connect to your MCP client",
+  description:
+    "Use tools directly from any MCP client with LiteLLM MCP. Enable your AI assistant to perform real-world tasks through a simple, secure connection.",
+};
+
+const MCPConnect: React.FC<MCPConnectProps> = ({ currentServerAccessGroups = [], mode = "mcp", connector }) => {
+  const configuration = connector ?? (mode === "lazymcp" ? LAZY_MCP_CONNECTOR : MCP_CONNECTOR);
   const proxyBaseUrl = getProxyBaseUrl();
-  const endpointPath = mode === "lazymcp" ? "/lazymcp" : "/mcp";
-  const endpointName = mode === "lazymcp" ? "LazyMCP" : "MCP";
-  const serverLabel = mode === "lazymcp" ? "litellm-lazymcp" : "litellm";
+  const { endpointPath, endpointName, serverLabel } = configuration;
   const [copiedStates, setCopiedStates] = useState<Record<string, boolean>>({});
   const [currentServer] = useState("Zapier_MCP"); // This should match the current server being viewed
 
@@ -251,7 +273,7 @@ const MCPConnect: React.FC<MCPConnectProps> = ({ currentServerAccessGroups = [],
         {
             "type": "mcp",
             "server_label": "${serverLabel}",
-            "server_url": "litellm_proxy${mode === "lazymcp" ? "/lazymcp" : ""}",
+            "server_url": "litellm_proxy${configuration.openAIPathSuffix}",
             "require_approval": "never",
             "headers": {
                 "x-litellm-api-key": "Bearer YOUR_LITELLM_VIRTUAL_KEY",
@@ -394,7 +416,7 @@ const MCPConnect: React.FC<MCPConnectProps> = ({ currentServerAccessGroups = [],
                 <CodeBlock
                   code={`{
     "mcpServers": {
-      "${mode === "lazymcp" ? "LiteLLM LazyMCP" : "Zapier_MCP"}": {
+      "${configuration.zapierLabel}": {
         "url": "${proxyBaseUrl}${endpointPath}",
         "headers": {
           "x-litellm-api-key": "Bearer YOUR_LITELLM_API_KEY",
@@ -477,14 +499,8 @@ const MCPConnect: React.FC<MCPConnectProps> = ({ currentServerAccessGroups = [],
     <div>
       <div className="flex w-full flex-col gap-6">
         <div>
-          <h2 className="text-3xl font-bold text-foreground mb-3">
-            {mode === "lazymcp" ? "Connect to your MCP client with LazyMCP" : "Connect to your MCP client"}
-          </h2>
-          <p className="text-lg text-muted-foreground">
-            {mode === "lazymcp"
-              ? "LazyMCP connects MCP clients to LiteLLM while exposing only three gateway tools: mcp_describe, mcp_call, and mcp_status. This avoids sending every upstream MCP tool schema to the model on each request. LazyMCP respects virtual key, team, access group, toolset, and request-header permissions. The x-mcp-servers header works the same as standard MCP and server descriptions help the model choose the right server."
-              : "Use tools directly from any MCP client with LiteLLM MCP. Enable your AI assistant to perform real-world tasks through a simple, secure connection."}
-          </p>
+          <h2 className="text-3xl font-bold text-foreground mb-3">{configuration.heading}</h2>
+          <p className="text-lg text-muted-foreground">{configuration.description}</p>
         </div>
 
         <Tabs defaultValue="openai" className="w-full">

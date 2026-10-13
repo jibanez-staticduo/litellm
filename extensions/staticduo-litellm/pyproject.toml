@@ -1,0 +1,23 @@
+[project]
+name = "staticduo-litellm"
+version = "0.1.0"
+description = "StaticDuo policies and compatibility adapters for LiteLLM"
+readme = "README.md"
+requires-python = ">=3.10,<3.15"
+license = "MIT"
+dependencies = [
+    "httpx[http2]>=0.28.0,<1.0",
+    "openai>=2.20.0,<4.0.0",
+    "packaging>=24.0",
+    "pydantic>=2.11.0,<3.0",
+]
+
+[project.optional-dependencies]
+proxy = ["fastapi>=0.136.3,<1.0", "redis>=5.0,<8.0", "mcp>=2.2.0,<3"]
+
+[build-system]
+requires = ["hatchling>=1.27,<2.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/staticduo_litellm"]

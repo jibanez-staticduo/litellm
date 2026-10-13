@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "extension_version": "0.1.0",
+  "core_version_range": ">=1.106.0,<1.107.0",
+  "upstream_baseline_commit": "541e3ed5305a530ebef74d5684d3aca2632c1009",
+  "provider_upstream": {
+    "path": "litellm/llms/chatgpt/authenticator.py",
+    "sha256": "fae5a0af1eb25b060c09c47591f3921bb10c4590ee8b0468f6091d5fb0fa84b6"
+  },
+  "interfaces": [
+    {
+      "path": "litellm/integrations/custom_logger.py",
+      "symbol": "CustomLogger.async_pre_call_hook",
+      "signature": {
+        "positional": [
+          "self",
+          "user_api_key_dict",
+          "cache",
+          "data",
+          "call_type"
+        ],
+        "keyword_only": [],
+        "defaults": 0,
+        "keyword_defaults": [],
+        "vararg": null,
+        "kwarg": null,
+        "is_async": true
+      }
+    },
+    {
+      "path": "litellm/llms/chatgpt/oauth_engine.py",
+      "symbol": "ChatGPTOAuthEngine.get_access_token",
+      "signature": {
+        "positional": [
+          "self"
+        ],
+        "keyword_only": [],
+        "defaults": 0,
+        "keyword_defaults": [],
+        "vararg": null,
+        "kwarg": null,
+        "is_async": false
+      }
+    },
+    {
+      "path": "litellm/llms/chatgpt/oauth_engine.py",
+      "symbol": "ChatGPTOAuthEngine._refresh_tokens",
+      "signature": {
+        "positional": [
+          "self",
+          "refresh_token"
+        ],
+        "keyword_only": [],
+        "defaults": 0,
+        "keyword_defaults": [],
+        "vararg": null,
+        "kwarg": null,
+        "is_async": false
+      }
+    },
+    {
+      "path": "litellm/integrations/custom_logger.py",
+      "symbol": "CustomLogger.async_post_call_streaming_iterator_hook",
+      "signature": {
+        "positional": [
+          "self",
+          "user_api_key_dict",
+          "response",
+          "request_data"
+        ],
+        "keyword_only": [],
+        "defaults": 0,
+        "keyword_defaults": [],
+        "vararg": null,
+        "kwarg": null,
+        "is_async": true
+      }
+    },
+    {
+      "path": "litellm/integrations/custom_logger.py",
+      "symbol": "CustomLogger.async_pre_call_deployment_hook",
+      "signature": {
+        "positional": [
+          "self",
+          "kwargs",
+          "call_type"
+        ],
+        "keyword_only": [],
+        "defaults": 0,
+        "keyword_defaults": [],
+        "vararg": null,
+        "kwarg": null,
+        "is_async": true
+      }
+    },
+    {
+      "path": "litellm/proxy/_experimental/mcp_server/operations.py",
+      "symbol": "_get_allowed_mcp_servers",
+      "signature": {
+        "positional": [
+          "user_api_key_auth",
+          "mcp_servers",
+          "client_ip"
+        ],
+        "keyword_only": [],
+        "defaults": 1,
+        "keyword_defaults": [],
+        "vararg": null,
+        "kwarg": null,
+        "is_async": true
+      }
+    },
+    {
+      "path": "litellm/proxy/_experimental/mcp_server/operations.py",
+      "symbol": "call_mcp_tool",
+      "signature": {
+        "positional": [
+          "name",
+          "arguments",
+          "user_api_key_auth",
+          "mcp_auth_header",
+          "mcp_servers",
+          "mcp_server_auth_headers",
+          "oauth2_headers",
+          "raw_headers",
+          "client_ip",
+          "wire_compat",
+          "input_responses",
+          "request_state",
+          "incoming_bearer_token"
+        ],
+        "keyword_only": [],
+        "defaults": 12,
+        "keyword_defaults": [],
+        "vararg": null,
+        "kwarg": "kwargs",
+        "is_async": true
+      }
+    },
+    {
+      "path": "litellm/proxy/_experimental/mcp_server/catalog.py",
+      "symbol": "catalog_operation",
+      "signature": {
+        "positional": [
+          "manager"
+        ],
+        "keyword_only": [],
+        "defaults": 0,
+        "keyword_defaults": [],
+        "vararg": null,
+        "kwarg": null,
+        "is_async": false
+      }
+    },
+    {
+      "path": "litellm/proxy/_experimental/mcp_server/mcp_server_manager.py",
+      "symbol": "MCPServerManager.resolve_toolset_tool_permissions",
+      "signature": {
+        "positional": [
+          "self",
+          "toolset_ids"
+        ],
+        "keyword_only": [
+          "requires_fresh_policy"
+        ],
+        "defaults": 0,
+        "keyword_defaults": [
+          true
+        ],
+        "vararg": null,
+        "kwarg": null,
+        "is_async": true
+      }
+    }
+  ],
+  "runtime_modules": [
+    "staticduo_litellm.compatibility.hooks",
+    "staticduo_litellm.compatibility.mcp",
+    "staticduo_litellm.compatibility.compression",
+    "staticduo_litellm.compatibility.pricing",
+    "staticduo_litellm.compatibility.provider_providers_chatgpt_authenticator"
+  ],
+  "required_files": [
+    "extensions/staticduo-litellm/src/staticduo_litellm/compatibility/hooks.py",
+    "extensions/staticduo-litellm/src/staticduo_litellm/compatibility/mcp.py",
+    "extensions/staticduo-litellm/src/staticduo_litellm/compatibility/compression.py",
+    "extensions/staticduo-litellm/src/staticduo_litellm/compatibility/pricing.py",
+    "extensions/staticduo-litellm/src/staticduo_litellm/compatibility/provider_providers_chatgpt_authenticator.py",
+    "extensions/staticduo-litellm/src/staticduo_litellm/pricing/catalog-v1.json"
+  ],
+  "native": {
+    "module": "litellm.rust_bridge._native",
+    "callable_exports": [
+      "completion",
+      "acompletion",
+      "embedding",
+      "aembedding",
+      "responses",
+      "aresponses",
+      "messages",
+      "amessages",
+      "TokenCounter",
+      "Tokenizer"
+    ]
+  },
+  "operational_artifacts": [
+    {
+      "name": "anthropic-native-sdk",
+      "source_path": "docker/anthropic-subscription/native-sdk",
+      "version": "1.0.0",
+      "scope": "Independent broker release; required only when configured"
+    },
+    {
+      "name": "quota-controller",
+      "source_path": "Fedora active release mount captured in deployment baseline",
+      "scope": "Independent maintained operational source outside extension; deploy/quota-sidecar patches are historical inputs, not release sources"
+    }
+  ]
+}

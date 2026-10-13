@@ -90,6 +90,10 @@ jobs:
         run: |
           uv sync --frozen --group proxy-dev --group e2e-dev
 
+      - name: Verify independent extension wheel
+        if: steps.changes.outputs.decision != 'skip'
+        run: uv run --no-sync pytest tests/extension/test_package_loading.py -q
+
       - name: Cache Prisma binaries
         if: steps.changes.outputs.decision != 'skip'
         uses: ./.github/actions/cache-prisma-binaries
@@ -102,9 +106,9 @@ jobs:
       - name: Check ruff format
         if: steps.changes.outputs.decision != 'skip'
         run: |
-          git diff --name-only --diff-filter=ACMR "$GATE_BASE_SHA" HEAD -- ':(glob)litellm/**/*.py' | grep -v '^litellm/enterprise/' > "$RUNNER_TEMP/ruff_format_files.txt" || true
+          git diff --name-only --diff-filter=ACMR "$GATE_BASE_SHA" HEAD -- ':(glob)litellm/**/*.py' ':(glob)extensions/staticduo-litellm/src/**/*.py' | grep -v '^litellm/enterprise/' > "$RUNNER_TEMP/ruff_format_files.txt" || true
           if [ ! -s "$RUNNER_TEMP/ruff_format_files.txt" ]; then
-            echo "No changed litellm Python files to check with ruff format."
+            echo "No changed Python source files to check with ruff format."
             exit 0
           fi
           xargs uv run --no-sync ruff format --check --exclude '/enterprise/' < "$RUNNER_TEMP/ruff_format_files.txt"
@@ -126,9 +130,7 @@ jobs:
       - name: Run Ruff linting
         if: steps.changes.outputs.decision != 'skip'
         run: |
-          cd litellm
-          uv run --no-sync ruff check .
-          cd ..
+          uv run --no-sync ruff check litellm extensions/staticduo-litellm/src
 
       - name: Run Ruff linting (test tree)
         if: steps.changes.outputs.decision != 'skip'

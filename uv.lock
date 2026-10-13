@@ -18,6 +18,7 @@ members = [
     "litellm",
     "litellm-enterprise",
     "litellm-proxy-extras",
+    "staticduo-litellm",
 ]
 constraints = [
     { name = "aiohttp", specifier = ">=3.14.2,<4.0" },
@@ -4522,6 +4523,7 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
+    { name = "staticduo-litellm" },
     { name = "tiktoken" },
     { name = "tokenizers" },
     { name = "typing-extensions" },
@@ -4599,6 +4601,7 @@ proxy = [
     { name = "rq" },
     { name = "soundfile" },
     { name = "starlette" },
+    { name = "staticduo-litellm", extra = ["proxy"] },
     { name = "tomlkit" },
     { name = "uvicorn" },
     { name = "uvloop", marker = "sys_platform != 'win32'" },
@@ -4855,6 +4858,8 @@ requires-dist = [
     { name = "soundfile", marker = "extra == 'proxy'", specifier = ">=0.12.1,<1.0" },
     { name = "soundfile", marker = "extra == 'stt-nvidia-riva'", specifier = ">=0.12.1" },
     { name = "starlette", marker = "extra == 'proxy'", specifier = ">=1.0.1,<2.0" },
+    { name = "staticduo-litellm", editable = "extensions/staticduo-litellm" },
+    { name = "staticduo-litellm", extras = ["proxy"], marker = "extra == 'proxy'", editable = "extensions/staticduo-litellm" },
     { name = "tiktoken", marker = "python_full_version < '3.14'", specifier = ">=0.8.0,<1.0" },
     { name = "tiktoken", marker = "python_full_version >= '3.14'", specifier = ">=0.12.0,<1.0" },
     { name = "tokenizers", specifier = ">=0.21.0,<1.0" },
@@ -9671,6 +9676,36 @@ sdist = { url = "https://files.pythonhosted.org/packages/eb/e3/7c1dc7381d9f8ab7d
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ec/bb/2799cc2ede3ed41131f8975621e7213dfc7ef4acbbaadfa440f32500c370/starlette-1.3.1-py3-none-any.whl", hash = "sha256:c7372aae11c3c3f26a42df7bd626cec2f47d03483d261d369516a615a53714c6", size = 73632, upload-time = "2026-06-12T09:23:10.017Z" },
 ]
+
+[[package]]
+name = "staticduo-litellm"
+version = "0.1.0"
+source = { editable = "extensions/staticduo-litellm" }
+dependencies = [
+    { name = "httpx", extra = ["http2"] },
+    { name = "openai" },
+    { name = "packaging" },
+    { name = "pydantic" },
+]
+
+[package.optional-dependencies]
+proxy = [
+    { name = "fastapi" },
+    { name = "mcp" },
+    { name = "redis" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", marker = "extra == 'proxy'", specifier = ">=0.136.3,<1.0" },
+    { name = "httpx", extras = ["http2"], specifier = ">=0.28.0,<1.0" },
+    { name = "mcp", marker = "extra == 'proxy'", specifier = ">=2.2.0,<3" },
+    { name = "openai", specifier = ">=2.20.0,<4.0.0" },
+    { name = "packaging", specifier = ">=24.0" },
+    { name = "pydantic", specifier = ">=2.11.0,<3.0" },
+    { name = "redis", marker = "extra == 'proxy'", specifier = ">=5.0,<8.0" },
+]
+provides-extras = ["proxy"]
 
 [[package]]
 name = "tabulate"

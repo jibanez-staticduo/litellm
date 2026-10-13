@@ -542,10 +542,13 @@ def _finalize_model_cost_map(model_cost: dict) -> dict:
     The ``fallback_generalizations`` block is installed into the generalizations
     module and removed from the map so it is never treated as a model entry.
     """
-    raw: Final = model_cost.pop(FALLBACK_GENERALIZATIONS_KEY, None)
+    from staticduo_litellm.compatibility.pricing import apply_catalog_overlay
+
+    overlaid: Final = dict(apply_catalog_overlay(model_cost))
+    raw: Final = overlaid.pop(FALLBACK_GENERALIZATIONS_KEY, None)
     rules: Final = raw.get("rules") if isinstance(raw, dict) else None
     set_fallback_generalizations(rules)
-    return _expand_model_aliases(model_cost)
+    return _expand_model_aliases(overlaid)
 
 
 def _finalize_loaded_model_cost_map(loaded: ModelCostMapReloaded) -> ModelCostMapReloaded:

@@ -12136,3 +12136,103 @@ async def test_streamable_http_admission_auth_sees_only_peeked_jsonrpc_method() 
     assert downstream_bodies == [_INITIALIZE]
     stateless_handle.assert_not_awaited()
     send.assert_not_awaited()
+
+@pytest.mark.asyncio
+async def test_lazymcp_extension_uses_request_local_dependencies_before_transport():
+    import contextvars
+
+    from staticduo_litellm.lazy.engine import LazyMCPService
+
+    principal = contextvars.ContextVar("lazy-boundary-principal")
+    visible = MCPServer(server_id="visible", name="visible", transport="http")
+    listed = AsyncMock(return_value=[MCPTool(name="read", input_schema={"type": "object"})])
+    called = AsyncMock(return_value=CallToolResult(content=[TextContent(type="text", text="authorized")]))
+
+    class RequestPorts:
+        def get_auth_context(self):
+            return principal.get(), None, None, None, None, None, None
+
+        async def lazy_allowed_servers(self, user_api_key_auth, **kwargs):
+            return [visible] if user_api_key_auth.user_id == "allowed" else []
+
+        server_tools = listed
+        call_mcp_tool = called
+
+        def resolve_tool(self, tools, server, requested_name):
+            return tools[0], None
+
+    service = LazyMCPService(RequestPorts())
+    token = principal.set(UserAPIKeyAuth(user_id="denied"))
+    try:
+        denied = await service.call({"server": "visible", "tool": "read", "arguments": {}})
+        assert denied.is_error is True
+        listed.assert_not_awaited()
+        called.assert_not_awaited()
+        principal.set(UserAPIKeyAuth(user_id="allowed"))
+        result = await service.call({"server": "visible", "tool": "read", "arguments": {}})
+        assert result.content[0].text == "authorized"
+        assert called.await_args.kwargs["user_api_key_auth"].user_id == "allowed"
+        assert called.await_args.kwargs["mcp_servers"] == ["visible"]
+    finally:
+        principal.reset(token)
+
+
+@pytest.mark.asyncio
+async def test_lazymcp_extension_cancellation_stops_its_upstream_listing():
+    from staticduo_litellm.lazy.engine import LazyMCPService
+
+    started = asyncio.Event()
+    stopped = asyncio.Event()
+    target = MCPServer(server_id="cancelled", name="cancelled", transport="http")
+
+    class CancellationPorts:
+        listing_timeout = 60
+
+        async def server_tools(self, **kwargs):
+            started.set()
+            try:
+                await asyncio.Event().wait()
+            finally:
+                stopped.set()
+
+        def consume_listing_task(self, task):
+            if not task.cancelled():
+                task.result()
+
+    service = LazyMCPService(CancellationPorts())
+    operation = asyncio.create_task(service.bounded_server_tools(target, None, None, None, None, None, [target]))
+    await started.wait()
+    operation.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await operation
+    await asyncio.wait_for(stopped.wait(), timeout=1)
+
+
+def test_lazymcp_extension_cache_scope_isolates_principal_credentials_and_toolsets():
+    import contextvars
+
+    from staticduo_litellm.lazy.engine import LazyMCPService
+
+    class CachePorts:
+        active_toolset = contextvars.ContextVar("lazy-boundary-toolset", default=None)
+
+    ports = CachePorts()
+    service = LazyMCPService(ports)
+    owner = UserAPIKeyAuth(api_key="key-one", user_id="owner-one")
+    other = UserAPIKeyAuth(api_key="key-two", user_id="owner-two")
+    headers = {"Authorization": "caller-token"}
+
+    def scope(caller, upstream_token):
+        return service.cache_scope(caller, upstream_token, ["visible"], None, None, headers, "127.0.0.1")
+
+    first = scope(owner, "upstream-one")
+    assert first != scope(other, "upstream-one")
+    assert first != scope(owner, "upstream-two")
+    token = ports.active_toolset.set("restricted-toolset")
+    try:
+        assert first != scope(owner, "upstream-one")
+    finally:
+        ports.active_toolset.reset(token)
+    assert scope(owner, "upstream-one") == first
+    assert headers == {"Authorization": "caller-token"}
+    assert len(first) == 64

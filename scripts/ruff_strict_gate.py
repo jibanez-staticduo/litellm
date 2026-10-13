@@ -39,7 +39,7 @@ from lint_base_counts import (
 REPO_ROOT: Final = Path(__file__).resolve().parent.parent
 STRICT_CONFIG: Final = REPO_ROOT / "ruff-strict.toml"
 BASE_CONFIG: Final = REPO_ROOT / "ruff.toml"
-TARGET: Final = "litellm"
+TARGETS: Final = ("litellm", "extensions/staticduo-litellm/src")
 
 _HUNK: Final = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 
@@ -65,12 +65,20 @@ def ruff_version() -> str:
 def checker_identity(
     strict_config: Path = STRICT_CONFIG, base_config: Path = BASE_CONFIG, version: Callable[[], str] = ruff_version
 ) -> Checker:
-    return Checker("ruff-strict", (sha256_of(strict_config), sha256_of(base_config), version()))
+    return Checker("ruff-strict", (sha256_of(strict_config), sha256_of(base_config), version(), *TARGETS))
 
 
 def _ruff_json(cwd: Path, config: Path) -> list:
     raw = _run(
-        ["ruff", "check", TARGET, "--config", str(config), "--output-format", "json"],
+        [
+            "ruff",
+            "check",
+            *(target for target in TARGETS if (cwd / target).is_dir()),
+            "--config",
+            str(config),
+            "--output-format",
+            "json",
+        ],
         cwd=cwd,
     )
     return json.loads(raw or "[]")
@@ -80,12 +88,7 @@ def head_violations() -> list[Violation]:
     out = []
     for item in _ruff_json(REPO_ROOT, STRICT_CONFIG):
         name = Path(item["filename"])
-        rel = (
-            (name if name.is_absolute() else REPO_ROOT / name)
-            .resolve()
-            .relative_to(REPO_ROOT)
-            .as_posix()
-        )
+        rel = (name if name.is_absolute() else REPO_ROOT / name).resolve().relative_to(REPO_ROOT).as_posix()
         out.append(Violation(rel, item["location"]["row"], item["code"]))
     return out
 
@@ -132,16 +135,14 @@ def cmd_check(base: str) -> None:
     if not breaches:
         print(f"OK: no strict rule grew past its merge-base count (base {base})")
         return
-    diff: Final = _run(["git", "diff", base_point, "--unified=0", "--no-color", "--", TARGET])
+    diff: Final = _run(["git", "diff", base_point, "--unified=0", "--no-color", "--", *TARGETS])
     new: Final = introduced(head, parse_changed_lines(diff))
     print(f"FAIL: strict-rule totals grew past their merge-base count (base {base}):")
     for breach in breaches:
         print(f"  {breach.rule}: total {breach.total} over ceiling {breach.ceiling} (this change added {breach.added})")
         for violation in sorted(v for v in new if v.code == breach.rule):
             print(f"    {violation.file}:{violation.line}")
-    print(
-        "Reduce the new violations or remove an equal number elsewhere; the ceiling is the merge-base count."
-    )
+    print("Reduce the new violations or remove an equal number elsewhere; the ceiling is the merge-base count.")
     raise SystemExit(1)
 
 

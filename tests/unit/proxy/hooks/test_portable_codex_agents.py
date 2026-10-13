@@ -1,13 +1,17 @@
 import json
+from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import HTTPException
 from openai.types.responses import ResponseFunctionToolCall, ResponseOutputItemDoneEvent
+from redis.asyncio import Redis
+from redis.exceptions import ConnectionError as RedisConnectionError
 
 from litellm.caching.dual_cache import DualCache
 from litellm.proxy._types import UserAPIKeyAuth
 from litellm.proxy.hooks.portable_codex_agents import (
     PortableCodexAgents,
+    RedisReplayStore,
     RequestContext,
     transform_request,
     transform_response,
@@ -444,3 +448,60 @@ async def test_stream_delta_and_completed_snapshot_preserve_call_identity():
     assert item["namespace"] == "collaboration"
     assert item["encrypted_function_args"] == []
     assert len(store.records) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "operation,args",
+    [
+        ("contains", ("proof",)),
+        ("record", ("proof",)),
+        ("get_mode", ("thread",)),
+        ("claim_mode", ("thread", "portable")),
+    ],
+)
+async def test_redis_replay_storage_outage_fails_closed(operation, args):
+    client = AsyncMock(spec=Redis)
+    client.exists = AsyncMock()
+    client.set = AsyncMock()
+    client.get = AsyncMock()
+    client.exists.side_effect = RedisConnectionError("fixture")
+    client.set.side_effect = RedisConnectionError("fixture")
+    client.get.side_effect = RedisConnectionError("fixture")
+    store = RedisReplayStore(client)
+    with pytest.raises(HTTPException) as error:
+        await getattr(store, operation)(*args)
+    assert error.value.status_code == 503
+    assert "unavailable" in error.value.detail
+
+
+@pytest.mark.asyncio
+async def test_redis_mode_claim_is_atomic_and_preserves_existing_legacy_mode():
+    client = AsyncMock(spec=Redis)
+    client.exists = AsyncMock()
+    client.set = AsyncMock()
+    client.get = AsyncMock()
+    client.set.return_value = False
+    client.get.return_value = "legacy"
+    store = RedisReplayStore(client)
+    assert await store.claim_mode("thread", "portable") == "legacy"
+    client.set.assert_awaited_once_with("thread", "portable", nx=True)
+    client.exists.return_value = 1
+    assert await store.contains("proof") is True
+    await store.record("proof")
+    client.set.assert_awaited_with("proof", "1")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode", [None, "invalid"])
+async def test_redis_mode_claim_rejects_missing_or_corrupt_mode(mode):
+    client = AsyncMock(spec=Redis)
+    client.exists = AsyncMock()
+    client.set = AsyncMock()
+    client.get = AsyncMock()
+    client.get.return_value = mode
+    store = RedisReplayStore(client)
+    with pytest.raises(HTTPException) as error:
+        await store.claim_mode("thread", "portable")
+    assert error.value.status_code == 503
+    assert "mode" in error.value.detail

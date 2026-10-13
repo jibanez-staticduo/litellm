@@ -29,6 +29,7 @@ import { MCPToolsetsTab } from "./MCPToolsetsTab";
 import CreateMCPServer from "./CreateMCPServer";
 import ImportMCPServers from "./ImportMCPServers";
 import MCPConnect from "./mcp_connect";
+import LazyMCPConnect from "./LazyMCPConnect";
 import MCPServerCard from "./MCPServerCard";
 import { useMcpStdioEnabled } from "./StdioAvailability";
 import { MCPServerView } from "./mcp_server_view";
@@ -766,7 +767,7 @@ const MCPServers: React.FC<MCPServerProps> = ({ accessToken, userRole, userID, i
             <MCPConnect />
           </TabsContent>
           <TabsContent value="lazymcp-connect">
-            <MCPConnect mode="lazymcp" />
+            <LazyMCPConnect />
           </TabsContent>
           {isAdminRole(userRole) && (
             <>

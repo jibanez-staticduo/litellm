@@ -21,6 +21,7 @@ Tests cover:
   loop resolves the retrieve tool call, then fake-streamed back to the client
 """
 
+import asyncio
 import json
 import time
 from collections.abc import Mapping
@@ -3628,3 +3629,59 @@ async def test_headroom_native_respects_existing_tool_result_scan_scope(
     sent: Final = _NATIVE_OBJECT_ADAPTER.validate_json(compressor.calls.last.request.content)
     rows: Final = _NATIVE_ROWS_ADAPTER.validate_python(sent["messages"])
     assert [row.get("content") for row in rows] == [_NATIVE_OLD_TEXT if tool_results_only else _NATIVE_SECOND_TEXT]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("request_format", ["responses", "anthropic", "chat"])
+async def test_headroom_extension_dispatch_preserves_concrete_hooks_and_native_payload(
+    request_format: NativeFormat,
+    respx_mock: respx.MockRouter,
+):
+    from staticduo_litellm.compression import native_request
+    from staticduo_litellm.compression.native_text import NativeTextSlot
+
+    from litellm.proxy.guardrails.guardrail_hooks.headroom import initialize_guardrail
+    from litellm.proxy.guardrails.guardrail_hooks.headroom.native_text import NativeTextSlot as LegacyTextSlot
+    from litellm.types.guardrails import LitellmParams
+
+    assert LegacyTextSlot is NativeTextSlot
+    respx_mock.post(f"{FAKE_API_BASE}/v1/compress").mock(
+        side_effect=lambda outgoing: _native_compress_reply(outgoing, "compress")
+    )
+    params: Final = LitellmParams(
+        guardrail="headroom",
+        mode="pre_call",
+        api_base=FAKE_API_BASE,
+        ccr_retrieval=False,
+    )
+    with patch.object(litellm.logging_callback_manager, "add_litellm_callback") as register:
+        guardrail: Final = initialize_guardrail(params, {"guardrail_name": "headroom", "litellm_params": params})
+    register.assert_called_once_with(guardrail)
+    guardrail.async_handler = AsyncHTTPHandler(transport=httpx.MockTransport(respx_mock.async_handler))
+    for hook in (
+        "apply_guardrail",
+        "async_pre_call_deployment_hook",
+        "async_should_run_agentic_loop",
+        "async_build_agentic_loop_plan",
+        "process_native_request",
+    ):
+        assert hook in type(guardrail).__dict__
+    with patch.object(native_request, "process_native_request", wraps=native_request.process_native_request) as execute:
+        result: Final = await _native_handler(request_format).process_input_messages(
+            _native_request(request_format), guardrail
+        )
+    execute.assert_awaited_once()
+    assert _native_payload(result) == _native_request(request_format, compressed=True)
+    assert _native_saved_tokens(result) == 900
+
+
+@pytest.mark.asyncio
+async def test_headroom_native_compression_cancellation_propagates_without_request_mutation(
+    respx_mock: respx.MockRouter,
+):
+    guardrail: Final = _native_guardrail(respx_mock)
+    request: Final = _native_request("responses")
+    with patch.object(guardrail, "_call_compress", AsyncMock(side_effect=asyncio.CancelledError)):
+        with pytest.raises(asyncio.CancelledError):
+            await OpenAIResponsesHandler().process_input_messages(request, guardrail)
+    assert request == _native_request("responses")

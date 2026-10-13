@@ -1,6 +1,7 @@
 {
-    "include": ["litellm"],
+    "include": ["litellm", "extensions/staticduo-litellm/src"],
     "ignore": [],
+    "extraPaths": ["extensions/staticduo-litellm/src"],
     "exclude": ["**/node_modules", "**/__pycache__", "tests/e2e/claude_code", "tests/e2e_harness/claude_code", "tests/e2e/ui", "litellm/types/utils.py", "litellm/proxy/_types.py"],
     "executionEnvironments": [
         {

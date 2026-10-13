@@ -526,7 +526,7 @@ jobs:
               --verbose \
               --command="tr ' ' '\\n' | awk '/\\.py/ {print; next} {sub(/\\.[A-Z][^.]*$/, \"\"); gsub(/\\./, \"/\"); print \$0 \".py\"}' | xargs uv run --no-sync python -m pytest --tb=short \
                 -v \
-                --cov=./litellm --cov=./enterprise/litellm_enterprise --cov-report=xml \
+                --cov=./litellm --cov=./extensions/staticduo-litellm/src --cov=./enterprise/litellm_enterprise --cov-report=xml \
                 --junitxml=test-results/junit.xml \
                 --durations=5 \
                 -n 2"
@@ -621,7 +621,7 @@ jobs:
               --verbose \
               --command="tr ' ' '\\n' | awk '/\\.py/ {print; next} {sub(/\\.[A-Z][^.]*$/, \"\"); gsub(/\\./, \"/\"); print \$0 \".py\"}' | xargs uv run --no-sync python -m pytest --tb=short \
                 -vv \
-                --cov=./litellm --cov=./enterprise/litellm_enterprise --cov-report=xml \
+                --cov=./litellm --cov=./extensions/staticduo-litellm/src --cov=./enterprise/litellm_enterprise --cov-report=xml \
                 --junitxml=test-results/junit.xml \
                 --durations=20 \
                 -n 4 \
@@ -664,7 +664,7 @@ jobs:
             export LITELLM_LOG=WARNING
             uv run --no-sync python -m pytest --tb=short \
               -vv \
-              --cov=./litellm --cov=./enterprise/litellm_enterprise --cov-report=xml \
+              --cov=./litellm --cov=./extensions/staticduo-litellm/src --cov=./enterprise/litellm_enterprise --cov-report=xml \
               --junitxml=test-results/junit.xml \
               --durations=5 \
               --timeout=120 --timeout_method=thread \
@@ -710,7 +710,7 @@ jobs:
               --verbose \
               --command="tr ' ' '\\n' | awk '/\\.py/ {print; next} {sub(/\\.[A-Z][^.]*$/, \"\"); gsub(/\\./, \"/\"); print \$0 \".py\"}' | xargs uv run --no-sync python -m pytest --tb=short \
                 -vv -s \
-                --cov=./litellm --cov=./enterprise/litellm_enterprise --cov-report=xml \
+                --cov=./litellm --cov=./extensions/staticduo-litellm/src --cov=./enterprise/litellm_enterprise --cov-report=xml \
                 --junitxml=test-results/junit.xml \
                 --durations=5 \
                 --retries 3 --retry-delay 5"
@@ -755,7 +755,7 @@ jobs:
               --verbose \
               --command="tr ' ' '\\n' | awk '/\\.py/ {print; next} {sub(/\\.[A-Z][^.]*$/, \"\"); gsub(/\\./, \"/\"); print \$0 \".py\"}' | xargs uv run --no-sync python -m pytest --tb=short \
                 -vv \
-                --cov=./litellm --cov=./enterprise/litellm_enterprise --cov-report=xml \
+                --cov=./litellm --cov=./extensions/staticduo-litellm/src --cov=./enterprise/litellm_enterprise --cov-report=xml \
                 --junitxml=test-results/junit.xml \
                 --durations=5 \
                 -n 4"
@@ -799,7 +799,7 @@ jobs:
               --verbose \
               --command="tr ' ' '\\n' | awk '/\\.py/ {print; next} {sub(/\\.[A-Z][^.]*$/, \"\"); gsub(/\\./, \"/\"); print \$0 \".py\"}' | xargs uv run --no-sync python -m pytest --tb=short \
                 -vv \
-                --cov=./litellm --cov=./enterprise/litellm_enterprise --cov-report=xml \
+                --cov=./litellm --cov=./extensions/staticduo-litellm/src --cov=./enterprise/litellm_enterprise --cov-report=xml \
                 --junitxml=test-results/junit.xml \
                 --durations=5 \
                 -n 4"
@@ -843,7 +843,7 @@ jobs:
               --verbose \
               --command="tr ' ' '\\n' | awk '/\\.py/ {print; next} {sub(/\\.[A-Z][^.]*$/, \"\"); gsub(/\\./, \"/\"); print \$0 \".py\"}' | xargs uv run --no-sync python -m pytest --tb=short \
                 -vv -s \
-                --cov=./litellm --cov=./enterprise/litellm_enterprise --cov-report=xml \
+                --cov=./litellm --cov=./extensions/staticduo-litellm/src --cov=./enterprise/litellm_enterprise --cov-report=xml \
                 --junitxml=test-results/junit.xml \
                 --durations=5 \
                 -n 2"
@@ -887,7 +887,7 @@ jobs:
               --verbose \
               --command="tr ' ' '\\n' | awk '/\\.py/ {print; next} {sub(/\\.[A-Z][^.]*$/, \"\"); gsub(/\\./, \"/\"); print \$0 \".py\"}' | xargs uv run --no-sync python -m pytest --tb=short \
                 -vv -s \
-                --cov=./litellm --cov=./enterprise/litellm_enterprise --cov-report=xml \
+                --cov=./litellm --cov=./extensions/staticduo-litellm/src --cov=./enterprise/litellm_enterprise --cov-report=xml \
                 --junitxml=test-results/junit.xml \
                 --durations=5 \
                 -n 2"
@@ -932,7 +932,7 @@ jobs:
               --verbose \
               --command="tr ' ' '\\n' | awk '/\\.py/ {print; next} {sub(/\\.[A-Z][^.]*$/, \"\"); gsub(/\\./, \"/\"); print \$0 \".py\"}' | xargs uv run --no-sync python -m pytest --tb=short \
                 -vv \
-                --cov=./litellm --cov=./enterprise/litellm_enterprise --cov-report=xml \
+                --cov=./litellm --cov=./extensions/staticduo-litellm/src --cov=./enterprise/litellm_enterprise --cov-report=xml \
                 --junitxml=test-results/junit.xml \
                 --durations=5 \
                 -n 4"
@@ -1011,7 +1011,7 @@ jobs:
               --verbose \
               --command="tr ' ' '\\n' | awk '/\\.py/ {print; next} {sub(/\\.[A-Z][^.]*$/, \"\"); gsub(/\\./, \"/\"); print \$0 \".py\"}' | xargs uv run --no-sync python -m pytest --tb=short \
                 -vv \
-                --cov=./litellm --cov=./enterprise/litellm_enterprise --cov-report=xml \
+                --cov=./litellm --cov=./extensions/staticduo-litellm/src --cov=./enterprise/litellm_enterprise --cov-report=xml \
                 -n 4 \
                 --junitxml=test-results/junit.xml \
                 --durations=5 \
@@ -1056,7 +1056,7 @@ jobs:
               --verbose \
               --command="tr ' ' '\\n' | awk '/\\.py/ {print; next} {sub(/\\.[A-Z][^.]*$/, \"\"); gsub(/\\./, \"/\"); print \$0 \".py\"}' | xargs uv run --no-sync python -m pytest --tb=short \
                 -vv -s \
-                --cov=./litellm --cov=./enterprise/litellm_enterprise --cov-report=xml \
+                --cov=./litellm --cov=./extensions/staticduo-litellm/src --cov=./enterprise/litellm_enterprise --cov-report=xml \
                 --junitxml=test-results/junit.xml \
                 --durations=5"
           no_output_timeout: 15m
@@ -2728,7 +2728,7 @@ jobs:
               worker_args=(-n << parameters.workers >> --dist=worksteal)
             fi
             if [ -n "<< parameters.coverage_flag >>" ]; then
-              coverage_args=(--cov=./litellm --cov-report=xml:coverage.xml)
+              coverage_args=(--cov=./litellm --cov=./extensions/staticduo-litellm/src --cov-report=xml:coverage.xml)
             fi
             timeout --signal=TERM << parameters.timeout_minutes >>m uv run --no-sync pytest \
               << parameters.test_path >> -vv --tb=short --durations=10 -o junit_family=xunit1 \
@@ -2780,7 +2780,7 @@ jobs:
               tests/mcp_tests tests/unit/experimental_mcp_client tests/unit/proxy/_experimental/mcp_server \
               tests/unit/responses/mcp --tb=short -vv --maxfail=10 -n 2 --dist=loadscope --reruns 0 \
               --reruns-delay 1 --timeout=120 --rerun-except "from pytest-timeout" --durations=20 \
-              --cov=./litellm --cov=./enterprise/litellm_enterprise --cov-report=xml:coverage.xml \
+              --cov=./litellm --cov=./extensions/staticduo-litellm/src --cov=./enterprise/litellm_enterprise --cov-report=xml:coverage.xml \
               --cov-config=pyproject.toml -o junit_family=xunit1 --junitxml=test-results/junit.xml
       - install_codecov_cli
       - run:
@@ -2832,7 +2832,7 @@ jobs:
               tests/unit/caching/test_redis_cluster_cache.py tests/unit/caching/test_evicted_client_closer.py \
               tests/integration/sdk/test_redis_cluster_iam_auth.py::test_sync_cluster_authenticates_with_azure_credentials \
               tests/integration/sdk/test_redis_cluster_iam_auth.py::test_sync_cluster_authenticates_with_gcp_credentials \
-              --tb=short -vv --reruns 2 --reruns-delay 1 --durations=20 --cov=./litellm \
+              --tb=short -vv --reruns 2 --reruns-delay 1 --durations=20 --cov=./litellm --cov=./extensions/staticduo-litellm/src \
               --cov-report=xml:coverage.xml -o junit_family=xunit1 --junitxml=test-results/junit.xml
       - when:
           condition:

@@ -34,8 +34,12 @@ def test_build_command_selects_requested_distributions(tmp_path: Path, sdist_onl
         patch("scripts.build_core_distribution.subprocess.run") as run,
     ):
         main()
-        run.assert_called_once()
-        command: Final = run.call_args.args[0]
+        assert run.call_count == 2
+        companion_command: Final = run.call_args_list[0].args[0]
+        assert companion_command[companion_command.index("--package") + 1] == "staticduo-litellm"
+        assert ("--sdist" in companion_command) is sdist_only
+        assert ("--wheel" in companion_command) is not sdist_only
+        command: Final = run.call_args_list[1].args[0]
         assert command[:2] == ["uv", "build"]
         assert ("--sdist" in command) is sdist_only
         assert "--wheel" not in command
@@ -59,7 +63,12 @@ def test_staging_stamps_release_version_without_modifying_sources(tmp_path: Path
     source: Final = source_repository
     for name in SOURCES:
         path: Final = source / name
-        path.write_text(f"shared {name}")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if name == "extensions/staticduo-litellm":
+            path.mkdir()
+            (path / "pyproject.toml").write_text('[project]\nname = "staticduo-litellm"\nversion = "0.1.0"\n')
+        else:
+            path.write_text(f"shared {name}")
     (source / "pyproject.toml").write_text('[project]\nname = "litellm"\nversion = "9.8.7rc1"\n')
     manifest: Final = source / "packaging/litellm-core/pyproject.toml"
     manifest.parent.mkdir(parents=True)
@@ -70,7 +79,14 @@ def test_staging_stamps_release_version_without_modifying_sources(tmp_path: Path
     assert tomllib.loads((stage / "pyproject.toml").read_text())["project"]["version"] == "9.8.7rc1"
     assert manifest.read_bytes() == original
     assert (source / "pyproject.toml").read_text() == '[project]\nname = "litellm"\nversion = "9.8.7rc1"\n'
-    assert all((stage / name).read_bytes() == (source / name).read_bytes() for name in SOURCES)
+    assert all(
+        (stage / name).read_bytes() == (source / name).read_bytes()
+        for name in SOURCES
+        if name != "extensions/staticduo-litellm"
+    )
+    assert (stage / "extensions/staticduo-litellm/pyproject.toml").read_bytes() == (
+        source / "extensions/staticduo-litellm/pyproject.toml"
+    ).read_bytes()
 
 
 @pytest.fixture(scope="module")
@@ -99,7 +115,9 @@ def test_core_wheel_metadata_and_resources(distributions: tuple[Path, Path]) -> 
         assert metadata["Version"] == tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
         assert not metadata.get_all("Provides-Extra")
         assert not any(n.endswith(".dist-info/entry_points.txt") for n in names)
-        requirements: Final = tomllib.loads((ROOT / "packaging/litellm-core/pyproject.toml").read_text())["project"]["dependencies"]
+        requirements: Final = tomllib.loads((ROOT / "packaging/litellm-core/pyproject.toml").read_text())["project"][
+            "dependencies"
+        ]
         for python_version in ("3.10", "3.11", "3.12", "3.13", "3.14"):
             environment: Final = {"python_version": python_version, "python_full_version": python_version + ".0"}
             assert {
@@ -132,7 +150,16 @@ def test_core_artifacts_exclude_local_configuration(distributions: tuple[Path, P
             assert not any(member.name.endswith(f"/{name}") for member in archive.getmembers())
 
 
-@pytest.mark.parametrize("relative_path", ["rust-toolchain.toml", ".cargo/config.toml"])
+@pytest.mark.parametrize(
+    "relative_path",
+    [
+        "rust-toolchain.toml",
+        ".cargo/config.toml",
+        "extensions/staticduo-litellm/pyproject.toml",
+        "extensions/staticduo-litellm/src/staticduo_litellm/codex/portable.py",
+        "extensions/staticduo-litellm/src/staticduo_litellm/pricing/catalog-v1.json",
+    ],
+)
 def test_core_sdist_preserves_native_build_configuration(distribution_directory: Path, relative_path: str) -> None:
     sdists: Final = tuple(distribution_directory.glob("litellm_core-*.tar.gz"))
     assert len(sdists) == 1
@@ -151,13 +178,26 @@ def test_core_sdist_rebuilds_without_repository(distributions: tuple[Path, Path]
     assert not (source / "scripts/build_core_distribution.py").exists()
     assert tomllib.loads((source / "pyproject.toml").read_text())["project"]["name"] == "litellm-core"
     result: Final = subprocess.run(
-        ["uv", "build", "--python", sys.executable, "--wheel", "--out-dir", str(tmp_path / "rebuilt")],
+        [
+            "uv",
+            "build",
+            "--all-packages",
+            "--python",
+            sys.executable,
+            "--wheel",
+            "--out-dir",
+            str(tmp_path / "rebuilt"),
+        ],
         cwd=source,
         capture_output=True,
         text=True,
     )
     assert result.returncode == 0, result.stderr
-    rebuilt: Final = next((tmp_path / "rebuilt").glob("*.whl"))
+    rebuilt: Final = next((tmp_path / "rebuilt").glob("litellm_core-*.whl"))
+    companion: Final = next((tmp_path / "rebuilt").glob("staticduo_litellm-*.whl"))
+    with zipfile.ZipFile(companion) as extension:
+        assert "staticduo_litellm/codex/portable.py" in extension.namelist()
+        assert "staticduo_litellm/pricing/catalog-v1.json" in extension.namelist()
     with zipfile.ZipFile(distributions[0]) as original, zipfile.ZipFile(rebuilt) as wheel:
         assert set(original.namelist()) == set(wheel.namelist())
         for name in original.namelist():
@@ -170,11 +210,14 @@ def test_staging_copies_sources_without_build_artifacts(tmp_path: Path, source_r
 
     source: Final = source_repository
     for name in SOURCES:
-        (source / name).mkdir()
+        (source / name).mkdir(parents=True, exist_ok=True)
         (source / name / "shared.txt").write_text("source payload")
         (source / name / "stale.so").write_text("old native extension")
         (source / name / "__pycache__").mkdir()
         (source / name / "__pycache__/old.pyc").write_bytes(b"stale bytecode")
+    (source / "extensions/staticduo-litellm/pyproject.toml").write_text(
+        '[project]\nname = "staticduo-litellm"\nversion = "0.1.0"\n'
+    )
     (source / "pyproject.toml").write_text('[project]\nname = "litellm"\nversion = "1.2.3"\n')
     manifest: Final = source / "packaging/litellm-core/pyproject.toml"
     manifest.parent.mkdir(parents=True)
@@ -192,8 +235,11 @@ def test_staging_preserves_gitignore_rules(tmp_path: Path, source_repository: Pa
 
     source: Final = source_repository
     for name in SOURCES:
-        (source / name).mkdir()
+        (source / name).mkdir(parents=True, exist_ok=True)
         (source / name / "shared.txt").write_text("shared payload")
+    (source / "extensions/staticduo-litellm/pyproject.toml").write_text(
+        '[project]\nname = "staticduo-litellm"\nversion = "0.1.0"\n'
+    )
     (source / "pyproject.toml").write_text('[project]\nname = "litellm"\nversion = "1.2.3"\n')
     manifest: Final = source / "packaging/litellm-core/pyproject.toml"
     manifest.parent.mkdir(parents=True)
@@ -229,3 +275,47 @@ def test_staging_rejects_missing_release_version(tmp_path: Path) -> None:
     with pytest.raises(subprocess.CalledProcessError):
         stage_core_distribution(tmp_path, tmp_path / "stage")
     assert not (tmp_path / "stage").exists()
+
+
+def test_core_wheel_and_companion_import_without_repository(distribution_directory: Path, tmp_path: Path) -> None:
+    wheels: Final = tuple(distribution_directory.glob("litellm_core-*.whl"))
+    companions: Final = tuple(distribution_directory.glob("staticduo_litellm-*.whl"))
+    assert len(wheels) == len(companions) == 1
+    environment: Final = tmp_path / "installed"
+    subprocess.run(["uv", "venv", "--python", sys.executable, str(environment)], check=True)
+    subprocess.run(
+        [
+            "uv",
+            "pip",
+            "install",
+            "--python",
+            str(environment),
+            "--find-links",
+            str(distribution_directory),
+            str(wheels[0]),
+            str(companions[0]),
+        ],
+        check=True,
+    )
+    python: Final = environment / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
+    probe: Final = """
+import importlib.util
+from importlib.metadata import version
+import litellm
+from staticduo_litellm.pricing.catalog import apply_catalog_overlay
+assert version("staticduo-litellm") == "0.1.0"
+assert all(importlib.util.find_spec(module) is None for module in ("fastapi", "mcp", "redis"))
+assert apply_catalog_overlay(litellm.model_cost) == litellm.model_cost
+response = litellm.completion(model="gpt-4o", messages=[{"role":"user","content":"fixture"}], mock_response="pong")
+assert response.choices[0].message.content == "pong"
+print("installed core and companion wheel OK")
+"""
+    result: Final = subprocess.run(
+        [str(python), "-I", "-c", probe],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "LITELLM_LOCAL_MODEL_COST_MAP": "True"},
+        check=True,
+    )
+    assert result.stdout.strip() == "installed core and companion wheel OK"

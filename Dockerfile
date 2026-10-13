@@ -100,6 +100,7 @@ RUN case "$TARGETARCH" in \
 COPY pyproject.toml uv.lock ./
 COPY enterprise/pyproject.toml enterprise/
 COPY litellm-proxy-extras/pyproject.toml litellm-proxy-extras/
+COPY extensions/staticduo-litellm/pyproject.toml extensions/staticduo-litellm/
 
 RUN case "$TARGETARCH" in \
         amd64) \
@@ -131,6 +132,11 @@ RUN uv sync --frozen --no-install-project --no-install-workspace --no-default-gr
 
 # Copy full source tree
 COPY . .
+
+RUN PYTHONPATH=extensions/staticduo-litellm/src /app/.venv/bin/python scripts/generate_staticduo_catalog.py \
+        --source model_prices_and_context_window.json --output-dir build/staticduo-catalog && \
+    cp build/staticduo-catalog/model_prices_and_context_window.json model_prices_and_context_window.json && \
+    cp build/staticduo-catalog/model_prices_and_context_window_backup.json litellm/model_prices_and_context_window_backup.json
 
 # Replace the committed UI bundle with the one built from this exact source.
 # Clearing first drops the committed bundle's content-hashed chunks that COPY

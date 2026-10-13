@@ -107,7 +107,7 @@ existing_files() {
     done
 }
 
-litellm_py_pattern='^litellm/.*\.py$'
+litellm_py_pattern='^(litellm/|extensions/staticduo-litellm/src/).*\.py$'
 e2e_py_pattern='^tests/e2e(_harness)?/.*\.py$'
 test_tree_pattern='^(tests/.*\.py|ruff-tests\.toml|scripts/(check_test_quality|test_quality_gate)\.py)$'
 spec_pattern='^(litellm/(proxy|types)/.*|ui/litellm-dashboard/(scripts/gen-api-types\.mjs|package\.json|package-lock\.json|src/lib/http/schema\.d\.ts))$'

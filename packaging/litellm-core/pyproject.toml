@@ -10,6 +10,7 @@ authors = [
     { name = "BerriAI" },
 ]
 dependencies = [
+    "staticduo-litellm==0.1.0",
     "fastuuid>=0.14.0,<1.0",
     "filelock>=3.16.1,<4.0",
     "httpx[http2]>=0.28.0,<1.0",
@@ -50,6 +51,7 @@ features = ["extension-module"]
 profile = "release"
 editable-profile = "dev"
 include = [
+    { path = "extensions/staticduo-litellm/**/*", format = "sdist" },
     { path = "rust-toolchain.toml", format = "sdist" },
     { path = ".cargo/config.toml", format = "sdist" },
     "litellm/router_strategy/complexity_router/artifacts/*.json",
@@ -72,3 +74,9 @@ exclude = [
     "**/.ruff_cache",
     "**/.ruff_cache/**",
 ]
+
+[tool.uv.sources]
+staticduo-litellm = { workspace = true }
+
+[tool.uv.workspace]
+members = ["extensions/staticduo-litellm"]
