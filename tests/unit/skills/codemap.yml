@@ -1,0 +1,12 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+modules:
+  - path: realtime/
+  - path: reasoning_effort_grid/
+  - path: test-skill/
+  - path: test_llm_response_utils/
+  - path: test_skills_data/
+internals:
+  - path: __init__.py
+  - path: test_skills_db.py
+  - path: test_skills_main.py

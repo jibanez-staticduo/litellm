@@ -1,0 +1,14 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+internals:
+  - path: conftest.py
+  - path: test_autorouter_baseline_state.py
+  - path: test_db_schema_migration.py
+  - path: test_image_lazymcp_discovery.py
+  - path: test_image_lazymcp_workflow.py
+  - path: test_invalid_index_repair.py
+  - path: test_prisma_toolchain.py
+  - path: test_replica_identity_full.py
+  - path: test_request_log_indexes.py
+commands:
+  packaged_lazymcp_discovery: LITELLM_IMAGE=litellm:local python -m pytest tests/integration/database/migrations/test_image_lazymcp_discovery.py -v

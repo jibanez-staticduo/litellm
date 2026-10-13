@@ -1,0 +1,9 @@
+scope: module
+parent: ../../../.staticeng/codemap.yml
+modules:
+  - path: enterprise_callbacks/
+  - path: integrations/
+  - path: proxy/
+internals:
+  - path: __init__.py
+  - path: conftest.py

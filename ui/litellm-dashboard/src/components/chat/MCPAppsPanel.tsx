@@ -32,6 +32,7 @@ interface OAuth2ConnectButtonProps {
   onConnect: (serverId: string) => void;
   variant?: "badge" | "button";
   autoStartKey?: string | null;
+  scopes?: string[];
 }
 
 export const OAuth2ConnectButton: React.FC<OAuth2ConnectButtonProps> = ({
@@ -40,15 +41,18 @@ export const OAuth2ConnectButton: React.FC<OAuth2ConnectButtonProps> = ({
   onConnect,
   variant = "badge",
   autoStartKey = null,
+  scopes,
 }) => {
   const name = server.server_name ?? server.alias ?? server.server_id;
-  const { startOAuthFlow, cancelOAuthFlow, status, error } = useUserMcpOAuthFlow({
+  const flowOptions = {
     accessToken,
     serverId: server.server_id,
     serverAlias: name,
+    scopes,
     useLoopbackOAuth: isLovableLoopbackOAuthServer(server),
     onSuccess: useCallback(() => onConnect(server.server_id), [onConnect, server.server_id]),
-  });
+  };
+  const { startOAuthFlow, cancelOAuthFlow, status, error } = useUserMcpOAuthFlow(flowOptions);
 
   const loading = ["preflighting", "authorizing", "waiting", "exchanging"].includes(status);
   let statusLabel = "Connecting…";

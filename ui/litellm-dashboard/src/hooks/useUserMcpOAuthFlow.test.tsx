@@ -1,10 +1,13 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as networking from "@/components/networking";
+import { setSecureItem } from "@/utils/secureStorage";
 import { toast } from "@/lib/toast";
 import { useUserMcpOAuthFlow } from "./useUserMcpOAuthFlow";
 
 vi.mock("@/components/networking", () => ({
+  getProxyBaseUrl: () => "",
+  serverRootPath: "",
   buildMcpOAuthAuthorizeUrl: vi.fn(),
   exchangeMcpOAuthToken: vi.fn(),
   getMCPLoopbackOAuthStatus: vi.fn(),
@@ -195,5 +198,61 @@ describe("useUserMcpOAuthFlow Lovable loopback routing", () => {
       first.result.current.cancelOAuthFlow();
       second.result.current.cancelOAuthFlow();
     });
+  });
+});
+
+describe("user OAuth granted scopes", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.sessionStorage.clear();
+    const flowState = {
+      state: "callback-state",
+      codeVerifier: "verifier",
+      serverId: "server-1",
+      redirectUri: "https://app.example/callback",
+      scopes: ["tools.write"],
+    };
+    setSecureItem("litellm-user-mcp-oauth-flow-state", JSON.stringify(flowState));
+    setSecureItem(
+      "litellm-user-mcp-oauth-result",
+      JSON.stringify({
+        state: "callback-state",
+        code: "provider-code",
+      }),
+    );
+  });
+
+  it.each([
+    ["tools.read tools.write", ["tools.read", "tools.write"]],
+    ["tools.read", ["tools.read"]],
+    ["", []],
+    [undefined, ["tools.write"]],
+  ])("persists the actual grant %s after reconnect", async (scope, expected) => {
+    vi.mocked(networking.exchangeMcpOAuthToken).mockResolvedValue({
+      access_token: "vendor-token",
+      refresh_token: "vendor-refresh",
+      scope,
+    });
+    const onSuccess = vi.fn();
+    const { result } = renderHook(() =>
+      useUserMcpOAuthFlow({
+        accessToken: "caller",
+        serverId: "server-1",
+        onSuccess,
+      }),
+    );
+    await waitFor(() => expect(result.current.status).toBe("success"));
+    const expectedCredential = {
+      access_token: "vendor-token",
+      refresh_token: "vendor-refresh",
+      expires_in: undefined,
+      scopes: expected,
+    };
+    expect(networking.storeMCPOAuthUserCredential).toHaveBeenCalledExactlyOnceWith(
+      "caller",
+      "server-1",
+      expectedCredential,
+    );
+    expect(onSuccess).toHaveBeenCalledOnce();
   });
 });

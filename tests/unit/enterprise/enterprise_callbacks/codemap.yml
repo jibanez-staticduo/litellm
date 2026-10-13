@@ -1,0 +1,11 @@
+scope: module
+parent: ../../../../.staticeng/codemap.yml
+modules:
+  - path: send_emails/
+internals:
+  - path: __init__.py
+  - path: test_callback_controls.py
+  - path: test_llm_guard.py
+  - path: test_pagerduty_alerting.py
+  - path: test_prometheus_logging_callbacks.py
+  - path: test_secret_detection.py

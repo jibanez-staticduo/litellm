@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import json
 import subprocess
 from pathlib import Path
@@ -22,7 +23,6 @@ def test_overlay_reproduces_effective_baseline_and_preserves_input():
         pristine = copy.deepcopy(source)
         assert apply_catalog_overlay(source) == snapshot(BASELINE, name)
         assert source == pristine
-        assert json.loads((ROOT / name).read_text()) == pristine
 
 
 def test_fresh_generation_removes_fields_and_is_idempotent():
@@ -63,14 +63,37 @@ def test_build_generator_has_deterministic_provenance_and_preserves_source(tmp_p
     spec.loader.exec_module(module)
     source = ROOT / "model_prices_and_context_window.json"
     raw = source.read_bytes()
+    current = json.loads(raw)
     manifest = module.generate_catalog(source, tmp_path)
     first = (tmp_path / "model_prices_and_context_window.json").read_bytes()
-    assert json.loads(first) == snapshot(BASELINE)
+    generated = json.loads(first)
+    assert generated == apply_catalog_overlay(current)
+    historical = snapshot(BASELINE)
+    operations = load_catalog_overlay()["operations"]
+    private_models = {operation["model"] for operation in operations}
+    for model, row in current.items():
+        if model not in private_models:
+            assert generated[model] == row
+    for operation in operations:
+        model = operation["model"]
+        field = operation.get("field")
+        if field is None:
+            assert generated[model] == historical[model]
+        elif operation["op"] == "remove":
+            assert field not in generated[model]
+        else:
+            assert generated[model][field] == historical[model][field]
+    new_upstream_models = current.keys() - snapshot(UPSTREAM).keys() - private_models
+    assert {model: generated[model] for model in new_upstream_models} == {
+        model: current[model] for model in new_upstream_models
+    }
     assert module.generate_catalog(source, tmp_path) == manifest
     assert (tmp_path / "model_prices_and_context_window_backup.json").read_bytes() == first
     assert source.read_bytes() == raw
     assert manifest["overlay_version"] == "1.0.0"
     assert len(manifest["overlay_sha256"]) == 64
+    assert manifest["source_sha256"] == hashlib.sha256(raw).hexdigest()
+    assert manifest["generated_sha256"] == hashlib.sha256(first).hexdigest()
 
 
 def test_core_refresh_applies_overlay_before_alias_expansion_without_mutation():
