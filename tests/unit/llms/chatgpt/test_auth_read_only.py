@@ -1,14 +1,16 @@
 """Isolated auth snapshots must never create a writer or contact OAuth."""
 
+import ast
 import base64
+import hashlib
 import json
-import re
 import time
 from pathlib import Path
 
 import httpx
 import pytest
 from staticduo_litellm.compatibility.provider_upstream import (
+    CHATGPT_OAUTH_UPSTREAM_AST_SHA256,
     ProviderUpstreamDriftError,
     check_provider_upstream_source,
 )
@@ -126,32 +128,82 @@ def test_anthropic_missing_snapshot_does_not_create_directory(tmp_path):
     assert not directory.exists()
 
 
+class RestoreUpstreamOAuthAST(ast.NodeTransformer):
+    """Undo only the documented dependency hooks; retain every algorithm node."""
+
+    def __init__(self):
+        self.client_calls = 0
+        self.interactive_checks = 0
+
+    def visit_ClassDef(self, node):
+        if node.name == "ChatGPTOAuthEngine":
+            node.name = "Authenticator"
+            helpers = {"_get_auth_http_client", "_can_start_interactive_auth"}
+            expected = ast.parse("""
+class Hooks:
+    def _get_auth_http_client(self) -> HTTPHandler | httpx.Client:
+        return get_httpx_client()
+    def _can_start_interactive_auth(self) -> bool:
+        return can_block_current_thread()
+""").body[0]
+            actual = [method for method in node.body if isinstance(method, ast.FunctionDef) and method.name in helpers]
+            assert [ast.dump(method) for method in actual] == [ast.dump(method) for method in expected.body]
+            node.body = [method for method in node.body if method not in actual]
+        return self.generic_visit(node)
+
+    def visit_FunctionDef(self, node):
+        if node.name == "get_api_base":
+            assert len(node.args.args) == 1 and node.args.args[0].arg == "default_base"
+            assert [ast.dump(item) for item in node.decorator_list] == [
+                ast.dump(ast.Name(id="staticmethod", ctx=ast.Load()))
+            ]
+            node.decorator_list = []
+            node.args.args[0].arg = "self"
+            node.args.args[0].annotation = None
+            node.args.defaults = []
+        return self.generic_visit(node)
+
+    def visit_ImportFrom(self, node):
+        if node.module == "litellm.llms.custom_httpx.http_handler":
+            node.names = [name for name in node.names if name.name != "HTTPHandler"]
+        return node
+
+    def visit_Call(self, node):
+        if (
+            isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "self"
+        ):
+            if node.func.attr == "_get_auth_http_client":
+                self.client_calls += 1
+                node.func = ast.Name(id="get_httpx_client", ctx=ast.Load())
+            elif node.func.attr == "_can_start_interactive_auth":
+                self.interactive_checks += 1
+                node.func = ast.Name(id="can_block_current_thread", ctx=ast.Load())
+        return self.generic_visit(node)
+
+    def visit_Name(self, node):
+        if node.id == "default_base":
+            node.id = "CHATGPT_API_BASE"
+        return node
+
+
 def test_upstream_oauth_engine_matches_pinned_source_and_rejects_drift():
     from litellm.llms.chatgpt import oauth_engine
 
     source = Path(oauth_engine.__file__).read_text()
-    source = re.sub(r"  # (?:mutable-ok|noqa: BLE001|pyright: ignore).*", "", source)
-    source = source.replace("# noqa: T201  # device login must display user instructions", "# noqa: T201")
-    upstream = source.replace("class ChatGPTOAuthEngine:", "class Authenticator:")
-    upstream = upstream.replace(
-        "    def _get_auth_http_client(self) -> HTTPHandler | httpx.Client:\n        return get_httpx_client()\n\n", ""
-    )
-    upstream = upstream.replace("client: Final = self._get_auth_http_client()", "client: Final = get_httpx_client()")
-    upstream = upstream.replace(
-        "    def _can_start_interactive_auth(self) -> bool:\n        return can_block_current_thread()\n\n", ""
-    )
-    upstream = upstream.replace("if not self._can_start_interactive_auth():", "if not can_block_current_thread():")
-    upstream = upstream.replace(
-        "http_handler import HTTPHandler, get_httpx_client", "http_handler import get_httpx_client"
-    )
-    upstream = upstream.replace(
-        "http_handler import (\n    HTTPHandler,\n    get_httpx_client,\n)",
-        "http_handler import get_httpx_client",
-    )
-    upstream = upstream.replace(
-        "    @staticmethod\n    def get_api_base(default_base: str = CHATGPT_API_BASE) -> str:",
-        "    def get_api_base(self) -> str:",
-    ).replace("or default_base\n", "or CHATGPT_API_BASE\n")
-    check_provider_upstream_source(upstream.encode())
+    restorer = RestoreUpstreamOAuthAST()
+    restored = restorer.visit(ast.parse(source))
+    assert restorer.client_calls == 4
+    assert restorer.interactive_checks == 1
+    restored_digest = hashlib.sha256(ast.dump(restored, include_attributes=False).encode()).hexdigest()
+    assert restored_digest == CHATGPT_OAUTH_UPSTREAM_AST_SHA256
+    # Formatting does not change the upstream algorithm fingerprint.
+    formatted_restorer = RestoreUpstreamOAuthAST()
+    reformatted = formatted_restorer.visit(ast.parse(ast.unparse(ast.parse(source))))
+    assert ast.dump(reformatted) == ast.dump(restored)
+    mutated_restorer = RestoreUpstreamOAuthAST()
+    changed = mutated_restorer.visit(ast.parse(source.replace('"refresh_token"', '"changed_refresh_token"')))
+    assert hashlib.sha256(ast.dump(changed).encode()).hexdigest() != CHATGPT_OAUTH_UPSTREAM_AST_SHA256
     with pytest.raises(ProviderUpstreamDriftError):
-        check_provider_upstream_source((upstream + "# upstream changed\n").encode())
+        check_provider_upstream_source((source + "# upstream changed\n").encode())

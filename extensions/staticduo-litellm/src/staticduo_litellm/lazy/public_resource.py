@@ -1,5 +1,25 @@
 from __future__ import annotations
 
+__all__ = (
+    "_IDENTIFIER",
+    "LazyMcpPublicResource",
+    "LazyMcpResourceError",
+    "LazyMcpResourceKind",
+    "LazyMcpResourceResult",
+    "_build_resource",
+    "_configured_base_is_valid",
+    "_is_loopback_host",
+    "_request_peer_is_loopback",
+    "_transport_identity",
+    "_trusted_base",
+    "_valid_identifier",
+    "build_lazymcp_challenge",
+    "build_lazymcp_metadata",
+    "is_lazymcp_resource_candidate",
+    "parse_lazymcp_resource",
+    "resource_from_transport_scope",
+)
+
 import os
 import re
 from ipaddress import ip_address

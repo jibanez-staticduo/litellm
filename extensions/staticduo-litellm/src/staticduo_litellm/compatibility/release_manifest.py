@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import argparse
 import ast
 import hashlib
 import importlib
+import json
 from collections.abc import Mapping, Sequence
 from importlib import metadata, resources
 from pathlib import Path
@@ -74,6 +76,105 @@ class RuntimeEvidence(FrozenContract):
     core_version: str
     extension_version: str
     native_sha256: str
+
+
+class CatalogSourceReceipt(FrozenContract):
+    schema_version: int
+    overlay_version: str
+    overlay_sha256: str
+    overlay_upstream_commit: str
+    overlay_effective_baseline_commit: str
+    source_sha256: str
+    generated_sha256: str
+
+
+class SourceReceipt(FrozenContract):
+    schema_version: int = 1
+    source_core_sha: str
+    core_version: str
+    extension_version: str
+    compatibility_manifest_sha256: str
+    extension_source_sha256: str
+    extension_sources: Mapping[str, str]
+    native_source_tree: str
+    catalog: CatalogSourceReceipt
+
+
+class BakedNativeReceipt(FrozenContract):
+    sha256: str
+    source_tree: str
+
+
+class BakedReceipt(FrozenContract):
+    schema_version: int = 1
+    source_core_sha: str
+    core_version: str
+    extension_version: str
+    compatibility_manifest_sha256: str
+    extension_source_sha256: str
+    native: BakedNativeReceipt
+    catalog: CatalogSourceReceipt
+
+
+def bake_receipt(source: SourceReceipt, catalog_dir: Path) -> BakedReceipt:
+    manifest: Final = load_manifest()
+    runtime: Final = check_runtime(manifest)
+    installed: Final = metadata.files("staticduo-litellm")
+    if installed is None:
+        raise CompatibilityError("Installed extension source inventory unavailable")
+    hashes: Final = {
+        str(path): hashlib.sha256(Path(path.locate()).read_bytes()).hexdigest()
+        for path in installed
+        if str(path).startswith("staticduo_litellm/") and path.suffix in (".py", ".json")
+    }
+    inventory_hash: Final = hashlib.sha256(
+        json.dumps(hashes, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    manifest_hash: Final = hashlib.sha256(
+        resources.files(__package__).joinpath("release-manifest.json").read_bytes()
+    ).hexdigest()
+    if (
+        hashes != source.extension_sources
+        or inventory_hash != source.extension_source_sha256
+        or manifest_hash != source.compatibility_manifest_sha256
+        or runtime.core_version != source.core_version
+        or runtime.extension_version != source.extension_version
+    ):
+        raise CompatibilityError("Installed build differs from frozen source receipt")
+    generated: Final = CatalogSourceReceipt.model_validate_json((catalog_dir / "manifest.json").read_bytes())
+    if generated != source.catalog:
+        raise CompatibilityError("Build catalog metadata differs from frozen source receipt")
+    for name in ("model_prices_and_context_window.json", "model_prices_and_context_window_backup.json"):
+        if hashlib.sha256((catalog_dir / name).read_bytes()).hexdigest() != source.catalog.generated_sha256:
+            raise CompatibilityError("Build catalog bytes differ from frozen source receipt")
+    return BakedReceipt(
+        source_core_sha=source.source_core_sha,
+        core_version=source.core_version,
+        extension_version=source.extension_version,
+        compatibility_manifest_sha256=manifest_hash,
+        extension_source_sha256=inventory_hash,
+        native=BakedNativeReceipt(sha256=runtime.native_sha256, source_tree=source.native_source_tree),
+        catalog=generated,
+    )
+
+
+class BakeArguments(argparse.Namespace):
+    source: Path
+    catalog_dir: Path
+    output: Path
+
+
+def main() -> None:
+    parser: Final = argparse.ArgumentParser(
+        description="Bake verified installed runtime receipt from frozen source inputs"
+    )
+    parser.add_argument("--source", type=Path, required=True)
+    parser.add_argument("--catalog-dir", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    args: Final = BakeArguments()
+    parser.parse_args(namespace=args)
+    source: Final = SourceReceipt.model_validate_json(args.source.read_bytes())
+    args.output.write_text(bake_receipt(source, args.catalog_dir).model_dump_json(indent=2) + "\n")
 
 
 class SourceReader(Protocol):
@@ -190,3 +291,7 @@ def check_runtime(
     return RuntimeEvidence(
         core_version=versions["litellm"], extension_version=versions["staticduo-litellm"], native_sha256=native_hash
     )
+
+
+if __name__ == "__main__":
+    main()

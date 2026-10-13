@@ -67,7 +67,7 @@ from staticduo_litellm.lazy.loopback_oauth import (
     validate_loopback_oauth_server,
 )
 
-__all__ = [
+__all__ = (
     "LOOPBACK_AUTHORIZATION_URL",
     "LOOPBACK_COMPLETION_RATE_LIMIT",
     "LOOPBACK_ISSUER",
@@ -130,4 +130,4 @@ __all__ = [
     "start_loopback_oauth",
     "time",
     "validate_loopback_oauth_server",
-]
+)

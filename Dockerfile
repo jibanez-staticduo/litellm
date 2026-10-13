@@ -162,6 +162,12 @@ RUN HOME=/opt/prisma XDG_CACHE_HOME=/opt/prisma/.cache PRISMA_BINARY_CACHE_DIR=/
     npm_config_cache=/root/.npm \
     prisma generate --schema=./schema.prisma
 
+# The publisher adds frozen Git inputs to the context before the immutable build.
+ARG STATICDUO_SOURCE_RECEIPT=staticduo-source.json
+RUN /app/.venv/bin/python -I -m staticduo_litellm.compatibility.release_manifest \
+    --source /app/${STATICDUO_SOURCE_RECEIPT} --catalog-dir /app/build/staticduo-catalog \
+    --output /app/staticduo-release-manifest.json
+
 RUN uv cache clean && test ! -d /root/.cache/uv/archive-v0 && test ! -d /root/.cache/uv/sdists-v9
 
 RUN sed -i 's/\r$//' docker/entrypoint.sh && chmod +x docker/entrypoint.sh && \
@@ -206,6 +212,7 @@ ENV PATH="/app/.venv/bin:${PATH}" \
 # ship (manifest-scanning tools attribute everything in it to this image).
 # entrypoint.sh invokes litellm/proxy/prisma_migration.py by source path.
 COPY --from=builder /app/.venv /app/.venv
+COPY --from=builder /app/staticduo-release-manifest.json /app/staticduo-release-manifest.json
 COPY --from=liteadmin-builder /opt/liteadmin /opt/liteadmin
 COPY --from=builder /app/docker /app/docker
 COPY --from=builder /app/schema.prisma /app/schema.prisma

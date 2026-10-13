@@ -43,7 +43,7 @@ class CoreMCPAdapter:
         self.core: Final = cast(CoreMCPBindings, core)  # cast-ok: canonical core ABI adapter
 
     @with_service_target(MCP_SERVERS_TARGET)
-    async def _lazymcp_cache_get(self, key: str) -> object | None:
+    async def cache_get(self, key: str) -> object | None:
         try:
             from litellm.proxy.proxy_server import user_api_key_cache
 
@@ -56,7 +56,7 @@ class CoreMCPAdapter:
             return value
 
     @with_service_target(MCP_SERVERS_TARGET)
-    async def _lazymcp_cache_set(self, key: str, value: object) -> None:
+    async def cache_set(self, key: str, value: object) -> None:
         try:
             from litellm.proxy.proxy_server import user_api_key_cache
 
@@ -85,7 +85,7 @@ class CoreMCPAdapter:
         except Exception as e:  # noqa: BLE001  # boundary failure is converted to a safe MCP outcome
             verbose_logger.warning("invalidate_lazymcp_cache failed: %s", e)
 
-    async def _merge_toolset_permissions(
+    async def merge_toolset_permissions(
         self,
         user_api_key_auth: UserAPIKeyAuth | None,
     ) -> UserAPIKeyAuth | None:
@@ -124,7 +124,7 @@ class CoreMCPAdapter:
         )
         return user_api_key_auth.model_copy(update=MappingProxyType({"object_permission": updated_permission}))
 
-    async def _get_lazymcp_allowed_servers(
+    async def allowed_servers(
         self,
         user_api_key_auth: UserAPIKeyAuth | None,
         mcp_servers: list[str] | None,  # mutable-ok: framework contract requires mutable request or response containers
@@ -139,7 +139,7 @@ class CoreMCPAdapter:
             client_ip=client_ip,
         )
 
-    async def _get_lazymcp_server_tools(
+    async def server_tools(
         self,
         server: MCPServer,
         user_api_key_auth: UserAPIKeyAuth | None,

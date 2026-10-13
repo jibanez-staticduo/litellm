@@ -61,7 +61,7 @@ print("import-order-contract-ok")
         "STATICDUO_AUTH_READ_ONLY": "true",
     }
     result: Final = subprocess.run(
-        [sys.executable, "-c", script], cwd=tmp_path, env=environment, capture_output=True, text=True, timeout=30
+        [sys.executable, "-P", "-c", script], cwd=tmp_path, env=environment, capture_output=True, text=True, timeout=30
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "import-order-contract-ok"

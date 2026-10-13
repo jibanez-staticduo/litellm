@@ -3,6 +3,8 @@
 `compatibility/release-manifest.json` is packaged with the extension. It defines
 extension version, supported core versions, reviewed upstream OAuth provenance,
 critical callback/MCP/OAuth signatures, required data/modules and Rust exports.
+Wheel checks bind the complete Python/JSON inventory and exact file bytes to the
+reviewed candidate; installed runtime checks hash every corresponding file.
 `release_manifest.py` validates frozen Pydantic contracts; it does not patch core.
 
 ## Source Gate
@@ -39,7 +41,10 @@ adapters and verifies native callable exports and binary hash. No invented nativ
 `__version__` is required: the current Rust module does not export one. The receipt
 binds the native source tree and binary hash, core source SHA, extension wheel/hash,
 reviewed compatibility manifest, provider provenance and catalog source/overlay/
-generated hashes. Build receipt labels must be applied by the image build pipeline;
+generated hashes. The generator output is rebuilt from candidate source/overlay
+and exact bytes/provenance compared; self-declared artifact hashes alone do not
+pass. Native receipt fields alone do not prove compiler provenance: retain actual
+build logs/source identity with the registry digest. Build receipt labels must be applied by the image build pipeline;
 this tool records expected values and does not build or publish images.
 
 Registry publication is separate. Only after independent manifest/digest
@@ -63,3 +68,25 @@ acceptance, main publication, then the same digest on NAS. Subsequent nightly
 maintenance resumes its existing main-publication-before-Fedora sequence, while
 always requiring Fedora acceptance before NAS. The nightly prompt records both
 rules and the required upstream novelty/own insertion counts.
+
+## Docker Source Receipt and Independent Guard
+
+Before archiving the final committed build context, generate its frozen inputs:
+
+```sh
+python scripts/staticduo_release.py --prepare-source --repo WORKTREE --upstream-ref upstream/main --candidate-ref FINAL_SHA --output RELEASE_CONTEXT/staticduo-source.json
+```
+
+The root-level JSON is a generated release context input, not a tracked source
+file. Docker requires it (default `STATICDUO_SOURCE_RECEIPT=staticduo-source.json`),
+then runs the installed package in isolated Python after its final install. The
+baker compares complete source inventory, metadata and catalog expected output,
+checks native exports and dependencies, and records the actual native binary hash
+at `/app/staticduo-release-manifest.json`. No Git checkout is required inside Docker.
+
+The publisher supplies immutable image labels from that input:
+`com.staticduo.extension.version`, `com.staticduo.extension.source.sha256`, and
+`com.staticduo.compatibility.sha256`, plus the existing OCI revision. The independent
+nightly guard checks these against actual installed source hashes and the baked
+receipt, including native hash and revision. Any partial modular label set rejects.
+Legacy images without modular markers keep their previous guard behavior.

@@ -40,7 +40,9 @@ def is_anthropic_native_client(params: Mapping[str, object]) -> bool:
     return True
 
 
-def native_client_auth_headers(headers: object, token: str) -> Mapping[str, str]:
+def native_client_auth_headers(
+    headers: object, token: str
+) -> dict[str, str]:  # mutable-ok: native SDK request header dictionary contract
     validated: Final = _HEADERS.validate_python(headers)
     return _HEADERS.validate_python(
         MappingProxyType(
@@ -77,7 +79,9 @@ def native_client_metadata(metadata: object, params: Mapping[str, object]) -> Js
     return _SYSTEM_BLOCK.validate_python(MappingProxyType({**original, "user_id": _SYSTEM.dump_json(aligned).decode()}))
 
 
-def native_client_request_body(body: object, params: Mapping[str, object], model: str) -> Mapping[str, JsonValue]:
+def native_client_request_body(
+    body: object, params: Mapping[str, object], model: str
+) -> dict[str, JsonValue]:  # mutable-ok: native SDK request JSON dictionary contract
     original: Final = _SYSTEM_BLOCK.validate_python(body)
     metadata: Final = original.get("metadata")
     return _SYSTEM_BLOCK.validate_python(

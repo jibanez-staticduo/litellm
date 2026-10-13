@@ -90,9 +90,13 @@ jobs:
         run: |
           uv sync --frozen --group proxy-dev --group e2e-dev
 
-      - name: Verify independent extension wheel
+      - name: Verify extension contracts and independent wheel
         if: steps.changes.outputs.decision != 'skip'
-        run: uv run --no-sync pytest tests/extension/test_package_loading.py -q
+        run: |
+          for snapshot in f5eaab5396f957c5529456bbb545e52ce0b48c46 541e3ed5305a530ebef74d5684d3aca2632c1009; do
+            git cat-file -e "$snapshot^{commit}" 2>/dev/null || git fetch --no-tags --depth=1 origin "$snapshot"
+          done
+          uv run --no-sync pytest tests/extension tests/local_tests/staticduo -q
 
       - name: Cache Prisma binaries
         if: steps.changes.outputs.decision != 'skip'

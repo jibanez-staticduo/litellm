@@ -29,9 +29,7 @@ from litellm.constants import (
     MCP_ADMISSION_BODY_PEEK_TIMEOUT_SECONDS,
     MCP_GATEWAY_SESSION_ID_PREFIX_LENGTH,
     MCP_PEEKED_BODY_SCOPE_KEY,
-)
-from litellm.constants import (
-    MCP_TOOL_LISTING_TIMEOUT as MCP_TOOL_LISTING_TIMEOUT,
+    MCP_TOOL_LISTING_TIMEOUT,
 )
 from litellm.llms.custom_httpx.http_handler import (
     get_async_httpx_client,
@@ -452,6 +450,7 @@ def _proxy_exception_to_http_exception(exc: ProxyException) -> HTTPException:
 
 if MCP_AVAILABLE:
     __all__ = (
+        "MCP_TOOL_LISTING_TIMEOUT",
         "_MCP_CREDENTIAL_REQUEST_FIELDS",
         "BlobResourceContents",
         "ListMCPToolsRestAPIResponseObject",
@@ -463,11 +462,17 @@ if MCP_AVAILABLE:
         "_check_byok_credential",
         "_client_has_passthrough_authorization",
         "_client_has_per_server_auth_header",
+        "_consume_lazymcp_listing_task",
         "_dispatch_virtual_mcp_tool",
         "_fire_mcp_tool_call_logging",
         "_get_allowed_mcp_servers",
         "_get_allowed_mcp_servers_from_mcp_server_names",
+        "_get_bounded_lazymcp_catalog_server_entry",
+        "_get_bounded_lazymcp_server_tools",
         "_get_byok_credential",
+        "_get_lazymcp_allowed_servers",
+        "_get_lazymcp_catalog",
+        "_get_lazymcp_server_tools",
         "_get_prompts_from_mcp_servers",
         "_get_resource_templates_from_mcp_servers",
         "_get_resources_from_mcp_servers",
@@ -478,6 +483,9 @@ if MCP_AVAILABLE:
         "_handle_managed_mcp_tool",
         "_http_detail_message",
         "_invalidate_byok_cred_cache",
+        "_lazymcp_cache_get",
+        "_lazymcp_cache_scope",
+        "_lazymcp_cache_set",
         "_list_mcp_prompts",
         "_list_mcp_resource_templates",
         "_list_mcp_resources",
@@ -485,11 +493,13 @@ if MCP_AVAILABLE:
         "_list_tools_before_first_call",
         "_mcp_session_id_from_headers",
         "_merge_gateway_initialize_instructions",
+        "_merge_toolset_permissions",
         "_prefetch_oauth_creds_for_user",
         "_prepare_mcp_server_headers",
         "_raise_if_initialize_grants_no_mcp_servers",
         "_redact_mcp_resource_url",
         "_resolve_display_name_to_original",
+        "_resolve_lazymcp_tool",
         "_run_post_mcp_call_guardrails",
         "_server_answers_to",
         "_tool_name_matches",
@@ -504,6 +514,7 @@ if MCP_AVAILABLE:
         "mcp_read_resource",
         "raise_denied_scoped_mcp_access",
         "redact_mcp_resource_url",
+        "strip_known_server_prefix",
     )
     from mcp.server import Server
 
@@ -540,7 +551,7 @@ if MCP_AVAILABLE:
         _mcp_session_id_from_headers,
     )
     from litellm.proxy._experimental.mcp_server.result_conversion import wire_compat_for
-    from litellm.proxy._experimental.mcp_server.utils import strip_known_server_prefix as strip_known_server_prefix
+    from litellm.proxy._experimental.mcp_server.utils import strip_known_server_prefix
 
     try:
         from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
@@ -1955,6 +1966,7 @@ if MCP_AVAILABLE:
     from staticduo_litellm.lazy import schema as _lazy_schema
     from staticduo_litellm.lazy import transport as _lazy_transport
     from staticduo_litellm.lazy.engine import LazyMCPService
+    from staticduo_litellm.lazy.types import CatalogEntry, LazyCatalog
 
     _hash_lazymcp_value: Final = _lazy_schema.hash_value
     _safe_lazymcp_text: Final = _lazy_schema.safe_text
@@ -2003,10 +2015,10 @@ if MCP_AVAILABLE:
         )
 
     async def _lazymcp_cache_get(key: str) -> object | None:
-        return await _lazy_core_adapter._lazymcp_cache_get(key)
+        return await _lazy_core_adapter.cache_get(key)
 
     async def _lazymcp_cache_set(key: str, value: object) -> None:
-        return await _lazy_core_adapter._lazymcp_cache_set(key, value)
+        return await _lazy_core_adapter.cache_set(key, value)
 
     def invalidate_lazymcp_cache() -> None:
         return _lazy_core_adapter.invalidate_lazymcp_cache()
@@ -2014,14 +2026,14 @@ if MCP_AVAILABLE:
     async def _merge_toolset_permissions(
         user_api_key_auth: UserAPIKeyAuth | None,
     ) -> UserAPIKeyAuth | None:
-        return await _lazy_core_adapter._merge_toolset_permissions(user_api_key_auth)
+        return await _lazy_core_adapter.merge_toolset_permissions(user_api_key_auth)
 
     async def _get_lazymcp_allowed_servers(
         user_api_key_auth: UserAPIKeyAuth | None,
         mcp_servers: list[str] | None,  # mutable-ok: framework contract requires mutable request or response containers
         client_ip: str | None,
     ) -> list[MCPServer]:  # mutable-ok: framework contract requires mutable request or response containers
-        return await _lazy_core_adapter._get_lazymcp_allowed_servers(user_api_key_auth, mcp_servers, client_ip)
+        return await _lazy_core_adapter.allowed_servers(user_api_key_auth, mcp_servers, client_ip)
 
     async def _get_lazymcp_server_tools(
         server: MCPServer,
@@ -2038,7 +2050,7 @@ if MCP_AVAILABLE:
         scope_servers: list[MCPServer]  # mutable-ok: framework contract requires mutable request or response containers
         | None = None,  # mutable-ok: framework contract requires mutable request or response containers
     ) -> list[MCPTool]:  # mutable-ok: framework contract requires mutable request or response containers
-        return await _lazy_core_adapter._get_lazymcp_server_tools(
+        return await _lazy_core_adapter.server_tools(
             server,
             user_api_key_auth,
             mcp_auth_header,
@@ -2092,7 +2104,7 @@ if MCP_AVAILABLE:
         scope_servers: list[  # mutable-ok: framework contract requires mutable request or response containers
             MCPServer
         ],  # mutable-ok: framework contract requires mutable request or response containers
-    ) -> dict[str, Any]:  # mutable-ok: framework contract requires mutable request or response containers
+    ) -> CatalogEntry:
         return await _lazy_service.catalog_entry(
             server,
             user_api_key_auth,
@@ -2116,7 +2128,7 @@ if MCP_AVAILABLE:
         raw_headers: dict[str, str]  # mutable-ok: framework contract requires mutable request or response containers
         | None,  # mutable-ok: framework contract requires mutable request or response containers
         client_ip: str | None,
-    ) -> dict[str, Any]:  # mutable-ok: framework contract requires mutable request or response containers
+    ) -> LazyCatalog:
         return await _lazy_service.catalog(
             user_api_key_auth,
             mcp_auth_header,

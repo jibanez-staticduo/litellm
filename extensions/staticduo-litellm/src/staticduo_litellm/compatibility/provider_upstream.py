@@ -8,6 +8,9 @@ CHATGPT_OAUTH_UPSTREAM_PATH: Final = "litellm/llms/chatgpt/authenticator.py"
 CHATGPT_OAUTH_UPSTREAM_SHA256: Final = "fae5a0af1eb25b060c09c47591f3921bb10c4590ee8b0468f6091d5fb0fa84b6"
 
 
+CHATGPT_OAUTH_UPSTREAM_AST_SHA256: Final = "c9f9ff21090293b6b22393a8b521828707e757f048d43000e3861853c2c2ded2"
+
+
 class ProviderUpstreamDriftError(RuntimeError):
     pass
 

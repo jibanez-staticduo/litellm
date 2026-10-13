@@ -20,7 +20,7 @@ from staticduo_litellm.lazy.public_resource import (
     resource_from_transport_scope,
 )
 
-__all__ = [
+__all__ = (
     "_IDENTIFIER",
     "LazyMcpPublicResource",
     "LazyMcpResourceError",
@@ -38,4 +38,4 @@ __all__ = [
     "is_lazymcp_resource_candidate",
     "parse_lazymcp_resource",
     "resource_from_transport_scope",
-]
+)

@@ -206,7 +206,9 @@ class ChatGPTOAuthEngine:
         self._write_auth_file(auth_data)
         return tokens
 
-    def _request_device_code(self) -> dict[str, str]:  # mutable-ok: upstream OAuth uses concrete JSON token dictionaries
+    def _request_device_code(
+        self,
+    ) -> dict[str, str]:  # mutable-ok: upstream OAuth uses concrete JSON token dictionaries
         try:
             client: Final = self._get_auth_http_client()
             resp: Final = client.post(  # pyright: ignore[reportUnknownMemberType]  # upstream HTTP handler optional params are legacy
@@ -240,7 +242,10 @@ class ChatGPTOAuthEngine:
             "interval": str(interval or "5"),
         }
 
-    def _poll_for_authorization_code(self, device_code: dict[str, str]) -> dict[str, str]:  # mutable-ok: upstream OAuth uses concrete JSON token dictionaries
+    def _poll_for_authorization_code(
+        self,
+        device_code: dict[str, str],  # mutable-ok: upstream OAuth token JSON contract
+    ) -> dict[str, str]:  # mutable-ok: upstream OAuth uses concrete JSON token dictionaries
         client: Final = self._get_auth_http_client()
         interval: Final = int(device_code.get("interval", "5"))
         start_time: Final = time.time()
@@ -289,7 +294,10 @@ class ChatGPTOAuthEngine:
             status_code=408,
         )
 
-    def _exchange_code_for_tokens(self, code_data: dict[str, str]) -> dict[str, str]:  # mutable-ok: upstream OAuth uses concrete JSON token dictionaries
+    def _exchange_code_for_tokens(
+        self,
+        code_data: dict[str, str],  # mutable-ok: upstream OAuth token JSON contract
+    ) -> dict[str, str]:  # mutable-ok: upstream OAuth uses concrete JSON token dictionaries
         try:
             client: Final = self._get_auth_http_client()
             redirect_uri: Final = f"{CHATGPT_AUTH_BASE}/deviceauth/callback"
@@ -332,7 +340,9 @@ class ChatGPTOAuthEngine:
             "id_token": id_token,
         }
 
-    def _refresh_tokens(self, refresh_token: str) -> dict[str, str]:  # mutable-ok: upstream OAuth uses concrete JSON token dictionaries
+    def _refresh_tokens(
+        self, refresh_token: str
+    ) -> dict[str, str]:  # mutable-ok: upstream OAuth uses concrete JSON token dictionaries
         try:
             client: Final = self._get_auth_http_client()
             resp: Final = client.post(  # pyright: ignore[reportUnknownMemberType]  # upstream HTTP handler optional params are legacy
@@ -375,7 +385,10 @@ class ChatGPTOAuthEngine:
         self._write_auth_file(auth_data)
         return refreshed
 
-    def _build_auth_record(self, tokens: dict[str, str]) -> JsonObject:  # mutable-ok: upstream OAuth uses concrete JSON token dictionaries
+    def _build_auth_record(
+        self,
+        tokens: dict[str, str],  # mutable-ok: upstream OAuth token JSON contract
+    ) -> JsonObject:
         access_token: Final = tokens.get("access_token")
         id_token: Final = tokens.get("id_token")
         expires_at: Final = self._get_expires_at(access_token) if access_token else None

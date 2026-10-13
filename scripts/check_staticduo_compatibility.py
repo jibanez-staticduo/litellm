@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import re
 import subprocess
 import sys
 import zipfile
+from collections.abc import Mapping
 from email.parser import BytesParser
 from pathlib import Path
 from typing import Final
@@ -28,11 +30,13 @@ from staticduo_litellm.compatibility.release_manifest import (
 )
 
 MANIFEST_PATH: Final = "extensions/staticduo-litellm/src/staticduo_litellm/compatibility/release-manifest.json"
+SOURCE_PREFIX: Final = "extensions/staticduo-litellm/src/"
 
 
 class WheelReceipt(FrozenContract):
     path: str
     sha256: str
+    source_inventory_sha256: str
 
 
 class CandidateValidation(FrozenContract):
@@ -43,6 +47,8 @@ class CandidateValidation(FrozenContract):
     extension_version: str
     core_version: str
     compatibility_manifest_sha256: str
+    extension_source_sha256: str
+    extension_sources: Mapping[str, str] = Field(exclude=True)
     manifest: ReleaseContract = Field(exclude=True)
 
 
@@ -76,12 +82,14 @@ class BuildBinding(BaseModel):
     model_config = ConfigDict(frozen=True)
     compatibility_manifest_sha256: str
     source_core_sha: str
+    extension_source_sha256: str
     native: NativeBuildBinding
 
 
 class RuntimeRequest(FrozenContract):
     manifest: ReleaseContract
     native_sha256: str | None
+    extension_sources: Mapping[str, str]
 
 
 class GateEvidence(FrozenContract):
@@ -107,7 +115,33 @@ def resolve(repo: Path, ref: str) -> str:
     return git(repo, "rev-parse", "--verify", "--end-of-options", ref + "^{commit}").decode().strip()
 
 
-def check_wheel(wheel: Path, manifest: ReleaseContract) -> WheelReceipt:
+def extension_inventory(repo: Path, candidate_ref: str | None = None) -> Mapping[str, str]:
+    revision: Final = resolve(repo, candidate_ref) if candidate_ref else None
+    paths: Final = (
+        tuple(
+            git(repo, "ls-tree", "-r", "--name-only", revision, "--", SOURCE_PREFIX + "staticduo_litellm")
+            .decode()
+            .splitlines()
+        )
+        if revision
+        else tuple(
+            path.relative_to(repo).as_posix() for path in (repo / SOURCE_PREFIX / "staticduo_litellm").rglob("*")
+        )
+    )
+    return {
+        path.removeprefix(SOURCE_PREFIX): hashlib.sha256(
+            git(repo, "show", f"{revision}:{path}") if revision else (repo / path).read_bytes()
+        ).hexdigest()
+        for path in paths
+        if Path(path).suffix in (".py", ".json")
+    }
+
+
+def inventory_sha256(inventory: Mapping[str, str]) -> str:
+    return hashlib.sha256(json.dumps(dict(inventory), sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def check_wheel(wheel: Path, manifest: ReleaseContract, expected_sources: Mapping[str, str]) -> WheelReceipt:
     with zipfile.ZipFile(wheel) as archive:
         names: Final = tuple(archive.namelist())
         metadata_paths: Final = tuple(name for name in names if name.endswith(".dist-info/METADATA"))
@@ -116,16 +150,26 @@ def check_wheel(wheel: Path, manifest: ReleaseContract) -> WheelReceipt:
         metadata: Final = BytesParser().parsebytes(archive.read(metadata_paths[0]))
         if metadata["Name"] != "staticduo-litellm" or metadata["Version"] != manifest.extension_version:
             raise CompatibilityError("Wheel distribution/version mismatch")
-        expected: Final = (
-            *tuple(path.removeprefix("extensions/staticduo-litellm/src/") for path in manifest.required_files),
-            "staticduo_litellm/compatibility/release-manifest.json",
+        if len(set(names)) != len(names):
+            raise CompatibilityError("Wheel contains ambiguous duplicate entries")
+        packaged_sources: Final = frozenset(
+            name for name in names if name.startswith("staticduo_litellm/") and Path(name).suffix in (".py", ".json")
         )
-        if not set(expected) <= set(names):
+        if frozenset(expected_sources) != packaged_sources:
             raise CompatibilityError("Wheel is missing extension modules/data/manifest")
-        packaged: Final = ReleaseContract.model_validate_json(archive.read(expected[-1]))
+        for path, expected_hash in expected_sources.items():
+            if hashlib.sha256(archive.read(path)).hexdigest() != expected_hash:
+                raise CompatibilityError(f"Wheel source differs from reviewed candidate: {path}")
+        packaged: Final = ReleaseContract.model_validate_json(
+            archive.read("staticduo_litellm/compatibility/release-manifest.json")
+        )
         if packaged != manifest:
             raise CompatibilityError("Wheel compatibility manifest differs from candidate")
-    return WheelReceipt(path=wheel.name, sha256=hashlib.sha256(wheel.read_bytes()).hexdigest())
+    return WheelReceipt(
+        path=wheel.name,
+        sha256=hashlib.sha256(wheel.read_bytes()).hexdigest(),
+        source_inventory_sha256=inventory_sha256(expected_sources),
+    )
 
 
 def check_candidate(repo: Path, upstream_ref: str, candidate_ref: str | None = None) -> CandidateValidation:
@@ -163,6 +207,7 @@ def check_candidate(repo: Path, upstream_ref: str, candidate_ref: str | None = N
     }
     if versions != {"litellm": core, "staticduo-litellm": extension}:
         raise CompatibilityError("Frozen workspace lock does not bind core and extension versions")
+    sources: Final = extension_inventory(repo, candidate_ref)
     return CandidateValidation(
         candidate_revision=candidate or resolve(repo, "HEAD"),
         worktree=candidate is None,
@@ -170,6 +215,8 @@ def check_candidate(repo: Path, upstream_ref: str, candidate_ref: str | None = N
         extension_version=extension,
         core_version=core,
         compatibility_manifest_sha256=hashlib.sha256(manifest_bytes).hexdigest(),
+        extension_sources=sources,
+        extension_source_sha256=inventory_sha256(sources),
         manifest=manifest,
     )
 
@@ -196,6 +243,7 @@ def main() -> None:
                 if (
                     build.compatibility_manifest_sha256 != result.compatibility_manifest_sha256
                     or build.source_core_sha != result.candidate_revision
+                    or build.extension_source_sha256 != result.extension_source_sha256
                 ):
                     raise CompatibilityError("Build receipt does not bind the checked candidate")
                 native_hash = build.native.sha256  # rebind-ok: optional build receipt
@@ -203,6 +251,8 @@ def main() -> None:
                     raise CompatibilityError("Native build hash is invalid")
             probe: Final = """
 import json, sys
+import hashlib
+from importlib.resources import files
 from importlib.metadata import distribution
 from staticduo_litellm.compatibility.release_manifest import ReleaseContract, check_runtime, load_manifest
 request = json.load(sys.stdin)
@@ -213,12 +263,18 @@ for name in ("litellm", "staticduo-litellm"):
         raise RuntimeError("Release runtime requires wheel installations, not editable checkouts")
 if load_manifest() != expected:
     raise RuntimeError("Installed extension manifest differs from checked candidate")
+for path, expected_hash in request["extension_sources"].items():
+    resource = files("staticduo_litellm").joinpath(path.removeprefix("staticduo_litellm/"))
+    if hashlib.sha256(resource.read_bytes()).hexdigest() != expected_hash:
+        raise RuntimeError("Installed extension source differs from reviewed candidate: " + path)
 result = check_runtime(expected, expected_native_sha256=request["native_sha256"])
 sys.stdout.write(result.model_dump_json())
 """
             runtime: Final = subprocess.run(
                 [sys.executable, "-I", "-c", probe],
-                input=RuntimeRequest(manifest=manifest, native_sha256=native_hash).model_dump_json(),
+                input=RuntimeRequest(
+                    manifest=manifest, native_sha256=native_hash, extension_sources=result.extension_sources
+                ).model_dump_json(),
                 text=True,
                 capture_output=True,
                 check=False,
@@ -227,7 +283,7 @@ sys.stdout.write(result.model_dump_json())
                 raise CompatibilityError("Installed runtime compatibility failed: " + runtime.stderr.strip())
             runtime_evidence = RuntimeEvidence.model_validate_json(runtime.stdout)  # rebind-ok: optional probe
         if args.wheel:
-            wheel_evidence = check_wheel(args.wheel, manifest)  # rebind-ok: optional wheel
+            wheel_evidence = check_wheel(args.wheel, manifest, result.extension_sources)  # rebind-ok: optional wheel
     except (CompatibilityError, RuntimeError, OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"Compatibility gate failed: {error}\n")
     sys.stdout.write(
