@@ -1,16 +1,84 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import random
 import traceback
 from collections import defaultdict
+from pathlib import Path
 from typing import Final, Literal
 
 import pytest
 
 import litellm
 from litellm import Router
+
+
+@pytest.fixture
+def chatgpt_pool_tokens(tmp_path: Path) -> str:
+    for profile in ("account-a", "account-b", "shared-account"):
+        (tmp_path / f"{profile}.json").write_text(json.dumps({
+            "access_token": "fixture-token", "account_id": profile, "expires_at": 1e20,
+        }))
+    return str(tmp_path)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("allow_pool", (False, True))
+@pytest.mark.parametrize("requested_model", ("account-pool", "pool-alias"))
+async def test_chatgpt_pool_requires_trusted_group_permission(
+    allow_pool: bool, requested_model: str, chatgpt_pool_tokens: str
+) -> None:
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "account-pool",
+                "litellm_params": {
+                    "model": "chatgpt/unit-test-model", "chatgpt_auth_profile": profile,
+                    "chatgpt_token_dir": chatgpt_pool_tokens,
+                },
+                "model_info": {"id": profile},
+            }
+            for profile in ("account-a", "account-b")
+        ],
+        model_group_alias={"pool-alias": "account-pool"},
+        chatgpt_profile_pool_model_groups=("account-pool",) if allow_pool else (),
+    )
+    request: Final = {
+        "chatgpt_profile_pool_model_groups": ["account-pool"],
+        "allow_chatgpt_cross_profile_fallback": True,
+        "extra_body": {"chatgpt_profile_pool_model_groups": ["account-pool"]},
+    }
+    if allow_pool:
+        sync_selected: Final = router.get_available_deployment(requested_model, request_kwargs=request)
+        async_selected: Final = await router.async_get_available_deployment(requested_model, request_kwargs=request)
+        assert sync_selected["model_info"]["id"] in {"account-a", "account-b"}
+        assert async_selected["model_info"]["id"] in {"account-a", "account-b"}
+        return
+    with pytest.raises(ValueError, match="mixed authentication profiles"):
+        router.get_available_deployment(requested_model, request_kwargs=request)
+    with pytest.raises(ValueError, match="mixed authentication profiles"):
+        await router.async_get_available_deployment(requested_model, request_kwargs=request)
+
+
+@pytest.mark.asyncio
+async def test_chatgpt_uniform_account_group_needs_no_pool_permission(chatgpt_pool_tokens: str) -> None:
+    router: Final = Router(model_list=[
+        {
+            "model_name": "uniform-group",
+            "litellm_params": {
+                "model": "chatgpt/unit-test-model", "chatgpt_auth_profile": "shared-account",
+                "chatgpt_token_dir": chatgpt_pool_tokens,
+            },
+            "model_info": {"id": deployment_id},
+        }
+        for deployment_id in ("first", "second")
+    ])
+    sync_selected: Final = router.get_available_deployment("uniform-group")
+    async_selected: Final = await router.async_get_available_deployment("uniform-group", request_kwargs={})
+    assert sync_selected["litellm_params"]["chatgpt_auth_profile"] == "shared-account"
+    assert async_selected["litellm_params"]["chatgpt_auth_profile"] == "shared-account"
 
 
 @pytest.mark.asyncio

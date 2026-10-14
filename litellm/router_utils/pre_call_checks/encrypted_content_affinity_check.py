@@ -36,6 +36,7 @@ Safe to enable globally:
 - No cache required.
 """
 
+import os
 from collections.abc import Iterator, Mapping, Sequence
 from functools import cache
 from typing import TYPE_CHECKING, Final, Optional, cast
@@ -194,6 +195,30 @@ class EncryptedContentAffinityCheck(CustomLogger):
         return None
 
     @staticmethod
+    def chatgpt_authentication_boundary(litellm_params: Mapping[str, object]) -> str | None:
+        model: Final = litellm_params.get("model")
+        if litellm_params.get("custom_llm_provider") != "chatgpt" and not (
+            isinstance(model, str) and model.startswith("chatgpt/")
+        ):
+            return None
+        configured_token_dir: Final = litellm_params.get("chatgpt_token_dir")
+        token_dir: Final = (
+            os.path.expanduser(str(configured_token_dir))
+            if configured_token_dir
+            else os.getenv("CHATGPT_TOKEN_DIR", os.path.expanduser("~/.config/litellm/chatgpt"))
+        )
+        configured_auth_file: Final = litellm_params.get("chatgpt_auth_file")
+        profile: Final = litellm_params.get("chatgpt_auth_profile")
+        auth_file: Final = (
+            os.path.expanduser(str(configured_auth_file))
+            if configured_auth_file
+            else f"{str(profile).strip()}.json"
+            if profile is not None
+            else os.getenv("CHATGPT_AUTH_FILE", "auth.json")
+        )
+        return os.path.realpath(os.path.join(token_dir, auth_file))
+
+    @staticmethod
     def _encryption_boundary_key(
         litellm_params: object,
     ) -> tuple[object, object] | None:
@@ -213,6 +238,22 @@ class EncryptedContentAffinityCheck(CustomLogger):
         getter: Final = getattr(litellm_params, "get", None)
         if not callable(getter):
             return None
+        chatgpt_boundary: Final = EncryptedContentAffinityCheck.chatgpt_authentication_boundary(
+            _REQUEST_KWARGS_ADAPTER.validate_python(
+                {
+                    key: getter(key)
+                    for key in (
+                        "model",
+                        "custom_llm_provider",
+                        "chatgpt_token_dir",
+                        "chatgpt_auth_profile",
+                        "chatgpt_auth_file",
+                    )
+                }
+            )
+        )
+        if chatgpt_boundary is not None:
+            return ("chatgpt", chatgpt_boundary)
         api_base: Final = getter("api_base")
         api_key: Final = getter("api_key")
         credential_name: Final = getter("litellm_credential_name")

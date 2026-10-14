@@ -29,6 +29,7 @@ from litellm.router_utils.cooldown_handlers import (
     is_caller_timeout_408,
     set_cooldown_deployments,
 )
+from litellm.router_utils.pre_call_checks.encrypted_content_affinity_check import EncryptedContentAffinityCheck
 from litellm.router_utils.router_callbacks.track_deployment_metrics import (
     increment_deployment_failures_for_current_minute,
 )
@@ -55,6 +56,22 @@ _ANTHROPIC_OAUTH_PARAMS_ADAPTER: Final[TypeAdapter[Mapping[str, object]]] = Type
 @runtime_checkable
 class AnthropicOAuthRoutingPolicy(Protocol):
     def anthropic_oauth_model_group_is_managed(self, model_group: str | None) -> bool: ...
+
+
+@runtime_checkable
+class ChatGPTFallbackRoutingPolicy(Protocol):
+    def chatgpt_effective_fallback_changes_account(
+        self,
+        source_model_group: str,
+        target_model_group: str | None,
+        target_overrides: Mapping[str, object],
+        request_kwargs: Mapping[str, object],
+    ) -> bool: ...
+
+
+@runtime_checkable
+class ChatGPTModelGroupRoutingPolicy(Protocol):
+    def get_model_list(self, model_name: str | None = None) -> Sequence[Mapping[str, object]] | None: ...
 
 
 def is_anthropic_oauth_managed_deployment(deployment: Mapping[str, object]) -> bool:
@@ -659,31 +676,19 @@ PROVIDER_SCOPED_RESOURCE_FUNCTION_NAMES: Final = frozenset(
 PROVIDER_SCOPED_CREATION_FUNCTION_NAMES: Final = frozenset({"_acreate_file"})
 
 
-def _chatgpt_auth_profiles(litellm_router: LitellmRouter, model_group: object) -> frozenset[str] | None:
-    if not isinstance(model_group, str):
+def _chatgpt_auth_profiles(litellm_router: object, model_group: object) -> frozenset[str] | None:
+    if not isinstance(model_group, str) or not isinstance(litellm_router, ChatGPTModelGroupRoutingPolicy):
         return None
-    deployments: Final = (
-        litellm_router.get_model_list(model_name=model_group)
-        or []  # mutable-ok: framework contract requires mutable request or response containers
-    )  # mutable-ok: framework contract requires mutable request or response containers
-    return frozenset(
-        str(params.get("chatgpt_auth_profile") or "default")
-        for deployment in deployments
-        if isinstance(deployment, dict)
-        for params in (
-            (
-                deployment.get("litellm_params")
-                or {}  # mutable-ok: framework contract requires mutable request or response containers
-            ),  # mutable-ok: framework contract requires mutable request or response containers
-        )  # mutable-ok: framework contract requires mutable request or response containers
-        if params.get("custom_llm_provider") == "chatgpt"
-        or (isinstance(params.get("model"), str) and str(params.get("model")).startswith("chatgpt/"))
+    return _chatgpt_deployment_profiles(
+        _CHATGPT_DEPLOYMENTS_ADAPTER.validate_python(litellm_router.get_model_list(model_name=model_group) or ())
     )
 
 
-def _is_cross_profile_fallback(
-    litellm_router: LitellmRouter, source_model_group: str, target_model_group: object
-) -> bool:
+def _is_cross_profile_fallback(litellm_router: object, source_model_group: str, target_model_group: object) -> bool:
+    if source_model_group == target_model_group and source_model_group in getattr(
+        litellm_router, "chatgpt_profile_pool_model_groups", frozenset[str]()
+    ):
+        return False
     source_profiles: Final = _chatgpt_auth_profiles(litellm_router, source_model_group)
     target_profiles: Final = _chatgpt_auth_profiles(litellm_router, target_model_group)
     if source_profiles is None or target_profiles is None:
@@ -695,32 +700,47 @@ def _is_cross_profile_fallback(
     return len(source_profiles) != 1 or len(target_profiles) != 1 or source_profiles != target_profiles
 
 
+def _effective_cross_profile_fallback(
+    litellm_router: object,
+    source_model_group: str,
+    target_model_group: str | None,
+    target_overrides: Mapping[str, object],
+    request_kwargs: Mapping[str, object],
+) -> bool:
+    if isinstance(litellm_router, ChatGPTFallbackRoutingPolicy):
+        return litellm_router.chatgpt_effective_fallback_changes_account(
+            source_model_group, target_model_group, target_overrides, request_kwargs
+        )
+    return _is_cross_profile_fallback(litellm_router, source_model_group, target_model_group)
+
+
 def get_internal_router_fallback_identity() -> tuple[object, object] | None:
     return _router_fallback_identity.get()
 
 
-def validate_chatgpt_model_group_profiles(
-    deployments: list[dict[str, Any]]
-    | dict,  # mutable-ok: framework contract requires mutable request or response containers
-    model_group: str,  # mutable-ok: framework contract requires mutable request or response containers
-) -> None:  # mutable-ok: framework contract requires mutable request or response containers
-    if isinstance(deployments, dict):
-        deployments = [  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
-            deployments
-        ]  # mutable-ok: framework contract requires mutable request or response containers; rebind-ok: framework flow intentionally updates request or lifecycle state
-    profiles: Final = frozenset(
-        str(params.get("chatgpt_auth_profile") or "default")
+_CHATGPT_DEPLOYMENTS_ADAPTER: Final = TypeAdapter(Sequence[Mapping[str, object]])
+
+
+def _chatgpt_deployment_profiles(deployments: Sequence[Mapping[str, object]]) -> frozenset[str]:
+    return frozenset(
+        boundary
         for deployment in deployments
-        for params in (
-            (
-                deployment.get("litellm_params")
-                or {}  # mutable-ok: framework contract requires mutable request or response containers
-            ),  # mutable-ok: framework contract requires mutable request or response containers
-        )  # mutable-ok: framework contract requires mutable request or response containers
-        if params.get("custom_llm_provider") == "chatgpt"
-        or (isinstance(params.get("model"), str) and str(params.get("model")).startswith("chatgpt/"))
+        if (
+            boundary := EncryptedContentAffinityCheck.chatgpt_authentication_boundary(
+                _ANTHROPIC_OAUTH_PARAMS_ADAPTER.validate_python(deployment.get("litellm_params") or {})
+            )
+        )
+        is not None
     )
-    if len(profiles) > 1:
+
+
+def validate_chatgpt_model_group_profiles(
+    deployments: Sequence[Mapping[str, object]] | Mapping[str, object],
+    model_group: str,
+    authorized_pool_model_groups: frozenset[str] = frozenset(),
+) -> None:
+    rows: Final = (deployments,) if isinstance(deployments, Mapping) else tuple(deployments)
+    if model_group not in authorized_pool_model_groups and len(_chatgpt_deployment_profiles(rows)) > 1:
         raise ValueError(f"ChatGPT model group {model_group!r} contains mixed authentication profiles")
 
 
@@ -895,8 +915,14 @@ async def run_async_fallback(
         ) or _anthropic_oauth_fallback_denied(litellm_router, _get_fallback_target_model_group(mg)):
             continue
         target_model_group = _get_fallback_target_model_group(mg)
-        if not getattr(litellm_router, "allow_chatgpt_cross_profile_fallback", False) and _is_cross_profile_fallback(
-            litellm_router, logical_model_group, target_model_group
+        if not getattr(
+            litellm_router, "allow_chatgpt_cross_profile_fallback", False
+        ) and _effective_cross_profile_fallback(
+            litellm_router,
+            logical_model_group if isinstance(logical_model_group, str) else original_model_group,
+            target_model_group,
+            _ANTHROPIC_OAUTH_PARAMS_ADAPTER.validate_python(mg) if isinstance(mg, Mapping) else MappingProxyType({}),
+            _ANTHROPIC_OAUTH_PARAMS_ADAPTER.validate_python(kwargs),
         ):
             verbose_router_logger.warning(
                 "router_fallback_denied logical_model_group=%s current_model_group=%s reason=chatgpt_cross_profile",

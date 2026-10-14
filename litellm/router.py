@@ -36,7 +36,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from functools import lru_cache, partial
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Final, Literal, Optional, TypeAlias, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Final, Literal, NamedTuple, Optional, TypeAlias, TypeVar, Union, cast
 
 import anyio
 import httpx
@@ -133,6 +133,7 @@ from litellm.llms.openai_like.model_info import (
     MODEL_INFO_REFRESH_SECONDS,
     get_openai_compatible_model_info,
 )
+from litellm.responses.utils import ResponsesAPIRequestUtils
 from litellm.router_strategy.base_routing_strategy import BaseRoutingStrategy
 from litellm.router_strategy.budget_limiter import RouterBudgetLimiting
 from litellm.router_strategy.complexity_router.context_compaction import (
@@ -224,6 +225,7 @@ from litellm.router_utils.fallback_event_handlers import (
     check_non_standard_fallback_format,
     clear_pre_routing_selection,
     committed_retry_budget_for_request,
+    creates_provider_scoped_resource,
     fallback_lookup_groups,
     fallbacks_disabled_for_request,
     get_fallback_model_group_for_lookup_groups,
@@ -238,6 +240,7 @@ from litellm.router_utils.fallback_event_handlers import (
     record_disable_fallbacks,
     record_pre_routing_selection,
     record_retry_attempt,
+    references_provider_scoped_resource,
     routed_deployment_id,
     run_async_fallback,
     validate_anthropic_model_group_profiles,
@@ -508,7 +511,16 @@ _SILENT_MODEL_ADAPTER: Final = TypeAdapter(str | list[str])
 _RESOLVED_RETRY_POLICY_ADAPTER: Final = TypeAdapter(RetryPolicy | None)
 _ROUTING_KWARGS_ADAPTER: Final[TypeAdapter[Mapping[str, object] | None]] = TypeAdapter(Mapping[str, object] | None)
 _FALLBACK_HOP_ADAPTER: Final = TypeAdapter(Mapping[str, object])
+_CHATGPT_POOL_GROUPS_ADAPTER: Final[TypeAdapter[Sequence[str] | None]] = TypeAdapter(Sequence[str] | None)
+_CHATGPT_HEALTHY_DEPLOYMENTS_ADAPTER: Final[TypeAdapter[Sequence[Mapping[str, object]] | Mapping[str, object]]] = (
+    TypeAdapter(Sequence[Mapping[str, object]] | Mapping[str, object])
+)
 _DEPLOYMENT_SELECTED_EVENT: Final = "litellm.request.deployment_selected"
+_CHATGPT_ATTEMPT_KEY: Final = "_chatgpt_profile_attempt"
+
+
+class _ChatGPTProfileAttempt(NamedTuple):
+    boundary: str
 
 
 def _fallback_deployment_mapping(deployment: Deployment | Mapping[str, object]) -> Mapping[str, object]:
@@ -531,6 +543,10 @@ def _deployment_that_just_failed(request_metadata: object) -> str | None:
         return None
     model_id: Final = model_info.get("id")
     return model_id if isinstance(model_id, str) else None
+
+
+def _chatgpt_pool_model_groups(value: object) -> frozenset[str]:
+    return frozenset(_CHATGPT_POOL_GROUPS_ADAPTER.validate_python(value, strict=True) or ())
 
 
 def _deployment_pick_attributes(model: str, request_kwargs: Mapping[str, object] | None) -> Mapping[str, str | int]:
@@ -1003,6 +1019,7 @@ class Router:
         allow_chatgpt_cross_profile_fallback: bool = False,
         fallback_budget_check: FallbackBudgetCheck | None = None,
         auto_router_capability_limit: AutoRouterCapabilityLimit | None = None,
+        chatgpt_profile_pool_model_groups: Sequence[str] | None = None,
     ) -> None:
         """
         Initialize the Router class with the given parameters for caching, reliability, and routing strategy.
@@ -1043,6 +1060,7 @@ class Router:
             enable_weighted_failover (bool): When True and the routing strategy is "simple-shuffle", a retryable failure on one deployment causes the request to re-pick (weighted) across the other deployments in the same model group before any cross-group fallback runs. Bounded by `max_fallbacks`. Async-only: currently honored by `router.acompletion()` and other async entrypoints. The sync `router.completion()` path falls back to the regular fallback flow. Defaults to False.
             fallback_access_check (Optional[FallbackAccessCheck]): Awaited before each cross-model-group fallback attempt on the async path; a fallback target it rejects is skipped. Defaults to None (every configured fallback is attempted).
             allow_chatgpt_cross_profile_fallback (bool): Allow fallback between ChatGPT model groups backed by different authentication profiles. Defaults to False.
+            chatgpt_profile_pool_model_groups (Sequence[str] | None): Model groups allowed to pool ChatGPT accounts.
             fallback_budget_check (Optional[FallbackBudgetCheck]): Awaited before each cross-model-group fallback attempt on the async path; a fallback target it rejects as over budget is skipped. Defaults to None (budget is not re-checked on fallback).
         Returns:
             Router: An instance of the litellm.Router class.
@@ -1232,6 +1250,7 @@ class Router:
         if type(allow_chatgpt_cross_profile_fallback) is not bool:
             raise TypeError("allow_chatgpt_cross_profile_fallback must be a bool")
         self.allow_chatgpt_cross_profile_fallback = allow_chatgpt_cross_profile_fallback
+        self.chatgpt_profile_pool_model_groups = _chatgpt_pool_model_groups(chatgpt_profile_pool_model_groups)
         self.health_check_ignore_transient_errors = health_check_ignore_transient_errors
         self.background_health_check_model_groups: frozenset[str] | None = (
             frozenset(background_health_check_model_groups)
@@ -4216,7 +4235,8 @@ class Router:
         - Adds selected deployment, model_info and api_base to kwargs["metadata"] (used for logging)
         - Adds default litellm params to kwargs, if set.
         - Merges tools from deployment with request (proxy-configured tools + request tools).
-        - On a fallback hop, drops the encrypted reasoning this deployment cannot decrypt, keeping its summary.
+        - Replays history without account-bound state when ChatGPT accounts change.
+          Strips incompatible encrypted reasoning on fallback hops.
         """
         oauth_request_params: Final = self._anthropic_oauth_request_params(deployment["litellm_params"], kwargs)
         anthropic_oauth_managed: Final = is_anthropic_oauth_managed_deployment(deployment)
@@ -4247,6 +4267,14 @@ class Router:
         deployment_that_just_failed: Final = _deployment_that_just_failed(
             _FALLBACK_HOP_ADAPTER.validate_python(kwargs).get(metadata_variable_name)
         )
+        prior_metadata: Final = _FALLBACK_HOP_ADAPTER.validate_python(kwargs.get(metadata_variable_name) or {})
+        prior_model_info: Final = prior_metadata.get("model_info")
+        prior_model_info_mapping: Final = (
+            MappingProxyType({**prior_model_info.__dict__, **(prior_model_info.model_extra or {})})
+            if isinstance(prior_model_info, BaseModel)
+            else _FALLBACK_HOP_ADAPTER.validate_python(prior_model_info or {})
+        )
+        prior_chatgpt_attempt: Final = prior_model_info_mapping.get(_CHATGPT_ATTEMPT_KEY)
 
         kwargs.setdefault(metadata_variable_name, {}).update(
             {
@@ -4358,10 +4386,128 @@ class Router:
         if anthropic_oauth_managed:
             record_disable_fallbacks(kwargs, True)
 
-        self._strip_reasoning_on_fallback(
-            _fallback_deployment_mapping(deployment),
-            _FALLBACK_HOP_ADAPTER.validate_python(kwargs),
-            deployment_that_just_failed,
+        kwargs.update(
+            self._deployment_replay_kwargs(
+                _FALLBACK_HOP_ADAPTER.validate_python(deployment),
+                _FALLBACK_HOP_ADAPTER.validate_python(kwargs),
+                deployment_that_just_failed,
+                prior_chatgpt_attempt if isinstance(prior_chatgpt_attempt, _ChatGPTProfileAttempt) else None,
+                metadata_variable_name,
+            )
+        )
+
+    def _deployment_replay_kwargs(
+        self,
+        deployment: Mapping[str, object],
+        kwargs: Mapping[str, object],
+        previous_deployment_id: str | None,
+        previous_attempt: _ChatGPTProfileAttempt | None,
+        metadata_variable_name: str,
+    ) -> Mapping[str, object]:
+        effective_chatgpt_params: Final = self._effective_chatgpt_params(deployment, kwargs)
+        selected_chatgpt_boundary: Final = EncryptedContentAffinityCheck.chatgpt_authentication_boundary(
+            effective_chatgpt_params
+        )
+        if selected_chatgpt_boundary is None:
+            self._strip_reasoning_on_fallback(deployment, kwargs, previous_deployment_id)
+            return MappingProxyType({})
+        current_model_info: Final = kwargs.get("model_info")
+        parsed_model_info: Final = _FALLBACK_HOP_ADAPTER.validate_python(
+            current_model_info.model_dump() if isinstance(current_model_info, BaseModel) else current_model_info
+        )
+        metadata: Final = _FALLBACK_HOP_ADAPTER.validate_python(kwargs.get(metadata_variable_name) or {})
+        attempt_model_info: Final = MappingProxyType(
+            {**parsed_model_info, _CHATGPT_ATTEMPT_KEY: _ChatGPTProfileAttempt(selected_chatgpt_boundary)}
+        )
+        return MappingProxyType(
+            {
+                **self._chatgpt_profile_replay_kwargs(deployment, kwargs, previous_deployment_id, previous_attempt),
+                "model_info": dict(attempt_model_info),
+                metadata_variable_name: {**metadata, "model_info": dict(attempt_model_info)},
+            }
+        )
+
+    def _chatgpt_profile_replay_kwargs(
+        self,
+        deployment: Mapping[str, object],
+        kwargs: Mapping[str, object],
+        previous_deployment_id: str | None,
+        previous_attempt: _ChatGPTProfileAttempt | None = None,
+    ) -> Mapping[str, object]:
+        target_boundary: Final = EncryptedContentAffinityCheck.chatgpt_authentication_boundary(
+            self._effective_chatgpt_params(deployment, kwargs)
+        )
+        if target_boundary is None:
+            return MappingProxyType({})
+        previous_response_id: Final = kwargs.get("previous_response_id")
+        response_origin_id: Final = (
+            ResponsesAPIRequestUtils.get_model_id_from_response_id(previous_response_id)
+            if isinstance(previous_response_id, str)
+            else None
+        )
+        origin_boundaries: Final = (
+            (previous_attempt.boundary,)
+            if previous_attempt is not None
+            else (
+                self._chatgpt_boundary_for_deployment_id(response_origin_id)
+                if response_origin_id is not None
+                else None,
+                self._chatgpt_boundary_for_deployment_id(previous_deployment_id)
+                if previous_deployment_id is not None
+                else None,
+            )
+        )
+        if not any(boundary != target_boundary for boundary in origin_boundaries if boundary is not None):
+            return MappingProxyType({})
+        replay_history: Final = MappingProxyType(
+            {key: copy.deepcopy(kwargs[key]) for key in ("input", "messages") if key in kwargs}
+        )
+        EncryptedContentAffinityCheck.strip_reasoning_the_targets_cannot_decrypt(
+            self,
+            replay_history.get("input"),
+            replay_history.get("messages"),
+            (self._effective_chatgpt_replay_deployment(deployment, kwargs),),
+            unmarked_origin=(response_origin_id or previous_deployment_id if previous_attempt is None else None),
+        )
+        return MappingProxyType({**replay_history, "previous_response_id": None})
+
+    @staticmethod
+    def _effective_chatgpt_params(
+        deployment: Mapping[str, object], kwargs: Mapping[str, object]
+    ) -> Mapping[str, object]:
+        params: Final = _FALLBACK_HOP_ADAPTER.validate_python(deployment.get("litellm_params") or {})
+        overrides: Final = MappingProxyType(
+            {
+                key: kwargs[key]
+                for key in ("chatgpt_auth_profile", "chatgpt_token_dir", "chatgpt_auth_file")
+                if key in kwargs
+            }
+        )
+        return MappingProxyType({**params, **overrides})
+
+    @staticmethod
+    def _effective_chatgpt_replay_deployment(
+        deployment: Mapping[str, object], kwargs: Mapping[str, object]
+    ) -> Mapping[str, object]:
+        effective_params: Final = Router._effective_chatgpt_params(deployment, kwargs)
+        nominal_params: Final = _FALLBACK_HOP_ADAPTER.validate_python(deployment.get("litellm_params") or {})
+        matching_boundary: Final = EncryptedContentAffinityCheck.chatgpt_authentication_boundary(
+            effective_params
+        ) == EncryptedContentAffinityCheck.chatgpt_authentication_boundary(nominal_params)
+        return MappingProxyType(
+            {
+                **deployment,
+                "litellm_params": effective_params,
+                "model_info": deployment.get("model_info") if matching_boundary else {},
+            }
+        )
+
+    def _chatgpt_boundary_for_deployment_id(self, model_id: str) -> str | None:
+        origin: Final = self.get_deployment(model_id=model_id)
+        if origin is None:
+            return None
+        return EncryptedContentAffinityCheck.chatgpt_authentication_boundary(
+            _FALLBACK_HOP_ADAPTER.validate_python(origin.litellm_params.model_dump(exclude_none=True))
         )
 
     def _strip_reasoning_on_fallback(
@@ -12987,7 +13133,60 @@ class Router:
             group.model_dump(exclude=frozenset(("model_priorities",)) if group.model_priorities is None else None)
             for group in self.routing_groups.values()
         ]
+        _settings_to_return["chatgpt_profile_pool_model_groups"] = sorted(self.chatgpt_profile_pool_model_groups)
         return _settings_to_return
+
+    def _chatgpt_authorized_pools_for_request(self, request_kwargs: object) -> frozenset[str]:
+        parsed_kwargs: Final = _FALLBACK_HOP_ADAPTER.validate_python(request_kwargs or {})
+        if references_provider_scoped_resource(parsed_kwargs) or creates_provider_scoped_resource(parsed_kwargs):
+            return frozenset()
+        return self.chatgpt_profile_pool_model_groups
+
+    def chatgpt_effective_fallback_changes_account(
+        self,
+        source_model_group: str,
+        target_model_group: str | None,
+        target_overrides: Mapping[str, object],
+        request_kwargs: Mapping[str, object],
+    ) -> bool:
+        if target_model_group is None:
+            return True
+        if source_model_group == target_model_group and source_model_group in self.chatgpt_profile_pool_model_groups:
+            return False
+        default_params: Final = _FALLBACK_HOP_ADAPTER.validate_python(self.default_litellm_params)
+        effective_kwargs: Final = MappingProxyType({**default_params, **request_kwargs, **target_overrides})
+        metadata_key: Final = get_router_metadata_variable_name(
+            function_name=getattr(request_kwargs.get("original_function"), "__name__", None)
+        )
+        metadata: Final = _FALLBACK_HOP_ADAPTER.validate_python(request_kwargs.get(metadata_key) or {})
+        model_info: Final = _FALLBACK_HOP_ADAPTER.validate_python(metadata.get("model_info") or {})
+        previous_attempt: Final = model_info.get(_CHATGPT_ATTEMPT_KEY)
+        source_boundaries: Final = (
+            frozenset((previous_attempt.boundary,))
+            if isinstance(previous_attempt, _ChatGPTProfileAttempt)
+            else self._chatgpt_effective_group_boundaries(
+                source_model_group, MappingProxyType({**default_params, **request_kwargs})
+            )
+        )
+        target_boundaries: Final = self._chatgpt_effective_group_boundaries(target_model_group, effective_kwargs)
+        if not source_boundaries and not target_boundaries:
+            return False
+        return len(source_boundaries) != 1 or source_boundaries != target_boundaries
+
+    def _chatgpt_effective_group_boundaries(
+        self, model_group: str, effective_kwargs: Mapping[str, object]
+    ) -> frozenset[str]:
+        deployments: Final = self.get_model_list(model_name=model_group) or ()
+        return frozenset(
+            boundary
+            for deployment in deployments
+            if (
+                boundary := EncryptedContentAffinityCheck.chatgpt_authentication_boundary(
+                    self._effective_chatgpt_params(_fallback_deployment_mapping(deployment), effective_kwargs)
+                )
+            )
+            is not None
+        )
 
     def _switch_routing_strategy(self, routing_strategy: str | None, kwargs: Mapping[str, object]) -> None:
         if routing_strategy == "lar1":
@@ -13031,10 +13230,14 @@ class Router:
                     if value is None or isinstance(value, RetryPolicy):
                         setattr(self, var, value)
                 else:
-                    value = kwargs[var]
+                    value = (
+                        _chatgpt_pool_model_groups(_FALLBACK_HOP_ADAPTER.validate_python(kwargs).get(var))
+                        if var == "chatgpt_profile_pool_model_groups"
+                        else kwargs[var]
+                    )
                     # only run routing strategy init if it has changed
                     if var == "routing_strategy":
-                        value = self._normalize_strategy(value)
+                        value = self._normalize_strategy(kwargs[var])
                         if _existing_router_settings["routing_strategy"] != value:
                             self._switch_routing_strategy(value, kwargs)
                             rebuild_routing_groups = True
@@ -13795,7 +13998,11 @@ class Router:
             specific_deployment=specific_deployment,
             request_kwargs=request_kwargs,
         )
-        validate_chatgpt_model_group_profiles(healthy_deployments, model)
+        validate_chatgpt_model_group_profiles(
+            _CHATGPT_HEALTHY_DEPLOYMENTS_ADAPTER.validate_python(healthy_deployments),
+            model,
+            self._chatgpt_authorized_pools_for_request(_ROUTING_KWARGS_ADAPTER.validate_python(request_kwargs)),
+        )
         validate_anthropic_model_group_profiles(healthy_deployments, model)
 
         # IF TEAM ID SPECIFIED ON MODEL, AND REQUEST CONTAINS USER_API_KEY_TEAM_ID, FILTER OUT MODELS THAT ARE NOT IN THE TEAM
@@ -15043,7 +15250,11 @@ class Router:
             specific_deployment=specific_deployment,
             request_kwargs=request_kwargs,
         )
-        validate_chatgpt_model_group_profiles(healthy_deployments, model)
+        validate_chatgpt_model_group_profiles(
+            _CHATGPT_HEALTHY_DEPLOYMENTS_ADAPTER.validate_python(healthy_deployments),
+            model,
+            self._chatgpt_authorized_pools_for_request(_ROUTING_KWARGS_ADAPTER.validate_python(request_kwargs)),
+        )
         validate_anthropic_model_group_profiles(healthy_deployments, model)
         strategy, strategy_selector = self._get_routing_context(model, request_kwargs)
         pick_attributes: Final = _deployment_pick_attributes(

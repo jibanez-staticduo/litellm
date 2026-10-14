@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 from types import MappingProxyType
 from typing import Final
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -22,6 +23,116 @@ from litellm.types.utils import (
     StandardLoggingModelInformation,
     StandardLoggingPayload,
 )
+
+
+@pytest.mark.parametrize("same_account,effective_override", ((False, False), (True, False), (True, True)))
+@pytest.mark.parametrize("origin_kind", ("previous-response", "previous-attempt", "router-default"))
+def test_chatgpt_replay_preserves_caller_history_and_account_affinity(
+    same_account: bool, effective_override: bool, origin_kind: str, tmp_path: Path
+) -> None:
+    from litellm.responses.utils import ResponsesAPIRequestUtils
+
+    for profile in ("account-a", "account-b"):
+        (tmp_path / f"{profile}.json").write_text(json.dumps({
+            "access_token": "fixture-token", "account_id": profile, "expires_at": 1e20,
+        }))
+    encoded_id: Final = ResponsesAPIRequestUtils._build_responses_api_response_id("chatgpt", "source", "resp-origin")
+    router: Final = Router(model_list=[
+        {
+            "model_name": "account-pool",
+            "litellm_params": {
+                "model": "chatgpt/unit-test-model", "chatgpt_token_dir": str(tmp_path), "chatgpt_auth_profile": profile
+            },
+            "model_info": {"id": deployment_id},
+        }
+        for deployment_id, profile in (
+            ("source", "account-a"), ("target", "account-a" if same_account else "account-b")
+        )
+    ], default_litellm_params={"previous_response_id": encoded_id} if origin_kind == "router-default" else {})
+    caller_input: Final = [
+        {"type": "message", "role": "user", "content": "remember this"},
+        {
+            "type": "reasoning", "id": "rs-origin", "encrypted_content": "origin-ciphertext",
+            "summary": [{"type": "summary_text", "text": "readable reasoning"}],
+        },
+        {"type": "function_call", "call_id": "call-one", "name": "lookup", "arguments": "{}"},
+        {"type": "function_call_output", "call_id": "call-one", "output": "useful result"},
+    ]
+    original_json: Final = json.dumps(caller_input)
+    request: Final = {
+        "input": caller_input,
+        **({"chatgpt_auth_profile": "account-b"} if effective_override else {}),
+        **({} if origin_kind == "router-default" else {
+            "previous_response_id": encoded_id if origin_kind == "previous-response" else "resp-origin"
+        }),
+        "metadata": {"model_info": {"id": "source"}} if origin_kind == "previous-attempt" else {},
+        **({"fallback_depth": 1} if origin_kind == "previous-attempt" else {}),
+    }
+    selected: Final = router.get_deployment(model_id="target")
+    assert selected is not None
+    router._update_kwargs_with_deployment(selected.model_dump(), request)
+    assert json.dumps(caller_input) == original_json
+    assert request["input"][0] == caller_input[0]
+    assert request["input"][2:] == caller_input[2:]
+    assert request["input"][1]["summary"] == caller_input[1]["summary"]
+    if same_account and not effective_override:
+        assert request["previous_response_id"] == ("resp-origin" if origin_kind == "previous-attempt" else encoded_id)
+        assert request["input"][1]["encrypted_content"] == "origin-ciphertext"
+        return
+    assert request["previous_response_id"] is None
+    assert "encrypted_content" not in request["input"][1]
+    assert "id" not in request["input"][1]
+    source: Final = router.get_deployment(model_id="source")
+    assert source is not None
+    router._update_kwargs_with_deployment(source.model_dump(), request)
+    assert request["previous_response_id"] is None
+    assert json.dumps(caller_input) == original_json
+
+
+@pytest.mark.parametrize("response_after_first_attempt", (False, True))
+def test_chatgpt_effective_account_state_preserves_ciphertext_on_same_account_retry(
+    response_after_first_attempt: bool, tmp_path: Path
+) -> None:
+    from litellm.responses.utils import ResponsesAPIRequestUtils
+
+    for profile in ("account-a", "account-b"):
+        (tmp_path / f"{profile}.json").write_text(json.dumps({
+            "access_token": "fixture-token", "account_id": profile, "expires_at": 1e20,
+        }))
+    router: Final = Router(model_list=[
+        {
+            "model_name": "same-nominal-account",
+            "litellm_params": {
+                "model": "chatgpt/unit-test-model", "chatgpt_token_dir": str(tmp_path),
+                "chatgpt_auth_profile": "account-a",
+            },
+            "model_info": {"id": deployment_id},
+        }
+        for deployment_id in ("source", "target")
+    ])
+    previous_id: Final = ResponsesAPIRequestUtils._build_responses_api_response_id("chatgpt", "source", "resp-origin")
+    first_request: Final = {
+        "input": [{"role": "user", "content": "full history"}], "previous_response_id": previous_id,
+        "chatgpt_auth_profile": "account-b",
+    }
+    source: Final = router.get_deployment(model_id="source")
+    target: Final = router.get_deployment(model_id="target")
+    assert source is not None and target is not None
+    router._update_kwargs_with_deployment(source.model_dump(), first_request)
+    assert first_request["previous_response_id"] is None
+    retry_history: Final = [{
+        "type": "reasoning", "id": "rs-effective-b", "encrypted_content": "ciphertext-minted-under-b",
+        "summary": [{"type": "summary_text", "text": "readable reasoning"}],
+    }]
+    retry_request: Final = {
+        **first_request, "input": retry_history, "fallback_depth": 1,
+        "previous_response_id": previous_id if response_after_first_attempt else None,
+    }
+    router._update_kwargs_with_deployment(target.model_dump(), retry_request)
+    assert retry_request["previous_response_id"] == (previous_id if response_after_first_attempt else None)
+    assert retry_request["input"] == retry_history
+    assert retry_request["input"][0]["encrypted_content"] == "ciphertext-minted-under-b"
+    assert retry_request["input"][0]["id"] == "rs-effective-b"
 
 
 @pytest.mark.parametrize("typed", (False, True))

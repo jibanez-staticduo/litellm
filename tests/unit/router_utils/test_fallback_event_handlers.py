@@ -1,10 +1,12 @@
 import asyncio
 import importlib
 import json
+import os
 from collections.abc import AsyncIterator, Mapping
 from datetime import datetime, timedelta
+from pathlib import Path
 from types import MappingProxyType
-from typing import Any, Final, Literal, NoReturn
+from typing import Any, Dict, Final, NoReturn
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -42,8 +44,82 @@ from litellm.router_utils.fallback_event_handlers import (
 )
 from tests._vcr_conftest_common import install_live_call_probe, record_vcr_outcome
 from tests.fake_openai_endpoint import FAKE_OPENAI_API_BASE
-from typing import Dict
-import os
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("cross_group,effective_override,allow_cross", (
+    (False, False, False), (True, False, True), (True, True, False), (True, True, True),
+))
+async def test_chatgpt_profile_failover_replays_history_on_provider_transport(
+    cross_group: bool, effective_override: bool, allow_cross: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from litellm.responses.utils import ResponsesAPIRequestUtils
+
+    monkeypatch.setenv("DISABLE_AIOHTTP_TRANSPORT", "True")
+    for profile in ("account-a", "account-b"):
+        (tmp_path / f"{profile}.json").write_text(json.dumps({
+            "access_token": "fixture-token", "account_id": profile, "expires_at": 1e20,
+        }))
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "fallback-group" if cross_group and profile == "account-b" else "primary-group",
+                "litellm_params": {
+                    "model": "chatgpt/unit-test-model",
+                    "chatgpt_auth_profile": "account-a" if effective_override else profile,
+                    "chatgpt_token_dir": str(tmp_path), "api_base": "https://backend.example.test", "weight": 1,
+                },
+                "model_info": {"id": profile},
+            }
+            for profile in ("account-a", "account-b")
+        ],
+        chatgpt_profile_pool_model_groups=("primary-group",),
+        allow_chatgpt_cross_profile_fallback=allow_cross,
+        enable_weighted_failover=not cross_group,
+        fallbacks=[{"primary-group": [
+            {"model": "fallback-group", "chatgpt_auth_profile": "account-b"}
+            if effective_override else "fallback-group"
+        ]}] if cross_group else [],
+        num_retries=0,
+        retry_after=0,
+        optional_pre_call_checks=["responses_api_deployment_check"],
+    )
+    previous_id: Final = ResponsesAPIRequestUtils._build_responses_api_response_id(
+        "chatgpt", "account-a", "resp-source"
+    )
+    caller_input: Final = [{"role": "user", "content": "full history for replay"}]
+    completed: Final = {
+        "type": "response.completed", "response": {
+            "id": "resp-completed", "object": "response", "created_at": 1, "status": "completed",
+            "model": "unit-test-model", "output": [],
+        },
+    }
+    with respx.mock(assert_all_called=True) as transport:
+        route: Final = transport.post(url__regex=r"https://backend\.example\.test/.*").mock(side_effect=[
+            httpx.Response(429, json={"error": {"message": "fixture quota", "type": "rate_limit_exceeded"}}),
+            httpx.Response(200, headers={"content-type": "text/event-stream"},
+                           text=f"data: {json.dumps(completed)}\n\ndata: [DONE]\n\n"),
+        ])
+        if effective_override and not allow_cross:
+            with pytest.raises(litellm.RateLimitError, match="fixture quota"):
+                await router.aresponses(model="primary-group", input=caller_input, previous_response_id=previous_id)
+            assert route.call_count == 1
+            assert route.calls[0].request.headers["chatgpt-account-id"] == "account-a"
+            assert caller_input == [{"role": "user", "content": "full history for replay"}]
+            return
+        response: Final = await router.aresponses(
+            model="primary-group", input=caller_input, previous_response_id=previous_id,
+        )
+    assert response.status == "completed"
+    assert route.call_count == 2
+    first_body: Final = json.loads(route.calls[0].request.content)
+    second_body: Final = json.loads(route.calls[1].request.content)
+    assert first_body["previous_response_id"] == "resp-source"
+    assert not second_body.get("previous_response_id")
+    assert second_body["input"] == caller_input
+    assert route.calls[0].request.headers["chatgpt-account-id"] == "account-a"
+    assert route.calls[1].request.headers["chatgpt-account-id"] == "account-b"
+    assert caller_input == [{"role": "user", "content": "full history for replay"}]
 
 
 @pytest.mark.parametrize(

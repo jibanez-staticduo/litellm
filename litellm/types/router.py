@@ -127,6 +127,7 @@ class RouterConfig(LiteLLMBaseModel):
     retry_after: int | None = 0
     routing_strategy: RoutingStrategyName = "simple-shuffle"
     routing_groups: list[RoutingGroup] | None = None
+    chatgpt_profile_pool_model_groups: Sequence[str] | None = None
 
     model_config = ConfigDict(protected_namespaces=())
 
@@ -188,6 +189,7 @@ class UpdateRouterConfig(LiteLLMBaseModel):
     weights: RouterWeights | None = None
     tag_routing_prefix: str | None = None
     optional_pre_call_checks: OptionalPreCallChecks | None = None
+    chatgpt_profile_pool_model_groups: Sequence[str] | None = None
 
     model_config = ConfigDict(protected_namespaces=())
 

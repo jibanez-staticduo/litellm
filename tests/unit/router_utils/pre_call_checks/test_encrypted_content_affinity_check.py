@@ -15,7 +15,10 @@ The mechanism works without any cache and supports two encoding strategies:
   encrypted_content back to their original forms before sending to the upstream provider.
 """
 
+import json
 import time
+from pathlib import Path
+from typing import Final
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -24,6 +27,41 @@ import litellm
 from litellm.models.credentials import CredentialItem
 from litellm.responses.utils import ResponsesAPIRequestUtils
 from litellm.types.llms.openai import ResponsesAPIResponse
+
+
+@pytest.mark.parametrize("same_account", (False, True))
+def test_chatgpt_ciphertext_boundary_tracks_account_instead_of_shared_api_placeholders(
+    same_account: bool, tmp_path: Path
+) -> None:
+    from litellm.router_utils.pre_call_checks.encrypted_content_affinity_check import EncryptedContentAffinityCheck
+
+    for profile in ("account-a", "account-b"):
+        (tmp_path / f"{profile}.json").write_text(json.dumps({
+            "access_token": "fixture-token", "account_id": profile, "expires_at": 1e20,
+        }))
+    router: Final = litellm.Router(model_list=[
+        {
+            "model_name": "pool",
+            "litellm_params": {
+                "model": "chatgpt/unit-test-model", "api_key": "shared-placeholder",
+                "api_base": "https://backend.example.test", "chatgpt_auth_profile": profile,
+                "chatgpt_token_dir": str(tmp_path),
+            },
+            "model_info": {"id": deployment_id},
+        }
+        for deployment_id, profile in (("origin", "account-a"), ("target", "account-a" if same_account else "account-b"))
+    ])
+    request_input: Final = [{
+        "type": "reasoning", "id": "rs-origin", "encrypted_content": "origin-ciphertext",
+        "summary": [{"type": "summary_text", "text": "readable reasoning"}],
+    }]
+    target: Final = router.get_deployment(model_id="target")
+    assert target is not None
+    EncryptedContentAffinityCheck.strip_reasoning_the_targets_cannot_decrypt(
+        router, request_input, None, (target,), unmarked_origin="origin"
+    )
+    assert request_input[0]["summary"] == [{"type": "summary_text", "text": "readable reasoning"}]
+    assert ("encrypted_content" in request_input[0]) is same_account
 
 
 @pytest.fixture(autouse=True)

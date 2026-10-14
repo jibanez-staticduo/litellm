@@ -48714,6 +48714,8 @@ export interface components {
         UpdateRouterConfig: {
             /** Allowed Fails */
             allowed_fails?: number | null;
+            /** Chatgpt Profile Pool Model Groups */
+            chatgpt_profile_pool_model_groups?: string[] | null;
             /** Context Window Fallbacks */
             context_window_fallbacks?: {
                 [key: string]: unknown;

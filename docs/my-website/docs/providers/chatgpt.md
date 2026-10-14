@@ -50,3 +50,32 @@ Managed Responses delegation authorizes its backend model as well as the voice m
 For both HTTP and WebSocket forks of managed sessions, restricted-model keys must explicitly provide an authorized `session.delegation.responses.model`. Empty overrides cannot safely authorize an inherited managed backend: the session handle records startup configuration, while later updates may have changed the upstream model. Client-delegation forks can use empty overrides because the delegation type is immutable
 
 See the official [Live overview](https://developers.openai.com/api/docs/guides/live), [Live API reference](https://developers.openai.com/api/reference/resources/live), [session management](https://developers.openai.com/api/docs/guides/live-conversations), [WebRTC guide](https://developers.openai.com/api/docs/guides/voice-webrtc?api=live), [WebSocket guide](https://developers.openai.com/api/docs/guides/voice-websockets?api=live), [server controls](https://developers.openai.com/api/docs/guides/voice-server-controls?api=live) and [SIP guide](https://developers.openai.com/api/docs/guides/voice-sip?api=live) for the upstream contract. The voice guides also contain Realtime tabs with different routes and formats
+
+## ChatGPT Account Pools
+
+ChatGPT deployments in one model group must use the same authentication profile unless an administrator lists the group in `chatgpt_profile_pool_model_groups`. This router setting is not a request parameter. An alias pointing to an authorized group uses that group's policy.
+
+```yaml
+model_list:
+  - model_name: memory-model
+    litellm_params:
+      model: chatgpt/gpt-6-luna
+      chatgpt_auth_profile: account1
+  - model_name: memory-model
+    litellm_params:
+      model: chatgpt/gpt-6-luna
+      chatgpt_auth_profile: account2
+
+router_settings:
+  chatgpt_profile_pool_model_groups:
+    - memory-model
+  enable_weighted_failover: true
+```
+
+Use profiles that are already authenticated. The pool uses the existing routing strategy. `enable_weighted_failover` lets async calls using `simple-shuffle` try another deployment after a retryable failure within the configured fallback budget. Fallbacks to separate groups still require `allow_chatgpt_cross_profile_fallback: true` when they change ChatGPT accounts.
+
+When a request changes ChatGPT accounts, the router starts the next attempt without `previous_response_id` and preserves the supplied message and tool history. It removes encrypted reasoning that the destination cannot decrypt, keeping readable reasoning summaries when available. A deployment change within the same account preserves the response ID and compatible encrypted reasoning.
+
+Clients must supply the conversation history needed for replay. Removing a response ID does not recover messages stored only by the previous account. Requests that reference or create provider-owned resources, such as files or batches, cannot use a group with mixed accounts.
+
+For predictable continuity across requests, bind each deployment to its account instead of overriding its authentication parameters per request. Response IDs identify a deployment, so an ID created with different credentials cannot identify that credential override in a later request. Within a retry chain, the router tracks the effective account and applies the fallback permission to authentication overrides as well.
