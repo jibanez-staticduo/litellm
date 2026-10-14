@@ -4445,19 +4445,15 @@ class Router:
             if isinstance(previous_response_id, str)
             else None
         )
+        origin_ids: Final = tuple(
+            model_id for model_id in (response_origin_id, previous_deployment_id) if model_id is not None
+        )
         origin_boundaries: Final = (
             (previous_attempt.boundary,)
             if previous_attempt is not None
-            else (
-                self._chatgpt_boundary_for_deployment_id(response_origin_id)
-                if response_origin_id is not None
-                else None,
-                self._chatgpt_boundary_for_deployment_id(previous_deployment_id)
-                if previous_deployment_id is not None
-                else None,
-            )
+            else tuple(self._chatgpt_boundary_for_deployment_id(model_id) for model_id in origin_ids)
         )
-        if not any(boundary != target_boundary for boundary in origin_boundaries if boundary is not None):
+        if not any(boundary != target_boundary for boundary in origin_boundaries):
             return MappingProxyType({})
         replay_history: Final = MappingProxyType(
             {key: copy.deepcopy(kwargs[key]) for key in ("input", "messages") if key in kwargs}

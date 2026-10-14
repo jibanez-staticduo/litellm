@@ -6,7 +6,9 @@ from types import MappingProxyType
 from typing import Final
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
+import respx
 
 import litellm
 from litellm import Router
@@ -23,6 +25,75 @@ from litellm.types.utils import (
     StandardLoggingModelInformation,
     StandardLoggingPayload,
 )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("origin_in_default", (False, True))
+async def test_chatgpt_replays_history_after_response_deployment_is_removed(
+    origin_in_default: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from litellm.responses.utils import ResponsesAPIRequestUtils
+
+    monkeypatch.setenv("DISABLE_AIOHTTP_TRANSPORT", "True")
+    for profile in ("removed-account", "active-account"):
+        (tmp_path / f"{profile}.json").write_text(json.dumps({
+            "access_token": "fixture-token", "account_id": profile, "expires_at": 1e20,
+        }))
+    previous_id: Final = ResponsesAPIRequestUtils._build_responses_api_response_id(
+        "chatgpt", "removed-account", "resp-origin"
+    )
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": profile,
+                "litellm_params": {
+                    "model": "chatgpt/unit-test-model", "chatgpt_token_dir": str(tmp_path),
+                    "chatgpt_auth_profile": profile, "api_base": "https://backend.example.test",
+                },
+                "model_info": {"id": profile},
+            }
+            for profile in ("removed-account", "active-account")
+        ],
+        default_litellm_params={"previous_response_id": previous_id} if origin_in_default else {},
+        num_retries=0,
+    )
+    router.delete_deployment(id="removed-account")
+    caller_input: Final = [
+        {"role": "user", "content": "remember this"},
+        {
+            "type": "reasoning", "encrypted_content": "removed-account-ciphertext",
+            "id": ResponsesAPIRequestUtils._build_encrypted_item_id("removed-account", "rs-origin"),
+            "summary": [{"type": "summary_text", "text": "readable reasoning"}],
+        },
+        {"type": "function_call", "call_id": "call-one", "name": "lookup", "arguments": "{}"},
+        {"type": "function_call_output", "call_id": "call-one", "output": "useful result"},
+    ]
+    caller_snapshot: Final = json.dumps(caller_input)
+    completed: Final = {
+        "type": "response.completed", "response": {
+            "id": "resp-completed", "object": "response", "created_at": 1, "status": "completed",
+            "model": "unit-test-model", "output": [],
+        },
+    }
+    with respx.mock(assert_all_called=True) as transport:
+        route: Final = transport.post(url__regex=r"https://backend\.example\.test/.*").mock(
+            return_value=httpx.Response(
+                200, headers={"content-type": "text/event-stream"},
+                text=f"data: {json.dumps(completed)}\n\ndata: [DONE]\n\n",
+            )
+        )
+        response: Final = await router.aresponses(
+            model="active-account", input=caller_input,
+            **({} if origin_in_default else {"previous_response_id": previous_id}),
+        )
+    provider_body: Final = json.loads(route.calls[0].request.content)
+    assert response.status == "completed"
+    assert route.calls[0].request.headers["chatgpt-account-id"] == "active-account"
+    assert not provider_body.get("previous_response_id")
+    assert provider_body["input"][0] == caller_input[0]
+    assert provider_body["input"][2:] == caller_input[2:]
+    assert provider_body["input"][1] == {"type": "reasoning", "summary": caller_input[1]["summary"]}
+    assert json.dumps(caller_input) == caller_snapshot
 
 
 @pytest.mark.parametrize("same_account,effective_override", ((False, False), (True, False), (True, True)))
