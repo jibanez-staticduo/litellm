@@ -100,7 +100,7 @@ from litellm.litellm_core_utils.hidden_params import (
 )
 from litellm.litellm_core_utils.litellm_logging import Logging as LiteLLMLogging
 from litellm.litellm_core_utils.llm_cost_calc.utils import SERVICE_TIER_COST_KEY_SUFFIXES
-from litellm.litellm_core_utils.prompt_templates.common_utils import request_contains_provider_file_ids
+from litellm.litellm_core_utils.prompt_templates.common_utils import request_contains_provider_resources
 from litellm.litellm_core_utils.ptu_pricing import (
     PTU_COST_ATTRIBUTION_ENV_VAR,
     declares_ptu,
@@ -4410,6 +4410,11 @@ class Router:
             effective_chatgpt_params
         )
         if selected_chatgpt_boundary is None:
+            chatgpt_replay: Final = self._chatgpt_profile_replay_kwargs(
+                deployment, kwargs, previous_deployment_id, previous_attempt
+            )
+            if chatgpt_replay:
+                return chatgpt_replay
             self._strip_reasoning_on_fallback(deployment, kwargs, previous_deployment_id)
             return MappingProxyType({})
         current_model_info: Final = kwargs.get("model_info")
@@ -4438,14 +4443,13 @@ class Router:
         target_boundary: Final = EncryptedContentAffinityCheck.chatgpt_authentication_boundary(
             self._effective_chatgpt_params(deployment, kwargs)
         )
-        if target_boundary is None:
-            return MappingProxyType({})
         previous_response_id: Final = kwargs.get("previous_response_id")
-        response_origin_id: Final = (
-            ResponsesAPIRequestUtils.get_model_id_from_response_id(previous_response_id)
+        response_origin: Final = (
+            ResponsesAPIRequestUtils.decode_responses_api_response_id(previous_response_id)
             if isinstance(previous_response_id, str)
             else None
         )
+        response_origin_id: Final = response_origin.get("model_id") if response_origin is not None else None
         origin_ids: Final = tuple(
             model_id for model_id in (response_origin_id, previous_deployment_id) if model_id is not None
         )
@@ -4454,10 +4458,17 @@ class Router:
             if previous_attempt is not None
             else tuple(self._chatgpt_boundary_for_deployment_id(model_id) for model_id in origin_ids)
         )
-        if not any(boundary != target_boundary for boundary in origin_boundaries):
+        leaving_chatgpt: Final = target_boundary is None and (
+            previous_attempt is not None
+            or any(boundary is not None for boundary in origin_boundaries)
+            or (response_origin is not None and response_origin.get("custom_llm_provider") == "chatgpt")
+        )
+        if target_boundary is None and not leaving_chatgpt:
             return MappingProxyType({})
-        if request_contains_provider_file_ids(messages=kwargs.get("messages"), request_input=kwargs.get("input")):
-            raise ValueError("ChatGPT requests with account-owned files cannot change authentication profiles")
+        if not leaving_chatgpt and not any(boundary != target_boundary for boundary in origin_boundaries):
+            return MappingProxyType({})
+        if self._chatgpt_request_references_provider_resources(kwargs):
+            raise ValueError("ChatGPT requests with account-owned resources cannot change authentication profiles")
         replay_history: Final = MappingProxyType(
             {key: copy.deepcopy(kwargs[key]) for key in ("input", "messages") if key in kwargs}
         )
@@ -13144,13 +13155,26 @@ class Router:
         if (
             references_provider_scoped_resource(effective_kwargs)
             or creates_provider_scoped_resource(effective_kwargs)
-            or request_contains_provider_file_ids(
+            or request_contains_provider_resources(
                 messages=messages if messages is not None else effective_kwargs.get("messages"),
                 request_input=request_input if request_input is not None else effective_kwargs.get("input"),
+                tools=effective_kwargs.get("tools"),
+                conversation=effective_kwargs.get("conversation"),
+                prompt=effective_kwargs.get("prompt"),
             )
         ):
             return frozenset()
         return self.chatgpt_profile_pool_model_groups
+
+    @staticmethod
+    def _chatgpt_request_references_provider_resources(kwargs: Mapping[str, object]) -> bool:
+        return request_contains_provider_resources(
+            messages=kwargs.get("messages"),
+            request_input=kwargs.get("input"),
+            tools=kwargs.get("tools"),
+            conversation=kwargs.get("conversation"),
+            prompt=kwargs.get("prompt"),
+        )
 
     def _chatgpt_default_params(self) -> Mapping[str, object]:
         return _FALLBACK_HOP_ADAPTER.validate_python(self.default_litellm_params)

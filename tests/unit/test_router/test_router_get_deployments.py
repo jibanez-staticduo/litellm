@@ -172,6 +172,104 @@ async def test_chatgpt_pool_keeps_inline_files_urls_and_tool_history_eligible(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("request_payload", (
+    {"tools": [{"type": "code_interpreter", "container": "cntr_owned"}]},
+    {"tools": [{"type": "code_interpreter", "container": {"type": "auto", "file_ids": ["file-owned"]}}]},
+    {"tools": [{"type": "file_search", "vector_store_ids": ["vs_owned"]}]},
+    {"conversation": "conv_owned"},
+    {"conversation": {"id": "conv_owned"}},
+    {"prompt": {"id": "pmpt_owned", "variables": {"topic": "test"}}},
+    {"tools": [{"type": "image_generation", "input_image_mask": {"file_id": "file-owned"}}]},
+    {"tools": [{"type": "shell", "environment": {"type": "container_reference", "container_id": "cntr_owned"}}]},
+    {"tools": [{"type": "shell", "environment": {"type": "container_auto", "file_ids": ["file-owned"]}}]},
+    {"tools": [{"type": "shell", "environment": {"type": "container_auto", "skills": [
+        {"type": "skill_reference", "skill_id": "skill_owned"},
+    ]}}]},
+    {"input": [{"type": "item_reference", "id": "item_owned"}]},
+    {"input": [{"id": "item_owned"}]},
+    {"input": [{"type": "shell_call", "call_id": "call-one", "action": {"commands": ["pwd"]},
+        "environment": {"type": "container_reference", "container_id": "cntr_owned"}}]},
+    {"input": [{"type": "computer_call_output", "call_id": "call-one", "output": {
+        "type": "computer_screenshot", "file_id": "file-owned",
+    }}]},
+    {"input": [{"type": "code_interpreter_call", "id": "ci_owned", "container_id": "cntr_owned",
+                "code": "print(1)", "outputs": [], "status": "completed"}]},
+))
+async def test_chatgpt_pool_refuses_account_owned_resources(
+    request_payload: dict[str, object], chatgpt_pool_tokens: str
+) -> None:
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "account-pool",
+                "litellm_params": {
+                    "model": "chatgpt/unit-test-model", "chatgpt_auth_profile": profile,
+                    "chatgpt_token_dir": chatgpt_pool_tokens,
+                },
+                "model_info": {"id": profile},
+            }
+            for profile in ("account-a", "account-b")
+        ],
+        chatgpt_profile_pool_model_groups=("account-pool",),
+        allow_chatgpt_cross_profile_fallback=True,
+    )
+    with pytest.raises(ValueError, match="mixed authentication profiles"):
+        router.get_available_deployment("account-pool", request_kwargs=request_payload)
+    with pytest.raises(ValueError, match="mixed authentication profiles"):
+        await router.async_get_available_deployment("account-pool", request_kwargs=request_payload)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("request_payload", (
+    {"tools": [{"type": "code_interpreter", "container": {"type": "auto"}}]},
+    {"tools": [{"type": "code_interpreter", "container": {"type": "auto", "file_ids": []}}]},
+    {"tools": [{"type": "file_search", "vector_store_ids": []}]},
+    {"tools": [{"type": "image_generation", "input_image_mask": {"image_url": "https://example.test/mask.png"}}]},
+    {"tools": [{"type": "shell", "environment": {"type": "local"}}]},
+    {"tools": [{"type": "shell", "environment": {"type": "container_auto", "file_ids": []}}]},
+    {"tools": [{"type": "shell", "environment": {"type": "container_auto", "skills": [
+        {"type": "inline", "name": "fixture", "description": "fixture", "source": {
+            "type": "base64", "data": "fixture", "media_type": "application/zip",
+        }},
+    ]}}]},
+    {"prompt": {"variables": {"id": "business-id", "file_id": "business-file"}}},
+    {"input": [{"type": "function_call", "id": "fc_owned", "call_id": "call-one", "name": "lookup",
+        "arguments": '{"container_id":"business-value","skill_id":"business-value"}'}]},
+    {"input": [{"type": "computer_call_output", "call_id": "call-one", "output": {
+        "type": "computer_screenshot", "image_url": "data:image/png;base64,fixture",
+    }}]},
+    {"tools": [{"type": "function", "name": "lookup", "parameters": {
+        "type": "object", "properties": {"container_id": {"type": "string"}, "file_ids": {"type": "string"}},
+    }}]},
+    {"input": [{"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": "ready",
+        "annotations": [{"type": "container_file_citation", "container_id": "cntr_old", "file_id": "file-old"}]}]}]},
+    {"metadata": {"conversation": "conv_business", "container_id": "cntr_business", "file_ids": ["file-business"]}},
+    {"conversation": None},
+))
+async def test_chatgpt_pool_keeps_requests_without_existing_resources_eligible(
+    request_payload: dict[str, object], chatgpt_pool_tokens: str
+) -> None:
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "account-pool",
+                "litellm_params": {
+                    "model": "chatgpt/unit-test-model", "chatgpt_auth_profile": profile,
+                    "chatgpt_token_dir": chatgpt_pool_tokens,
+                },
+                "model_info": {"id": profile},
+            }
+            for profile in ("account-a", "account-b")
+        ],
+        chatgpt_profile_pool_model_groups=("account-pool",),
+    )
+    sync_selected: Final = router.get_available_deployment("account-pool", request_kwargs=request_payload)
+    async_selected: Final = await router.async_get_available_deployment("account-pool", request_kwargs=request_payload)
+    assert sync_selected["model_info"]["id"] in {"account-a", "account-b"}
+    assert async_selected["model_info"]["id"] in {"account-a", "account-b"}
+
+
+@pytest.mark.asyncio
 async def test_wildcard_openai_routing():
     """
     Initialize router with *, all models go through * and use OPENAI_API_KEY

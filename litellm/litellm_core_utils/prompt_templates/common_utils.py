@@ -342,6 +342,97 @@ def request_contains_provider_file_ids(*, messages: object = None, request_input
     return any(_content_part_references_provider_file(part) for part in chain(roots, content, tool_content))
 
 
+def _tool_references_provider_resources(tool: object) -> bool:
+    if not isinstance(tool, Mapping):
+        return False
+    fields: Final = _FILE_CONTENT_BLOCK_ADAPTER.validate_python(tool)
+    if fields.get("type") == "file_search":
+        return any(
+            _file_reference_is_account_owned(value) for value in _file_content_parts(fields.get("vector_store_ids"))
+        )
+    if fields.get("type") == "shell":
+        return _shell_environment_references_provider_resources(fields.get("environment"), allow_auto=True)
+    if fields.get("type") == "image_generation":
+        return _resource_mapping_has_owned_id(fields.get("input_image_mask"), "file_id")
+    if fields.get("type") != "code_interpreter":
+        return False
+    container: Final = fields.get("container")
+    if isinstance(container, str):
+        return _file_reference_is_account_owned(container)
+    if not isinstance(container, Mapping):
+        return False
+    container_fields: Final = _FILE_CONTENT_BLOCK_ADAPTER.validate_python(container)
+    return container_fields.get("type") == "auto" and any(
+        _file_reference_is_account_owned(value) for value in _file_content_parts(container_fields.get("file_ids"))
+    )
+
+
+def _resource_mapping_has_owned_id(value: object, field: str) -> bool:
+    return isinstance(value, Mapping) and _file_reference_is_account_owned(
+        _FILE_CONTENT_BLOCK_ADAPTER.validate_python(value).get(field)
+    )
+
+
+def _skill_references_provider_resource(skill: object) -> bool:
+    if not isinstance(skill, Mapping):
+        return False
+    fields: Final = _FILE_CONTENT_BLOCK_ADAPTER.validate_python(skill)
+    return fields.get("type") == "skill_reference" and _file_reference_is_account_owned(fields.get("skill_id"))
+
+
+def _shell_environment_references_provider_resources(environment: object, *, allow_auto: bool) -> bool:
+    if not isinstance(environment, Mapping):
+        return False
+    fields: Final = _FILE_CONTENT_BLOCK_ADAPTER.validate_python(environment)
+    if fields.get("type") == "container_reference":
+        return _file_reference_is_account_owned(fields.get("container_id"))
+    if not allow_auto or fields.get("type") != "container_auto":
+        return False
+    return any(_file_reference_is_account_owned(value) for value in _file_content_parts(fields.get("file_ids"))) or any(
+        _skill_references_provider_resource(skill) for skill in _file_content_parts(fields.get("skills"))
+    )
+
+
+def _input_item_references_provider_resource(item: object) -> bool:
+    if not isinstance(item, Mapping):
+        return False
+    fields: Final = _FILE_CONTENT_BLOCK_ADAPTER.validate_python(item)
+    item_type: Final = fields.get("type")
+    if item_type == "code_interpreter_call":
+        return _file_reference_is_account_owned(fields.get("container_id"))
+    if item_type == "item_reference" or frozenset(fields) == frozenset(("id",)):
+        return _file_reference_is_account_owned(fields.get("id"))
+    if item_type == "shell_call":
+        return _shell_environment_references_provider_resources(fields.get("environment"), allow_auto=False)
+    if item_type != "computer_call_output" or not isinstance(fields.get("output"), Mapping):
+        return False
+    output: Final = _FILE_CONTENT_BLOCK_ADAPTER.validate_python(fields["output"])
+    return output.get("type") == "computer_screenshot" and _file_reference_is_account_owned(output.get("file_id"))
+
+
+def request_contains_provider_resources(
+    *,
+    messages: object = None,
+    request_input: object = None,
+    tools: object = None,
+    conversation: object = None,
+    prompt: object = None,
+) -> bool:
+    """Account-bound resources in supported content, tool and request reference fields."""
+    conversation_id: Final = (
+        _FILE_CONTENT_BLOCK_ADAPTER.validate_python(conversation).get("id")
+        if isinstance(conversation, Mapping)
+        else conversation
+    )
+    return (
+        request_contains_provider_file_ids(messages=messages, request_input=request_input)
+        or _file_reference_is_account_owned(conversation_id)
+        or _resource_mapping_has_owned_id(prompt, "id")
+        or any(_tool_references_provider_resources(tool) for tool in _file_content_parts(tools))
+        or any(_input_item_references_provider_resource(item) for item in _file_content_parts(request_input))
+    )
+
+
 def audio_or_image_in_message_content(message: AllMessageValues) -> bool:
     """
     Checks if message content contains an image or audio

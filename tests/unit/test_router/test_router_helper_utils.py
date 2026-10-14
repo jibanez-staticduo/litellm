@@ -28,10 +28,89 @@ from litellm.types.utils import (
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("source_provider,target_provider", (
+    ("chatgpt", "openai"), ("chatgpt", "hosted_vllm"), ("openai", "openai"),
+))
+@pytest.mark.parametrize("removed_origin", (False, True))
+async def test_chatgpt_fallback_to_another_provider_replays_readable_history(
+    source_provider: str, target_provider: str, removed_origin: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from litellm.responses.utils import ResponsesAPIRequestUtils
+
+    monkeypatch.setenv("DISABLE_AIOHTTP_TRANSPORT", "True")
+    (tmp_path / "account-a.json").write_text(json.dumps({
+        "access_token": "fixture-token", "account_id": "account-a", "expires_at": 1e20,
+    }))
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": model_group,
+                "litellm_params": {
+                    "model": f"{provider}/unit-test-model", "api_key": "fixture-token",
+                    "chatgpt_auth_profile": "account-a", "chatgpt_token_dir": str(tmp_path),
+                    "api_base": "https://backend.example.test",
+                },
+                "model_info": {"id": model_group},
+            }
+            for model_group, provider in (("primary-group", source_provider), ("fallback-group", target_provider))
+        ],
+        fallbacks=[{"primary-group": ["fallback-group"]}],
+        allow_chatgpt_cross_profile_fallback=True,
+        num_retries=0,
+    )
+    if removed_origin:
+        router.delete_deployment(id="primary-group")
+    previous_id: Final = ResponsesAPIRequestUtils._build_responses_api_response_id(
+        source_provider, "primary-group", "resp-origin"
+    )
+    history: Final = [
+        {"role": "user", "content": "remember this"},
+        {
+            "type": "reasoning", "encrypted_content": "origin-ciphertext",
+            "id": ResponsesAPIRequestUtils._build_encrypted_item_id("primary-group", "rs-origin"),
+            "summary": [{"type": "summary_text", "text": "readable reasoning"}],
+        },
+        {"type": "function_call", "call_id": "call-one", "name": "lookup", "arguments": "{}"},
+        {"type": "function_call_output", "call_id": "call-one", "output": "useful result"},
+    ]
+    history_snapshot: Final = json.dumps(history)
+    completed_response: Final = {
+        "id": "resp-completed", "object": "response", "created_at": 1, "status": "completed",
+        "model": "unit-test-model", "output": [], "usage": {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2},
+    }
+    with respx.mock(assert_all_called=True) as transport:
+        route: Final = transport.post(url__regex=r"https://backend\.example\.test/.*").mock(side_effect=(
+            [] if removed_origin else [
+                httpx.Response(429, json={"error": {"message": "fixture quota", "type": "rate_limit_exceeded"}}),
+            ]
+        ) + [httpx.Response(200, json=completed_response)])
+        response: Final = await router.aresponses(
+            model="fallback-group" if removed_origin else "primary-group", input=history,
+            previous_response_id=previous_id,
+        )
+    assert response.status == "completed"
+    assert route.call_count == (1 if removed_origin else 2)
+    fallback_body: Final = json.loads(route.calls[-1].request.content)
+    if source_provider != "chatgpt":
+        assert fallback_body["previous_response_id"] == "resp-origin"
+        return
+    assert not fallback_body.get("previous_response_id")
+    assert "origin-ciphertext" not in json.dumps(fallback_body)
+    assert "remember this" in json.dumps(fallback_body)
+    assert "useful result" in json.dumps(fallback_body)
+    assert "lookup" in json.dumps(fallback_body)
+    assert "call-one" in json.dumps(fallback_body)
+    assert fallback_body["input"] == [
+        history[0], {"type": "reasoning", "summary": history[1]["summary"]}, *history[2:],
+    ]
+    assert json.dumps(history) == history_snapshot
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("mixed_pool,same_account", ((False, False), (True, False), (False, True)))
-@pytest.mark.parametrize("multimodal_output", (False, True))
+@pytest.mark.parametrize("resource_form", ("content", "multimodal-output", "tool"))
 async def test_chatgpt_account_owned_files_never_reach_another_account(
-    mixed_pool: bool, same_account: bool, multimodal_output: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    mixed_pool: bool, same_account: bool, resource_form: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("DISABLE_AIOHTTP_TRANSPORT", "True")
     for profile in ("account-a", "account-b"):
@@ -59,7 +138,12 @@ async def test_chatgpt_account_owned_files_never_reach_another_account(
     history: Final = [
         {"type": "function_call", "call_id": "call-one", "name": "lookup", "arguments": "{}"},
         {"type": "function_call_output", "call_id": "call-one", "output": [file_part]},
-    ] if multimodal_output else [{"role": "user", "content": [file_part]}]
+    ] if resource_form == "multimodal-output" else [{
+        "role": "user", "content": "portable text" if resource_form == "tool" else [file_part],
+    }]
+    request_options: Final = {
+        "tools": [{"type": "code_interpreter", "container": {"type": "auto", "file_ids": ["file-owned"]}}],
+    } if resource_form == "tool" else {}
     history_snapshot: Final = json.dumps(history)
     completed: Final = {
         "type": "response.completed", "response": {
@@ -78,15 +162,15 @@ async def test_chatgpt_account_owned_files_never_reach_another_account(
                            text=f"data: {json.dumps(completed)}\n\ndata: [DONE]\n\n"),
         ])
         if same_account:
-            response: Final = await router.aresponses(model="primary-group", input=history)
+            response: Final = await router.aresponses(model="primary-group", input=history, **request_options)
             assert response.status == "completed"
             assert json.loads(route.calls[1].request.content)["input"] == history
         elif mixed_pool:
             with pytest.raises(ValueError, match="mixed authentication profiles"):
-                await router.aresponses(model="primary-group", input=history)
+                await router.aresponses(model="primary-group", input=history, **request_options)
         else:
             with pytest.raises(litellm.RateLimitError, match="fixture quota"):
-                await router.aresponses(model="primary-group", input=history)
+                await router.aresponses(model="primary-group", input=history, **request_options)
     assert route.call_count == (0 if mixed_pool else 2 if same_account else 1)
     assert all(call.request.headers["chatgpt-account-id"] == "account-a" for call in route.calls)
     assert json.dumps(history) == history_snapshot
