@@ -26,6 +26,49 @@ import check_licenses  # noqa: E402
 _LICCHECK_INI = Path(_CODE_COVERAGE_DIR) / "liccheck.ini"
 
 
+@pytest.mark.parametrize("source_kind", ("editable", "directory"))
+@pytest.mark.parametrize(
+    "license_value,accepted", (("MIT", True), ("GPL-3.0-only", False), ("Unknown", False), (None, False))
+)
+def test_local_workspace_license_uses_source_metadata(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, source_kind: str, license_value: str | None, accepted: bool
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    package: Final = tmp_path / "extension"
+    package.mkdir()
+    license_line: Final = f'license = "{license_value}"\n' if license_value is not None else ""
+    _ = (package / "pyproject.toml").write_text(
+        '[project]\nname = "local-extension"\nversion = "0.1.0"\n' + license_line
+    )
+    _ = (tmp_path / "uv.lock").write_text(
+        '[[package]]\nname = "local-extension"\nversion = "0.1.0"\n'
+        + f'source = {{ {source_kind} = "extension" }}\n'
+    )
+
+    def reject_http(url: str, *, timeout: float) -> requests.Response:
+        pytest.fail("Workspace licenses must not come from PyPI")
+
+    checker: Final = check_licenses.LicenseChecker(config_file=_LICCHECK_INI, http_get=reject_http)
+    assert checker.check_package("local-extension", "0.1.0") is accepted
+    assert checker.package_results[0].license_type == license_value
+
+
+def test_local_workspace_missing_source_metadata_fails_without_pypi(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    _ = (tmp_path / "uv.lock").write_text(
+        '[[package]]\nname = "local-extension"\nversion = "0.1.0"\nsource = { editable = "missing" }\n'
+    )
+
+    def reject_http(url: str, *, timeout: float) -> requests.Response:
+        pytest.fail("Missing workspace metadata must not fall back to PyPI")
+
+    checker: Final = check_licenses.LicenseChecker(config_file=_LICCHECK_INI, http_get=reject_http)
+    assert checker.check_package("local-extension", "0.1.0") is False
+    assert checker.package_results[0].license_type is None
+
+
 class _FakeResponse:
     def __init__(self, payload):
         self._payload = payload

@@ -2,6 +2,7 @@
 
 import json
 import sys
+import tomllib
 import zipfile
 from importlib import metadata
 from pathlib import Path
@@ -24,7 +25,7 @@ from scripts.check_staticduo_compatibility import check_candidate, check_wheel, 
 
 def test_reviewed_source_contract():
     candidate = check_candidate(ROOT, load_manifest().upstream_baseline_commit)
-    assert candidate.core_version == "1.106.0"
+    assert candidate.core_version == tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
     assert len(candidate.extension_source_sha256) == 64
 
 
@@ -51,14 +52,15 @@ def test_missing_extension_module_rejected():
         check_interfaces(manifest, read)
 
 
-@pytest.mark.parametrize("core,extension", [("1.107.0", "0.1.0"), ("1.105.9", "0.1.0"), ("1.106.0", "0.2.0")])
+@pytest.mark.parametrize("core,extension", [("1.108.0", "0.1.0"), ("1.105.9", "0.1.0"), ("1.106.0", "0.2.0")])
 def test_version_mismatch_rejected(core, extension):
     with pytest.raises(CompatibilityError):
         check_versions(load_manifest(), {"litellm": core, "staticduo-litellm": extension})
 
 
-def test_patch_release_allowed():
-    assert check_versions(load_manifest(), {"litellm": "1.106.99", "staticduo-litellm": "0.1.0"}) is None
+@pytest.mark.parametrize("core", ["1.106.0", "1.106.99", "1.107.0", "1.107.99"])
+def test_reviewed_minor_and_patch_releases_allowed(core):
+    assert check_versions(load_manifest(), {"litellm": core, "staticduo-litellm": "0.1.0"}) is None
 
 
 def test_upstream_drift_rejected():
@@ -339,7 +341,11 @@ def test_baker_rejects_installed_source_and_catalog_drift(tmp_path, monkeypatch)
     source = release.prepare_source(ROOT, load_manifest().upstream_baseline_commit, "HEAD")
     inventory = extension_inventory(ROOT)
     source = source.model_copy(
-        update={"extension_sources": inventory, "extension_source_sha256": inventory_sha256(inventory)}
+        update={
+            "extension_sources": inventory,
+            "extension_source_sha256": inventory_sha256(inventory),
+            "compatibility_manifest_sha256": inventory["staticduo_litellm/compatibility/release-manifest.json"],
+        }
     )
     paths = []
     for name in inventory:
@@ -351,17 +357,23 @@ def test_baker_rejects_installed_source_and_catalog_drift(tmp_path, monkeypatch)
         contracts,
         "check_runtime",
         lambda manifest: contracts.RuntimeEvidence(
-            core_version="1.106.0", extension_version="0.1.0", native_sha256="a" * 64
+            core_version=source.core_version, extension_version="0.1.0", native_sha256="a" * 64
         ),
     )
     catalog = tmp_path / "catalog"
     generator.generate_catalog(ROOT / "model_prices_and_context_window.json", catalog)
+    source = source.model_copy(
+        update={"catalog": contracts.CatalogSourceReceipt.model_validate_json((catalog / "manifest.json").read_bytes())}
+    )
     receipt = contracts.bake_receipt(source, catalog)
     assert receipt.source_core_sha == source.source_core_sha
     assert receipt.native.sha256 == "a" * 64
     bad_source = source.model_copy(update={"extension_source_sha256": "0" * 64})
     with pytest.raises(CompatibilityError, match="frozen source receipt"):
         contracts.bake_receipt(bad_source, catalog)
+    bad_manifest = source.model_copy(update={"compatibility_manifest_sha256": "0" * 64})
+    with pytest.raises(CompatibilityError, match="frozen source receipt"):
+        contracts.bake_receipt(bad_manifest, catalog)
     (catalog / "model_prices_and_context_window.json").write_bytes(b"wrong catalog")
     with pytest.raises(CompatibilityError, match="Build catalog bytes"):
         contracts.bake_receipt(source, catalog)

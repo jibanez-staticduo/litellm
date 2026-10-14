@@ -11863,6 +11863,14 @@ def test_rerank_usage_is_preserved_in_logging(meta: dict, expected_tokens: int, 
     from litellm.litellm_core_utils.litellm_logging import StandardLoggingPayloadSetup
 
     response: Final = {"id": "rerank-test", "results": [], "meta": meta}
+    rerank_usage: Final = StandardLoggingPayloadSetup._get_rerank_usage(response)
+    if has_usage:
+        assert rerank_usage is not None
+        assert rerank_usage.prompt_tokens == expected_tokens
+        assert rerank_usage.total_tokens == expected_tokens
+        assert rerank_usage.completion_tokens == 0
+    else:
+        assert rerank_usage is None
     usage: Final = StandardLoggingPayloadSetup.get_usage_from_response_obj(response)
     usage_dict: Final = StandardLoggingPayloadSetup.get_usage_as_dict(response)
     assert usage.prompt_tokens == expected_tokens

@@ -25036,6 +25036,104 @@ async def test_acompletion_keeps_include_fallback_errors_off_the_wire_and_return
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("managed", (False, True))
+async def test_responses_router_preserves_caller_metadata_and_internal_oauth_attribution(managed: bool) -> None:
+    from litellm.caching.llm_caching_handler import LLMClientCache
+    from litellm.llms.anthropic.native_transport import AnthropicNativeIdentity
+    from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
+
+    class AttributionLogger(CustomLogger):
+        def __init__(self) -> None:
+            super().__init__()
+            self.metadata: Mapping[str, object] | None = None
+
+        def log_pre_api_call(self, model: object, messages: object, kwargs: Mapping[str, object]) -> None:
+            params: Final = kwargs["litellm_params"]
+            assert isinstance(params, dict)
+            self.metadata = dict(params["metadata"])
+
+    metadata: Final = {"user_id": "caller-user"}
+    original_metadata: Final = dict(metadata)
+    logger: Final = AttributionLogger()
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        body: Final = json.loads(request.content)
+        assert not {"used_server_oauth_token", "anthropic_auth_profile", "used_client_oauth_token"}.intersection(
+            body.get("metadata", {})
+        )
+        if managed:
+            return httpx.Response(
+                200,
+                json={
+                    "id": "msg_metadata",
+                    "type": "message",
+                    "role": "assistant",
+                    "model": "claude-test-model",
+                    "content": [{"type": "text", "text": "native reply"}],
+                    "stop_reason": "end_turn",
+                    "usage": {"input_tokens": 12, "output_tokens": 3},
+                },
+            )
+        assert body["metadata"] == original_metadata
+        return httpx.Response(
+            200,
+            json={
+                "id": "resp_metadata",
+                "object": "response",
+                "created_at": 1741476542,
+                "status": "completed",
+                "model": "gpt-5.5",
+                "output": [],
+                "usage": {"input_tokens": 12, "output_tokens": 3, "total_tokens": 15},
+                "metadata": original_metadata,
+            },
+        )
+
+    managed_params: Final = (
+        {"use_anthropic_oauth": True, "anthropic_auth_profile": "fixed-profile", "anthropic_execution_mode": "native_sdk"}
+        if managed
+        else {"api_key": "fake-key"}
+    )
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "metadata-alias",
+                "litellm_params": {
+                    "model": "anthropic/claude-test-model" if managed else "openai/gpt-5.5",
+                    **managed_params,
+                },
+                "model_info": {"id": "selected-deployment"},
+            }
+        ],
+        num_retries=0,
+    )
+    client: Final = AsyncHTTPHandler(transport=httpx.MockTransport(upstream))
+    cache: Final = LLMClientCache()
+    cache.set_cache("async_httpx_clientanthropic", client)
+    cache.set_cache("async_httpx_clientssl_verify_Noneopenai", client)
+    native_params: Final = {"_anthropic_native_identity": AnthropicNativeIdentity("server-owner")} if managed else {}
+    try:
+        with (
+            patch("litellm.in_memory_llm_clients_cache", cache),
+            patch("litellm.module_level_aclient", client),
+            patch("litellm.callbacks", [logger]),
+            patch.dict(
+                "os.environ",
+                {"ANTHROPIC_NATIVE_SDK_BASE_URL": "http://native-broker", "ANTHROPIC_NATIVE_SDK_KEY": "broker-key"},
+            ),
+        ):
+            await router.aresponses(model="metadata-alias", input="hello", metadata=metadata, client=client, **native_params)
+        assert metadata == original_metadata
+        assert logger.metadata is not None
+        assert logger.metadata["used_server_oauth_token"] is managed
+        assert logger.metadata["anthropic_auth_profile"] == ("fixed-profile" if managed else None)
+        if managed:
+            assert logger.metadata["used_client_oauth_token"] is False
+    finally:
+        await client.client.aclose()
+
+
+@pytest.mark.asyncio
 async def test_native_client_router_selects_profile_and_never_reuses_cached_account_response(tmp_path: Path) -> None:
     from itertools import count
     from litellm.caching.caching import Cache

@@ -3507,7 +3507,7 @@ async def test_attachment_cleanup_runs_in_owning_context_only(account_usage):
                 await asyncio.Event().wait()
 
             backend.recv = recv
-            stream = RealTimeStreaming(websocket, backend, MagicMock(), account_usage=account_usage)
+            stream = RealTimeStreaming(websocket, backend, _mock_logging(), account_usage=account_usage)
             await stream.bidirectional_forward()
             if account_usage:
                 callback.assert_not_awaited()

@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 import configparser
-from collections.abc import Collection, Iterable, Iterator
-from dataclasses import dataclass
 import json
-from pathlib import Path
 import re
 import sys
 import time
+from collections.abc import Collection, Iterable, Iterator
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable, Dict, Final, List, Optional, Protocol, Set, Tuple
 
-from packaging.requirements import Requirement
 import requests
+from packaging.requirements import Requirement
+from pydantic import BaseModel
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -59,6 +60,35 @@ class PackageLicense:
     license_type: Optional[str]
     is_authorized: bool
     reason: str
+
+
+class _LocalSource(BaseModel):
+    editable: str | None = None
+    directory: str | None = None
+
+
+class _LockedPackage(BaseModel):
+    name: str
+    version: str | None = None
+    source: _LocalSource
+
+
+class _Lockfile(BaseModel):
+    package: tuple[_LockedPackage, ...] = ()
+
+
+class _LicenseText(BaseModel):
+    text: str | None = None
+
+
+class _LocalProject(BaseModel):
+    name: str
+    version: str | None = None
+    license: str | _LicenseText | None = None
+
+
+class _LocalMetadata(BaseModel):
+    project: _LocalProject
 
 
 class LicenseChecker:
@@ -299,6 +329,20 @@ class LicenseChecker:
                 return True
 
         # If package is not authorized or authorization check failed, proceed with normal license check
+        local: Final = self._workspace_license(package_lower, version)
+        if local is not None:
+            local_license: Final = local[0]
+            accepted: Final = (
+                local_license is not None and bool(local_license) and self.is_license_acceptable(local_license)[0]
+            )
+            self.package_results.append(
+                PackageLicense(package_name, version, local_license, accepted, "Local source metadata")
+            )
+            sys.stdout.write(
+                f"{'OK' if accepted else 'ERROR'} {package_name}: local license {local_license or 'Unknown'}\n"
+            )
+            return accepted
+
         cache_key = f"{package_name}:{version}" if version else package_name
 
         if cache_key in self.license_cache:
@@ -339,6 +383,32 @@ class LicenseChecker:
             print(f"❌ {package_name}: {license_type} - {reason}")
 
         return is_acceptable
+
+    def _workspace_license(self, package_name: str, version: str | None) -> tuple[str | None] | None:
+        lockfile: Final = Path("uv.lock")
+        if not lockfile.is_file():
+            return None
+        with lockfile.open("rb") as handle:
+            locked: Final = _Lockfile.model_validate(tomllib.load(handle))
+        for package in locked.package:
+            location: Final = package.source.editable or package.source.directory
+            if location is None or self._normalize_package_name(package.name) != package_name:
+                continue
+            metadata_path: Final = Path(location) / "pyproject.toml"
+            try:
+                with metadata_path.open("rb") as handle:
+                    project: Final = _LocalMetadata.model_validate(tomllib.load(handle)).project
+            except (OSError, ValueError):
+                return (None,)
+            if (
+                self._normalize_package_name(project.name) != package_name
+                or project.version != package.version
+                or version is not None and project.version != version
+            ):
+                return (None,)
+            return (project.license if isinstance(project.license, str)
+                    else project.license.text if isinstance(project.license, _LicenseText) else None,)
+        return None
 
     def _direct_group_requirements(
         self, entries: Iterable[object], group_names: Collection[str]

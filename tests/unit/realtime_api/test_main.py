@@ -1,6 +1,7 @@
 import asyncio
 import json
 import time
+from collections.abc import Mapping
 from types import TracebackType
 from typing import Final
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -33,14 +34,19 @@ class FakeLogging:
         pass
 
 
-@pytest.mark.parametrize("provider", [litellm.LlmProviders.XAI, litellm.LlmProviders.OPENAI, litellm.LlmProviders.GEMINI])
+@pytest.mark.parametrize(
+    "provider", [litellm.LlmProviders.XAI, litellm.LlmProviders.OPENAI, litellm.LlmProviders.GEMINI]
+)
 def test_realtime_handler_factory_does_not_read_headers_without_a_handler(provider):
     from litellm.types.router import GenericLiteLLMParams
 
     read_headers = MagicMock(side_effect=AssertionError("Headers must not be read"))
-    assert realtime_main.ProviderConfigManager.get_provider_realtime_handler(
-        provider, GenericLiteLLMParams(), read_headers
-    ) is None
+    assert (
+        realtime_main.ProviderConfigManager.get_provider_realtime_handler(
+            provider, GenericLiteLLMParams(), read_headers
+        )
+        is None
+    )
     read_headers.assert_not_called()
 
 
@@ -51,7 +57,9 @@ def test_realtime_handler_factory_passes_actual_chatgpt_headers(tmp_path, monkey
     monkeypatch.setenv("CHATGPT_TOKEN_DIR", str(tmp_path))
     monkeypatch.setenv("CHATGPT_AUTH_FILE", "auth.json")
     (tmp_path / "auth.json").write_text(
-        json.dumps({"access_token": "factory-test-token", "account_id": "factory-account", "expires_at": time.time() + 3600})
+        json.dumps(
+            {"access_token": "factory-test-token", "account_id": "factory-account", "expires_at": time.time() + 3600}
+        )
     )
     params = GenericLiteLLMParams(litellm_session_id="factory-session")
     headers = {"openai-alpha": "quicksilver=v2"}
@@ -67,6 +75,11 @@ def test_realtime_handler_factory_passes_actual_chatgpt_headers(tmp_path, monkey
     assert outgoing_headers["x-gateway-route"] == extra_headers["x-gateway-route"]
     assert outgoing_headers["session_id"] == "factory-session"
     assert outgoing_headers["Authorization"] == "Bearer factory-test-token"
+
+
+class _CallCapture:
+    def __init__(self) -> None:
+        self.values: Mapping[str, object] | None = None
 
 
 def test_resolves_top_level_session_model():
@@ -272,6 +285,196 @@ def test_client_secret_forwards_nested_transcription_model_untouched(monkeypatch
     session = captured["request_data"]["session"]
     assert session["model"] == "gpt-4o-realtime-preview"
     assert session["input_audio_transcription"]["model"] == "whisper-1"
+
+
+@pytest.mark.asyncio
+async def test_arealtime_live_session_dispatches_to_openai_live_handler(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: Final = _CallCapture()
+
+    def mock_get_llm_provider(
+        model: str,
+        api_base: str | None,
+        api_key: str | None,
+        litellm_params: object = None,
+    ) -> tuple[str, str, str | None, str | None]:
+        return "gpt-live-1", "openai", "resolved-key", "https://live-gateway.example/v1"
+
+    class FakeLiveHandler:
+        async def async_live_session(self, **kwargs: object) -> None:
+            captured.values = kwargs
+
+    monkeypatch.setattr(realtime_main, "get_llm_provider", mock_get_llm_provider)
+    monkeypatch.setattr(realtime_main, "openai_live_sessions", FakeLiveHandler())
+    start_frame: Final[dict[str, object]] = {
+        "type": "session.start",
+        "session": {"model": "live-alias", "instructions": "Stay brief"},
+    }
+    websocket: Final = MagicMock()
+    logging_obj: Final = FakeLogging()
+
+    await realtime_main._arealtime.__wrapped__(
+        model="live-alias",
+        websocket=websocket,
+        litellm_logging_obj=logging_obj,
+        live_session_start=start_frame,
+    )
+
+    assert captured.values is not None
+    assert captured.values["model"] == "gpt-live-1"
+    assert captured.values["websocket"] is websocket
+    assert captured.values["logging_obj"] is logging_obj
+    assert captured.values["session_start"] == start_frame
+    assert captured.values["api_base"] == "https://live-gateway.example/v1"
+    assert captured.values["api_key"] == "resolved-key"
+
+
+@pytest.mark.asyncio
+async def test_arealtime_live_session_rejects_matching_guardrail_before_dispatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class RecordingGuardrail(CustomGuardrail):
+        def __init__(self) -> None:
+            super().__init__(
+                guardrail_name="live-blocker",
+                event_hook=GuardrailEventHooks.realtime_input_transcription,
+                default_on=True,
+            )
+            self.request_data: dict[str, object] | None = None
+
+        def should_run_guardrail(self, data: dict[str, object], event_type: GuardrailEventHooks) -> bool:
+            self.request_data = data
+            return super().should_run_guardrail(data, event_type)
+
+    class FakeLiveHandler:
+        def __init__(self) -> None:
+            self.called = False
+
+        async def async_live_session(self, **kwargs: object) -> None:
+            self.called = True
+
+    guardrail: Final = RecordingGuardrail()
+    live_handler: Final = FakeLiveHandler()
+
+    def mock_get_llm_provider(
+        model: str,
+        api_base: str | None,
+        api_key: str | None,
+        litellm_params: object = None,
+    ) -> tuple[str, str, str | None, str | None]:
+        return "gpt-live-1", "openai", "resolved-key", "https://live-gateway.example/v1"
+
+    monkeypatch.setattr(realtime_main, "get_llm_provider", mock_get_llm_provider)
+    monkeypatch.setattr(realtime_main, "openai_live_sessions", live_handler)
+    monkeypatch.setattr(litellm, "callbacks", [guardrail])
+
+    with pytest.raises(ValueError, match="Guardrails are not supported on OpenAI Live sessions"):
+        await realtime_main._arealtime.__wrapped__(
+            model="live-alias",
+            websocket=MagicMock(),
+            litellm_logging_obj=FakeLogging(),
+            litellm_metadata={"session_id": "live-session"},
+            live_session_start={"type": "session.start", "session": {"model": "live-alias"}},
+        )
+
+    assert guardrail.request_data == {"litellm_metadata": {"session_id": "live-session"}, "stream": True}
+    assert live_handler.called is False
+
+
+@pytest.mark.asyncio
+async def test_arealtime_live_session_rejects_streaming_only_pre_call_guardrail(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeLiveHandler:
+        def __init__(self) -> None:
+            self.called = False
+
+        async def async_live_session(self, **kwargs: object) -> None:
+            self.called = True
+
+    guardrail: Final = CustomGuardrail(
+        guardrail_name="streaming-only-blocker",
+        event_hook=GuardrailEventHooks.pre_call,
+        default_on=True,
+        stream_scope="streaming",
+    )
+    live_handler: Final = FakeLiveHandler()
+
+    def mock_get_llm_provider(
+        model: str,
+        api_base: str | None,
+        api_key: str | None,
+        litellm_params: object = None,
+    ) -> tuple[str, str, str | None, str | None]:
+        return "gpt-live-1", "openai", "resolved-key", "https://live-gateway.example/v1"
+
+    monkeypatch.setattr(realtime_main, "get_llm_provider", mock_get_llm_provider)
+    monkeypatch.setattr(realtime_main, "openai_live_sessions", live_handler)
+    monkeypatch.setattr(litellm, "callbacks", [guardrail])
+
+    with pytest.raises(ValueError, match="Guardrails are not supported on OpenAI Live sessions"):
+        await realtime_main._arealtime.__wrapped__(
+            model="live-alias",
+            websocket=MagicMock(),
+            litellm_logging_obj=FakeLogging(),
+            litellm_metadata={"session_id": "live-session"},
+            live_session_start={"type": "session.start", "session": {"model": "live-alias"}},
+        )
+
+    assert live_handler.called is False
+
+
+@pytest.mark.asyncio
+async def test_arealtime_live_session_rejects_non_openai_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    def mock_get_llm_provider(
+        model: str,
+        api_base: str | None,
+        api_key: str | None,
+        litellm_params: object = None,
+    ) -> tuple[str, str, str | None, str | None]:
+        return "claude-live", "anthropic", None, None
+
+    monkeypatch.setattr(realtime_main, "get_llm_provider", mock_get_llm_provider)
+
+    with pytest.raises(ValueError, match="anthropic"):
+        await realtime_main._arealtime.__wrapped__(
+            model="anthropic/claude-live",
+            websocket=MagicMock(),
+            litellm_logging_obj=FakeLogging(),
+            live_session_start={"type": "session.start", "session": {"model": "claude-live"}},
+        )
+
+
+@pytest.mark.asyncio
+async def test_arealtime_without_live_start_preserves_openai_realtime_dispatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: Final = _CallCapture()
+
+    def mock_get_llm_provider(
+        model: str,
+        api_base: str | None,
+        api_key: str | None,
+        litellm_params: object = None,
+    ) -> tuple[str, str, str | None, str | None]:
+        return "gpt-realtime", "openai", "resolved-key", "https://realtime-gateway.example/v1"
+
+    class FakeRealtimeHandler:
+        async def async_realtime(self, **kwargs: object) -> None:
+            captured.values = kwargs
+
+    monkeypatch.setattr(realtime_main, "get_llm_provider", mock_get_llm_provider)
+    monkeypatch.setattr(realtime_main, "openai_realtime", FakeRealtimeHandler())
+
+    await realtime_main._arealtime.__wrapped__(
+        model="gpt-realtime",
+        websocket=MagicMock(),
+        litellm_logging_obj=FakeLogging(),
+    )
+
+    assert captured.values is not None
+    assert captured.values["model"] == "gpt-realtime"
+    assert captured.values["api_key"] == "resolved-key"
+    assert captured.values["api_base"] == "https://realtime-gateway.example/v1"
 
 
 class _CapturingConnect:

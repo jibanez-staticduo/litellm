@@ -25,6 +25,12 @@ baseline/hash. Updating the range for a new minor core release requires reviewin
 and testing the interface contracts. Neither a newer arbitrary SHA nor a matching
 version alone proves compatibility.
 
+The reviewed core range covers 1.106.x and 1.107.x and rejects 1.108.0.
+The 1.107.0 review preserves the nine declared interface signatures and the
+historical OAuth baseline and hash. Source contract tests cover both supported
+minor versions, signature drift, historical provenance and release artifacts.
+Runtime acceptance still belongs to the final built candidate.
+
 ## Build and Installed Runtime
 
 Generate the catalog with `scripts/generate_staticduo_catalog.py`. After building

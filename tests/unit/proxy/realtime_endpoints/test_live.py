@@ -271,6 +271,12 @@ def route_client(monkeypatch):
         proxy_server,
         "llm_router",
         SimpleNamespace(
+            model_names=("voice",),
+            model_group_alias={},
+            get_model_access_groups=lambda **kwargs: {},
+            get_model_list=lambda model_name, team_id=None: [deployment] if model_name in ("voice", "voice-group") else [],
+            has_model_id=lambda model: False,
+            default_deployment=None,
             get_deployment=lambda model_id: (
                 {
                     "model_name": "voice",
@@ -995,7 +1001,8 @@ async def test_startup_usage_buffer_preserves_nested_events_until_supervisor_own
     assert [json.loads(message) for message in startup.messages] == [usage]
 
 
-def test_primary_websocket_authenticates_model_and_keeps_public_event_shape(route_client):
+@pytest.mark.parametrize("alias", ["voice", "voice-group"])
+def test_primary_websocket_authenticates_model_and_keeps_public_event_shape(route_client, alias):
     from websockets.exceptions import ConnectionClosedOK
     from websockets.frames import Close
 
@@ -1016,15 +1023,17 @@ def test_primary_websocket_authenticates_model_and_keeps_public_event_shape(rout
     observer = SimpleNamespace(store_message=Mock())
     route_client.supervised.return_value = observer
     with route_client.client.websocket_connect("/v1/live/sessions", headers={"Authorization": "Bearer owner"}) as ws:
-        ws.send_json({"type": "session.start", "session": {"model": "voice", "instructions": "hello", "unknown": True}})
+        ws.send_json({"type": "session.start", "session": {"model": alias, "instructions": "hello", "unknown": True}})
         assert ws.receive_json()["type"] == "info"
         started = ws.receive_json()
         public_id = started["session"]["id"]
-        assert live.decode_session(public_id, live._owner(route_client.auth)).session_id == "sess_upstream"
+        decoded = live.decode_session(public_id, live._owner(route_client.auth))
+        assert decoded.session_id == "sess_upstream"
+        assert decoded.alias == alias
         forwarded = ws.receive_json()
         assert forwarded == {**event, "session_id": public_id}
-    assert route_client.bodies[0] == {}
-    assert route_client.bodies[1]["model"] == "voice"
+    assert route_client.bodies[0] == {"model": ""}
+    assert route_client.bodies[1]["model"] == alias
     assert route_client.bodies[1]["session"]["instructions"] == "hello"
     initial = json.loads(backend.send.await_args.args[0])
     assert initial == {
@@ -2367,6 +2376,7 @@ def test_websocket_requires_api_key_then_session_start(route_client):
 
     with route_client.client.websocket_connect("/v1/live/sessions", headers={"Authorization": "Bearer owner"}) as ws:
         ws.send_json({"type": "ping"})
+        assert ws.receive_json()["error"]["code"] == "invalid_session_start"
         with pytest.raises(WebSocketDisconnect) as wrong_first:
             ws.receive_json()
     assert wrong_first.value.code == 1008

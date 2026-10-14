@@ -239,6 +239,7 @@ ContentPart = TextContentPart | ImageContentPart
 class ChatMessage(BaseModel):
     role: str
     content: str | list[ContentPart]
+    cache_control: CacheControl | None = None
 
 
 class CacheControl(BaseModel):
@@ -343,7 +344,7 @@ class ChatAssistantTurn(BaseModel):
 class ChatToolResultTurn(BaseModel):
     role: Literal["tool"] = "tool"
     tool_call_id: str
-    content: str
+    content: str | list[ContentPart]
 
 
 type ChatTurn = ChatMessage | ChatAssistantTurn | ChatToolResultTurn
@@ -471,6 +472,7 @@ class ChatChoice(BaseModel):
 
 class PromptTokensDetails(BaseModel):
     cached_tokens: int | None = None
+    cache_write_tokens: int | None = None
 
 
 class CompletionTokensDetails(BaseModel):
@@ -1350,6 +1352,10 @@ class CacheControlInjectionPoint(BaseModel):
     index: int | None = None
 
 
+class PromptCacheOptions(BaseModel):
+    mode: Literal["implicit", "explicit"]
+
+
 class LiteLLMParamsBody(BaseModel):
     """POST /model/new litellm_params: `model` is the only required field; `api_key`
     et al may be an `os.environ/FOO` reference the proxy resolves at call time.
@@ -1414,6 +1420,7 @@ class LiteLLMParamsBody(BaseModel):
     cooldown_time: float | None = None
     extra_body: DeploymentExtraBody | None = None
     cache_control_injection_points: list[CacheControlInjectionPoint] | None = None
+    prompt_cache_options: PromptCacheOptions | None = None
     tpm: int | None = None
     weight: int | None = None
     order: int | None = None
@@ -1684,7 +1691,7 @@ class UserNewResponse(BaseModel):
 class UserUpdateBody(BaseModel):
     user_id: str
     user_role: UserRole | None = None
-    password: str | None = None
+    password: str | None = Field(default=None, repr=False)
 
 
 class UserInfoParams(BaseModel):

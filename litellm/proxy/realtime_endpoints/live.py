@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from websockets.asyncio.client import ClientConnection
 
 from litellm.litellm_core_utils.litellm_logging import Logging
+from litellm.litellm_core_utils.realtime_errors import realtime_error_event, websocket_close_reason
 from litellm.litellm_core_utils.realtime_streaming import RealTimeStreaming
 from litellm.llms.chatgpt.live import LiveDeployment, LiveOperation, LiveTransport, live_session_path
 from litellm.models.budget import LiteLLM_BudgetTable
@@ -28,6 +29,7 @@ from litellm.proxy._types import (
     LiteLLM_ProjectTableCachedObj,
     LiteLLM_TeamTableCachedObj,
     LitellmUserRoles,
+    ProxyException,
     UserAPIKeyAuth,
 )
 from litellm.proxy.auth.auth_checks import (
@@ -1449,6 +1451,47 @@ async def _incoming_sip(
         )
 
 
+async def authorize_live_session_start(frame: object, auth: UserAPIKeyAuth) -> None:
+    await _authorize_fork_policy(_OBJECT.validate_python(frame), None, auth)
+
+
+async def _authorize_live_client_frame(payload: Mapping[str, JsonValue], auth: UserAPIKeyAuth) -> None:
+    if payload.get("type") == "session.start":
+        raise HTTPException(400, "Session has already started")
+    session: Final = payload.get("session")
+    if isinstance(session, Mapping) and "model" in session:
+        raise HTTPException(400, "Session model cannot change")
+    await _authorize_delegation(payload, auth)
+
+
+class AuthorizedLiveSocket:
+    def __init__(self, websocket: WebSocket, auth: UserAPIKeyAuth) -> None:
+        self.websocket = websocket
+        self.auth = auth
+        self.scope = websocket.scope
+        self.headers = websocket.headers
+        self.url = websocket.url
+
+    async def receive_text(self) -> str:
+        data: Final = await self.websocket.receive_text()
+        try:
+            await _authorize_live_client_frame(_OBJECT.validate_json(data), self.auth)
+        except (HTTPException, ProxyException) as error:
+            message: Final = error.message if isinstance(error, ProxyException) else str(error.detail)
+            await self.websocket.send_text(realtime_error_event(message, error_type="invalid_request_error"))
+            await self.websocket.close(
+                code=1008, reason=websocket_close_reason(message, fallback="Session not allowed")
+            )
+            raise WebSocketDisconnect(code=1008) from error
+        return data
+
+    async def send_text(self, data: str) -> None:
+        await self.websocket.send_text(data)
+
+    async def close(self, code: int = 1000, reason: str | None = None) -> None:
+        await self.websocket.close(code=code, reason=reason)
+
+
 class _PublicSocket:
     def __init__(
         self,
@@ -1476,12 +1519,7 @@ class _PublicSocket:
     async def receive_text(self) -> str:
         data: Final = await self.websocket.receive_text()
         payload: Final = _OBJECT.validate_json(data)
-        if payload.get("type") == "session.start":
-            raise HTTPException(400, "Session has already started")
-        session: Final = payload.get("session")
-        if isinstance(session, Mapping) and "model" in session:
-            raise HTTPException(400, "Session model cannot change")
-        await _authorize_delegation(payload, self.auth)
+        await _authorize_live_client_frame(payload, self.auth)
         return _encode_json(rewrite_session_ids(payload, self.public_id, self.handle.session_id))
 
     async def close(self, code: int = 1000, reason: str | None = None) -> None:
@@ -1518,10 +1556,45 @@ async def _wait_started(
     return await asyncio.wait_for(receive_started(), 20)
 
 
-@_routes.websocket("/sessions")
+def _authenticated_websocket_request(websocket: WebSocket, model: str | None) -> Request:
+    api_key: Final = get_websocket_api_key(websocket)
+    if not api_key:
+        raise HTTPException(403, "API key required")
+    frame: Final = _OBJECT.validate_python(websocket.scope.get("litellm_live_session_start", _EMPTY))
+    request: Final = _request(websocket, MappingProxyType({**frame, "model": model or ""}), model)
+    inbound_headers: Final = TypeAdapter(tuple[tuple[bytes, bytes], ...]).validate_python(websocket.scope["headers"])
+    request.scope["headers"] = (
+        *(item for item in inbound_headers if item[0].lower() != b"authorization"),
+        (b"authorization", f"Bearer {api_key}".encode()),
+    )
+    return request
+
+
+async def upgrade_live_session_auth(websocket: WebSocket) -> UserAPIKeyAuth:
+    try:
+        return await _auth(_authenticated_websocket_request(websocket, None))
+    except (HTTPException, ProxyException):
+        await websocket.close(code=1008, reason="Live authentication rejected")
+        raise
+
+
+async def reauthorize_live_session_model(websocket: WebSocket, model: str) -> UserAPIKeyAuth:
+    return await _auth(_authenticated_websocket_request(websocket, model))
+
+
 @_routes.websocket("/sessions/{session_id}/attach")
 @_routes.websocket("/sessions/{session_id}/fork")
-async def websocket_live_session(websocket: WebSocket, session_id: str | None = None) -> None:
+async def websocket_live_operation(websocket: WebSocket, session_id: str) -> None:
+    await websocket_live_session(websocket, session_id)
+
+
+async def websocket_live_session(
+    websocket: WebSocket,
+    session_id: str | None = None,
+    *,
+    prepared_auth: UserAPIKeyAuth | None = None,
+    first_frame: Mapping[str, object] | None = None,
+) -> None:
     state: Final = _ConnectionState()
     try:
         api_key: Final = get_websocket_api_key(websocket)
@@ -1535,13 +1608,18 @@ async def websocket_live_session(websocket: WebSocket, session_id: str | None = 
             *(item for item in inbound_headers if item[0].lower() != b"authorization"),
             (b"authorization", f"Bearer {api_key}".encode()),
         )
-        auth: Final = await _auth(auth_request)
+        auth: Final = prepared_auth if prepared_auth is not None else await _auth(auth_request)
         async with _budget_scope(auth) as ownership:
             source: Final = decode_session(session_id, _owner(auth)) if session_id else None
             attached: Final = source is not None and websocket.url.path.endswith("/attach")
-            await websocket.accept()
+            if first_frame is None:
+                await websocket.accept()
             first: Final = (
-                _EMPTY if attached else _OBJECT.validate_json(await asyncio.wait_for(websocket.receive_text(), 20))
+                _OBJECT.validate_python(first_frame)
+                if first_frame is not None
+                else _EMPTY
+                if attached
+                else _OBJECT.validate_json(await asyncio.wait_for(websocket.receive_text(), 20))
             )
             if not attached and first.get("type") != "session.start":
                 raise HTTPException(400, "First message must be session.start")
@@ -1550,7 +1628,8 @@ async def websocket_live_session(websocket: WebSocket, session_id: str | None = 
                 if attached and source is not None
                 else _session_model(first, source.alias if source else None)
             )
-            await _reauth(ownership, auth_request, first, model)
+            if prepared_auth is None:
+                await _reauth(ownership, auth_request, first, model)
             async with _precall(
                 _request(websocket, MappingProxyType({**first, "model": model})),
                 ownership.auth,
@@ -1642,6 +1721,10 @@ async def websocket_live_session(websocket: WebSocket, session_id: str | None = 
         if state.connection is not None:
             await state.connection.close()
 
+
+from litellm.proxy.proxy_server import live_sessions_websocket_endpoint
+
+_routes.add_api_websocket_route("/sessions", live_sessions_websocket_endpoint)
 
 router: Final = APIRouter()
 for _prefix in ("/v1/live", "/live", "/openai/v1/live"):

@@ -233,6 +233,7 @@ jobs:
               tests/unit/llms/base_llm
               tests/unit/llms/baseten
               tests/unit/llms/black_forest_labs
+              tests/unit/llms/brave
               tests/unit/llms/bytez
               tests/unit/llms/cerebras
               tests/unit/llms/chat
@@ -268,6 +269,7 @@ jobs:
               tests/unit/llms/gdc
               tests/unit/llms/gemini
               tests/unit/llms/gigachat
+              tests/unit/llms/google_pse
               tests/unit/llms/github_copilot
               tests/unit/llms/gradient_ai
               tests/unit/llms/groq
@@ -301,6 +303,7 @@ jobs:
               tests/unit/llms/nebius
               tests/unit/llms/neosantara
               tests/unit/llms/nimble
+              tests/unit/llms/nlp_cloud
               tests/unit/llms/novita
               tests/unit/llms/nscale
               tests/unit/llms/nvidia_nim
@@ -311,6 +314,7 @@ jobs:
               tests/unit/llms/oobabooga
               tests/unit/llms/openai_like
               tests/unit/llms/opencode
+              tests/unit/llms/opensandbox
               tests/unit/llms/openrouter
               tests/unit/llms/ovhcloud
               tests/unit/llms/parallel_ai
@@ -387,6 +391,8 @@ jobs:
           - shard: router
             test-path: >-
               tests/unit/test_router
+              tests/router_unit_tests/test_retry_breadcrumb_lifetime.py
+              tests/router_unit_tests/test_router_forward_reasoning_content.py
             python-version: "3.12"
             workers: 4
             reruns: 0
@@ -406,6 +412,7 @@ jobs:
               tests/unit/endpoints
               tests/unit/files
               tests/unit/images
+              tests/test_litellm/test_gpt_image_cost_calculator.py
               tests/unit/interactions
               tests/unit/messages
               tests/unit/ocr
@@ -447,6 +454,7 @@ jobs:
               tests/unit/repositories
               tests/unit/secret_managers
               tests/unit/skills/test_skills_main.py
+              tests/unit/telemetry tests/unit/proxy/telemetry
               tests/unit/tracing
             python-version: "3.12"
             workers: 2

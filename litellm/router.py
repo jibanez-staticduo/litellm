@@ -3419,7 +3419,7 @@ class Router:
     async def _aresponses_streaming_iterator(
         self,
         response: "BaseResponsesAPIStreamingIterator",
-        initial_kwargs: dict[str, Any],
+        initial_kwargs: dict[str, object],
     ) -> "BaseResponsesAPIStreamingIterator":
         """
         Wrap a Responses-API streaming iterator so MidStreamFallbackError
@@ -4353,9 +4353,8 @@ class Router:
                 **client_oauth_metadata,
             }
         )
-        for bucket_name in ("metadata", "litellm_metadata"):
-            if isinstance(bucket := kwargs.get(bucket_name), dict):
-                bucket.update(oauth_metadata)
+        if isinstance(oauth_metadata_bucket := kwargs.get(metadata_variable_name), dict):
+            kwargs[metadata_variable_name] = {**oauth_metadata_bucket, **oauth_metadata}
         if anthropic_oauth_managed:
             record_disable_fallbacks(kwargs, True)
 
@@ -5832,7 +5831,7 @@ class Router:
     async def _aanthropic_messages_streaming_iterator(
         self,
         response: AsyncIterator[bytes],
-        initial_kwargs: dict[str, Any],  # mutable-ok: mutated in-place before re-entering the fallback chain
+        initial_kwargs: dict[str, object],  # mutable-ok: mutated in-place before re-entering the fallback chain
     ) -> AsyncIterator[bytes]:
         """
         Wrap an anthropic_messages (/v1/messages) streaming response so a

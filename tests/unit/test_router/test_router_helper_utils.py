@@ -1,16 +1,19 @@
 import json
 import os
 from datetime import datetime, timezone
+from types import MappingProxyType
 from typing import Final
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import litellm
 import pytest
+
+import litellm
 from litellm import Router
 from litellm.caching.dual_cache import DualCache
 from litellm.caching.in_memory_cache import InMemoryCache
 from litellm.constants import DEFAULT_AUTO_ROUTER_MAX_INPUT_CHARS, ROUTER_USAGE_COUNTED_TOKENS_METADATA_KEY
 from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
+from litellm.router import _fallback_deployment_mapping
 from litellm.types.router import Deployment, DeploymentTypedDict, LiteLLM_Params, ModelInfo
 from litellm.types.utils import (
     ModelResponse,
@@ -19,6 +22,106 @@ from litellm.types.utils import (
     StandardLoggingModelInformation,
     StandardLoggingPayload,
 )
+
+
+@pytest.mark.parametrize("typed", (False, True))
+def test_fallback_mapping_preserves_backend_and_deployment_identity(typed: bool) -> None:
+    deployment: Final = Deployment(
+        model_name="fallback-group",
+        litellm_params=LiteLLM_Params(model="openai/test-model", api_key="fixture-key"),
+        model_info=ModelInfo(id="fallback-deployment"),
+    )
+    source: Final = deployment if typed else MappingProxyType(deployment.model_dump())
+    normalized: Final = _fallback_deployment_mapping(source)
+    assert normalized == deployment.model_dump()
+
+
+@pytest.mark.parametrize("per_user", (False, True))
+def test_per_user_credential_helper_rejects_only_managed_override(per_user: bool) -> None:
+    params: Final = {
+        "litellm_credential_name": "configured-credential",
+        "github_copilot_auth_type": "per_user_oauth" if per_user else "shared",
+    }
+    Router._validate_per_user_credential_override(params, "configured-credential", "copilot-alias")
+    Router._validate_per_user_credential_override(params, None, "copilot-alias")
+    if per_user:
+        with pytest.raises(litellm.BadRequestError, match="cannot be overridden"):
+            Router._validate_per_user_credential_override(params, "caller-credential", "copilot-alias")
+    else:
+        Router._validate_per_user_credential_override(params, "caller-credential", "copilot-alias")
+
+
+@pytest.mark.parametrize("fallback_depth", (0, 1))
+def test_fallback_helper_strips_foreign_ciphertext_preserving_summary(fallback_depth: int) -> None:
+    router: Final = Router(model_list=[])
+    request_input: Final = [{
+        "type": "reasoning", "id": "rs-foreign", "encrypted_content": "foreign-ciphertext",
+        "summary": [{"type": "summary_text", "text": "readable summary"}],
+    }]
+    router._strip_reasoning_on_fallback(
+        {"model_info": {"id": "target"}, "litellm_params": {"model": "openai/test-model"}},
+        {"input": request_input, "fallback_depth": fallback_depth}, "origin",
+    )
+    assert request_input[0]["summary"] == [{"type": "summary_text", "text": "readable summary"}]
+    assert ("encrypted_content" in request_input[0]) is (fallback_depth == 0)
+    assert ("id" in request_input[0]) is (fallback_depth == 0)
+
+
+def test_native_identity_helper_binds_server_owner_to_selected_deployment() -> None:
+    from litellm.llms.anthropic.native_transport import NATIVE_IDENTITY_FIELD, AnthropicNativeIdentity
+
+    original: Final = AnthropicNativeIdentity("server-owner", "previous-deployment")
+    bound: Final = Router._native_sdk_deployment_identity(
+        {NATIVE_IDENTITY_FIELD: original}, {"id": "selected-deployment"}
+    )
+    assert bound.owner == "server-owner"
+    assert bound.deployment == "selected-deployment"
+    assert original.deployment == "previous-deployment"
+
+
+@pytest.mark.parametrize("identity", (None, "forged-owner"))
+def test_native_identity_helper_rejects_unauthenticated_owner(identity: object) -> None:
+    from litellm.llms.anthropic.common_utils import AnthropicError
+    from litellm.llms.anthropic.native_transport import NATIVE_IDENTITY_FIELD
+
+    with pytest.raises(AnthropicError, match="authenticated server owner"):
+        Router._native_sdk_deployment_identity({NATIVE_IDENTITY_FIELD: identity}, {"id": "selected-deployment"})
+
+
+def test_oauth_request_helper_enforces_managed_destination_and_no_fallbacks() -> None:
+    params: Final = {
+        "use_anthropic_oauth": True, "anthropic_auth_profile": "central",
+        "api_base": "https://api.anthropic.com",
+    }
+    request: Final = {"temperature": 0.2, "fallbacks": [{"main": ["other"]}], "extra_body": {"safe": True}}
+    sanitized: Final = Router._anthropic_oauth_request_params(params, request)
+    assert sanitized["use_anthropic_oauth"] is True
+    assert sanitized["anthropic_auth_profile"] == "central"
+    assert sanitized["api_base"] == "https://api.anthropic.com"
+    assert sanitized["api_key"] is None and sanitized["client"] is None
+    assert sanitized["disable_fallbacks"] is True and sanitized["fallbacks"] is None
+    assert sanitized["temperature"] == 0.2 and sanitized["extra_body"] == {"safe": True}
+    assert request["fallbacks"] == [{"main": ["other"]}]
+
+
+def test_oauth_carrier_helper_removes_auth_headers_without_mutating_caller() -> None:
+    carrier: Final = {
+        "api_key": "caller-key", "safe": 3,
+        "headers": {"Authorization": "caller-auth", "X-API-Key": "caller-key", "x-trace-id": "trace"},
+    }
+    sanitized: Final = Router._anthropic_oauth_strip_carrier(carrier, frozenset({"api_key"}), True)
+    assert "api_key" not in sanitized
+    assert sanitized["headers"] == {"x-trace-id": "trace"} and sanitized["safe"] == 3
+    assert "Authorization" in carrier["headers"]
+
+
+@pytest.mark.parametrize("group,managed", ((None, False), ("managed", True), ("plain", False), ("unknown", False)))
+def test_oauth_group_helper_classifies_configured_deployments(group: str | None, managed: bool) -> None:
+    router: Final = Router(model_list=[
+        {"model_name": "managed", "litellm_params": {"model": "anthropic/test-model", "use_anthropic_oauth": True}},
+        {"model_name": "plain", "litellm_params": {"model": "anthropic/test-model"}},
+    ])
+    assert router.anthropic_oauth_model_group_is_managed(group) is managed
 
 
 def create_standard_logging_payload() -> StandardLoggingPayload:
@@ -569,9 +672,10 @@ async def test_deployment_callback_on_failure(model_list):
 
 def test_deployment_callback_respects_cooldown_time(model_list):
     """Ensure per-model cooldown_time is honored even when exception headers are present."""
-    import httpx
     import time
     from unittest.mock import patch
+
+    import httpx
 
     router = Router(model_list=model_list)
 
@@ -1476,8 +1580,8 @@ def test_get_allowed_fails_from_policy(model_list, exception_type, exception_nam
 
 def test_initialize_alerting(model_list):
     """Test if the 'initialize_alerting' function is working correctly"""
-    from litellm.types.router import AlertingConfig
     from litellm.integrations.SlackAlerting.slack_alerting import SlackAlerting
+    from litellm.types.router import AlertingConfig
 
     router = Router(
         model_list=model_list, alerting_config=AlertingConfig(webhook_url="test")
@@ -1601,6 +1705,7 @@ def test_deployments_by_pattern(model_list):
 )
 def test_pattern_match_deployment_set_model_name(user_request_model, model_name, litellm_model, expected_model):
     from re import Match
+
     from litellm.router_utils.pattern_match_deployments import PatternMatchRouter
 
     pattern_router = PatternMatchRouter()
