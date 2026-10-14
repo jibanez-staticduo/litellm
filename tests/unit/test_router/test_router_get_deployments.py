@@ -63,7 +63,10 @@ async def test_chatgpt_pool_requires_trusted_group_permission(
 
 
 @pytest.mark.asyncio
-async def test_chatgpt_uniform_account_group_needs_no_pool_permission(chatgpt_pool_tokens: str) -> None:
+@pytest.mark.parametrize("with_file_reference", (False, True))
+async def test_chatgpt_uniform_account_group_needs_no_pool_permission(
+    with_file_reference: bool, chatgpt_pool_tokens: str
+) -> None:
     router: Final = Router(model_list=[
         {
             "model_name": "uniform-group",
@@ -75,10 +78,97 @@ async def test_chatgpt_uniform_account_group_needs_no_pool_permission(chatgpt_po
         }
         for deployment_id in ("first", "second")
     ])
-    sync_selected: Final = router.get_available_deployment("uniform-group")
-    async_selected: Final = await router.async_get_available_deployment("uniform-group", request_kwargs={})
+    history: Final = [{"role": "user", "content": [{"type": "input_file", "file_id": "file-owned"}]}]
+    sync_selected: Final = router.get_available_deployment(
+        "uniform-group", input=history if with_file_reference else None
+    )
+    async_selected: Final = await router.async_get_available_deployment(
+        "uniform-group", messages=history if with_file_reference else None, request_kwargs={}
+    )
     assert sync_selected["litellm_params"]["chatgpt_auth_profile"] == "shared-account"
     assert async_selected["litellm_params"]["chatgpt_auth_profile"] == "shared-account"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("surface,part", (
+    ("responses", {"type": "input_file", "file_id": "file-owned"}),
+    ("responses", {"type": "input_image", "file_id": "file-owned"}),
+    ("responses-output", {"type": "function_call_output", "call_id": "call-one", "output": [
+        {"type": "input_file", "file_id": "file-owned"},
+    ]}),
+    ("responses-output", {"type": "function_call_output", "call_id": "call-one", "output": [
+        {"type": "input_image", "file_id": "file-owned"},
+    ]}),
+    ("chat", {"type": "file", "file": {"file_id": "file-owned"}}),
+    ("messages", {"type": "document", "source": {"type": "file", "file_id": "file-owned"}}),
+    ("messages", {"type": "image", "source": {"type": "file", "file_id": "file-owned"}}),
+    ("messages", {"type": "container_upload", "file_id": "file-owned"}),
+    ("messages", {"type": "tool_result", "tool_use_id": "call-one", "content": [
+        {"type": "document", "source": {"type": "file", "file_id": "file-owned"}},
+    ]}),
+))
+async def test_chatgpt_pool_refuses_account_owned_files_in_request_content(
+    surface: str, part: dict[str, object], chatgpt_pool_tokens: str
+) -> None:
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "account-pool",
+                "litellm_params": {
+                    "model": "chatgpt/unit-test-model", "chatgpt_auth_profile": profile,
+                    "chatgpt_token_dir": chatgpt_pool_tokens,
+                },
+                "model_info": {"id": profile},
+            }
+            for profile in ("account-a", "account-b")
+        ],
+        chatgpt_profile_pool_model_groups=("account-pool",),
+        allow_chatgpt_cross_profile_fallback=True,
+    )
+    history: Final = [part] if surface == "responses-output" else [{"role": "user", "content": [part]}]
+    request_payload: Final = {"input": history} if surface.startswith("responses") else {"messages": history}
+    with pytest.raises(ValueError, match="mixed authentication profiles"):
+        router.get_available_deployment("account-pool", request_kwargs={}, **request_payload)
+    with pytest.raises(ValueError, match="mixed authentication profiles"):
+        await router.async_get_available_deployment("account-pool", request_kwargs={}, **request_payload)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("part", (
+    {"type": "input_file", "file_data": "data:application/pdf;base64,fixture", "filename": "inline.pdf"},
+    {"type": "input_file", "file_url": "https://files.example.test/external.pdf"},
+    {"type": "file", "file": {"file_id": "https://files.example.test/external.pdf"}},
+    {"type": "input_image", "image_url": "data:image/png;base64,fixture"},
+    {"type": "image", "source": {"type": "url", "url": "https://files.example.test/image.png"}},
+    {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": "fixture"}},
+    {"type": "tool_use", "id": "call-one", "name": "lookup", "input": {"file_id": "tool-owned-value"}},
+    {"type": "tool_result", "tool_use_id": "call-one", "content": '{"file_id":"tool-owned-value"}'},
+    {"type": "function_call_output", "call_id": "call-one", "output": '{"type":"input_file","file_id":"value"}'},
+    {"type": "function_call_output", "call_id": "call-one", "output": {"type": "input_file", "file_id": "value"}},
+    {"type": "function_call_output", "call_id": "call-one", "output": [{"file_id": "business-value"}]},
+))
+async def test_chatgpt_pool_keeps_inline_files_urls_and_tool_history_eligible(
+    part: dict[str, object], chatgpt_pool_tokens: str
+) -> None:
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "account-pool",
+                "litellm_params": {
+                    "model": "chatgpt/unit-test-model", "chatgpt_auth_profile": profile,
+                    "chatgpt_token_dir": chatgpt_pool_tokens,
+                },
+                "model_info": {"id": profile},
+            }
+            for profile in ("account-a", "account-b")
+        ],
+        chatgpt_profile_pool_model_groups=("account-pool",),
+    )
+    history: Final = [part] if part.get("type") == "function_call_output" else [{"role": "user", "content": [part]}]
+    sync_selected: Final = router.get_available_deployment("account-pool", messages=history, request_kwargs={})
+    async_selected: Final = await router.async_get_available_deployment("account-pool", input=history, request_kwargs={})
+    assert sync_selected["model_info"]["id"] in {"account-a", "account-b"}
+    assert async_selected["model_info"]["id"] in {"account-a", "account-b"}
 
 
 @pytest.mark.asyncio

@@ -100,6 +100,7 @@ from litellm.litellm_core_utils.hidden_params import (
 )
 from litellm.litellm_core_utils.litellm_logging import Logging as LiteLLMLogging
 from litellm.litellm_core_utils.llm_cost_calc.utils import SERVICE_TIER_COST_KEY_SUFFIXES
+from litellm.litellm_core_utils.prompt_templates.common_utils import request_contains_provider_file_ids
 from litellm.litellm_core_utils.ptu_pricing import (
     PTU_COST_ATTRIBUTION_ENV_VAR,
     declares_ptu,
@@ -4455,6 +4456,8 @@ class Router:
         )
         if not any(boundary != target_boundary for boundary in origin_boundaries):
             return MappingProxyType({})
+        if request_contains_provider_file_ids(messages=kwargs.get("messages"), request_input=kwargs.get("input")):
+            raise ValueError("ChatGPT requests with account-owned files cannot change authentication profiles")
         replay_history: Final = MappingProxyType(
             {key: copy.deepcopy(kwargs[key]) for key in ("input", "messages") if key in kwargs}
         )
@@ -13132,11 +13135,25 @@ class Router:
         _settings_to_return["chatgpt_profile_pool_model_groups"] = sorted(self.chatgpt_profile_pool_model_groups)
         return _settings_to_return
 
-    def _chatgpt_authorized_pools_for_request(self, request_kwargs: object) -> frozenset[str]:
+    def _chatgpt_authorized_pools_for_request(
+        self, request_kwargs: object, *, messages: object = None, request_input: object = None
+    ) -> frozenset[str]:
         parsed_kwargs: Final = _FALLBACK_HOP_ADAPTER.validate_python(request_kwargs or {})
-        if references_provider_scoped_resource(parsed_kwargs) or creates_provider_scoped_resource(parsed_kwargs):
+        default_params: Final = self._chatgpt_default_params()
+        effective_kwargs: Final = MappingProxyType({**default_params, **parsed_kwargs})
+        if (
+            references_provider_scoped_resource(effective_kwargs)
+            or creates_provider_scoped_resource(effective_kwargs)
+            or request_contains_provider_file_ids(
+                messages=messages if messages is not None else effective_kwargs.get("messages"),
+                request_input=request_input if request_input is not None else effective_kwargs.get("input"),
+            )
+        ):
             return frozenset()
         return self.chatgpt_profile_pool_model_groups
+
+    def _chatgpt_default_params(self) -> Mapping[str, object]:
+        return _FALLBACK_HOP_ADAPTER.validate_python(self.default_litellm_params)
 
     def chatgpt_effective_fallback_changes_account(
         self,
@@ -13149,7 +13166,7 @@ class Router:
             return True
         if source_model_group == target_model_group and source_model_group in self.chatgpt_profile_pool_model_groups:
             return False
-        default_params: Final = _FALLBACK_HOP_ADAPTER.validate_python(self.default_litellm_params)
+        default_params: Final = self._chatgpt_default_params()
         effective_kwargs: Final = MappingProxyType({**default_params, **request_kwargs, **target_overrides})
         metadata_key: Final = get_router_metadata_variable_name(
             function_name=getattr(request_kwargs.get("original_function"), "__name__", None)
@@ -13994,10 +14011,15 @@ class Router:
             specific_deployment=specific_deployment,
             request_kwargs=request_kwargs,
         )
+        request_content: Final = _FALLBACK_HOP_ADAPTER.validate_python({"messages": messages, "input": input})
         validate_chatgpt_model_group_profiles(
             _CHATGPT_HEALTHY_DEPLOYMENTS_ADAPTER.validate_python(healthy_deployments),
             model,
-            self._chatgpt_authorized_pools_for_request(_ROUTING_KWARGS_ADAPTER.validate_python(request_kwargs)),
+            self._chatgpt_authorized_pools_for_request(
+                _ROUTING_KWARGS_ADAPTER.validate_python(request_kwargs),
+                messages=request_content.get("messages"),
+                request_input=request_content.get("input"),
+            ),
         )
         validate_anthropic_model_group_profiles(healthy_deployments, model)
 
@@ -15246,10 +15268,15 @@ class Router:
             specific_deployment=specific_deployment,
             request_kwargs=request_kwargs,
         )
+        request_content: Final = _FALLBACK_HOP_ADAPTER.validate_python({"messages": messages, "input": input})
         validate_chatgpt_model_group_profiles(
             _CHATGPT_HEALTHY_DEPLOYMENTS_ADAPTER.validate_python(healthy_deployments),
             model,
-            self._chatgpt_authorized_pools_for_request(_ROUTING_KWARGS_ADAPTER.validate_python(request_kwargs)),
+            self._chatgpt_authorized_pools_for_request(
+                _ROUTING_KWARGS_ADAPTER.validate_python(request_kwargs),
+                messages=request_content.get("messages"),
+                request_input=request_content.get("input"),
+            ),
         )
         validate_anthropic_model_group_profiles(healthy_deployments, model)
         strategy, strategy_selector = self._get_routing_context(model, request_kwargs)

@@ -28,6 +28,71 @@ from litellm.types.utils import (
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("mixed_pool,same_account", ((False, False), (True, False), (False, True)))
+@pytest.mark.parametrize("multimodal_output", (False, True))
+async def test_chatgpt_account_owned_files_never_reach_another_account(
+    mixed_pool: bool, same_account: bool, multimodal_output: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DISABLE_AIOHTTP_TRANSPORT", "True")
+    for profile in ("account-a", "account-b"):
+        (tmp_path / f"{profile}.json").write_text(json.dumps({
+            "access_token": "fixture-token", "account_id": profile, "expires_at": 1e20,
+        }))
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "primary-group" if mixed_pool or profile == "account-a" else "fallback-group",
+                "litellm_params": {
+                    "model": "chatgpt/unit-test-model", "chatgpt_auth_profile": "account-a" if same_account else profile,
+                    "chatgpt_token_dir": str(tmp_path), "api_base": "https://backend.example.test",
+                },
+                "model_info": {"id": profile},
+            }
+            for profile in ("account-a", "account-b")
+        ],
+        chatgpt_profile_pool_model_groups=("primary-group",),
+        allow_chatgpt_cross_profile_fallback=True,
+        fallbacks=[] if mixed_pool else [{"primary-group": ["fallback-group"]}],
+        num_retries=0,
+    )
+    file_part: Final = {"type": "input_file", "file_id": "file-owned"}
+    history: Final = [
+        {"type": "function_call", "call_id": "call-one", "name": "lookup", "arguments": "{}"},
+        {"type": "function_call_output", "call_id": "call-one", "output": [file_part]},
+    ] if multimodal_output else [{"role": "user", "content": [file_part]}]
+    history_snapshot: Final = json.dumps(history)
+    completed: Final = {
+        "type": "response.completed", "response": {
+            "id": "resp-completed", "object": "response", "created_at": 1, "status": "completed",
+            "model": "unit-test-model", "output": [],
+        },
+    }
+    with respx.mock(assert_all_called=False) as transport:
+        route: Final = transport.post(url__regex=r"https://backend\.example\.test/.*").mock(side_effect=[
+            httpx.Response(200, headers={"content-type": "text/event-stream"},
+                           text=f"data: {json.dumps(completed)}\n\ndata: [DONE]\n\n")
+            if mixed_pool else httpx.Response(
+                429, json={"error": {"message": "fixture quota", "type": "rate_limit_exceeded"}}
+            ),
+            httpx.Response(200, headers={"content-type": "text/event-stream"},
+                           text=f"data: {json.dumps(completed)}\n\ndata: [DONE]\n\n"),
+        ])
+        if same_account:
+            response: Final = await router.aresponses(model="primary-group", input=history)
+            assert response.status == "completed"
+            assert json.loads(route.calls[1].request.content)["input"] == history
+        elif mixed_pool:
+            with pytest.raises(ValueError, match="mixed authentication profiles"):
+                await router.aresponses(model="primary-group", input=history)
+        else:
+            with pytest.raises(litellm.RateLimitError, match="fixture quota"):
+                await router.aresponses(model="primary-group", input=history)
+    assert route.call_count == (0 if mixed_pool else 2 if same_account else 1)
+    assert all(call.request.headers["chatgpt-account-id"] == "account-a" for call in route.calls)
+    assert json.dumps(history) == history_snapshot
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("origin_in_default", (False, True))
 async def test_chatgpt_replays_history_after_response_deployment_is_removed(
     origin_in_default: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

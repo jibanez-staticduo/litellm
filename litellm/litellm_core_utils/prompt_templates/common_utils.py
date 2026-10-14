@@ -13,6 +13,8 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Final, Literal, TypeVar, cast
 
+from pydantic import TypeAdapter
+
 import litellm
 from litellm import verbose_logger
 from litellm.router_utils.batch_utils import InMemoryFile
@@ -293,6 +295,51 @@ def request_contains_image_content(messages: Sequence[Mapping[str, object]]) -> 
         for message in messages
         for content in (message.get("content"),)
     )
+
+
+_FILE_CONTENT_PARTS_ADAPTER: Final[TypeAdapter[tuple[object, ...]]] = TypeAdapter(tuple[object, ...])
+_FILE_CONTENT_BLOCK_ADAPTER: Final[TypeAdapter[Mapping[str, object]]] = TypeAdapter(Mapping[str, object])
+
+
+def _file_content_parts(content: object) -> tuple[object, ...]:
+    return _FILE_CONTENT_PARTS_ADAPTER.validate_python(content) if isinstance(content, (list, tuple)) else ()
+
+
+def _nested_file_content_parts(part: object) -> tuple[object, ...]:
+    if not isinstance(part, Mapping):
+        return ()
+    fields: Final = _FILE_CONTENT_BLOCK_ADAPTER.validate_python(part)
+    return _file_content_parts(
+        fields.get("output") if fields.get("type") == "function_call_output" else fields.get("content")
+    )
+
+
+def _file_reference_is_account_owned(file_id: object) -> bool:
+    return isinstance(file_id, str) and bool(file_id) and not file_id.startswith(("https://", "http://", "data:"))
+
+
+def _content_part_references_provider_file(part: object) -> bool:
+    if not isinstance(part, Mapping):
+        return False
+    fields: Final = _FILE_CONTENT_BLOCK_ADAPTER.validate_python(part)
+    part_type: Final = fields.get("type")
+    if part_type in ("input_file", "input_image", "container_upload"):
+        return _file_reference_is_account_owned(fields.get("file_id"))
+    file_container: Final = fields.get("file") if part_type == "file" else fields.get("source")
+    if part_type not in ("file", "document", "image") or not isinstance(file_container, Mapping):
+        return False
+    file_fields: Final = _FILE_CONTENT_BLOCK_ADAPTER.validate_python(file_container)
+    if part_type != "file" and file_fields.get("type") != "file":
+        return False
+    return _file_reference_is_account_owned(file_fields.get("file_id"))
+
+
+def request_contains_provider_file_ids(*, messages: object = None, request_input: object = None) -> bool:
+    """Account-bound file references across content dialects, including tool result content."""
+    roots: Final = (*_file_content_parts(messages), *_file_content_parts(request_input))
+    content: Final = tuple(chain.from_iterable(_nested_file_content_parts(part) for part in roots))
+    tool_content: Final = tuple(chain.from_iterable(_nested_file_content_parts(part) for part in content))
+    return any(_content_part_references_provider_file(part) for part in chain(roots, content, tool_content))
 
 
 def audio_or_image_in_message_content(message: AllMessageValues) -> bool:
