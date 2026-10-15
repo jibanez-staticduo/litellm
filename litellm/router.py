@@ -4444,7 +4444,7 @@ class Router:
         if selected_chatgpt_boundary is None and not chatgpt_replay:
             self._strip_reasoning_on_fallback(deployment, kwargs, previous_deployment_id)
         compatible_history: Final = (
-            self._chatgpt_compatible_history_kwargs(deployment, kwargs)
+            self._chatgpt_compatible_history_kwargs(deployment, kwargs, function_name)
             if selected_chatgpt_boundary is not None and not chatgpt_replay
             else MappingProxyType[str, object]({})
         )
@@ -4466,7 +4466,7 @@ class Router:
         )
 
     def _chatgpt_compatible_history_kwargs(
-        self, deployment: Mapping[str, object], kwargs: Mapping[str, object]
+        self, deployment: Mapping[str, object], kwargs: Mapping[str, object], function_name: str | None
     ) -> Mapping[str, object]:
         history: Final = MappingProxyType(
             {key: copy.deepcopy(kwargs[key]) for key in ("input", "messages") if key in kwargs}
@@ -4477,7 +4477,10 @@ class Router:
             history.get("messages"),
             (self._effective_chatgpt_replay_deployment(deployment, kwargs),),
             unmarked_origin=None,
-            preserve_unmarked_reasoning=True,
+            preserve_unmarked_reasoning=(
+                not self.allow_chatgpt_cross_profile_fallback
+                and not self._chatgpt_group_has_multiple_account_boundaries(deployment, kwargs, function_name)
+            ),
         )
         return history if any(history[key] != kwargs[key] for key in history) else MappingProxyType({})
 
@@ -4544,7 +4547,17 @@ class Router:
                 else None
             ),
         )
-        return MappingProxyType({**replay_history, "previous_response_id": None})
+        response_account_matches_target: Final = (
+            target_boundary is not None
+            and response_origin_id is not None
+            and self._chatgpt_boundary_for_deployment_id(response_origin_id) == target_boundary
+        )
+        return MappingProxyType(
+            {
+                **replay_history,
+                "previous_response_id": previous_response_id if response_account_matches_target else None,
+            }
+        )
 
     def _chatgpt_request_has_undecryptable_reasoning(
         self, deployment: Mapping[str, object], kwargs: Mapping[str, object]

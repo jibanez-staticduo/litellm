@@ -410,7 +410,7 @@ class EncryptedContentAffinityCheck(CustomLogger):
 
         request_input: Final = request_kwargs.get("input")
         anthropic_messages: Final = messages or request_kwargs.get("messages")
-        if self.router is not None and model in self.router.chatgpt_profile_pool_model_groups:
+        if self._router_replays_chatgpt_history(model, typed_healthy_deployments):
             return typed_healthy_deployments
         model_id: Final = self._extract_model_id_from_input(
             request_input
@@ -470,3 +470,16 @@ class EncryptedContentAffinityCheck(CustomLogger):
         ResponsesAPIRequestUtils.strip_encrypted_reasoning_from_input(request_input)
         strip_encrypted_reasoning_from_messages(anthropic_messages)
         return candidates
+
+    def _router_replays_chatgpt_history(self, model: str, deployments: Sequence[Mapping[str, object]]) -> bool:
+        if self.router is None:
+            return False
+        if model in self.router.chatgpt_profile_pool_model_groups:
+            return True
+        return self.router.allow_chatgpt_cross_profile_fallback and any(
+            self.chatgpt_authentication_boundary(
+                _REQUEST_KWARGS_ADAPTER.validate_python(deployment.get("litellm_params") or {})
+            )
+            is not None
+            for deployment in deployments
+        )

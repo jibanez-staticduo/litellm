@@ -29,6 +29,114 @@ from litellm.types.utils import (
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("affinity_checks", (False, True))
+@pytest.mark.parametrize("history_scope", (
+    "cross-fallback", "cross-current-b", "cross-raw", "pool-retry", "pool-raw", "uniform-raw",
+))
+async def test_chatgpt_replay_filters_pristine_history_for_each_selected_account(
+    affinity_checks: bool, history_scope: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from litellm.responses.utils import ResponsesAPIRequestUtils
+
+    monkeypatch.setenv("DISABLE_AIOHTTP_TRANSPORT", "True")
+    for profile in ("account-a", "account-b"):
+        (tmp_path / f"{profile}.json").write_text(json.dumps({
+            "access_token": "fixture-token", "account_id": profile, "expires_at": 1e20,
+        }))
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": profile if history_scope.startswith("cross-") else "account-pool",
+                "model_info": {"id": profile},
+                "litellm_params": {
+                    "model": "chatgpt/unit-test-model", "api_base": "https://backend.example.test",
+                    "chatgpt_auth_profile": "account-b" if history_scope == "uniform-raw" else profile,
+                    "chatgpt_token_dir": str(tmp_path),
+                    "weight": 1 if profile == ("account-a" if history_scope == "pool-retry" else "account-b") else 0,
+                },
+            }
+            for profile in ("account-a", "account-b")
+        ],
+        fallbacks=[{"account-a": ["account-b"]}] if history_scope.startswith("cross-") else [],
+        allow_chatgpt_cross_profile_fallback=history_scope != "uniform-raw",
+        chatgpt_profile_pool_model_groups=("account-pool",),
+        optional_pre_call_checks=(
+            ["encrypted_content_affinity", "responses_api_deployment_check"] if affinity_checks else []
+        ),
+        enable_weighted_failover=history_scope == "pool-retry",
+        num_retries=0,
+    )
+    previous_id: Final = ResponsesAPIRequestUtils._build_responses_api_response_id(
+        "chatgpt", "account-a" if history_scope in ("cross-fallback", "pool-retry") else "account-b", "resp-current"
+    )
+    history: Final = [
+        {"role": "user", "content": "remember this"},
+        {
+            "type": "reasoning", "encrypted_content": "ciphertext-account-a",
+            "id": (
+                ResponsesAPIRequestUtils._build_encrypted_item_id("account-a", "rs-upstream-a")
+                if history_scope in ("cross-fallback", "cross-current-b", "pool-retry") else "rs-upstream-a"
+            ),
+            "summary": [{"type": "summary_text", "text": "readable reasoning from a"}],
+        },
+        {
+            "type": "reasoning", "encrypted_content": "ciphertext-account-b",
+            "id": ResponsesAPIRequestUtils._build_encrypted_item_id("account-b", "rs-upstream-b"),
+            "summary": [{"type": "summary_text", "text": "readable reasoning from b"}],
+        },
+        {"type": "function_call", "call_id": "call-one", "name": "lookup", "arguments": "{}"},
+        {"type": "function_call_output", "call_id": "call-one", "output": "useful result"},
+    ]
+    history_snapshot: Final = json.dumps(history)
+    completed: Final = {
+        "id": "resp-completed", "object": "response", "created_at": 1, "status": "completed",
+        "model": "unit-test-model", "output": [],
+    }
+    with respx.mock(assert_all_called=True) as transport:
+        route: Final = transport.post(url__regex=r"https://backend\.example\.test/.*").mock(side_effect=(
+            [httpx.Response(429, json={"error": {"message": "fixture quota", "type": "rate_limit_exceeded"}})]
+            if history_scope in ("cross-fallback", "cross-current-b", "pool-retry") else []
+        ) + [httpx.Response(
+            200, headers={"content-type": "text/event-stream"},
+            text=f'data: {json.dumps({"type": "response.completed", "response": completed})}\n\ndata: [DONE]\n\n',
+        )])
+        response: Final = await router.aresponses(
+            model=(
+                "account-b" if history_scope == "cross-raw" else "account-a"
+                if history_scope in ("cross-fallback", "cross-current-b") else "account-pool"
+            ),
+            input=history, previous_response_id=previous_id,
+        )
+    original_history: Final = json.loads(history_snapshot)
+    assert response.status == "completed"
+    assert route.call_count == (2 if history_scope in ("cross-fallback", "cross-current-b", "pool-retry") else 1)
+    if history_scope in ("cross-fallback", "cross-current-b", "pool-retry"):
+        assert route.calls[0].request.headers["chatgpt-account-id"] == "account-a"
+        initial_body: Final = json.loads(route.calls[0].request.content)
+        assert initial_body.get("previous_response_id") == (
+            None if history_scope == "cross-current-b" else "resp-current"
+        )
+        assert initial_body["input"] == [
+            original_history[0], {**original_history[1], "id": "rs-upstream-a"},
+            {"type": "reasoning", "summary": original_history[2]["summary"]}, *original_history[3:],
+        ]
+    assert route.calls[-1].request.headers["chatgpt-account-id"] == "account-b"
+    final_body: Final = json.loads(route.calls[-1].request.content)
+    assert final_body.get("previous_response_id") == (
+        None if history_scope in ("cross-fallback", "pool-retry") else "resp-current"
+    )
+    assert final_body["input"] == [
+        original_history[0],
+        original_history[1]
+        if history_scope == "uniform-raw"
+        else {"type": "reasoning", "summary": original_history[1]["summary"]},
+        {**original_history[2], "id": "rs-upstream-b"},
+        *original_history[3:],
+    ]
+    assert json.dumps(history) == history_snapshot
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("affinity_checks", (False, True))
 async def test_chatgpt_account_pool_same_account_continuation_cleans_each_reasoning_item(
     affinity_checks: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -174,7 +282,11 @@ async def test_chatgpt_unmarked_response_id_replay_matches_group_account_scope(
         assert provider_body.get("previous_response_id") == (
             None if id_source in ("none", "stateless") else "resp-upstream-raw"
         )
-        assert provider_body["input"] == history
+        assert provider_body["input"] == (
+            [history[0], {"type": "reasoning", "summary": history[1]["summary"]}, *history[2:]]
+            if id_source == "trusted-retry" and group_kind == "accounts"
+            else history
+        )
     assert json.dumps(history) == history_snapshot
 
 
