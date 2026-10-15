@@ -521,7 +521,7 @@ _CHATGPT_ATTEMPT_KEY: Final = "_chatgpt_profile_attempt"
 
 
 class _ChatGPTProfileAttempt(NamedTuple):
-    boundary: str
+    boundary: str | None
 
 
 class _ChatGPTPoolPolicy(NamedTuple):
@@ -4392,15 +4392,17 @@ class Router:
         if anthropic_oauth_managed:
             record_disable_fallbacks(kwargs, True)
 
-        kwargs.update(
-            self._deployment_replay_kwargs(
-                _FALLBACK_HOP_ADAPTER.validate_python(deployment),
-                _FALLBACK_HOP_ADAPTER.validate_python(kwargs),
-                deployment_that_just_failed,
-                prior_chatgpt_attempt if isinstance(prior_chatgpt_attempt, _ChatGPTProfileAttempt) else None,
-                metadata_variable_name,
-            )
+        deployment_replay: Final = self._deployment_replay_kwargs(
+            _FALLBACK_HOP_ADAPTER.validate_python(deployment),
+            _FALLBACK_HOP_ADAPTER.validate_python(kwargs),
+            deployment_that_just_failed,
+            prior_chatgpt_attempt if isinstance(prior_chatgpt_attempt, _ChatGPTProfileAttempt) else None,
+            metadata_variable_name,
         )
+        model_info[_CHATGPT_ATTEMPT_KEY] = _MODEL_INFO_ADAPTER.validate_python(deployment_replay.get("model_info")).get(
+            _CHATGPT_ATTEMPT_KEY
+        )
+        kwargs.update(deployment_replay)
 
     def _deployment_replay_kwargs(
         self,
@@ -4414,14 +4416,11 @@ class Router:
         selected_chatgpt_boundary: Final = EncryptedContentAffinityCheck.chatgpt_authentication_boundary(
             effective_chatgpt_params
         )
-        if selected_chatgpt_boundary is None:
-            chatgpt_replay: Final = self._chatgpt_profile_replay_kwargs(
-                deployment, kwargs, previous_deployment_id, previous_attempt
-            )
-            if chatgpt_replay:
-                return chatgpt_replay
+        chatgpt_replay: Final = self._chatgpt_profile_replay_kwargs(
+            deployment, kwargs, previous_deployment_id, previous_attempt
+        )
+        if selected_chatgpt_boundary is None and not chatgpt_replay:
             self._strip_reasoning_on_fallback(deployment, kwargs, previous_deployment_id)
-            return MappingProxyType({})
         current_model_info: Final = kwargs.get("model_info")
         parsed_model_info: Final = _FALLBACK_HOP_ADAPTER.validate_python(
             current_model_info.model_dump() if isinstance(current_model_info, BaseModel) else current_model_info
@@ -4432,7 +4431,7 @@ class Router:
         )
         return MappingProxyType(
             {
-                **self._chatgpt_profile_replay_kwargs(deployment, kwargs, previous_deployment_id, previous_attempt),
+                **chatgpt_replay,
                 "model_info": dict(attempt_model_info),
                 metadata_variable_name: {**metadata, "model_info": dict(attempt_model_info)},
             }
@@ -4464,8 +4463,9 @@ class Router:
             else tuple(self._chatgpt_boundary_for_deployment_id(model_id) for model_id in origin_ids)
         )
         leaving_chatgpt: Final = target_boundary is None and (
-            previous_attempt is not None
-            or any(boundary is not None for boundary in origin_boundaries)
+            previous_attempt.boundary is not None
+            if previous_attempt is not None
+            else any(boundary is not None for boundary in origin_boundaries)
             or (response_origin is not None and response_origin.get("custom_llm_provider") == "chatgpt")
         )
         if target_boundary is None and not leaving_chatgpt:
@@ -13206,7 +13206,7 @@ class Router:
         model_info: Final = _FALLBACK_HOP_ADAPTER.validate_python(metadata.get("model_info") or {})
         previous_attempt: Final = model_info.get(_CHATGPT_ATTEMPT_KEY)
         source_boundaries: Final = (
-            frozenset((previous_attempt.boundary,))
+            (frozenset((previous_attempt.boundary,)) if previous_attempt.boundary is not None else frozenset[str]())
             if isinstance(previous_attempt, _ChatGPTProfileAttempt)
             else self._chatgpt_effective_group_boundaries(
                 source_model_group, MappingProxyType({**default_params, **request_kwargs})

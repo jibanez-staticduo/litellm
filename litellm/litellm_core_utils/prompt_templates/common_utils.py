@@ -373,11 +373,20 @@ def _resource_mapping_has_owned_id(value: object, field: str) -> bool:
     )
 
 
+# Public curated skill, https://developers.openai.com/api/docs/guides/tools-skills, checked 2026-10-15.
+_PORTABLE_PROVIDER_SKILL_IDS: Final = frozenset(("openai-spreadsheets",))
+
+
 def _skill_references_provider_resource(skill: object) -> bool:
     if not isinstance(skill, Mapping):
         return False
     fields: Final = _FILE_CONTENT_BLOCK_ADAPTER.validate_python(skill)
-    return fields.get("type") == "skill_reference" and _file_reference_is_account_owned(fields.get("skill_id"))
+    skill_id: Final = fields.get("skill_id")
+    return (
+        fields.get("type") == "skill_reference"
+        and _file_reference_is_account_owned(skill_id)
+        and skill_id not in _PORTABLE_PROVIDER_SKILL_IDS
+    )
 
 
 def _shell_environment_references_provider_resources(environment: object, *, allow_auto: bool) -> bool:

@@ -28,6 +28,67 @@ from litellm.types.utils import (
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("selected_provider", ("openai", "chatgpt"))
+@pytest.mark.parametrize("spoofed_attempt", ({"boundary": None}, [None]))
+async def test_mixed_group_fallback_uses_the_provider_that_actually_failed(
+    selected_provider: str, spoofed_attempt: object, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DISABLE_AIOHTTP_TRANSPORT", "True")
+    (tmp_path / "account-a.json").write_text(json.dumps({
+        "access_token": "fixture-token", "account_id": "account-a", "expires_at": 1e20,
+    }))
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "mixed-group",
+                "litellm_params": {
+                    "model": f"{provider}/unit-test-model", "api_key": "fixture-token",
+                    "chatgpt_auth_profile": "account-a", "chatgpt_token_dir": str(tmp_path),
+                    "api_base": "https://backend.example.test",
+                    "weight": 1 if provider == selected_provider else 0,
+                },
+                "model_info": {"id": provider},
+            }
+            for provider in ("chatgpt", "openai")
+        ] + [{
+            "model_name": "fallback-group",
+            "litellm_params": {
+                "model": "openai/unit-test-model", "api_key": "fixture-token",
+                "api_base": "https://backend.example.test",
+            },
+            "model_info": {"id": "fallback"},
+        }],
+        chatgpt_profile_pool_model_groups=("mixed-group",),
+        fallbacks=[{"mixed-group": ["fallback-group"]}],
+        num_retries=0,
+        allow_chatgpt_cross_profile_fallback=False,
+    )
+    completed: Final = {
+        "id": "resp-completed", "object": "response", "created_at": 1, "status": "completed",
+        "model": "unit-test-model", "output": [],
+    }
+    with respx.mock(assert_all_called=False) as transport:
+        route: Final = transport.post(url__regex=r"https://backend\.example\.test/.*").mock(side_effect=[
+            httpx.Response(429, json={"error": {"message": "fixture quota", "type": "rate_limit_exceeded"}}),
+            httpx.Response(200, json=completed),
+        ])
+        request: Final = {
+            "model": "mixed-group", "input": "portable text",
+            "metadata": {"model_info": {"id": "openai", "_chatgpt_profile_attempt": spoofed_attempt}},
+            "litellm_metadata": {"model_info": {"id": "openai", "_chatgpt_profile_attempt": spoofed_attempt}},
+        }
+        if selected_provider == "chatgpt":
+            with pytest.raises(litellm.RateLimitError, match="fixture quota"):
+                await router.aresponses(**request)
+        else:
+            response: Final = await router.aresponses(**request)
+            assert response.status == "completed"
+    assert route.call_count == (1 if selected_provider == "chatgpt" else 2)
+    if selected_provider == "openai":
+        assert all(not call.request.headers.get("chatgpt-account-id") for call in route.calls)
+
+
+@pytest.mark.asyncio
 async def test_chatgpt_mixed_provider_resource_request_stops_before_provider_transport(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

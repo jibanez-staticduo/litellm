@@ -228,6 +228,13 @@ async def test_chatgpt_pool_keeps_inline_files_urls_and_tool_history_eligible(
     {"tools": [{"type": "shell", "environment": {"type": "container_auto", "skills": [
         {"type": "skill_reference", "skill_id": "skill_owned"},
     ]}}]},
+    {"tools": [{"type": "shell", "environment": {"type": "container_auto", "skills": [
+        {"type": "skill_reference", "skill_id": "openai-custom-owned"},
+    ]}}]},
+    {"tools": [{"type": "shell", "environment": {"type": "container_auto", "skills": [
+        {"type": "skill_reference", "skill_id": "openai-spreadsheets"},
+        {"type": "skill_reference", "skill_id": "skill_owned"},
+    ]}}]},
     {"input": [{"type": "item_reference", "id": "item_owned"}]},
     {"input": [{"id": "item_owned"}]},
     {"input": [{"type": "shell_call", "call_id": "call-one", "action": {"commands": ["pwd"]},
@@ -270,6 +277,10 @@ async def test_chatgpt_pool_refuses_account_owned_resources(
     {"tools": [{"type": "image_generation", "input_image_mask": {"image_url": "https://example.test/mask.png"}}]},
     {"tools": [{"type": "shell", "environment": {"type": "local"}}]},
     {"tools": [{"type": "shell", "environment": {"type": "container_auto", "file_ids": []}}]},
+    # Curated ID documented at https://developers.openai.com/api/docs/guides/tools-skills on 2026-10-15.
+    {"tools": [{"type": "shell", "environment": {"type": "container_auto", "skills": [
+        {"type": "skill_reference", "skill_id": "openai-spreadsheets", "version": "latest"},
+    ]}}]},
     {"tools": [{"type": "shell", "environment": {"type": "container_auto", "skills": [
         {"type": "inline", "name": "fixture", "description": "fixture", "source": {
             "type": "base64", "data": "fixture", "media_type": "application/zip",
