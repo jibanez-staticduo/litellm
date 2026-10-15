@@ -52,6 +52,7 @@ from litellm.litellm_core_utils.prompt_templates.common_utils import (
     strip_encrypted_reasoning_from_messages,
 )
 from litellm.responses.utils import ResponsesAPIRequestUtils
+from litellm.router_utils.common_utils import provider_for_generic_call
 from litellm.types.llms.openai import AllMessageValues
 from litellm.types.router import Deployment
 from litellm.utils import get_order_filtered_deployments
@@ -196,10 +197,7 @@ class EncryptedContentAffinityCheck(CustomLogger):
 
     @staticmethod
     def chatgpt_authentication_boundary(litellm_params: Mapping[str, object]) -> str | None:
-        model: Final = litellm_params.get("model")
-        if litellm_params.get("custom_llm_provider") != "chatgpt" and not (
-            isinstance(model, str) and model.startswith("chatgpt/")
-        ):
+        if provider_for_generic_call(litellm_params) != "chatgpt":
             return None
         configured_token_dir: Final = litellm_params.get("chatgpt_token_dir")
         token_dir: Final = (

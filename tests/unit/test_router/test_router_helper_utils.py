@@ -28,6 +28,117 @@ from litellm.types.utils import (
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("override_source", ("request", "router-default"))
+async def test_chatgpt_messages_fallback_cannot_hide_target_provider_behind_override(
+    override_source: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DISABLE_AIOHTTP_TRANSPORT", "True")
+    (tmp_path / "account-a.json").write_text(json.dumps({
+        "access_token": "fixture-token", "account_id": "account-a", "expires_at": 1e20,
+    }))
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": model_group,
+                "model_info": {"id": model_group},
+                "litellm_params": {
+                    "model": f"{provider}/unit-test-model", "api_key": "fixture-token",
+                    "api_base": "https://backend.example.test",
+                    "chatgpt_auth_profile": "account-a", "chatgpt_token_dir": str(tmp_path),
+                },
+            }
+            for model_group, provider in (("primary-group", "openai"), ("fallback-group", "chatgpt"))
+        ],
+        default_litellm_params={"custom_llm_provider": "openai"} if override_source == "router-default" else {},
+        fallbacks=[{"primary-group": ["fallback-group"]}],
+        allow_chatgpt_cross_profile_fallback=False,
+        num_retries=0,
+    )
+    with respx.mock(assert_all_called=False) as transport:
+        route: Final = transport.post(url__regex=r"https://backend\.example\.test/.*").mock(
+            return_value=httpx.Response(
+                429, json={"error": {"message": "fixture quota", "type": "rate_limit_exceeded"}}
+            )
+        )
+        with pytest.raises(litellm.RateLimitError, match="fixture quota"):
+            await router.aanthropic_messages(
+                model="primary-group", max_tokens=16, messages=[{"role": "user", "content": "portable text"}],
+                **({"custom_llm_provider": "openai"} if override_source == "request" else {}),
+            )
+    assert route.call_count == 1
+    assert not route.calls[0].request.headers.get("chatgpt-account-id")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("configured_provider", ("openai", "chatgpt"))
+@pytest.mark.parametrize("override_source", ("request", "router-default"))
+@pytest.mark.parametrize("surface", ("completion", "responses"))
+async def test_chatgpt_completion_fallback_uses_effective_provider_override(
+    configured_provider: str, override_source: str, surface: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DISABLE_AIOHTTP_TRANSPORT", "True")
+    monkeypatch.setenv("EXPERIMENTAL_OPENAI_BASE_LLM_HTTP_HANDLER", "true")
+    (tmp_path / "account-a.json").write_text(json.dumps({
+        "access_token": "fixture-token", "account_id": "account-a", "expires_at": 1e20,
+    }))
+    override_provider: Final = "chatgpt" if configured_provider == "openai" else "openai"
+    actual_provider: Final = override_provider if surface == "completion" else configured_provider
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "primary-group", "model_info": {"id": "source"},
+                "litellm_params": {
+                    "model": f"{configured_provider}/unit-test-model", "api_key": "fixture-token",
+                    "chatgpt_auth_profile": "account-a", "chatgpt_token_dir": str(tmp_path),
+                    "api_base": "https://backend.example.test",
+                },
+            },
+            {
+                "model_name": "fallback-group", "model_info": {"id": "target"},
+                "litellm_params": {
+                    "model": "openai/unit-test-model", "api_key": "fixture-token",
+                    "api_base": "https://backend.example.test",
+                },
+            },
+        ],
+        default_litellm_params={"custom_llm_provider": override_provider} if override_source == "router-default" else {},
+        fallbacks=[{"primary-group": [{"model": "fallback-group", "custom_llm_provider": "openai"}]}],
+        num_retries=0,
+        allow_chatgpt_cross_profile_fallback=False,
+    )
+    completed: Final = {
+        "id": "chat-completed", "object": "chat.completion", "created": 1, "model": "unit-test-model",
+        "choices": [{"index": 0, "finish_reason": "stop", "message": {"role": "assistant", "content": "done"}}],
+        "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+    }
+    completed_response: Final = {
+        "id": "resp-completed", "object": "response", "created_at": 1, "status": "completed",
+        "model": "unit-test-model", "output": [],
+    }
+    with respx.mock(assert_all_called=False) as transport:
+        route: Final = transport.post(url__regex=r"https://backend\.example\.test/.*").mock(side_effect=[
+            httpx.Response(429, json={"error": {"message": "fixture quota", "type": "rate_limit_exceeded"}}),
+            httpx.Response(200, json=completed if surface == "completion" else completed_response),
+        ])
+        request: Final = {
+            "model": "primary-group",
+            **({"messages": [{"role": "user", "content": "portable text"}]} if surface == "completion" else {
+                "input": "portable text",
+            }),
+            **({"custom_llm_provider": override_provider} if override_source == "request" else {}),
+            "metadata": {"model_info": {"id": "target", "_chatgpt_profile_attempt": {"boundary": None}}},
+        }
+        provider_call: Final = router.acompletion if surface == "completion" else router.aresponses
+        if actual_provider == "chatgpt":
+            with pytest.raises(litellm.RateLimitError, match="fixture quota"):
+                await provider_call(**request)
+        else:
+            await provider_call(**request)
+    assert route.call_count == (1 if actual_provider == "chatgpt" else 2)
+    assert bool(route.calls[0].request.headers.get("chatgpt-account-id")) == (actual_provider == "chatgpt")
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("selected_provider", ("openai", "chatgpt"))
 @pytest.mark.parametrize("spoofed_attempt", ({"boundary": None}, [None]))
 async def test_mixed_group_fallback_uses_the_provider_that_actually_failed(

@@ -4394,7 +4394,12 @@ class Router:
 
         deployment_replay: Final = self._deployment_replay_kwargs(
             _FALLBACK_HOP_ADAPTER.validate_python(deployment),
-            _FALLBACK_HOP_ADAPTER.validate_python(kwargs),
+            _FALLBACK_HOP_ADAPTER.validate_python(
+                {
+                    **kwargs,
+                    **self._generic_provider_kwargs(_FALLBACK_HOP_ADAPTER.validate_python(deployment), function_name),
+                }
+            ),
             deployment_that_just_failed,
             prior_chatgpt_attempt if isinstance(prior_chatgpt_attempt, _ChatGPTProfileAttempt) else None,
             metadata_variable_name,
@@ -4403,6 +4408,21 @@ class Router:
             _CHATGPT_ATTEMPT_KEY
         )
         kwargs.update(deployment_replay)
+
+    @staticmethod
+    def _generic_provider_kwargs(deployment: Mapping[str, object], function_name: str | None) -> Mapping[str, object]:
+        if function_name not in (
+            "generic_api_call",
+            "_ageneric_api_call_with_fallbacks",
+            "_ageneric_api_call_with_fallbacks_helper",
+            "_ageneric_api_call_with_fallbacks_responses_attempt",
+            "_ageneric_api_call_with_fallbacks_anthropic_messages_attempt",
+        ):
+            return MappingProxyType({})
+        provider: Final = provider_for_generic_call(
+            _FALLBACK_HOP_ADAPTER.validate_python(deployment.get("litellm_params") or {})
+        )
+        return MappingProxyType({"custom_llm_provider": provider}) if provider is not None else MappingProxyType({})
 
     def _deployment_replay_kwargs(
         self,
@@ -4494,11 +4514,14 @@ class Router:
         overrides: Final = MappingProxyType(
             {
                 key: kwargs[key]
-                for key in ("chatgpt_auth_profile", "chatgpt_token_dir", "chatgpt_auth_file")
+                for key in ("chatgpt_auth_profile", "chatgpt_token_dir", "chatgpt_auth_file", "custom_llm_provider")
                 if key in kwargs
             }
         )
-        return MappingProxyType({**params, **overrides})
+        generic_provider: Final = Router._generic_provider_kwargs(
+            deployment, getattr(kwargs.get("original_function"), "__name__", None)
+        )
+        return MappingProxyType({**params, **overrides, **generic_provider})
 
     @staticmethod
     def _effective_chatgpt_replay_deployment(
