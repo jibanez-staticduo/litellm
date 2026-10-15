@@ -21,6 +21,7 @@ from litellm.router_utils.add_retry_fallback_headers import (
     get_fallback_error_info,
 )
 from litellm.router_utils.batch_utils import get_router_metadata_variable_name
+from litellm.router_utils.common_utils import provider_for_generic_call
 from litellm.router_utils.cooldown_handlers import (
     _first_present,  # pyright: ignore[reportPrivateUsage] - shared internal helper, used across router_utils
     cast_exception_status_to_int,
@@ -738,8 +739,21 @@ def validate_chatgpt_model_group_profiles(
     deployments: Sequence[Mapping[str, object]] | Mapping[str, object],
     model_group: str,
     authorized_pool_model_groups: frozenset[str] = frozenset(),
+    *,
+    requires_account_affinity: bool = False,
 ) -> None:
     rows: Final = (deployments,) if isinstance(deployments, Mapping) else tuple(deployments)
+    if requires_account_affinity:
+        providers: Final = frozenset(
+            provider_for_generic_call(
+                _ANTHROPIC_OAUTH_PARAMS_ADAPTER.validate_python(deployment.get("litellm_params") or {})
+            )
+            for deployment in rows
+        )
+        if "chatgpt" in providers and len(providers) > 1:
+            raise ValueError(
+                f"ChatGPT model group {model_group!r} contains mixed authentication providers for account-owned resources"
+            )
     if model_group not in authorized_pool_model_groups and len(_chatgpt_deployment_profiles(rows)) > 1:
         raise ValueError(f"ChatGPT model group {model_group!r} contains mixed authentication profiles")
 

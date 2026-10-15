@@ -28,6 +28,51 @@ from litellm.types.utils import (
 
 
 @pytest.mark.asyncio
+async def test_chatgpt_mixed_provider_resource_request_stops_before_provider_transport(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DISABLE_AIOHTTP_TRANSPORT", "True")
+    (tmp_path / "account-a.json").write_text(json.dumps({
+        "access_token": "fixture-token", "account_id": "account-a", "expires_at": 1e20,
+    }))
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "mixed-provider-group",
+                "litellm_params": {
+                    "model": f"{provider}/unit-test-model", "api_key": "fixture-token",
+                    "chatgpt_auth_profile": "account-a", "chatgpt_token_dir": str(tmp_path),
+                    "api_base": "https://backend.example.test",
+                },
+                "model_info": {"id": provider},
+            }
+            for provider in ("chatgpt", "openai")
+        ],
+        chatgpt_profile_pool_model_groups=("mixed-provider-group",),
+        num_retries=0,
+    )
+    completed: Final = {
+        "id": "resp-completed", "object": "response", "created_at": 1, "status": "completed",
+        "model": "unit-test-model", "output": [],
+    }
+
+    def provider_response(request: httpx.Request) -> httpx.Response:
+        if request.headers.get("chatgpt-account-id"):
+            return httpx.Response(200, headers={"content-type": "text/event-stream"}, text=(
+                f'data: {json.dumps({"type": "response.completed", "response": completed})}\n\ndata: [DONE]\n\n'
+            ))
+        return httpx.Response(200, json=completed)
+
+    history: Final = [{"role": "user", "content": [{"type": "input_file", "file_id": "file-owned"}]}]
+    with respx.mock(assert_all_called=False) as transport:
+        route: Final = transport.post(url__regex=r"https://backend\.example\.test/.*").mock(side_effect=provider_response)
+        with pytest.raises(ValueError, match="mixed authentication providers"):
+            await router.aresponses(model="mixed-provider-group", input=history)
+    assert route.call_count == 0
+    assert history == [{"role": "user", "content": [{"type": "input_file", "file_id": "file-owned"}]}]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("source_provider,target_provider", (
     ("chatgpt", "openai"), ("chatgpt", "hosted_vllm"), ("openai", "openai"),
 ))

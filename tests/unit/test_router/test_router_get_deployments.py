@@ -90,6 +90,49 @@ async def test_chatgpt_uniform_account_group_needs_no_pool_permission(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("contains_chatgpt", (False, True))
+@pytest.mark.parametrize("resource_form", ("owned", "inline", "text"))
+async def test_chatgpt_mixed_provider_groups_require_portable_requests(
+    contains_chatgpt: bool, resource_form: str, chatgpt_pool_tokens: str
+) -> None:
+    providers: Final = ("chatgpt", "openai") if contains_chatgpt else ("openai", "hosted_vllm")
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "mixed-provider-group",
+                "litellm_params": {
+                    "model": f"{provider}/unit-test-model", "api_key": "fixture-token",
+                    "chatgpt_auth_profile": "account-a", "chatgpt_token_dir": chatgpt_pool_tokens,
+                },
+                "model_info": {"id": provider},
+            }
+            for provider in providers
+        ],
+        chatgpt_profile_pool_model_groups=("mixed-provider-group",),
+    )
+    part: Final = (
+        {"type": "input_file", "file_id": "file-owned"}
+        if resource_form == "owned"
+        else {"type": "input_file", "file_data": "data:application/pdf;base64,fixture", "filename": "inline.pdf"}
+        if resource_form == "inline"
+        else {"type": "input_text", "text": "portable text"}
+    )
+    history: Final = [{"role": "user", "content": [part]}]
+    if contains_chatgpt and resource_form == "owned":
+        with pytest.raises(ValueError, match="mixed authentication providers"):
+            router.get_available_deployment("mixed-provider-group", input=history)
+        with pytest.raises(ValueError, match="mixed authentication providers"):
+            await router.async_get_available_deployment("mixed-provider-group", messages=history, request_kwargs={})
+        return
+    sync_selected: Final = router.get_available_deployment("mixed-provider-group", input=history)
+    async_selected: Final = await router.async_get_available_deployment(
+        "mixed-provider-group", messages=history, request_kwargs={}
+    )
+    assert sync_selected["model_info"]["id"] in providers
+    assert async_selected["model_info"]["id"] in providers
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("surface,part", (
     ("responses", {"type": "input_file", "file_id": "file-owned"}),
     ("responses", {"type": "input_image", "file_id": "file-owned"}),

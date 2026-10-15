@@ -524,6 +524,11 @@ class _ChatGPTProfileAttempt(NamedTuple):
     boundary: str
 
 
+class _ChatGPTPoolPolicy(NamedTuple):
+    authorized_model_groups: frozenset[str]
+    requires_account_affinity: bool
+
+
 def _fallback_deployment_mapping(deployment: Deployment | Mapping[str, object]) -> Mapping[str, object]:
     return _FALLBACK_HOP_ADAPTER.validate_python(
         deployment.model_dump() if isinstance(deployment, Deployment) else deployment
@@ -13146,13 +13151,13 @@ class Router:
         _settings_to_return["chatgpt_profile_pool_model_groups"] = sorted(self.chatgpt_profile_pool_model_groups)
         return _settings_to_return
 
-    def _chatgpt_authorized_pools_for_request(
+    def _chatgpt_pool_policy_for_request(
         self, request_kwargs: object, *, messages: object = None, request_input: object = None
-    ) -> frozenset[str]:
+    ) -> _ChatGPTPoolPolicy:
         parsed_kwargs: Final = _FALLBACK_HOP_ADAPTER.validate_python(request_kwargs or {})
         default_params: Final = self._chatgpt_default_params()
         effective_kwargs: Final = MappingProxyType({**default_params, **parsed_kwargs})
-        if (
+        requires_account_affinity: Final = (
             references_provider_scoped_resource(effective_kwargs)
             or creates_provider_scoped_resource(effective_kwargs)
             or request_contains_provider_resources(
@@ -13162,9 +13167,11 @@ class Router:
                 conversation=effective_kwargs.get("conversation"),
                 prompt=effective_kwargs.get("prompt"),
             )
-        ):
-            return frozenset()
-        return self.chatgpt_profile_pool_model_groups
+        )
+        return _ChatGPTPoolPolicy(
+            frozenset() if requires_account_affinity else self.chatgpt_profile_pool_model_groups,
+            requires_account_affinity,
+        )
 
     @staticmethod
     def _chatgpt_request_references_provider_resources(kwargs: Mapping[str, object]) -> bool:
@@ -14036,14 +14043,16 @@ class Router:
             request_kwargs=request_kwargs,
         )
         request_content: Final = _FALLBACK_HOP_ADAPTER.validate_python({"messages": messages, "input": input})
+        chatgpt_policy: Final = self._chatgpt_pool_policy_for_request(
+            _ROUTING_KWARGS_ADAPTER.validate_python(request_kwargs),
+            messages=request_content.get("messages"),
+            request_input=request_content.get("input"),
+        )
         validate_chatgpt_model_group_profiles(
             _CHATGPT_HEALTHY_DEPLOYMENTS_ADAPTER.validate_python(healthy_deployments),
             model,
-            self._chatgpt_authorized_pools_for_request(
-                _ROUTING_KWARGS_ADAPTER.validate_python(request_kwargs),
-                messages=request_content.get("messages"),
-                request_input=request_content.get("input"),
-            ),
+            chatgpt_policy.authorized_model_groups,
+            requires_account_affinity=chatgpt_policy.requires_account_affinity,
         )
         validate_anthropic_model_group_profiles(healthy_deployments, model)
 
@@ -15293,14 +15302,16 @@ class Router:
             request_kwargs=request_kwargs,
         )
         request_content: Final = _FALLBACK_HOP_ADAPTER.validate_python({"messages": messages, "input": input})
+        chatgpt_policy: Final = self._chatgpt_pool_policy_for_request(
+            _ROUTING_KWARGS_ADAPTER.validate_python(request_kwargs),
+            messages=request_content.get("messages"),
+            request_input=request_content.get("input"),
+        )
         validate_chatgpt_model_group_profiles(
             _CHATGPT_HEALTHY_DEPLOYMENTS_ADAPTER.validate_python(healthy_deployments),
             model,
-            self._chatgpt_authorized_pools_for_request(
-                _ROUTING_KWARGS_ADAPTER.validate_python(request_kwargs),
-                messages=request_content.get("messages"),
-                request_input=request_content.get("input"),
-            ),
+            chatgpt_policy.authorized_model_groups,
+            requires_account_affinity=chatgpt_policy.requires_account_affinity,
         )
         validate_anthropic_model_group_profiles(healthy_deployments, model)
         strategy, strategy_selector = self._get_routing_context(model, request_kwargs)
