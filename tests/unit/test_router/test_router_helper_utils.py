@@ -28,6 +28,157 @@ from litellm.types.utils import (
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("affinity_checks", (False, True))
+async def test_chatgpt_account_pool_same_account_continuation_cleans_each_reasoning_item(
+    affinity_checks: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from litellm.responses.utils import ResponsesAPIRequestUtils
+
+    monkeypatch.setenv("DISABLE_AIOHTTP_TRANSPORT", "True")
+    for profile in ("account-a", "account-b"):
+        (tmp_path / f"{profile}.json").write_text(json.dumps({
+            "access_token": "fixture-token", "account_id": profile, "expires_at": 1e20,
+        }))
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "account-pool", "model_info": {"id": profile},
+                "litellm_params": {
+                    "model": "chatgpt/unit-test-model", "api_base": "https://backend.example.test",
+                    "chatgpt_auth_profile": profile, "chatgpt_token_dir": str(tmp_path),
+                    "weight": 1 if profile == "account-b" else 0,
+                },
+            }
+            for profile in ("account-a", "account-b")
+        ],
+        chatgpt_profile_pool_model_groups=("account-pool",),
+        optional_pre_call_checks=(
+            ["encrypted_content_affinity", "responses_api_deployment_check"] if affinity_checks else []
+        ),
+        num_retries=0,
+    )
+    previous_id: Final = ResponsesAPIRequestUtils._build_responses_api_response_id(
+        "chatgpt", "account-b", "resp-upstream-b"
+    )
+    history: Final = [
+        {"role": "user", "content": "remember this"},
+        {
+            "type": "reasoning", "encrypted_content": "ciphertext-account-a",
+            "id": ResponsesAPIRequestUtils._build_encrypted_item_id("account-a", "rs-upstream-a"),
+            "summary": [{"type": "summary_text", "text": "readable reasoning from a"}],
+        },
+        {
+            "type": "reasoning", "encrypted_content": "ciphertext-account-b",
+            "id": ResponsesAPIRequestUtils._build_encrypted_item_id("account-b", "rs-upstream-b"),
+            "summary": [{"type": "summary_text", "text": "readable reasoning from b"}],
+        },
+        {"type": "function_call", "call_id": "call-one", "name": "lookup", "arguments": "{}"},
+        {"type": "function_call_output", "call_id": "call-one", "output": "useful result"},
+    ]
+    history_snapshot: Final = json.dumps(history)
+    completed: Final = {
+        "id": "resp-completed", "object": "response", "created_at": 1, "status": "completed",
+        "model": "unit-test-model", "output": [],
+    }
+    with respx.mock(assert_all_called=True) as transport:
+        route: Final = transport.post(url__regex=r"https://backend\.example\.test/.*").mock(
+            return_value=httpx.Response(
+                200, headers={"content-type": "text/event-stream"},
+                text=f'data: {json.dumps({"type": "response.completed", "response": completed})}\n\ndata: [DONE]\n\n',
+            )
+        )
+        response: Final = await router.aresponses(model="account-pool", input=history, previous_response_id=previous_id)
+    assert response.status == "completed"
+    assert route.call_count == 1
+    assert route.calls[0].request.headers["chatgpt-account-id"] == "account-b"
+    provider_body: Final = json.loads(route.calls[0].request.content)
+    assert provider_body["previous_response_id"] == "resp-upstream-b"
+    assert provider_body["input"] == [
+        history[0],
+        {"type": "reasoning", "summary": history[1]["summary"]},
+        {**history[2], "id": "rs-upstream-b"},
+        *history[3:],
+    ]
+    assert json.dumps(history) == history_snapshot
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("group_kind", ("accounts", "providers", "uniform", "uniform-override"))
+@pytest.mark.parametrize("id_source", ("request", "router-default", "none", "stateless", "trusted-retry"))
+async def test_chatgpt_unmarked_response_id_replay_matches_group_account_scope(
+    group_kind: str, id_source: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DISABLE_AIOHTTP_TRANSPORT", "True")
+    for profile in ("account-a", "account-b"):
+        (tmp_path / f"{profile}.json").write_text(json.dumps({
+            "access_token": "fixture-token", "account_id": profile, "expires_at": 1e20,
+        }))
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "account-pool", "model_info": {"id": profile},
+                "litellm_params": {
+                    "model": "openai/unit-test-model" if group_kind == "providers" and index == 1 else "chatgpt/unit-test-model",
+                    "api_key": "fixture-token", "api_base": "https://backend.example.test",
+                    "chatgpt_auth_profile": "account-a" if group_kind == "uniform" else profile,
+                    "chatgpt_token_dir": str(tmp_path), "weight": 1 if index == 1 else 0,
+                },
+            }
+            for index, profile in enumerate(("account-a", "account-b"))
+        ],
+        chatgpt_profile_pool_model_groups=("account-pool",),
+        default_litellm_params={"previous_response_id": "resp-upstream-raw"} if id_source == "router-default" else {},
+        num_retries=0,
+    )
+    history: Final = [
+        {"role": "user", "content": "remember this"},
+        *([] if id_source == "stateless" else [{
+            "type": "reasoning", "id": "rs-upstream", "encrypted_content": "unknown-ciphertext",
+            "summary": [{"type": "summary_text", "text": "readable reasoning"}],
+        }]),
+        {"type": "function_call", "call_id": "call-one", "name": "lookup", "arguments": "{}"},
+        {"type": "function_call_output", "call_id": "call-one", "output": "useful result"},
+    ]
+    history_snapshot: Final = json.dumps(history)
+    completed: Final = {
+        "id": "resp-completed", "object": "response", "created_at": 1, "status": "completed",
+        "model": "unit-test-model", "output": [],
+    }
+    trusted_attempt: Final = {"chatgpt_auth_profile": "account-a"} if group_kind == "uniform-override" else {}
+    if id_source == "trusted-retry":
+        selected: Final = router.get_deployment(model_id="account-b")
+        assert selected is not None
+        router._update_kwargs_with_deployment(selected.model_dump(), trusted_attempt, function_name="generic_api_call")
+    with respx.mock(assert_all_called=True) as transport:
+        route: Final = transport.post(url__regex=r"https://backend\.example\.test/.*").mock(
+            return_value=httpx.Response(200, json=completed) if group_kind == "providers" else httpx.Response(
+                200, headers={"content-type": "text/event-stream"},
+                text=f'data: {json.dumps({"type": "response.completed", "response": completed})}\n\ndata: [DONE]\n\n',
+            )
+        )
+        response: Final = await router.aresponses(
+            model="account-pool", input=history,
+            **({"previous_response_id": "resp-upstream-raw"} if id_source in ("request", "trusted-retry") else {}),
+            **({"litellm_metadata": trusted_attempt["litellm_metadata"]} if id_source == "trusted-retry" else {}),
+            **({"chatgpt_auth_profile": "account-a"} if group_kind == "uniform-override" else {}),
+        )
+    assert response.status == "completed"
+    provider_body: Final = json.loads(route.calls[0].request.content)
+    should_replay: Final = id_source in ("request", "router-default", "none") and group_kind in ("accounts", "providers")
+    if should_replay:
+        assert not provider_body.get("previous_response_id")
+        assert provider_body["input"] == [
+            history[0], {"type": "reasoning", "summary": history[1]["summary"]}, *history[2:],
+        ]
+    else:
+        assert provider_body.get("previous_response_id") == (
+            None if id_source in ("none", "stateless") else "resp-upstream-raw"
+        )
+        assert provider_body["input"] == history
+    assert json.dumps(history) == history_snapshot
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("override_source", ("request", "router-default"))
 async def test_chatgpt_messages_fallback_cannot_hide_target_provider_behind_override(
     override_source: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

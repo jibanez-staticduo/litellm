@@ -4403,6 +4403,7 @@ class Router:
             deployment_that_just_failed,
             prior_chatgpt_attempt if isinstance(prior_chatgpt_attempt, _ChatGPTProfileAttempt) else None,
             metadata_variable_name,
+            function_name,
         )
         model_info[_CHATGPT_ATTEMPT_KEY] = _MODEL_INFO_ADAPTER.validate_python(deployment_replay.get("model_info")).get(
             _CHATGPT_ATTEMPT_KEY
@@ -4431,16 +4432,22 @@ class Router:
         previous_deployment_id: str | None,
         previous_attempt: _ChatGPTProfileAttempt | None,
         metadata_variable_name: str,
+        function_name: str | None = None,
     ) -> Mapping[str, object]:
         effective_chatgpt_params: Final = self._effective_chatgpt_params(deployment, kwargs)
         selected_chatgpt_boundary: Final = EncryptedContentAffinityCheck.chatgpt_authentication_boundary(
             effective_chatgpt_params
         )
         chatgpt_replay: Final = self._chatgpt_profile_replay_kwargs(
-            deployment, kwargs, previous_deployment_id, previous_attempt
+            deployment, kwargs, previous_deployment_id, previous_attempt, function_name
         )
         if selected_chatgpt_boundary is None and not chatgpt_replay:
             self._strip_reasoning_on_fallback(deployment, kwargs, previous_deployment_id)
+        compatible_history: Final = (
+            self._chatgpt_compatible_history_kwargs(deployment, kwargs)
+            if selected_chatgpt_boundary is not None and not chatgpt_replay
+            else MappingProxyType[str, object]({})
+        )
         current_model_info: Final = kwargs.get("model_info")
         parsed_model_info: Final = _FALLBACK_HOP_ADAPTER.validate_python(
             current_model_info.model_dump() if isinstance(current_model_info, BaseModel) else current_model_info
@@ -4452,10 +4459,27 @@ class Router:
         return MappingProxyType(
             {
                 **chatgpt_replay,
+                **compatible_history,
                 "model_info": dict(attempt_model_info),
                 metadata_variable_name: {**metadata, "model_info": dict(attempt_model_info)},
             }
         )
+
+    def _chatgpt_compatible_history_kwargs(
+        self, deployment: Mapping[str, object], kwargs: Mapping[str, object]
+    ) -> Mapping[str, object]:
+        history: Final = MappingProxyType(
+            {key: copy.deepcopy(kwargs[key]) for key in ("input", "messages") if key in kwargs}
+        )
+        EncryptedContentAffinityCheck.strip_reasoning_the_targets_cannot_decrypt(
+            self,
+            history.get("input"),
+            history.get("messages"),
+            (self._effective_chatgpt_replay_deployment(deployment, kwargs),),
+            unmarked_origin=None,
+            preserve_unmarked_reasoning=True,
+        )
+        return history if any(history[key] != kwargs[key] for key in history) else MappingProxyType({})
 
     def _chatgpt_profile_replay_kwargs(
         self,
@@ -4463,6 +4487,7 @@ class Router:
         kwargs: Mapping[str, object],
         previous_deployment_id: str | None,
         previous_attempt: _ChatGPTProfileAttempt | None = None,
+        function_name: str | None = None,
     ) -> Mapping[str, object]:
         target_boundary: Final = EncryptedContentAffinityCheck.chatgpt_authentication_boundary(
             self._effective_chatgpt_params(deployment, kwargs)
@@ -4488,9 +4513,20 @@ class Router:
             else any(boundary is not None for boundary in origin_boundaries)
             or (response_origin is not None and response_origin.get("custom_llm_provider") == "chatgpt")
         )
-        if target_boundary is None and not leaving_chatgpt:
+        unmarked_pool_origin: Final = (
+            response_origin_id is None
+            and (response_origin is None or response_origin.get("custom_llm_provider") is None)
+            and previous_attempt is None
+            and self._chatgpt_group_has_multiple_account_boundaries(deployment, kwargs, function_name)
+            and (bool(previous_response_id) or self._chatgpt_request_has_undecryptable_reasoning(deployment, kwargs))
+        )
+        if target_boundary is None and not leaving_chatgpt and not unmarked_pool_origin:
             return MappingProxyType({})
-        if not leaving_chatgpt and not any(boundary != target_boundary for boundary in origin_boundaries):
+        if (
+            not unmarked_pool_origin
+            and not leaving_chatgpt
+            and not any(boundary != target_boundary for boundary in origin_boundaries)
+        ):
             return MappingProxyType({})
         if self._chatgpt_request_references_provider_resources(kwargs):
             raise ValueError("ChatGPT requests with account-owned resources cannot change authentication profiles")
@@ -4502,9 +4538,45 @@ class Router:
             replay_history.get("input"),
             replay_history.get("messages"),
             (self._effective_chatgpt_replay_deployment(deployment, kwargs),),
-            unmarked_origin=(response_origin_id or previous_deployment_id if previous_attempt is None else None),
+            unmarked_origin=(
+                response_origin_id or previous_deployment_id
+                if previous_attempt is None and not unmarked_pool_origin
+                else None
+            ),
         )
         return MappingProxyType({**replay_history, "previous_response_id": None})
+
+    def _chatgpt_request_has_undecryptable_reasoning(
+        self, deployment: Mapping[str, object], kwargs: Mapping[str, object]
+    ) -> bool:
+        history: Final = MappingProxyType(
+            {key: copy.deepcopy(kwargs[key]) for key in ("input", "messages") if key in kwargs}
+        )
+        EncryptedContentAffinityCheck.strip_reasoning_the_targets_cannot_decrypt(
+            self,
+            history.get("input"),
+            history.get("messages"),
+            (self._effective_chatgpt_replay_deployment(deployment, kwargs),),
+            unmarked_origin=None,
+        )
+        return any(history[key] != kwargs[key] for key in history)
+
+    def _chatgpt_group_has_multiple_account_boundaries(
+        self, deployment: Mapping[str, object], kwargs: Mapping[str, object], function_name: str | None
+    ) -> bool:
+        model_group: Final = deployment.get("model_name")
+        if not isinstance(model_group, str):
+            return False
+        boundaries: Final = frozenset(
+            EncryptedContentAffinityCheck.chatgpt_authentication_boundary(
+                self._effective_chatgpt_params(
+                    _fallback_deployment_mapping(candidate),
+                    MappingProxyType({**kwargs, **self._generic_provider_kwargs(candidate, function_name)}),
+                )
+            )
+            for candidate in self.get_model_list_of_routed_group(model_group)
+        )
+        return len(boundaries) > 1 and any(boundary is not None for boundary in boundaries)
 
     @staticmethod
     def _effective_chatgpt_params(

@@ -305,6 +305,7 @@ class EncryptedContentAffinityCheck(CustomLogger):
         target_deployments: Sequence[Mapping[str, object]],
         *,
         unmarked_origin: str | None,
+        preserve_unmarked_reasoning: bool = False,
     ) -> None:
         """
         Drop the encrypted reasoning that none of ``target_deployments`` minted or shares an
@@ -327,6 +328,8 @@ class EncryptedContentAffinityCheck(CustomLogger):
 
         @cache
         def target_can_decrypt(marked_origin: str | None) -> bool:
+            if marked_origin is None and preserve_unmarked_reasoning:
+                return True
             origin_model_id: Final = marked_origin if marked_origin is not None else unmarked_origin
             if origin_model_id is None:
                 return False
@@ -407,6 +410,8 @@ class EncryptedContentAffinityCheck(CustomLogger):
 
         request_input: Final = request_kwargs.get("input")
         anthropic_messages: Final = messages or request_kwargs.get("messages")
+        if self.router is not None and model in self.router.chatgpt_profile_pool_model_groups:
+            return typed_healthy_deployments
         model_id: Final = self._extract_model_id_from_input(
             request_input
         ) or self._extract_model_id_from_anthropic_messages(anthropic_messages)
