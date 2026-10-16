@@ -39,7 +39,7 @@ class AnthropicTokenCounter(BaseTokenCounter):
         self,
         model_to_use: str,
         messages: Sequence[Mapping[str, JsonValue]] | None,
-        contents: Sequence[Mapping[str, JsonValue]] | None,
+        contents: Sequence[Mapping[str, object]] | None,
         deployment: Mapping[str, object] | None = None,
         request_model: str = "",
         tools: Sequence[Mapping[str, JsonValue]] | None = None,
