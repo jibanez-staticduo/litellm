@@ -164,10 +164,7 @@ class InMemoryCache(BaseCache):
         Check if ttl is set for a key
         """
         ttl_time: Final = self.ttl_dict.get(key)
-        if ttl_time is None or ttl_time < self._clock():  # if ttl is not set, allow override
-            return True
-        else:
-            return False
+        return ttl_time is None or ttl_time < self._clock()
 
     def set_cache(self, key, value, **kwargs):
         # Handle the edge case where max_size_in_memory is 0
