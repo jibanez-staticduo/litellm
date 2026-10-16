@@ -20,7 +20,7 @@ import {
   ServerIcon,
   Zap,
 } from "lucide-react";
-import { getProxyBaseUrl } from "@/components/networking";
+import { getGatewayBaseUrl, getProxyBaseUrl } from "@/components/networking";
 import { copyToClipboard as utilCopyToClipboard } from "@/utils/dataUtils";
 
 interface CodeBlockProps {
@@ -158,6 +158,7 @@ const MCPConnect: React.FC<MCPConnectProps> = ({ currentServerAccessGroups = [],
   const configuration = connector ?? (mode === "lazymcp" ? LAZY_MCP_CONNECTOR : MCP_CONNECTOR);
   const proxyBaseUrl = getProxyBaseUrl();
   const { endpointPath, endpointName, serverLabel } = configuration;
+  const gatewayBaseUrl = getGatewayBaseUrl();
   const [copiedStates, setCopiedStates] = useState<Record<string, boolean>>({});
   const [currentServer] = useState("Zapier_MCP"); // This should match the current server being viewed
 
@@ -264,7 +265,7 @@ const MCPConnect: React.FC<MCPConnectProps> = ({ currentServerAccessGroups = [],
           accessGroups={["dev-group"]}
         >
           <CodeBlock
-            code={`curl --location '${proxyBaseUrl}/v1/responses' \\
+            code={`curl --location '${gatewayBaseUrl}/v1/responses' \\
 --header 'Content-Type: application/json' \\
 --header "Authorization: Bearer $LITELLM_VIRTUAL_KEY" \\
 --data '{

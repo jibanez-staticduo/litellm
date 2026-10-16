@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 import respx
+from openai import AsyncOpenAI
 from openai.types.image import Image
 
 import litellm
@@ -14,6 +15,30 @@ from litellm.integrations.custom_logger import CustomLogger
 from litellm.litellm_core_utils.litellm_logging import Logging
 from litellm.types.utils import CallTypes, StandardLoggingPayload
 import os
+
+
+@pytest.mark.asyncio
+async def test_aimage_generation_resolves_the_requested_chatgpt_profile() -> None:
+    from litellm.types.router import GenericLiteLLMParams
+    from litellm.types.utils import ImageResponse
+
+    profiles: Final[list[str | None]] = []
+
+    def provider_info(model, api_base, api_key, custom_llm_provider, *, litellm_params=None):
+        assert isinstance(litellm_params, GenericLiteLLMParams)
+        profiles.append(litellm_params.chatgpt_auth_profile)
+        return "https://chatgpt.com/backend-api/codex", "profile-token", "chatgpt"
+
+    with (
+        patch.object(litellm.ChatGPTConfig, "get_openai_compatible_provider_info", side_effect=provider_info),
+        patch("litellm.images.main.image_generation", return_value=ImageResponse(created=1, data=[])),
+    ):
+        response: Final = await litellm.aimage_generation(
+            model="chatgpt/gpt-image-1", prompt="a red circle", chatgpt_auth_profile="other-account"
+        )
+
+    assert profiles == ["other-account"]
+    assert response.data == []
 
 
 def test_image_generation_keeps_an_internal_prefixed_kwarg_out_of_the_provider_request(
@@ -36,6 +61,67 @@ def test_image_generation_keeps_an_internal_prefixed_kwarg_out_of_the_provider_r
     sent: Final = json.loads(respx_mock.calls[0].request.content)
     assert "_litellm_undeclared_sentinel" not in sent, sent
     assert sent["prompt"] == "a red circle"
+
+
+@pytest.mark.asyncio
+async def test_aimage_generation_routes_a_bare_model_name_to_its_explicit_provider(
+    respx_mock: respx.MockRouter,
+) -> None:
+    api_base: Final = "http://localhost:12348/v1"
+    mock_route: Final = respx_mock.post(url__regex=rf"{api_base}/images/generations.*").mock(
+        return_value=httpx.Response(status_code=200, json={"created": 1712697600, "data": [{"b64_json": "aW1n"}]})
+    )
+
+    response: Final = await litellm.aimage_generation(
+        model="Qwen-Image",
+        prompt="a red circle",
+        custom_llm_provider="openai",
+        api_base=api_base,
+        api_key="fake_openai_api_key",
+        client=AsyncOpenAI(api_key="fake_openai_api_key", base_url=api_base, http_client=httpx.AsyncClient()),
+    )
+
+    assert mock_route.called
+    sent: Final = json.loads(respx_mock.calls[0].request.content)
+    assert sent["model"] == "Qwen-Image"
+    assert response.data[0].b64_json == "aW1n"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("hint", ["custom_llm_provider", "api_base"])
+async def test_aimage_generation_answers_a_non_string_provider_hint_with_a_bad_request(
+    hint: str, respx_mock: respx.MockRouter
+) -> None:
+    with pytest.raises(litellm.BadRequestError) as raised:
+        await litellm.aimage_generation(
+            model="Qwen-Image", prompt="a red circle", api_key="fake_openai_api_key", **{hint: 123}
+        )
+
+    assert raised.value.status_code == 400
+    assert f"Invalid {hint}" in raised.value.message
+    assert not respx_mock.calls
+
+
+@pytest.mark.asyncio
+async def test_aimage_generation_ignores_a_non_string_base_url_like_the_sync_path(
+    respx_mock: respx.MockRouter,
+) -> None:
+    api_base: Final = "http://localhost:12349/v1"
+    mock_route: Final = respx_mock.post(url__regex=rf"{api_base}/images/generations.*").mock(
+        return_value=httpx.Response(status_code=200, json={"created": 1712697600, "data": [{"b64_json": "aW1n"}]})
+    )
+
+    response: Final = await litellm.aimage_generation(
+        model="dall-e-3",
+        prompt="a red circle",
+        api_base=api_base,
+        base_url=httpx.URL(api_base),
+        api_key="fake_openai_api_key",
+        client=AsyncOpenAI(api_key="fake_openai_api_key", base_url=api_base, http_client=httpx.AsyncClient()),
+    )
+
+    assert mock_route.called
+    assert response.data[0].b64_json == "aW1n"
 
 
 def test_image_edit_prices_a_vertex_deployment_at_its_configured_location(
@@ -131,9 +217,7 @@ class TestAimlImageGeneration:
                 custom_logger = TestCustomLogger()
                 litellm.logging_callback_manager._reset_all_callbacks()
                 litellm.callbacks = [custom_logger]
-                base_image_generation_call_args = (
-                    self.get_base_image_generation_call_args()
-                )
+                base_image_generation_call_args = self.get_base_image_generation_call_args()
                 litellm.set_verbose = True
                 # Pass dummy api_key so validate_environment passes; HTTP is mocked
                 response = await litellm.aimage_generation(
@@ -150,9 +234,7 @@ class TestAimlImageGeneration:
                 # print("response_cost", response._hidden_params["response_cost"])
 
                 logged_standard_logging_payload = custom_logger.standard_logging_payload
-                print(
-                    "logged_standard_logging_payload", logged_standard_logging_payload
-                )
+                print("logged_standard_logging_payload", logged_standard_logging_payload)
                 assert logged_standard_logging_payload is not None
                 assert logged_standard_logging_payload["response_cost"] is not None
                 assert logged_standard_logging_payload["response_cost"] > 0
@@ -167,9 +249,7 @@ class TestAimlImageGeneration:
                     response_dict["usage"] = dict(response_dict["usage"])
                 print("response usage=", response_dict.get("usage"))
 
-                assert (
-                    response.data is not None
-                )  # type guard for iteration (base fails here if None)
+                assert response.data is not None  # type guard for iteration (base fails here if None)
                 for d in response.data:
                     assert isinstance(d, Image)
                     print("data in response.data", d)

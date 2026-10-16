@@ -99,6 +99,7 @@ class AnthropicMessagesConfig(BaseAnthropicMessagesConfig):
             "output_format",
             "inference_geo",
             "speed",
+            "service_tier",
             "output_config",
             "reasoning_effort",
             "safeguards",
@@ -677,6 +678,7 @@ class AnthropicMessagesConfig(BaseAnthropicMessagesConfig):
             model=model,
             optional_params=anthropic_messages_optional_request_params,
             custom_llm_provider=self._resolved_provider,
+            drop_params=getattr(litellm_params, "drop_params", None) is True,
         )
 
         self._translate_adaptive_effort_for_non_adaptive_model(

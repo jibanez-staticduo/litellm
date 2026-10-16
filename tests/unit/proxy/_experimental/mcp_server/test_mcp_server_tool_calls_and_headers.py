@@ -241,8 +241,12 @@ async def test_lazymcp_catalog_honors_listing_timeout(timeout, expected_status):
 
     server = MCPServer(server_id="slow-tools", name="slow-tools", transport="http")
     with (
-        patch.object(server_module, "MCP_TOOL_LISTING_TIMEOUT", timeout),  # test-quality-ok: vary the import-time setting without reloading MCP global state
-        patch.object(server_module, "_get_lazymcp_server_tools", side_effect=delayed_tools),  # test-quality-ok: simulate upstream latency while exercising the real deadline and cancellation
+        patch.object(
+            server_module, "MCP_TOOL_LISTING_TIMEOUT", timeout
+        ),  # test-quality-ok: vary the import-time setting without reloading MCP global state
+        patch.object(
+            server_module, "_get_lazymcp_server_tools", side_effect=delayed_tools
+        ),  # test-quality-ok: simulate upstream latency while exercising the real deadline and cancellation
     ):
         _, result_status = await server_module._get_bounded_lazymcp_server_tools(
             server=server,
@@ -1571,9 +1575,12 @@ async def test_get_tools_from_mcp_servers_continues_when_one_server_fails():
         "litellm.proxy._experimental.mcp_server.operations.global_mcp_server_manager",
         mock_manager,
     ):
-        with patch(
-            "litellm.proxy._experimental.mcp_server.catalog.verbose_logger",
-        ) as mock_logger, patch("litellm.proxy._experimental.mcp_server.operations.verbose_logger", mock_logger):
+        with (
+            patch(
+                "litellm.proxy._experimental.mcp_server.catalog.verbose_logger",
+            ) as mock_logger,
+            patch("litellm.proxy._experimental.mcp_server.operations.verbose_logger", mock_logger),
+        ):
             # Test with server-specific auth headers
             mcp_server_auth_headers = {
                 "working": {"Authorization": "Bearer working-token"},
@@ -1667,9 +1674,12 @@ async def test_get_tools_from_mcp_servers_handles_all_servers_failing():
         "litellm.proxy._experimental.mcp_server.operations.global_mcp_server_manager",
         mock_manager,
     ):
-        with patch(
-            "litellm.proxy._experimental.mcp_server.catalog.verbose_logger",
-        ) as mock_logger, patch("litellm.proxy._experimental.mcp_server.operations.verbose_logger", mock_logger):
+        with (
+            patch(
+                "litellm.proxy._experimental.mcp_server.catalog.verbose_logger",
+            ) as mock_logger,
+            patch("litellm.proxy._experimental.mcp_server.operations.verbose_logger", mock_logger),
+        ):
             # Test with server-specific auth headers
             mcp_server_auth_headers = {
                 "failing1": {"Authorization": "Bearer failing1-token"},
@@ -3771,8 +3781,15 @@ async def test_initialize_request_with_existing_session_tracks_new_session():
             patch(  # test-quality-ok: registry is empty in unit tests; key owns one server
                 "litellm.proxy._experimental.mcp_server.operations._get_allowed_mcp_servers",
                 new_callable=AsyncMock,
-                return_value=[MCPServer(server_id="new-server", name="new-server", url="http://upstream/mcp",
-                                        transport=MCPTransport.http, auth_type=MCPAuth.none)],
+                return_value=[
+                    MCPServer(
+                        server_id="new-server",
+                        name="new-server",
+                        url="http://upstream/mcp",
+                        transport=MCPTransport.http,
+                        auth_type=MCPAuth.none,
+                    )
+                ],
             ),
             patch(
                 "litellm.proxy._experimental.mcp_server.server._SESSION_MANAGERS_INITIALIZED",
@@ -3996,7 +4013,14 @@ async def test_owner_fingerprint_hashes_custom_api_keys():
 
 
 @pytest.mark.asyncio
-async def test_stateful_mcp_session_owner_mismatch_returns_403():
+@pytest.mark.parametrize(
+    "body",
+    [
+        b'{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}',
+        b'{"jsonrpc":"2.0","method":"notifications/cancelled","params":{"requestId":0}}',
+    ],
+)
+async def test_stateful_mcp_session_owner_mismatch_returns_403(body: bytes):
     """
     A stateful mcp-session-id is bound to its creator. A different
     authenticated caller presenting the same session_id must be rejected
@@ -4031,7 +4055,7 @@ async def test_stateful_mcp_session_owner_mismatch_returns_403():
     receive = AsyncMock(
         return_value={
             "type": "http.request",
-            "body": b'{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}',
+            "body": body,
             "more_body": False,
         }
     )
@@ -4361,6 +4385,18 @@ async def test_truncated_jsonrpc_response_with_nested_method_skips_lock(
     )
     mcp_server._stateful_session_owners[session_id] = mcp_server._owner_fingerprint_for(owner_auth)
 
+    class _RecordingLock(asyncio.Lock):
+        def __init__(self) -> None:
+            super().__init__()
+            self.contended = asyncio.Event()
+
+        async def acquire(self) -> bool:
+            if self.locked():
+                self.contended.set()
+            return await super().acquire()
+
+    session_lock: Final = _RecordingLock()
+    mcp_server._stateful_session_locks[session_id] = session_lock
     gate = asyncio.Event()
     request_in_handle = asyncio.Event()
     response_handled = asyncio.Event()
@@ -4426,12 +4462,19 @@ async def test_truncated_jsonrpc_response_with_nested_method_skips_lock(
             ),
         ):
             req_task = asyncio.create_task(call(request_body))
-            await asyncio.wait_for(request_in_handle.wait(), timeout=1.0)
+            await request_in_handle.wait()
 
             resp_task = asyncio.create_task(call(response_body))
-            # Under a flat substring heuristic the response would acquire the
-            # lock held by req_task and this wait would time out (deadlock).
-            await asyncio.wait_for(response_handled.wait(), timeout=1.0)
+            response_handled_task: Final = asyncio.create_task(response_handled.wait())
+            contended_task: Final = asyncio.create_task(session_lock.contended.wait())
+            _, pending = await asyncio.wait(
+                (response_handled_task, contended_task),
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            for event_task in pending:
+                event_task.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+            assert response_handled.is_set(), "response POST contended for the request's session lock"
 
             await resp_task
             assert not req_task.done()
@@ -4447,6 +4490,7 @@ async def test_truncated_jsonrpc_response_with_nested_method_skips_lock(
     finally:
         gate.set()
         mcp_server._stateful_session_auth_contexts.pop(session_id, None)
+        mcp_server._stateful_session_auth_context_last_seen.pop(session_id, None)
         mcp_server._stateful_session_owners.pop(session_id, None)
         mcp_server._stateful_session_locks.pop(session_id, None)
         mcp_server._stateful_session_active_request_counts.pop(session_id, None)
@@ -7517,9 +7561,9 @@ async def test_oauth_passthrough_preflight_preserves_status_contract(probe_statu
                 user_api_key_auth=UserAPIKeyAuth(user_id="admitted-user"),
                 mcp_servers=["passthrough_server"],
                 client_ip=None,
-            oauth2_headers={"Authorization": "Bearer upstream-token"},
-            mcp_server_auth_headers=None,
-            raw_headers={"x-litellm-api-key": "sk-litellm-proxy-key", "Authorization": "Bearer upstream-token"},
+                oauth2_headers={"Authorization": "Bearer upstream-token"},
+                mcp_server_auth_headers=None,
+                raw_headers={"x-litellm-api-key": "sk-litellm-proxy-key", "Authorization": "Bearer upstream-token"},
             )
             assert result is None
         else:
@@ -7529,9 +7573,9 @@ async def test_oauth_passthrough_preflight_preserves_status_contract(probe_statu
                     user_api_key_auth=UserAPIKeyAuth(user_id="admitted-user"),
                     mcp_servers=["passthrough_server"],
                     client_ip=None,
-            oauth2_headers={"Authorization": "Bearer upstream-token"},
-            mcp_server_auth_headers=None,
-            raw_headers={"x-litellm-api-key": "sk-litellm-proxy-key", "Authorization": "Bearer upstream-token"},
+                    oauth2_headers={"Authorization": "Bearer upstream-token"},
+                    mcp_server_auth_headers=None,
+                    raw_headers={"x-litellm-api-key": "sk-litellm-proxy-key", "Authorization": "Bearer upstream-token"},
                 )
             assert exc_info.value.status_code == expected_status
             if expected_status == 401:
@@ -7884,7 +7928,6 @@ def _worker_that_never_listed(server: MCPServer, upstream_tools: tuple[str, ...]
     tools/list with ``upstream_tools`` and a managed dispatch that records what reaches it."""
     from mcp.types import Tool as MCPTool
 
-
     mcp_operations.global_mcp_server_manager.registry[server.server_id] = server
     dispatched: dict[str, object] = {}
 
@@ -7979,7 +8022,6 @@ async def test_execute_mcp_tool_unknown_tool_on_never_listed_server_lists_once_t
 async def test_execute_mcp_tool_does_not_relist_a_server_this_worker_already_listed():
     from mcp.types import Tool as MCPTool
 
-
     server = _never_listed_passthrough_server()
     with _worker_that_never_listed(server, upstream_tools=("add",)) as worker:
         mcp_operations.global_mcp_server_manager._create_prefixed_tools([MCPTool(name="add", inputSchema={})], server)
@@ -8000,7 +8042,6 @@ async def test_execute_mcp_tool_lists_a_tool_this_worker_has_not_yet_seen_on_a_l
     """A worker that already holds one of the server's tools must still list when a caller asks
     for a different tool it has not cached, so callers with wider upstream catalogs are not 404ed."""
     from mcp.types import Tool as MCPTool
-
 
     server = _never_listed_passthrough_server()
     with _worker_that_never_listed(server, upstream_tools=("add", "multiply")) as worker:
@@ -11572,12 +11613,16 @@ async def test_lazymcp_named_describe_applies_server_rpm_before_upstream_listing
     monkeypatch.setattr(manager, "_get_tools_from_server", upstream)
     monkeypatch.setattr(proxy_server, "prisma_client", None)
     monkeypatch.setattr(
-        proxy_server, "proxy_logging_obj", SimpleNamespace(enforce_mcp_server_rate_limits=limiter.enforce_mcp_server_rate_limits)
+        proxy_server,
+        "proxy_logging_obj",
+        SimpleNamespace(enforce_mcp_server_rate_limits=limiter.enforce_mcp_server_rate_limits),
     )
     auth_token = gateway.auth_context_var.set(None)
     try:
         gateway.set_auth_context(UserAPIKeyAuth(api_key="test-key"), client_ip="127.0.0.1")
-        result = await gateway.lazymcp_tool_call(_mcp_request_ctx(), _call_tool_params("mcp_describe", {"server": "limited"}))
+        result = await gateway.lazymcp_tool_call(
+            _mcp_request_ctx(), _call_tool_params("mcp_describe", {"server": "limited"})
+        )
     finally:
         gateway.auth_context_var.reset(auth_token)
     upstream.assert_not_awaited()
@@ -11586,7 +11631,9 @@ async def test_lazymcp_named_describe_applies_server_rpm_before_upstream_listing
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("grant_source", ["key", "toolset"])
-async def test_lazymcp_catalog_observes_revoked_grants_on_the_next_operation(monkeypatch, _mcp_request_ctx, grant_source):
+async def test_lazymcp_catalog_observes_revoked_grants_on_the_next_operation(
+    monkeypatch, _mcp_request_ctx, grant_source
+):
     from litellm.caching.dual_cache import DualCache
     from litellm.proxy import proxy_server
     from litellm.proxy._experimental.mcp_server import server as gateway
@@ -11597,7 +11644,8 @@ async def test_lazymcp_catalog_observes_revoked_grants_on_the_next_operation(mon
     target = MCPServer(server_id="private", name="private", transport="http")
     manager.registry[target.server_id] = target
     permission = LiteLLM_ObjectPermissionTable(
-        object_permission_id="grant", mcp_servers=["private"] if grant_source == "key" else [],
+        object_permission_id="grant",
+        mcp_servers=["private"] if grant_source == "key" else [],
         mcp_toolsets=["selected"] if grant_source == "toolset" else [],
     )
     caller = UserAPIKeyAuth(api_key="a" * 64, object_permission=permission).model_copy(update={"via_virtual_key": True})
@@ -11615,7 +11663,9 @@ async def test_lazymcp_catalog_observes_revoked_grants_on_the_next_operation(mon
 
     monkeypatch.setattr(MCPRequestHandler, "_reload_admitted_key", reload_key)
     monkeypatch.setattr(manager, "resolve_toolset_tool_permissions", toolset_permissions)
-    monkeypatch.setattr(manager, "_get_tools_from_server", AsyncMock(return_value=[MCPTool(name="private_echo", input_schema={})]))
+    monkeypatch.setattr(
+        manager, "_get_tools_from_server", AsyncMock(return_value=[MCPTool(name="private_echo", input_schema={})])
+    )
     monkeypatch.setattr(proxy_server, "prisma_client", None)
     monkeypatch.setattr(proxy_server, "user_api_key_cache", DualCache())
     monkeypatch.setattr(proxy_server, "proxy_logging_obj", None)
@@ -11625,7 +11675,9 @@ async def test_lazymcp_catalog_observes_revoked_grants_on_the_next_operation(mon
         first = await gateway.lazymcp_tool_call(_mcp_request_ctx(), _call_tool_params("mcp_describe", {}))
         assert len(json.loads(first.content[0].text)["servers"]) == 1
         if grant_source == "key":
-            current[0] = caller.model_copy(update={"object_permission": LiteLLM_ObjectPermissionTable(object_permission_id="revoked")})
+            current[0] = caller.model_copy(
+                update={"object_permission": LiteLLM_ObjectPermissionTable(object_permission_id="revoked")}
+            )
         else:
             active_toolset[0] = False
         second = await gateway.lazymcp_tool_call(_mcp_request_ctx(), _call_tool_params("mcp_describe", {}))
@@ -11642,15 +11694,24 @@ async def test_lazymcp_catalog_cache_tracks_the_authoritative_server_snapshot(mo
     from litellm.proxy._experimental.mcp_server import server as gateway
 
     manager = mcp_operations.global_mcp_server_manager
-    target = MCPServer(server_id="cached", name="cached", mcp_info={"description": "previous"}, transport="http", allow_all_keys=True)
+    target = MCPServer(
+        server_id="cached", name="cached", mcp_info={"description": "previous"}, transport="http", allow_all_keys=True
+    )
     manager.config_mcp_servers[target.server_id] = target
     upstream = AsyncMock(return_value=[])
     monkeypatch.setattr(manager, "_get_tools_from_server", upstream)
     monkeypatch.setattr(proxy_server, "prisma_client", None)
     monkeypatch.setattr(proxy_server, "user_api_key_cache", DualCache())
     monkeypatch.setattr(proxy_server, "proxy_logging_obj", None)
-    params = dict(user_api_key_auth=None, mcp_auth_header=None, mcp_servers=None, mcp_server_auth_headers=None,
-                  oauth2_headers=None, raw_headers=None, client_ip="127.0.0.1")
+    params = dict(
+        user_api_key_auth=None,
+        mcp_auth_header=None,
+        mcp_servers=None,
+        mcp_server_auth_headers=None,
+        oauth2_headers=None,
+        raw_headers=None,
+        client_ip="127.0.0.1",
+    )
     async with manager.catalog.operation():
         first = await gateway._get_lazymcp_catalog(**params)
     manager.config_mcp_servers[target.server_id] = target.model_copy(update={"mcp_info": {"description": "current"}})
@@ -12099,8 +12160,7 @@ async def test_passthrough_probes_bind_each_token_to_its_authorized_server(allow
         )
     assert result is None
     assert tuple(
-        (str(call.request.url), call.request.headers["Authorization"])
-        for call in (*first.calls, *second.calls)
+        (str(call.request.url), call.request.headers["Authorization"]) for call in (*first.calls, *second.calls)
     ) == (
         (("http://first/mcp", "Bearer first-token"), ("http://second/mcp", "Bearer second-token"))
         if allowed and header_shape != "non_authorization"
@@ -12161,6 +12221,7 @@ async def test_streamable_http_admission_auth_sees_only_peeked_jsonrpc_method() 
     assert downstream_bodies == [_INITIALIZE]
     stateless_handle.assert_not_awaited()
     send.assert_not_awaited()
+
 
 @pytest.mark.asyncio
 async def test_lazymcp_extension_uses_request_local_dependencies_before_transport():
@@ -12261,3 +12322,127 @@ def test_lazymcp_extension_cache_scope_isolates_principal_credentials_and_toolse
     assert scope(owner, "upstream-one") == first
     assert headers == {"Authorization": "caller-token"}
     assert len(first) == 64
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "payload, valid",
+    [
+        (b"{", False),
+        (b"\xff", False),
+        ({"jsonrpc": "2.0", "method": "notifications/cancelled", "params": {"requestId": 0}}, True),
+        ({"jsonrpc": "2.0", "method": "notifications/cancelled", "params": {"requestId": "call"}}, True),
+        ({"jsonrpc": "2.0", "method": "notifications/cancelled", "params": {}}, True),
+        ({"jsonrpc": "2.0", "method": "notifications/cancelled", "params": {"requestId": False}}, False),
+        ({"jsonrpc": "2.0", "id": 4, "method": "notifications/cancelled", "params": {"requestId": 0}}, False),
+        ({"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}}, False),
+    ],
+)
+async def test_stateful_cancellation_does_not_wait_for_call_or_change_its_auth(payload, valid):
+    from litellm.proxy._experimental.mcp_server import server as mcp_server
+
+    session_id = "cancellation-isolation-session"
+    owner = UserAPIKeyAuth(api_key="owner-key", user_id="owner")
+    original = mcp_server.MCPAuthenticatedUser(user_api_key_auth=owner, raw_headers={"x-call": "active"})
+    mcp_server._stateful_session_auth_contexts[session_id] = original
+    mcp_server._stateful_session_owners[session_id] = mcp_server._owner_fingerprint_for(owner)
+    lock = asyncio.Lock()
+    mcp_server._stateful_session_locks[session_id] = lock
+    reached = asyncio.Event()
+
+    async def handle(scope, receive, send):
+        assert lock.locked(), "The active call must still own its session lock"
+        assert mcp_server._stateful_session_auth_contexts[session_id] is original
+        assert original.raw_headers == {"x-call": "active"}
+        assert mcp_server.auth_context_var.get() is not original
+        reached.set()
+
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/mcp",
+        "headers": [(b"mcp-session-id", session_id.encode())],
+    }
+    receive = AsyncMock(
+        return_value={
+            "type": "http.request",
+            "more_body": False,
+            "body": payload if isinstance(payload, bytes) else json.dumps(payload).encode(),
+        }
+    )
+    try:
+        with (
+            patch.object(
+                mcp_server,
+                "extract_mcp_auth_context",
+                new_callable=AsyncMock,
+                return_value=(owner, None, None, None, None, {"x-control": "cancel"}),
+            ),
+            patch.object(mcp_server, "_SESSION_MANAGERS_INITIALIZED", True),
+            patch.object(mcp_server.session_manager_stateful, "handle_request", side_effect=handle),
+            patch.object(mcp_server.session_manager_stateful, "_server_instances", {session_id: MagicMock()}),
+        ):
+            async with lock:
+                task = asyncio.create_task(mcp_server.handle_streamable_http_mcp(scope, receive, AsyncMock()))
+                try:
+                    done, _ = await asyncio.wait((task,), timeout=0.5)
+                    if valid:
+                        assert task in done, "Cancellation waited behind the active tool call"
+                        await task
+                        assert reached.is_set()
+                    else:
+                        assert not done, "Only a valid cancellation notification may bypass the call lock"
+                        assert not reached.is_set()
+                finally:
+                    if not task.done():
+                        task.cancel()
+                        await asyncio.gather(task, return_exceptions=True)
+    finally:
+        mcp_server._remove_stateful_session_tracking(session_id)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("action", ["MASK", "BLOCK"])
+@pytest.mark.parametrize("message", [None, "", "halfway"])
+@pytest.mark.parametrize("selected", [False, True])
+async def test_progress_text_obeys_request_output_guardrails(monkeypatch, action, message, selected):
+    import litellm
+
+    from litellm.caching.caching import DualCache
+    from litellm.proxy import proxy_server
+    from litellm.proxy._experimental.mcp_server.operations import _guarded_progress_callback
+    from litellm.proxy.guardrails.guardrail_hooks.litellm_content_filter.content_filter import ContentFilterGuardrail
+    from litellm.proxy.utils import ProxyLogging
+    from litellm.types.guardrails import BlockedWord, ContentFilterAction, GuardrailEventHooks
+
+    policy = ContentFilterGuardrail(
+        guardrail_name="progress-policy",
+        event_hook=GuardrailEventHooks.post_mcp_call,
+        blocked_words=[BlockedWord(keyword="halfway", action=ContentFilterAction(action))],
+        keyword_redaction_tag="[masked]",
+        default_on=False,
+    )
+    monkeypatch.setattr(litellm, "callbacks", [policy])
+    monkeypatch.setattr(proxy_server, "proxy_logging_obj", ProxyLogging(user_api_key_cache=DualCache()))
+    delivered = AsyncMock()
+    caller = UserAPIKeyAuth(user_id="progress-user")
+    callback = _guarded_progress_callback(
+        delivered, None, caller, {"metadata": {"guardrails": ["progress-policy"] if selected else []}}
+    )
+    assert callback is not None
+    await callback(0, None, message)
+    expected = ("[masked]" if action == "MASK" else None) if selected and message == "halfway" else message
+    delivered.assert_awaited_once_with(0, None, expected)
+
+
+@pytest.mark.asyncio
+async def test_progress_callback_preserves_absence_and_cancellation():
+    import asyncio
+
+    from litellm.proxy._experimental.mcp_server.operations import _guarded_progress_callback
+
+    assert _guarded_progress_callback(None, None, None, {}) is None
+    callback = _guarded_progress_callback(AsyncMock(side_effect=asyncio.CancelledError), None, None, {})
+    assert callback is not None
+    with pytest.raises(asyncio.CancelledError):
+        await callback(0, 0, None)

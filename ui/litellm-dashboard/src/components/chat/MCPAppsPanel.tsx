@@ -33,6 +33,7 @@ interface OAuth2ConnectButtonProps {
   variant?: "badge" | "button";
   autoStartKey?: string | null;
   scopes?: string[];
+  buttonLabel?: string;
 }
 
 export const OAuth2ConnectButton: React.FC<OAuth2ConnectButtonProps> = ({
@@ -42,6 +43,7 @@ export const OAuth2ConnectButton: React.FC<OAuth2ConnectButtonProps> = ({
   variant = "badge",
   autoStartKey = null,
   scopes,
+  buttonLabel = "Connect",
 }) => {
   const name = server.server_name ?? server.alias ?? server.server_id;
   const flowOptions = {
@@ -71,7 +73,7 @@ export const OAuth2ConnectButton: React.FC<OAuth2ConnectButtonProps> = ({
         <div className="flex gap-2">
           <Button onClick={startOAuthFlow} disabled={loading} className="font-semibold h-[38px] min-w-[110px]">
             {loading && <Loader2 className="h-4 w-4 animate-spin mr-1.5" />}
-            {loading ? statusLabel : "Connect"}
+            {loading ? statusLabel : buttonLabel}
           </Button>
           {loading && (
             <Button variant="outline" onClick={cancelOAuthFlow}>

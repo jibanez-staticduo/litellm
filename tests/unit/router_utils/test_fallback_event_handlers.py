@@ -31,6 +31,7 @@ from litellm.router_utils.fallback_event_handlers import (
     fallback_attempt_key,
     get_fallback_model_group,
     get_pre_routing_selection,
+    is_bad_request_without_fallback,
     log_failure_fallback_event,
     log_success_fallback_event,
     mid_stream_fallback_snapshot_kwargs,
@@ -42,6 +43,7 @@ from litellm.router_utils.fallback_event_handlers import (
     validate_anthropic_model_group_profiles,
     validate_chatgpt_model_group_profiles,
 )
+from litellm.types.router import FallbackSkipReason, SkippedFallbackTarget
 from tests._vcr_conftest_common import install_live_call_probe, record_vcr_outcome
 from tests.fake_openai_endpoint import FAKE_OPENAI_API_BASE
 
@@ -1688,6 +1690,19 @@ class TestHasUnattemptedFallbackTarget:
         assert has_unattempted_fallback_target(None, {}) is False
 
 
+def test_attempted_fallback_targets_deduplicates_skips_in_order_and_keeps_first_reason() -> None:
+    attempted: Final = AttemptedFallbackTargets()
+    attempted.record_skip("a", FallbackSkipReason.NOT_AUTHORIZED)
+    attempted.record_skip("a", FallbackSkipReason.NOT_AUTHORIZED)
+    attempted.record_skip("b", FallbackSkipReason.OVER_BUDGET)
+    attempted.record_skip("a", FallbackSkipReason.OVER_BUDGET)
+
+    assert attempted.skipped == (
+        SkippedFallbackTarget("a", FallbackSkipReason.NOT_AUTHORIZED),
+        SkippedFallbackTarget("b", FallbackSkipReason.OVER_BUDGET),
+    )
+
+
 def test_get_fallback_model_group_matches_provider_prefixed_key():
     """A bare model group routed via a wildcard (e.g. "gpt-4o" through
     "openai/*") must match a fallback keyed on the provider-prefixed name,
@@ -2639,9 +2654,7 @@ class CustomTestLogger(CustomLogger):
             "in log_failure_fallback_event for original_model_group: ",
             original_model_group,
         )
-        self.failure_fallback_events.append(
-            (original_model_group, kwargs, original_exception)
-        )
+        self.failure_fallback_events.append((original_model_group, kwargs, original_exception))
 
 
 def create_test_router_2():
@@ -2756,3 +2769,73 @@ async def test_multiple_fallbacks(function_name, respx_mock: respx.MockRouter, m
     print(result._hidden_params)
 
     assert result._hidden_params["api_base"] == FAKE_OPENAI_API_BASE
+
+
+def _provider_error(status_code: int) -> httpx.Response:
+    return httpx.Response(status_code=status_code, request=httpx.Request(method="POST", url="https://provider.test"))
+
+
+@pytest.mark.parametrize(
+    ("exception", "stops_fallbacks"),
+    [
+        pytest.param(
+            litellm.BadRequestError(message="Unsupported value: temperature", model="m", llm_provider="openai"),
+            True,
+            id="provider 400",
+        ),
+        pytest.param(
+            litellm.UnsupportedParamsError(
+                message="reasoning_effort is not supported", model="m", llm_provider="openai"
+            ),
+            True,
+            id="client-side rejection",
+        ),
+        pytest.param(
+            litellm.UnsupportedParamsError(message="stop is not supported"),
+            True,
+            id="client-side rejection without a provider",
+        ),
+        pytest.param(
+            litellm.BadRequestError(
+                message="Deployment ptu is reserved for another team", model="ptu", llm_provider=""
+            ),
+            False,
+            id="router-raised 400 keeps falling back",
+        ),
+        pytest.param(
+            litellm.BadRequestError(
+                message="VertexAIException BadRequestError - 403",
+                model="m",
+                llm_provider="vertex_ai",
+                response=_provider_error(403),
+            ),
+            False,
+            id="vertex 403 wrapped as BadRequestError",
+        ),
+        pytest.param(
+            litellm.PaymentRequiredError(message="insufficient credits", model="m", llm_provider="openrouter"),
+            False,
+            id="402",
+        ),
+        pytest.param(
+            litellm.ContextWindowExceededError(message="maximum context length", model="m", llm_provider="openai"),
+            False,
+            id="context window keeps its own fallbacks",
+        ),
+        pytest.param(
+            litellm.ContentPolicyViolationError(message="content_policy_violation", model="m", llm_provider="openai"),
+            False,
+            id="content policy keeps its own fallbacks",
+        ),
+        pytest.param(
+            litellm.InternalServerError(message="overloaded", model="m", llm_provider="openai"),
+            False,
+            id="500 still falls back",
+        ),
+    ],
+)
+def test_is_bad_request_without_fallback_only_stops_on_a_real_400_when_the_flag_is_off(
+    exception: Exception, stops_fallbacks: bool
+) -> None:
+    assert is_bad_request_without_fallback(exception, fallback_on_unsupported_params=False) is stops_fallbacks
+    assert is_bad_request_without_fallback(exception, fallback_on_unsupported_params=True) is False

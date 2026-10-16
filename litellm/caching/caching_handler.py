@@ -1099,6 +1099,7 @@ class LLMCachingHandler:
             kwargs=kwargs,
             start_time=self.start_time,
             end_time=datetime.datetime.now(),
+            cache_hit=True,
         )
         return cached_result
 
@@ -1194,7 +1195,7 @@ class LLMCachingHandler:
                         )
                     )
                 else:
-                    result_json: Final = result.model_dump_json()
+                    result_json: Final = result.model_dump_json(exclude_unset=True)
                     create_cache_write_task(
                         lambda: cache.async_add_cache(
                             result_json,

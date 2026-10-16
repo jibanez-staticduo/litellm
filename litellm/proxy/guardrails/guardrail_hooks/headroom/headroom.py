@@ -7,7 +7,7 @@ import time
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, ClassVar, Final, Literal, TypeGuard
+from typing import TYPE_CHECKING, ClassVar, Final, Literal, Protocol, TypeGuard
 
 import httpx
 from fastapi import HTTPException
@@ -72,6 +72,14 @@ _HASH_CACHE_TTL_SECONDS: Final = 15 * 60
 # untranslated messages can be read with concrete types (values pass through by
 # reference, so this is a shallow top-level reconstruction).
 _REQUEST_DATA_ADAPTER: Final = TypeAdapter(dict[str, object])
+
+
+class _JsonResponse(Protocol):
+    def json(self) -> object: ...
+
+
+def _json_body(response: _JsonResponse) -> object:
+    return response.json()
 
 
 def _is_str_object_dict(value: object) -> TypeGuard[dict[str, object]]:  # guard-ok: isinstance narrows correctly; predicate is trivially correct  # fmt: skip
@@ -637,7 +645,7 @@ class HeadroomGuardrail(CustomGuardrail):
             )
 
         try:
-            body: Final[object] = response.json()
+            body: Final = _json_body(response)
         except ValueError:
             return _CompressResult(
                 self._handle_compress_failure(
@@ -770,7 +778,7 @@ class HeadroomGuardrail(CustomGuardrail):
             return f"[Headroom: retrieval error {raw_response.status_code} for hash={hash_value}]"
 
         try:
-            body: Final[object] = raw_response.json()
+            body: Final = _json_body(raw_response)
         except ValueError:
             return raw_response.text
 

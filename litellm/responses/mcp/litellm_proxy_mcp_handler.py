@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, Any, Final, Literal, Optional, TypeAlias, Type
 
 from openai.types.chat import ChatCompletionToolParam
 from openai.types.responses.function_tool_param import FunctionToolParam
-from typing_extensions import ReadOnly
+from typing_extensions import ReadOnly, Unpack
+from typing_extensions import TypedDict as ExtraItemsTypedDict
 
 from litellm._logging import verbose_logger
 from litellm.constants import MAXIMUM_TRACEBACK_LINES_TO_LOG
@@ -46,6 +47,7 @@ if TYPE_CHECKING:
     from litellm.proxy._experimental.mcp_server.mcp_server_manager import MCPServerManager
     from litellm.proxy._experimental.mcp_server.ui_session_utils import GrantedToolsetIds
     from litellm.proxy.utils import ProxyLogging
+    from litellm.responses.mcp.mcp_streaming_iterator import MCPEnhancedStreamingIterator
     from litellm.types.proxy.auth.user_api_key_auth import UserAPIKeyAuth
 else:
     MCPTool = Any
@@ -61,12 +63,13 @@ class MCPToolResult(TypedDict):
     name: ReadOnly[str | None]
 
 
-LITELLM_PROXY_MCP_SERVER_URL = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
-    "litellm_proxy"  # rebind-ok: framework flow intentionally updates request or lifecycle state
-)
-LITELLM_PROXY_MCP_SERVER_URL_PREFIX = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
-    f"{LITELLM_PROXY_MCP_SERVER_URL}/mcp/"  # rebind-ok: framework flow intentionally updates request or lifecycle state
-)
+class _AresponsesOptions(ExtraItemsTypedDict, total=False, extra_items=object):
+    pass
+
+
+LITELLM_PROXY_MCP_SERVER_URL: Final = "litellm_proxy"
+LITELLM_PROXY_MCP_SERVER_URL_PREFIX: Final = f"{LITELLM_PROXY_MCP_SERVER_URL}/mcp/"
+
 LITELLM_PROXY_LAZYMCP_SERVER_URL_PREFIX = f"{LITELLM_PROXY_MCP_SERVER_URL}/lazymcp/"  # rebind-ok: framework flow intentionally updates request or lifecycle state
 LITELLM_PROXY_LAZYMCP_TOOL_SERVER_MAP_PREFIX = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
     "lazymcp:"  # rebind-ok: framework flow intentionally updates request or lifecycle state
@@ -1454,7 +1457,7 @@ class LiteLLM_Proxy_MCP_Handler:
         model: str,
         all_tools: Sequence[ResponsesToolParam] | None,
         response_id: str | None,
-        **call_params: Any,
+        **call_params: Unpack[_AresponsesOptions],
     ) -> ResponsesAPIResponse | BaseResponsesAPIStreamingIterator:
         """Make follow-up response API call with tool results."""
         return await aresponses(
@@ -1504,7 +1507,7 @@ class LiteLLM_Proxy_MCP_Handler:
         tool_server_map: dict[str, str],
         served_tools: Sequence[MCPTool] | None = None,
         **kwargs,
-    ) -> Any:
+    ) -> "MCPEnhancedStreamingIterator":
         """
         Create MCP enhanced streaming response that handles the full MCP workflow.
 
@@ -1626,14 +1629,14 @@ class LiteLLM_Proxy_MCP_Handler:
     _create_tool_execution_events = create_tool_execution_events
 
     @staticmethod
-    def prepare_initial_call_params(call_params: Mapping[str, object], should_auto_execute: bool) -> dict[str, Any]:
+    def prepare_initial_call_params(call_params: Mapping[str, object], should_auto_execute: bool) -> _AresponsesOptions:
         """
         Prepare call parameters for the initial LLM call.
 
         For auto-execute scenarios, we need to disable streaming for the initial call
         so we can process the tool calls before streaming the final response.
         """
-        initial_params: Final = dict(call_params)
+        initial_params: Final = _AresponsesOptions(**call_params)
 
         if should_auto_execute:
             # Disable streaming for initial call when auto-executing tools
@@ -1646,14 +1649,14 @@ class LiteLLM_Proxy_MCP_Handler:
     @staticmethod
     def prepare_follow_up_call_params(
         call_params: Mapping[str, object], original_stream_setting: bool
-    ) -> dict[str, Any]:
+    ) -> _AresponsesOptions:
         """
         Prepare call parameters for the follow-up LLM call after tool execution.
 
         Restores the original streaming setting and removes tool_choice since
         we're now providing tool results, not requesting tool calls.
         """
-        follow_up_params: Final = dict(call_params)
+        follow_up_params: Final = _AresponsesOptions(**call_params)
 
         # Restore original streaming setting for follow-up call
         follow_up_params["stream"] = original_stream_setting
