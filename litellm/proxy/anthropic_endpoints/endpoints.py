@@ -534,6 +534,7 @@ async def count_tokens(
             call_endpoint=True,
             messages_format="anthropic",
             output_format=_requested_output_format(data),
+            user_api_key_dict=user_api_key_dict,
         )
         _token_response_dict: dict = {}
         if isinstance(token_response, TokenCountResponse):

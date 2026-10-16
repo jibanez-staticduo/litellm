@@ -435,7 +435,7 @@ async def test_count_tokens_without_oauth_preserves_generic_counter():
     app.include_router(ep.router)
     app.dependency_overrides[ep.user_api_key_auth] = authenticated
     generic_counter: Final = AsyncMock(return_value={"total_tokens": 999})
-    with patch("litellm.proxy.proxy_server.token_counter", generic_counter):
+    with patch("litellm.proxy.proxy_server.count_request_tokens", generic_counter):
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://proxy.test") as client:
             response: Final = await client.post(
                 "/v1/messages/count_tokens",
@@ -448,6 +448,7 @@ async def test_count_tokens_without_oauth_preserves_generic_counter():
             )
     assert response.status_code == 200, response.text
     assert response.json() == {"input_tokens": 999}
+    assert isinstance(generic_counter.await_args.kwargs["user_api_key_dict"], UserAPIKeyAuth)
     assert generic_counter.await_args.kwargs["call_endpoint"] is True
     assert generic_counter.await_args.kwargs["request"].model_dump() == {
         "model": "subscription-alias",

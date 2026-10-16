@@ -14707,7 +14707,7 @@ async def token_counter(
     Returns:
         TokenCountResponse
     """
-    return await count_request_tokens(request=request, call_endpoint=call_endpoint)
+    return await count_request_tokens(request=request, call_endpoint=call_endpoint, user_api_key_dict=user_api_key_dict)
 
 
 async def count_request_tokens(
@@ -14715,6 +14715,7 @@ async def count_request_tokens(
     call_endpoint: bool = False,
     messages_format: TokenCountMessagesFormat = "openai",
     output_format: JsonValue = None,
+    user_api_key_dict: UserAPIKeyAuth | None = None,
 ) -> TokenCountResponse:
     prompt: Final = request.prompt
     messages: Final = request.messages
