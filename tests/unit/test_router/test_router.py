@@ -13,7 +13,6 @@ import threading
 import warnings
 from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable, Mapping
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from types import MappingProxyType, SimpleNamespace
 from typing import TYPE_CHECKING, Final, Literal, cast
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
@@ -3414,7 +3413,8 @@ async def test_continued_stream_sharing_the_proxy_logging_object_bills_the_cut_t
     )
 
 
-def test_carry_partial_spend_to_fallback_adds_the_partial_the_cut_stream_inherited():
+@pytest.mark.parametrize("partial_type", [litellm.ModelResponse, litellm.TextCompletionResponse])
+def test_carry_partial_spend_to_fallback_adds_the_partial_the_cut_stream_inherited(partial_type):
     from litellm.types.utils import Usage
 
     cut_logging: Final = LiteLLMLogging(
@@ -3439,7 +3439,7 @@ def test_carry_partial_spend_to_fallback_adds_the_partial_the_cut_stream_inherit
         SimpleNamespace(logging_obj=fallback_logging),
         Router._price_cut_partial(
             cast(CustomStreamWrapper, SimpleNamespace(logging_obj=cut_logging, model="deepseek/deepseek-chat")),
-            litellm.ModelResponse(
+            partial_type(
                 id="chatcmpl-relay", usage=Usage(prompt_tokens=60, completion_tokens=3, total_tokens=63)
             ),
         ),

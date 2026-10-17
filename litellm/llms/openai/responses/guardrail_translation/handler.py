@@ -55,6 +55,7 @@ from litellm.llms.base_llm.guardrail_translation.base_translation import (
 from litellm.llms.base_llm.guardrail_translation.utils import (
     blocked_responses_stream_usage,
     effective_skip_system_message_for_guardrail,
+    list_field,
     merge_guardrailed_scoped_messages,
     role_out_of_guardrail_scope,
     scoped_structured_message_indices,
@@ -829,7 +830,7 @@ class OpenAIResponsesHandler(BaseTranslation):
         """
         names: Final[list[str]] = []
         candidates: Final = flatten_namespace_tools(
-            (*(data.get("tools") or ()), *additional_tools_in(data.get("input")))
+            (*list_field(data, "tools"), *additional_tools_in(data.get("input")))
         )
         for tool in candidates:
             if not isinstance(tool, dict):

@@ -3300,9 +3300,15 @@ class Router:
         priced_partial: Final = partial_response.model_copy(
             update={"model": cut_stream.model} if cut_stream.model else {}
         )
-        priced_partial._hidden_params = {  # pyright: ignore[reportPrivateUsage]  # no public accessor
+        priced_hidden_params: Final = {
             key: value for key, value in get_hidden_params_dict(partial_response).items() if key != "response_cost"
         }
+        from litellm.types.llms.base import HiddenParams
+
+        if isinstance(priced_partial, TextCompletionResponse):
+            priced_partial.hidden_params = HiddenParams.model_validate(priced_hidden_params)
+        else:
+            priced_partial.hidden_params = priced_hidden_params
         return ContinuedPartial(
             usage=BaseTokenUsageProcessor.combine_usage_objects(
                 usage_objects=[partial_usage, inherited_usage]
@@ -4032,14 +4038,15 @@ class Router:
                 raise
             finally:
                 with anyio.CancelScope(shield=True):
-                    if hasattr(source_iterator, "aclose"):
-                        try:
-                            await source_iterator.aclose()
-                        except Exception as exc:
-                            verbose_router_logger.debug(
-                                "stream_with_fallbacks(aresponses): error closing source: %s",
-                                exc,
-                            )
+                    try:
+                        from litellm.llms.anthropic.pass_through.messages.streaming_iterator import aclose_if_supported
+
+                        await aclose_if_supported(source_iterator)
+                    except Exception as exc:
+                        verbose_router_logger.debug(
+                            "stream_with_fallbacks(aresponses): error closing source: %s",
+                            exc,
+                        )
 
         wrapper: Final = FallbackResponsesStreamWrapper(stream_with_fallbacks())
         return wrapper
