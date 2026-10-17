@@ -17,8 +17,8 @@ from __future__ import annotations
 
 import asyncio
 import json
-from types import SimpleNamespace
 from collections.abc import AsyncIterator
+from types import SimpleNamespace
 from typing import Final, Literal
 from unittest.mock import AsyncMock, MagicMock
 
@@ -1091,13 +1091,14 @@ def test_select_data_generator_missing_required_kwarg_raises_type_error():
 # ---------------------------------------------------------------------------
 
 
-from litellm.proxy.proxy_server import (  # noqa: E402
+from litellm.proxy.proxy_server import (  # noqa: E402  # noqa: E402
+    _KEEPALIVE_MAX_SECONDS,
+    _KEEPALIVE_MIN_SECONDS,
     _iter_with_keepalive,
     _keepalive_from_deployment_config,
     _make_keepalive_resolver,
     _resolve_keepalive_seconds,
 )
-from litellm.proxy.proxy_server import _KEEPALIVE_MAX_SECONDS, _KEEPALIVE_MIN_SECONDS  # noqa: E402
 
 
 @pytest.mark.asyncio
@@ -1990,7 +1991,6 @@ async def test_run_thread_audits_a_failure_that_arrives_after_the_first_ping(mon
 
     async def _record_failure(*, user_api_key_dict, original_exception, request_data, **kwargs):
         audited.append(original_exception)
-        return None
 
     monkeypatch.setattr(ps.proxy_logging_obj, "post_call_failure_hook", _record_failure)
 
@@ -2083,7 +2083,6 @@ async def test_queue_request_audits_a_failure_that_arrives_after_the_first_ping(
 
     async def _record_failure(*, user_api_key_dict, original_exception, request_data, **kwargs):
         audited.append(original_exception)
-        return None
 
     monkeypatch.setattr(ps.proxy_logging_obj, "post_call_failure_hook", _record_failure)
 
@@ -2140,3 +2139,34 @@ async def test_async_data_generator_chat_stream_does_not_emit_responses_failure(
     assert any(isinstance(item, str) and item.startswith('data: {"error":') for item in out)
     assert all("response.failed" not in item for item in out if isinstance(item, str))
 
+
+async def test_async_data_generator_lets_other_tasks_run_during_a_stream_that_never_waits(monkeypatch):
+    """A stream whose chunks are already buffered never suspends on its own, so
+    the generator has to hand the loop back itself once it has held the loop
+    long enough: another task must get to run before the stream is over, and
+    not before the hold budget is used up."""
+    _patch_logging_flags(monkeypatch)
+    order: list[str] = []  # mutable-ok: records the interleaving of the two tasks
+    clock: list[float] = [0.0]  # mutable-ok: fake monotonic clock, advanced 20 ms per chunk
+    monkeypatch.setattr(ps.time, "monotonic", lambda: clock[0])
+
+    async def chunks():
+        for index in range(6):
+            clock[0] += 0.02
+            order.append(f"chunk{index}")
+            yield _simple_chunk(content=str(index))
+
+    async def other_task():
+        order.append("other")
+
+    other = asyncio.ensure_future(other_task())
+    async for _ in async_data_generator(
+        response=chunks(),
+        user_api_key_dict=_user_auth(),
+        request_data={"model": "gpt-4"},
+    ):
+        pass
+    await other
+
+    assert "other" in order[:-1], order
+    assert order.index("other") >= 3, order

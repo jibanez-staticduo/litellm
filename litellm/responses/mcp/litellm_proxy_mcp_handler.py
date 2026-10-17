@@ -400,6 +400,7 @@ class LiteLLM_Proxy_MCP_Handler:
         client_ip: str | None,
         raw_headers: dict[str, str] | None = None,
         granted_toolsets: "GrantedToolsetIds | None" = None,
+        request_trace_id: str | None = None,
     ) -> tuple[list[MCPTool], list[str]]:
         from litellm.proxy._experimental.mcp_server.server import (  # pyright: ignore[reportPrivateUsage]  # LazyMCP Responses adapter reuses server-owned scope helpers
             _apply_toolset_scope,  # pyright: ignore[reportPrivateUsage]  # shared LazyMCP scope helper
@@ -450,6 +451,7 @@ class LiteLLM_Proxy_MCP_Handler:
         client_ip: str | None = None,
         raw_headers: dict[str, str] | None = None,
         granted_toolsets: "GrantedToolsetIds | None" = None,
+        request_trace_id: str | None = None,
     ) -> tuple[  # mutable-ok: framework contract requires mutable request or response containers
         list[MCPTool], list[str]
     ]:  # mutable-ok: framework contract requires mutable request or response containers
@@ -512,6 +514,7 @@ class LiteLLM_Proxy_MCP_Handler:
             log_list_tools_to_spendlogs=True,
             list_tools_log_source="responses",
             litellm_trace_id=litellm_trace_id,
+            request_trace_id=request_trace_id,
             request_tags=request_tags,
             client_ip=client_ip,
             raw_headers=raw_headers,
@@ -557,6 +560,7 @@ class LiteLLM_Proxy_MCP_Handler:
         client_ip: str | None = None,
         raw_headers: dict[str, str] | None = None,
         granted_toolsets: "GrantedToolsetIds | None" = None,
+        request_trace_id: str | None = None,
     ) -> tuple[  # mutable-ok: framework contract requires mutable request or response containers
         list[MCPTool], list[str]
     ]:  # mutable-ok: framework contract requires mutable request or response containers
@@ -616,6 +620,7 @@ class LiteLLM_Proxy_MCP_Handler:
             client_ip=standard_client_ip,
             raw_headers=raw_headers,
             granted_toolsets=granted_toolsets,
+            request_trace_id=request_trace_id,
         )
 
     @staticmethod
@@ -725,6 +730,7 @@ class LiteLLM_Proxy_MCP_Handler:
         request_tags: list[str] | None = None,
         client_ip: str | None = None,
         raw_headers: dict[str, str] | None = None,
+        request_trace_id: str | None = None,
     ) -> tuple[list[MCPTool], dict[str, str]]:
         """
         Process MCP tools through filtering and deduplication pipeline without OpenAI transformation.
@@ -757,6 +763,7 @@ class LiteLLM_Proxy_MCP_Handler:
             request_tags=request_tags,
             client_ip=client_ip,
             raw_headers=raw_headers,
+            request_trace_id=request_trace_id,
         )
 
         # Step 2: Filter tools based on allowed_tools parameter
@@ -982,6 +989,7 @@ class LiteLLM_Proxy_MCP_Handler:
         request_tags: list[str] | None = None,
         guardrail_context: Mapping[str, object] | None = None,
         served_tools: Sequence[MCPTool] | None = None,
+        request_trace_id: str | None = None,
     ) -> list[MCPToolResult]:
         """Execute tool calls and return results."""
         from fastapi import HTTPException
@@ -1092,7 +1100,11 @@ class LiteLLM_Proxy_MCP_Handler:
                         },
                     }
                 ]
-                tool_logging_call_id = litellm_call_id or str(uuid.uuid4())
+                tool_logging_call_id = (
+                    f"{litellm_call_id}_{tool_call_id or uuid.uuid4()}"
+                    if request_trace_id and litellm_call_id
+                    else litellm_call_id or str(uuid.uuid4())
+                )
                 logging_metadata: dict[str, object] = {
                     "tool_call_id": tool_call_id,
                     "tool_name": sanitized_tool_name,
@@ -1118,6 +1130,8 @@ class LiteLLM_Proxy_MCP_Handler:
                 }
                 if litellm_trace_id:
                     logging_request_data["litellm_trace_id"] = litellm_trace_id
+                if request_trace_id:
+                    logging_metadata["existing_trace_id"] = request_trace_id
                 if request_tags:
                     logging_metadata["tags"] = request_tags
                 if typed_user_api_key_auth is not None:

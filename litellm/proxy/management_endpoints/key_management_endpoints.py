@@ -7776,6 +7776,11 @@ async def block_key(
             code=status.HTTP_404_NOT_FOUND,
         )
 
+    record: Final = await _prisma_table(VerificationTokenRepository(prisma_client)).update(
+        where={"token": hashed_token},
+        data=with_settings_updated_at({"blocked": True}),
+    )
+
     if is_audit_logging_enabled():
         asyncio.create_task(
             create_audit_log_for_update(
@@ -7796,11 +7801,6 @@ async def block_key(
                 )
             )
         )
-
-    record: Final = await _prisma_table(VerificationTokenRepository(prisma_client)).update(
-        where={"token": hashed_token},
-        data=with_settings_updated_at({"blocked": True}),
-    )
 
     ## UPDATE KEY CACHE - invalidate so next read re-fetches from DB
     await delete_cache_key_object(
@@ -7890,6 +7890,11 @@ async def unblock_key(
             code=status.HTTP_404_NOT_FOUND,
         )
 
+    record: Final = await _prisma_table(VerificationTokenRepository(prisma_client)).update(
+        where={"token": hashed_token},
+        data=with_settings_updated_at({"blocked": False}),
+    )
+
     if is_audit_logging_enabled():
         asyncio.create_task(
             create_audit_log_for_update(
@@ -7910,11 +7915,6 @@ async def unblock_key(
                 )
             )
         )
-
-    record: Final = await _prisma_table(VerificationTokenRepository(prisma_client)).update(
-        where={"token": hashed_token},
-        data=with_settings_updated_at({"blocked": False}),
-    )
 
     ## UPDATE KEY CACHE - invalidate so next read re-fetches from DB
     await delete_cache_key_object(

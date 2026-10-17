@@ -2646,6 +2646,13 @@
         "image_variations": true
       }
     },
+    "nace": {
+      "display_name": "Nace (`nace`)",
+      "url": "https://console.nace.ai/docs/drex",
+      "endpoints": {
+        "systemone": true
+      }
+    },
     "typesafe": {
       "display_name": "TypeSafe (`typesafe`)",
       "url": "https://docs.typesafe.ai/models",
@@ -2787,7 +2794,8 @@
         "batches": false,
         "rerank": false,
         "a2a": true,
-        "interactions": true
+        "interactions": true,
+        "video_generations": true
       }
     },
     "voyage": {

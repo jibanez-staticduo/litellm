@@ -33,7 +33,7 @@ GITHUB_FILES: Final = frozenset(
         "tests/integration/database/image/test_image_bedrock_realtime_extra.py",
         "tests/integration/database/image/test_offline_image_migration.py",
         "tests/integration/database/image/test_ui_image_serves_offline.py",
-        "tests/integration/database/migrations/test_image_lazymcp_discovery.py",
+        "tests/integration/database/image/test_image_lazymcp_discovery.py",
     }
 )
 

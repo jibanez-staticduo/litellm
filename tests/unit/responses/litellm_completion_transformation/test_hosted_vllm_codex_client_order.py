@@ -152,7 +152,7 @@ async def test_delayed_summary_is_visible_on_original_reasoning_before_next_item
 @pytest.mark.asyncio
 @pytest.mark.parametrize("limit", ["events", "bytes"])
 async def test_buffer_overflow_finishes_partial_summary_and_preserves_every_primary_event(monkeypatch, limit):
-    from litellm.responses.litellm_completion_transformation import hosted_vllm_codex_summary as summary
+    from staticduo_litellm.codex import summary_runtime as summary
 
     partial_delivered = asyncio.Event()
     auxiliary_cancelled = asyncio.Event()

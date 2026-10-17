@@ -158,7 +158,7 @@ jobs:
       - name: Verify packaged LazyMCP discovery origin trust
         env:
           LITELLM_IMAGE: litellm-runtime-scan:${{ github.sha }}
-        run: python -m pytest tests/integration/database/migrations/test_image_lazymcp_discovery.py -v
+        run: python -m pytest tests/integration/database/image/test_image_lazymcp_discovery.py -v
 
   migrations-image:
     name: migrations-image

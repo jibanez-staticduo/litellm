@@ -8,13 +8,14 @@ from typing import Final
 
 from pydantic import JsonValue, TypeAdapter
 
+import litellm
 from litellm._logging import verbose_logger
 from litellm.exceptions import AuthenticationError
 from litellm.llms.anthropic import oauth_policy
 from litellm.llms.anthropic.count_tokens.handler import AnthropicCountTokensHandler
 from litellm.llms.anthropic.count_tokens.transformation import COUNT_TOKEN_OPTION_NAMES
 from litellm.llms.base_llm.base_utils import BaseTokenCounter
-from litellm.types.utils import LlmProviders, TokenCountMessagesFormat, TokenCountResponse
+from litellm.types.utils import CountContextManagement, LlmProviders, TokenCountMessagesFormat, TokenCountResponse
 
 # Global handler instance - reuse across all token counting requests
 anthropic_count_tokens_handler: Final = AnthropicCountTokensHandler()
@@ -46,6 +47,7 @@ class AnthropicTokenCounter(BaseTokenCounter):
         system: JsonValue = None,
         messages_format: TokenCountMessagesFormat = "anthropic",
         output_format: JsonValue = None,
+        context_management: CountContextManagement | None = None,
     ) -> TokenCountResponse | None:
         """
         Count tokens using Anthropic's CountTokens API.
@@ -95,7 +97,9 @@ class AnthropicTokenCounter(BaseTokenCounter):
                 else await AnthropicModelInfo.aget_auth_header(
                     api_key=managed_token
                     if managed
-                    else _COUNT_STRING.validate_python(litellm_params.get("api_key"), strict=True),
+                    else _COUNT_STRING.validate_python(
+                        litellm_params.get("api_key") or litellm.anthropic_key or litellm.api_key, strict=True
+                    ),
                     api_base=api_base,
                     litellm_params=litellm_params,
                     allow_workload_identity=not managed,
@@ -104,8 +108,18 @@ class AnthropicTokenCounter(BaseTokenCounter):
             if auth_header is None:
                 if managed:
                     raise AnthropicError(401, "No managed Anthropic OAuth credential available for token counting")
-                verbose_logger.warning("No Anthropic credential found for token counting")
-                return None
+                return TokenCountResponse(
+                    total_tokens=0,
+                    request_model=request_model,
+                    model_used=model_to_use,
+                    tokenizer_type="anthropic_api",
+                    error=True,
+                    error_message=(
+                        f"No Anthropic API key is set for model {request_model or model_to_use}, so tokens can't be "
+                        "counted. Set api_key on the deployment or ANTHROPIC_API_KEY in the proxy environment."
+                    ),
+                    status_code=401,
+                )
             optional_params: Final = _COUNT_OPTIONS.validate_python(
                 MappingProxyType(
                     {key: value for key, value in litellm_params.items() if key in COUNT_TOKEN_OPTION_NAMES}
