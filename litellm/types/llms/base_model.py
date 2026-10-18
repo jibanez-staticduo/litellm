@@ -14,7 +14,11 @@ class LiteLLMBaseModel(BaseModel):
 
     if TYPE_CHECKING:
 
-        def __init__(self, /, **data: object) -> None: ...
+        def __init__(
+            self,
+            /,
+            **data: object,  # kwargs-ok: typing-only Pydantic constructor accepts dynamic subclass field keywords
+        ) -> None: ...
 
     @classmethod
     def model_rebuild(
