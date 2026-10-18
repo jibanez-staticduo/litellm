@@ -126,14 +126,14 @@ def _chat_stream_choice_text(chunks: Sequence[ModelResponseStream], index: int) 
     contents: Final = tuple(
         content
         for choice in chain.from_iterable(chunk.choices for chunk in chunks)
-        if choice.index == index and isinstance(content := choice.delta.content, str)
+        if (choice.index or 0) == index and isinstance(content := choice.delta.content, str)
     )
     return "".join(contents) if contents else None
 
 
 def _chat_stream_texts(chunks: Sequence[ModelResponseStream]) -> ServedTexts | None:
     choices: Final = chain.from_iterable(chunk.choices for chunk in chunks)
-    choice_count: Final = max((choice.index + 1 for choice in choices), default=0)
+    choice_count: Final = max(((choice.index or 0) + 1 for choice in choices), default=0)
     texts: Final = tuple(_chat_stream_choice_text(chunks, index) for index in range(choice_count))
     return texts if any(text is not None for text in texts) else None
 
