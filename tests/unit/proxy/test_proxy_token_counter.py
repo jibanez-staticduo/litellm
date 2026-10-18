@@ -715,7 +715,7 @@ async def test_anthropic_messages_count_tokens_with_non_anthropic_model():
 
 
 @pytest.mark.asyncio
-async def test_internal_token_counter_anthropic_provider_detection():
+async def test_internal_token_counter_anthropic_provider_detection(monkeypatch: pytest.MonkeyPatch):
     """
     Test that the internal token_counter correctly detects Anthropic providers
     and handles the from_anthropic_endpoint flag appropriately
@@ -734,19 +734,34 @@ async def test_internal_token_counter_anthropic_provider_detection():
         ]
     )
 
-    setattr(litellm.proxy.proxy_server, "llm_router", llm_router)
+    monkeypatch.setattr(litellm.proxy.proxy_server, "llm_router", llm_router)
+
+    def rejected_count(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/v1/messages/count_tokens"
+        assert request.headers["x-api-key"] == "test-key"
+        return httpx.Response(401, json={"error": {"message": "Invalid API key"}})
+
+    client: Final = AsyncHTTPHandler(transport=httpx.MockTransport(rejected_count))
+    monkeypatch.setattr(
+        "litellm.llms.anthropic.count_tokens.token_counter.anthropic_count_tokens_handler",
+        anthropic_count_tokens_handler.AnthropicCountTokensHandler(http_client=client),
+    )
 
     # Test with is_direct_request=False (simulating call from Anthropic endpoint)
     # The provider counter is engaged: its API error surfaces instead of a local count
-    with pytest.raises(ProxyException) as exc_info:
-        await token_counter(
-            request=TokenCountRequest(
-                model="claude-test",
-                messages=[{"role": "user", "content": "hello"}],
-            ),
-            call_endpoint=True,
-        )
+    try:
+        with pytest.raises(ProxyException) as exc_info:
+            await token_counter(
+                request=TokenCountRequest(
+                    model="claude-test",
+                    messages=[{"role": "user", "content": "hello"}],
+                ),
+                call_endpoint=True,
+            )
+    finally:
+        await client.client.aclose()
     assert exc_info.value.type == "token_counting_error"
+    assert exc_info.value.code == "401"
 
     # Test with non-Anthropic provider
     llm_router = Router(
@@ -760,7 +775,7 @@ async def test_internal_token_counter_anthropic_provider_detection():
         ]
     )
 
-    setattr(litellm.proxy.proxy_server, "llm_router", llm_router)
+    monkeypatch.setattr(litellm.proxy.proxy_server, "llm_router", llm_router)
 
     with pytest.raises(ProxyException) as missing_key:
         await token_counter(
