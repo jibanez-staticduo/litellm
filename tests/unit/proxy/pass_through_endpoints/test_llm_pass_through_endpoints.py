@@ -2760,12 +2760,17 @@ class TestGigachatProxyRoute:
         "litellm.proxy.proxy_server.llm_router"
     )  # test-quality-ok: patching litellm internal for unit test isolation
     async def test_gigachat_proxy_route_with_router_model(self, mock_llm_router, mock_is_router, mock_get_body):
-        mock_request = MagicMock(spec=Request)
-        mock_request.method = "POST"
-        mock_request.headers = {"content-type": "application/json"}
-        mock_request.query_params = {}
-        mock_fastapi_response = MagicMock(spec=Response)
-        mock_user_api_key_dict = MagicMock()
+        mock_request = Request(
+            {
+                "type": "http",
+                "method": "POST",
+                "path": "/gigachat/chat/completions",
+                "headers": [(b"content-type", b"application/json")],
+                "query_string": b"",
+            }
+        )
+        mock_fastapi_response = Response()
+        mock_user_api_key_dict = UserAPIKeyAuth()
         mock_llm_router.allm_passthrough_route = AsyncMock(
             return_value=httpx.Response(200, json={"response": "success"})
         )
