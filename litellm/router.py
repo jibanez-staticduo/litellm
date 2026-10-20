@@ -9654,12 +9654,12 @@ class Router:
 
     async def _increment_usage_pipeline(
         self,
-        operations: list[RedisPipelineIncrementOperation],
+        operations: Sequence[RedisPipelineIncrementOperation],
         parent_otel_span: Span | None,
         usage_state: object,
-    ) -> list[float] | None:
+    ) -> Sequence[float] | None:
         if not isinstance(usage_state, dict):
-            return await self.cache.async_increment_cache_pipeline(operations, parent_otel_span=parent_otel_span)
+            return await self.cache.async_increment_cache_pipeline(list(operations), parent_otel_span=parent_otel_span)
         state: Final = cast(dict[str, float], usage_state)  # cast-ok: request-owned accounting stores numeric totals
         async with self._usage_accounting_lock:
             counted: Final = state.get("tokens")
