@@ -1586,18 +1586,10 @@ async def test_update_cache_no_cached_entities_schedules_pipeline_flush(monkeypa
 
 @pytest.mark.asyncio
 async def test_update_cache_serializes_cached_user_and_team_spend(monkeypatch):
-    cached_values = {
-        "u1": ps.LiteLLM_UserTable(user_id="u1", spend=2.0),
-        "team_id:t1": ps.LiteLLM_TeamTableCachedObj(team_id="t1", spend=3.0),
-    }
-    fake_user_cache = MagicMock()
-
-    async def _get_cache(*, key, **_kwargs):
-        return cached_values.get(key)
-
-    fake_user_cache.async_get_cache = AsyncMock(side_effect=_get_cache)
-    fake_user_cache.async_set_cache_pipeline = AsyncMock()
-    monkeypatch.setattr(ps, "user_api_key_cache", fake_user_cache)
+    cache: Final = UserApiKeyCache()
+    cache.set_cache(key="u1", value=ps.LiteLLM_UserTable(user_id="u1", spend=2.0))
+    cache.set_cache(key="team_id:t1", value=ps.LiteLLM_TeamTableCachedObj(team_id="t1", spend=3.0, blocked=True))
+    monkeypatch.setattr(ps, "user_api_key_cache", cache)
 
     await ps.update_cache(
         token=None,
@@ -1608,13 +1600,12 @@ async def test_update_cache_serializes_cached_user_and_team_spend(monkeypatch):
         parent_otel_span=None,
         tags=None,
     )
-    await asyncio.sleep(0)
+    await _drain_spend_cache_writes()
 
-    pipeline_kwargs = fake_user_cache.async_set_cache_pipeline.await_args.kwargs
-    cache_updates = dict(pipeline_kwargs["cache_list"])
-
-    assert cache_updates["u1"]["spend"] == 3.5
-    assert cache_updates["team_id:t1"]["spend"] == 4.5
+    user: Final = cache.get_cache(key="u1", model_type=ps.LiteLLM_UserTable)
+    team: Final = cache.get_cache(key="team_id:t1", model_type=ps.LiteLLM_TeamTableCachedObj)
+    assert user is not None and user.spend == 3.5
+    assert team is not None and (team.spend, team.blocked) == (4.5, True)
 
 
 @pytest.mark.asyncio
