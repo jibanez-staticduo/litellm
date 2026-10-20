@@ -619,6 +619,16 @@ def _fallback_deployment_mapping(deployment: Deployment | Mapping[str, object]) 
     )
 
 
+def _synchronize_pod_routing_metadata(
+    kwargs: Mapping[str, object], metadata_variable_name: str, routing: object
+) -> Mapping[str, object]:
+    other_bucket: Final = "metadata" if metadata_variable_name == "litellm_metadata" else "litellm_metadata"
+    metadata: Final = kwargs.get(other_bucket)
+    if isinstance(metadata, Mapping) and KUBERNETES_POD_ROUTING_KEY in metadata:
+        return {other_bucket: {**metadata, KUBERNETES_POD_ROUTING_KEY: routing}}
+    return MappingProxyType({})
+
+
 _CONTENT_BLOCKS_ADAPTER: Final = TypeAdapter(list[dict[str, object]])
 
 
@@ -4746,13 +4756,7 @@ class Router:
                 KUBERNETES_POD_ROUTING_KEY: routing,
             }
         )
-        other_bucket: Final = "metadata" if metadata_variable_name == "litellm_metadata" else "litellm_metadata"
-        other_bucket_metadata: Final = kwargs.get(other_bucket)
-        if isinstance(other_bucket_metadata, Mapping) and KUBERNETES_POD_ROUTING_KEY in other_bucket_metadata:
-            kwargs[other_bucket] = {  # rebind-ok: this method updates the router's request kwargs in place
-                **other_bucket_metadata,
-                KUBERNETES_POD_ROUTING_KEY: routing,
-            }
+        kwargs.update(_synchronize_pod_routing_metadata(kwargs, metadata_variable_name, routing))
 
         # A retry/fallback reuses this same kwargs dict for the next deployment.
         # Refund and clear any reservation the previous deployment attempt left
