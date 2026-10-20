@@ -266,6 +266,7 @@ jobs:
               tests/unit/llms/featherless_ai
               tests/unit/llms/firecrawl
               tests/unit/llms/fireworks_ai
+              tests/unit/llms/friendliai
               tests/unit/llms/gdc
               tests/unit/llms/gemini
               tests/unit/llms/gigachat
@@ -413,6 +414,7 @@ jobs:
               tests/unit/embeddings
               tests/unit/endpoints
               tests/unit/files
+              tests/unit/fine_tuning
               tests/unit/images
               tests/test_litellm/test_gpt_image_cost_calculator.py
               tests/unit/interactions

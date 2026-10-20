@@ -1689,7 +1689,7 @@ def _anthropic_tool_replay_fields(tool_use_id: str, *, native_sdk: bool = False)
     return replay.identifier, MappingProxyType({"caller": replay.caller})
 
 
-def _sanitize_anthropic_tool_use_id(tool_use_id: str, *, native_sdk: bool = False) -> str:
+def sanitize_anthropic_tool_use_id(tool_use_id: str, *, native_sdk: bool = False) -> str:
     """Anthropic requires tool_use_id to match ^[a-zA-Z0-9_-]+$."""
     original_id, _ = _anthropic_tool_replay_fields(tool_use_id, native_sdk=native_sdk)
     return _replace_invalid_tool_use_id_chars(original_id, _ANTHROPIC_TOOL_USE_ID_INVALID_CHARS)
@@ -1838,7 +1838,7 @@ def convert_to_anthropic_tool_result(
         tool_message: Final[ChatCompletionToolMessage] = message
         tool_call_id: str = tool_message["tool_call_id"]
         # Sanitize tool_use_id to match Anthropic's pattern requirement: ^[a-zA-Z0-9_-]+$
-        sanitized_tool_use_id = _sanitize_anthropic_tool_use_id(tool_call_id, native_sdk=native_sdk)
+        sanitized_tool_use_id = sanitize_anthropic_tool_use_id(tool_call_id, native_sdk=native_sdk)
 
         # We can't determine from openai message format whether it's a successful or
         # error call result so default to the successful result template
@@ -1852,7 +1852,7 @@ def convert_to_anthropic_tool_result(
         function_message: Final[ChatCompletionFunctionMessage] = message
         tool_call_id = function_message.get("tool_call_id") or str(uuid.uuid4())
         # Sanitize tool_use_id to match Anthropic's pattern requirement: ^[a-zA-Z0-9_-]+$
-        sanitized_tool_use_id = _sanitize_anthropic_tool_use_id(tool_call_id, native_sdk=native_sdk)
+        sanitized_tool_use_id = sanitize_anthropic_tool_use_id(tool_call_id, native_sdk=native_sdk)
         anthropic_tool_result = AnthropicMessagesToolResultParam(
             type="tool_result",
             tool_use_id=sanitized_tool_use_id,
@@ -2063,7 +2063,7 @@ def convert_to_anthropic_tool_invoke(
             continue
         else:
             original_id, replay_fields = _anthropic_tool_replay_fields(tool_id, native_sdk=native_sdk)
-            sanitized_tool_id = _sanitize_anthropic_tool_use_id(original_id)
+            sanitized_tool_id = sanitize_anthropic_tool_use_id(original_id)
             _anthropic_tool_use_param = AnthropicMessagesToolUseParam(
                 type="tool_use",
                 id=sanitized_tool_id,
@@ -5938,21 +5938,21 @@ def _optional_tool_name(value: object) -> str | None:
 
 
 def _split_tool_call_ids(calls: Sequence[tuple[str | None, int]]) -> tuple[tuple[str | None, ...], ...]:
-    taken: Final = frozenset(_sanitize_anthropic_tool_use_id(call_id) for call_id, _ in calls if call_id)
+    taken: Final = frozenset(sanitize_anthropic_tool_use_id(call_id) for call_id, _ in calls if call_id)
 
     def fresh(call_id: str) -> Iterator[str]:
         return filter(
-            lambda candidate: _sanitize_anthropic_tool_use_id(candidate) not in taken,
+            lambda candidate: sanitize_anthropic_tool_use_id(candidate) not in taken,
             (f"{call_id}__concat_{n}" for n in itertools.count(1)),
         )
 
     suffixes: Final = MappingProxyType(
-        {_sanitize_anthropic_tool_use_id(call_id): fresh(call_id) for call_id, count in calls if call_id and count > 1}
+        {sanitize_anthropic_tool_use_id(call_id): fresh(call_id) for call_id, count in calls if call_id and count > 1}
     )
     return tuple(
         (
             call_id,
-            *(next(suffixes[_sanitize_anthropic_tool_use_id(call_id)]) for _ in range(count - 1)),
+            *(next(suffixes[sanitize_anthropic_tool_use_id(call_id)]) for _ in range(count - 1)),
         )
         if call_id
         else (None,) * count

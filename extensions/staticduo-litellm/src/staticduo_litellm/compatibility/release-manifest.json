@@ -127,10 +127,11 @@
           "wire_compat",
           "input_responses",
           "request_state",
-          "incoming_bearer_token"
+          "incoming_bearer_token",
+          "guardrail_auth"
         ],
         "keyword_only": [],
-        "defaults": 12,
+        "defaults": 13,
         "keyword_defaults": [],
         "vararg": null,
         "kwarg": "kwargs",

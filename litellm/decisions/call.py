@@ -1,3 +1,4 @@
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from functools import partial
@@ -6,6 +7,7 @@ from typing import Final, Literal, TypeAlias
 
 import httpx
 from pydantic import BaseModel, ConfigDict, StrictBool, TypeAdapter, ValidationError
+from pydantic_core import to_jsonable_python
 from typing_extensions import assert_never
 
 import litellm
@@ -56,6 +58,7 @@ from litellm.types.decisions import (
     OpenAIDecisionResponse,
     UnsupportedDecisionsRequest,
 )
+from litellm.types.llms.openai import ChatCompletionUserMessage
 from litellm.types.utils import LlmProviders, ProviderSpecificHeader
 from litellm.utils import ProviderConfigManager, get_model_cost_key
 
@@ -415,6 +418,50 @@ def _outbound_headers(
     return MappingProxyType({**(extra_headers or {}), **forwarded})
 
 
+_LOGGED_FIELDS_ADAPTER: Final[TypeAdapter[Mapping[str, object]]] = TypeAdapter(Mapping[str, object])
+
+
+def _jsonable_fallback(value: object) -> object:
+    return dict(_LOGGED_FIELDS_ADAPTER.validate_python(value)) if isinstance(value, Mapping) else str(value)
+
+
+def _logged_request_message(caller_request: object) -> ChatCompletionUserMessage:
+    caller_fields: Final = _LOGGED_FIELDS_ADAPTER.validate_python(
+        to_jsonable_python(caller_request, fallback=_jsonable_fallback)
+    )
+    sent_fields: Final = json.dumps(
+        dict((name, value) for name, value in caller_fields.items() if value not in (None, [], {}))
+    )
+    return ChatCompletionUserMessage(role="user", content=sent_fields)
+
+
+def log_caller_request(kwargs: Mapping[str, object], caller_request: object) -> None:
+    """Record every request field the caller sent as the logged `messages`, before any validation."""
+    logging_obj: Final = kwargs.get("litellm_logging_obj")
+    if isinstance(logging_obj, LiteLLMLoggingObj):
+        logging_obj.update_messages([_logged_request_message(caller_request)])
+
+
+def _checked_caller_ir_request(
+    request: DecisionsRequestFormat,
+    safety_identifier: str | None,
+    drops_params: bool,
+    model: str,
+    provider: str,
+) -> DecisionsIRRequest:
+    result: Final = _without_malformed_images(_ir_request(request, safety_identifier), drops_params)
+    if isinstance(result, _MalformedImages):
+        raise litellm.BadRequestError(
+            message=(
+                f"Invalid Decisions request: {result.count} input_image part(s) have an image_url that is "
+                "neither a data:image/...;base64, URL nor an http(s) URL"
+            ),
+            model=model,
+            llm_provider=provider,
+        )
+    return result
+
+
 def prepare_call(
     *,
     model: str,
@@ -477,18 +524,9 @@ def prepare_call(
             llm_provider=provider,
         )
 
-    caller_ir_request: Final = _without_malformed_images(
-        _ir_request(request, request_safety_identifier), _drops_params(kwargs)
+    caller_ir_request: Final = _checked_caller_ir_request(
+        request, request_safety_identifier, _drops_params(kwargs), model, provider
     )
-    if isinstance(caller_ir_request, _MalformedImages):
-        raise litellm.BadRequestError(
-            message=(
-                f"Invalid Decisions request: {caller_ir_request.count} input_image part(s) have an image_url that is "
-                "neither a data:image/...;base64, URL nor an http(s) URL"
-            ),
-            model=model,
-            llm_provider=provider,
-        )
     ir_request: Final = _provider_ir_request(
         caller_ir_request,
         provider_config=provider_config,
