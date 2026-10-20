@@ -832,6 +832,9 @@ class Logging(LiteLLMLoggingBaseClass):
             },
             "litellm_call_id": litellm_call_id,
         }
+        for channel in ("metadata", "litellm_metadata"):
+            if isinstance(bucket := litellm_params.get(channel), dict) and "_litellm_router_usage_call" in bucket:
+                bucket["_litellm_router_usage_call"] = {}
         new_call: Final = copy.copy(self)
         new_call.litellm_call_id = litellm_call_id
         new_call.start_time = start_time

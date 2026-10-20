@@ -2305,6 +2305,83 @@ async def test_headers_on_fresh_worker_reflect_shared_redis_usage():
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("router_minute_pinned")
+async def test_websocket_turn_usage_has_independent_request_accounting():
+    import time
+    from litellm.litellm_core_utils.litellm_logging import Logging
+
+    router = _rpm_tpm_router("separate-turns")
+    metadata = {
+        "model_group": "gpt-5-mini", "deployment": "gpt-5-mini",
+        "_litellm_router_usage_owner": id(router), "_litellm_router_usage_call": {},
+    }
+    connection = Logging(
+        model="gpt-5-mini", messages=[], stream=False, call_type=CallTypes.aresponses_websocket.value,
+        start_time=time.time(), litellm_call_id="connection", function_id="connection",
+    )
+    connection.litellm_params = {"metadata": metadata, "model_info": {"id": "separate-turns"}}
+    for call_id in ("turn-one", "turn-two"):
+        turn = connection.copy_for_new_call(call_id, datetime.now())
+        await router.deployment_callback_on_success(
+            kwargs={"call_type": CallTypes.aresponses_websocket.value, "litellm_params": turn.litellm_params,
+                    "standard_logging_object": {"total_tokens": 17}},
+            completion_response=None, start_time=time.time(), end_time=time.time(),
+        )
+    assert await router.get_model_group_usage("gpt-5-mini") == (34, 2)
+
+
+@pytest.mark.asyncio
+@pytest.mark.usefixtures("router_minute_pinned")
+async def test_usage_accounting_is_request_owned_across_cache_eviction_and_pipeline_retry():
+    import asyncio
+
+    router = _rpm_tpm_router("request-owned-usage")
+    store = {}
+    router.cache = DualCache(redis_cache=_shared_redis_stub(store), in_memory_cache=InMemoryCache())
+    state = {}
+    args = dict(
+        deployment_id="request-owned-usage",
+        deployment_name="gpt-5-mini",
+        model_group="gpt-5-mini",
+        total_tokens=17,
+        rpm_increment=1,
+        parent_otel_span=None,
+        usage_state=state,
+    )
+    await router._increment_deployment_usage(**args)
+    for index in range(205):
+        router.cache.in_memory_cache.set_cache(str(index), 0)
+    await router._increment_deployment_usage(**args)
+    assert await router.get_model_group_usage("gpt-5-mini") == (17, 1)
+
+    entered = asyncio.Event()
+    release = asyncio.Event()
+    original = router.cache.async_increment_cache_pipeline
+    calls = 0
+
+    async def pipeline(*positional, **keywords):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            entered.set()
+            await release.wait()
+            raise RuntimeError("fixture failure")
+        return await original(*positional, **keywords)
+
+    next_args = {**args, "usage_state": {}}
+    with patch.object(router.cache, "async_increment_cache_pipeline", side_effect=pipeline):
+        first = asyncio.create_task(router._increment_deployment_usage(**next_args))
+        await entered.wait()
+        second = asyncio.create_task(router._increment_deployment_usage(**{**next_args, "total_tokens": 20}))
+        release.set()
+        with pytest.raises(RuntimeError, match="fixture failure"):
+            await first
+        await second
+        await router._increment_deployment_usage(**{**next_args, "total_tokens": 20})
+    assert await router.get_model_group_usage("gpt-5-mini") == (37, 2)
+
+
+@pytest.mark.asyncio
 async def test_get_model_group_io_token_usage_sums_across_deployments():
     """
     get_model_group_io_token_usage must sum ITPM/OTPM across every deployment

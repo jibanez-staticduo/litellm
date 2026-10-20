@@ -13571,7 +13571,11 @@ def test_copy_for_new_call_logs_a_turn_under_its_own_call_id_against_the_connect
     )
     connection.litellm_params = {
         "litellm_call_id": "connection-call",
-        "metadata": {"user_api_key": "hashed-key", "user_api_key_budget_reservation": reservation},
+        "metadata": {
+            "user_api_key": "hashed-key",
+            "user_api_key_budget_reservation": reservation,
+            "_litellm_router_usage_call": {"tokens": 17},
+        },
     }
     connection.model_call_details["litellm_params"] = connection.litellm_params
     turn_start: Final = datetime.datetime(2026, 1, 1, 12, 0, 0)
@@ -13583,6 +13587,8 @@ def test_copy_for_new_call_logs_a_turn_under_its_own_call_id_against_the_connect
     assert turn.model_call_details["litellm_params"]["litellm_call_id"] == "turn-1"
     assert turn.litellm_params["metadata"]["user_api_key"] == "hashed-key"
     assert turn.litellm_params["metadata"]["user_api_key_budget_reservation"] is reservation
+    assert turn.litellm_params["metadata"]["_litellm_router_usage_call"] == {}
+    assert connection.litellm_params["metadata"]["_litellm_router_usage_call"] == {"tokens": 17}
     turn.litellm_params["metadata"]["turn_only"] = True
     assert "turn_only" not in connection.litellm_params["metadata"]
     assert (connection.litellm_call_id, connection.model_call_details["litellm_call_id"]) == (

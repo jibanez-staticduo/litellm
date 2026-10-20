@@ -357,6 +357,7 @@ from litellm.router_utils.routing_groups import (
 from litellm.router_utils.routing_read_batch import ROUTER_USAGE_TARGET, RoutingPrefetch, RoutingReadBatch
 from litellm.scheduler import FlowItem, Scheduler
 from litellm.secret_managers.main import str_to_bool
+from litellm.types.caching import RedisPipelineIncrementOperation
 from litellm.types.guardrails import GuardrailEventHooks
 from litellm.types.litellm_params import RoutingStrategyName
 from litellm.types.llms.openai import (
@@ -599,6 +600,8 @@ _DEPLOYMENT_PARAMS_ADAPTER: Final[TypeAdapter[Mapping[str, object] | GenericLite
 _OPAQUE_VALUE_ADAPTER: Final = TypeAdapter(object)
 _DEPLOYMENT_SELECTED_EVENT: Final = "litellm.request.deployment_selected"
 _CHATGPT_ATTEMPT_KEY: Final = "_chatgpt_profile_attempt"
+_USAGE_OWNER_KEY: Final = "_litellm_router_usage_owner"
+_USAGE_CALL_KEY: Final = "_litellm_router_usage_call"
 
 
 class _ChatGPTProfileAttempt(NamedTuple):
@@ -1602,6 +1605,7 @@ class Router:
         self._override_selectors: dict[str, RouterStrategySelector | None] = {}
         self._override_selectors_lock = threading.Lock()
         self.access_groups = None
+        self._usage_accounting_lock = asyncio.Lock()
         ## USAGE TRACKING ##
         if isinstance(litellm._async_success_callback, list):
             litellm.logging_callback_manager.add_litellm_async_success_callback(self.deployment_callback_on_success)
@@ -4733,6 +4737,8 @@ class Router:
 
         kwargs.setdefault(metadata_variable_name, {}).update(
             {
+                _USAGE_OWNER_KEY: id(self),
+                _USAGE_CALL_KEY: {},
                 "deployment": deployment_litellm_model_name,
                 "model_info": model_info,
                 "api_base": deployment_api_base,
@@ -9537,6 +9543,8 @@ class Router:
             metadata: Final = litellm_params.get("metadata")
             if metadata is None:
                 return
+            if metadata.get(_USAGE_OWNER_KEY, id(self)) != id(self):
+                return
             model_group: Final = metadata.get("model_group", None)
             model_info: Final = litellm_params.get("model_info", {}) or {}
             deployment_id: Final = model_info.get("id", None)
@@ -9551,14 +9559,18 @@ class Router:
 
             total_tokens: Final[float] = standard_logging_object.get("total_tokens", 0)
             counted_tokens: Final = get_counted_usage_tokens(litellm_params)
+            usage_call_id: Final = metadata.get(_USAGE_CALL_KEY)
             deployment_name: Final = metadata.get("deployment", None)
             return await self._increment_deployment_usage(
                 deployment_id=str(deployment_id),
                 deployment_name=deployment_name if isinstance(deployment_name, str) else None,
                 model_group=model_group,
-                total_tokens=total_tokens if counted_tokens is None else max(0, total_tokens - counted_tokens),
-                rpm_increment=1 if counted_tokens is None else 0,
+                total_tokens=total_tokens
+                if isinstance(usage_call_id, dict) or counted_tokens is None
+                else max(0, total_tokens - counted_tokens),
+                rpm_increment=1 if isinstance(usage_call_id, dict) or counted_tokens is None else 0,
                 parent_otel_span=get_parent_otel_span_from_kwargs(kwargs),
+                usage_state=usage_call_id,
             )
 
         except Exception as e:
@@ -9593,6 +9605,7 @@ class Router:
                     total_tokens=total_tokens,
                     rpm_increment=1,
                     parent_otel_span=get_parent_otel_span_from_kwargs(request_kwargs),
+                    usage_state=deployment_metadata.get(_USAGE_CALL_KEY),
                 )
             except Exception:
                 deployment_metadata.pop(ROUTER_USAGE_COUNTED_TOKENS_METADATA_KEY, None)
@@ -9611,9 +9624,8 @@ class Router:
         total_tokens: float,
         rpm_increment: int,
         parent_otel_span: Span | None,
+        usage_state: object = None,
     ) -> str | None:
-        from litellm.types.caching import RedisPipelineIncrementOperation
-
         if total_tokens <= 0 and rpm_increment <= 0:
             return None
         if not self._cached_deployment_tracks_usage(deployment_id, model_group):
@@ -9630,9 +9642,8 @@ class Router:
             RedisPipelineIncrementOperation(key=key, increment_value=increment_value, ttl=RoutingArgs.ttl.value)
             for key, increment_value in ((tpm_key, total_tokens), (rpm_key, rpm_increment))
         ]
-        post_increment_values: Final = await self.cache.async_increment_cache_pipeline(
-            increment_list=pipeline_operations,
-            parent_otel_span=parent_otel_span,
+        post_increment_values: Final = await self._increment_usage_pipeline(
+            pipeline_operations, parent_otel_span, usage_state
         )
         if post_increment_values is not None and self.cache.redis_cache is not None:
             for operation, value in zip(pipeline_operations, post_increment_values):
@@ -9640,6 +9651,31 @@ class Router:
                     operation["key"], int(value), local_only=True, ttl=RoutingArgs.ttl.value
                 )
         return tpm_key
+
+    async def _increment_usage_pipeline(
+        self,
+        operations: list[RedisPipelineIncrementOperation],
+        parent_otel_span: Span | None,
+        usage_state: object,
+    ) -> list[float] | None:
+        if not isinstance(usage_state, dict):
+            return await self.cache.async_increment_cache_pipeline(operations, parent_otel_span=parent_otel_span)
+        state: Final = cast(dict[str, float], usage_state)  # cast-ok: request-owned accounting stores numeric totals
+        async with self._usage_accounting_lock:
+            counted: Final = state.get("tokens")
+            adjusted: Final = [
+                RedisPipelineIncrementOperation(
+                    key=op["key"],
+                    increment_value=op["increment_value"]
+                    if counted is None
+                    else (max(0, op["increment_value"] - counted) if ":tpm:" in op["key"] else 0),
+                    ttl=op["ttl"],
+                )
+                for op in operations
+            ]
+            result: Final = await self.cache.async_increment_cache_pipeline(adjusted, parent_otel_span=parent_otel_span)
+            state["tokens"] = max(operations[0]["increment_value"], counted or 0)
+            return result
 
     def _deployment_tracks_usage(self, deployment_id: str, model_group: str) -> bool:
         deployment_info: Final = self.get_deployment(model_id=deployment_id)
