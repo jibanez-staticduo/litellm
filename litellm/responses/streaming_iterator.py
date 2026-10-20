@@ -2514,7 +2514,7 @@ class ResponsesWebSocketStreaming:
 
     async def backend_to_client(self) -> None:
         """Forward events from backend WebSocket to the client."""
-        import websockets
+        from websockets.exceptions import ConnectionClosed
 
         try:
             while True:
@@ -2555,7 +2555,7 @@ class ResponsesWebSocketStreaming:
 
                 await self.websocket.send_text(wrapped_str)
 
-        except websockets.exceptions.ConnectionClosed as e:
+        except ConnectionClosed as e:
             verbose_logger.debug("Responses WS backend connection closed: %s", e)
         except Exception as e:
             verbose_logger.exception("Error in responses WS backend_to_client: %s", e)
