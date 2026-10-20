@@ -4871,11 +4871,11 @@ class Router:
             record_disable_fallbacks(kwargs, True)
 
         deployment_replay: Final = self._deployment_replay_kwargs(
-            _FALLBACK_HOP_ADAPTER.validate_python(deployment),
+            _fallback_deployment_mapping(deployment),
             _FALLBACK_HOP_ADAPTER.validate_python(
                 {
                     **kwargs,
-                    **self._generic_provider_kwargs(_FALLBACK_HOP_ADAPTER.validate_python(deployment), function_name),
+                    **self._generic_provider_kwargs(_fallback_deployment_mapping(deployment), function_name),
                 }
             ),
             deployment_that_just_failed,
