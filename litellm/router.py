@@ -11147,7 +11147,7 @@ class Router:
         - ValueError: If LITELLM_ENVIRONMENT is not set in .env or not one of the valid values
         - ValueError: If supported_environments is not set in model_info or not one of the valid values
         """
-        return model_info_is_active_for_environment(model_info=deployment.model_info)
+        return model_info_is_active_for_environment(model_info=deployment.model_info.model_dump())
 
     def set_model_list(self, model_list: list):
         original_model_list: Final = copy.deepcopy(model_list)
