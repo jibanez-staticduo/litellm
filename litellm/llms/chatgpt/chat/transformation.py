@@ -100,7 +100,7 @@ class ChatGPTConfig(OpenAIConfig):
         )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         return {**default_headers, **validated_headers}
 
-    def post_stream_processing(self, stream: Any) -> Any:
+    def post_stream_processing(self, stream: Any) -> ChatGPTToolCallNormalizer:
         return ChatGPTToolCallNormalizer(stream)
 
     def map_openai_params(

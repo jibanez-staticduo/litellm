@@ -103,6 +103,7 @@ class ProviderConnection:
     chatgpt_token_dir: str | None = None
     chatgpt_auth_file: str | None = None
     github_copilot_auth_type: str | None = None
+    github_copilot_host: str | None = None
     github_copilot_user_session: object | None = None
     token_exchange_endpoint: str | None = None
     token_exchange_profile: str | None = None
@@ -115,6 +116,7 @@ class ProviderConnection:
 class BedrockBatchConnection:
     # Bedrock rejects these names in request bodies, so register them as LiteLLM-owned
     aws_batch_role_arn: str | None = None
+    aws_bedrock_control_plane_endpoint: str | None = None
     s3_bucket_name: str | None = None
     s3_region_name: str | None = None
     s3_endpoint_url: str | None = None

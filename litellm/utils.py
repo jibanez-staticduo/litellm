@@ -28,6 +28,7 @@ import textwrap
 import threading
 import time
 import traceback
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from functools import lru_cache, wraps
 from importlib import resources
@@ -70,6 +71,7 @@ from litellm.constants import (
     DEFAULT_TRIM_RATIO,
     FUNCTION_DEFINITION_TOKEN_COUNT,
     HF_CONFIG_FETCH_TIMEOUT_SECONDS,
+    HUGGINGFACE_TOKENIZER_LOAD_RETRY_SECONDS,
     INITIAL_RETRY_DELAY,
     JITTER,
     MAX_RETRY_DELAY,
@@ -389,6 +391,7 @@ if TYPE_CHECKING:
     from litellm.llms.base_llm.containers.transformation import BaseContainerConfig
     from litellm.llms.base_llm.decisions.transformation import BaseDecisionsConfig
     from litellm.llms.base_llm.embedding.transformation import BaseEmbeddingConfig
+    from litellm.llms.base_llm.extraction.transformation import BaseExtractionConfig
     from litellm.llms.base_llm.files.transformation import BaseFilesConfig
     from litellm.llms.base_llm.google_genai.transformation import (
         BaseGoogleGenAIGenerateContentConfig,
@@ -1503,6 +1506,7 @@ def _schedule_async_success_logging(
         return
 
     def _enqueue_async_logging() -> None:
+        logging_obj.mark_async_success_log_enqueued()
         asyncio.create_task(
             _client_async_logging_helper(
                 logging_obj=logging_obj,
@@ -1579,6 +1583,22 @@ def _get_wrapper_timeout(kwargs: dict[str, object]) -> object:
         return logging_obj.applied_timeout
     stream_timeout: Final = kwargs.get("stream_timeout")
     return kwargs.get("timeout") if stream_timeout is None else stream_timeout
+
+
+def _runs_as_async_success_callback(callback: str | Callable[..., object] | CustomLogger) -> bool:
+    get_coroutine_checker: Final = litellm_utils.get_coroutine_checker
+    return get_coroutine_checker().is_async_callable(callback) or callback in ("dynamodb", "s3")
+
+
+def split_dynamic_success_callbacks(
+    callbacks: Sequence[str | Callable[..., object] | CustomLogger],
+) -> tuple[
+    tuple[str | Callable[..., object] | CustomLogger, ...], tuple[str | Callable[..., object] | CustomLogger, ...]
+]:
+    return (
+        tuple(callback for callback in callbacks if not _runs_as_async_success_callback(callback)),
+        tuple(callback for callback in callbacks if _runs_as_async_success_callback(callback)),
+    )
 
 
 def check_coroutine(value) -> bool:
@@ -2168,7 +2188,11 @@ def client(original_function):
 
             # Sync logging_obj.stream after deployment hooks (they may convert it).
             _hook_stream: Final = kwargs.get("stream")
-            if _hook_stream is not None and logging_obj.stream != _hook_stream:
+            if (
+                _hook_stream is not None
+                and logging_obj.stream != _hook_stream
+                and call_type not in _NEVER_STREAMING_CALL_TYPES
+            ):
                 logging_obj.stream = _hook_stream
 
             kwargs["litellm_logging_obj"] = logging_obj
@@ -2373,7 +2397,7 @@ def client(original_function):
                 unbind_budget_reservation_from_callbacks(logging_obj.litellm_params)
                 try:
                     logging_obj.failure_handler(
-                        e, traceback_exception, start_time, end_time
+                        e, traceback_exception, start_time, end_time, for_async_request=True
                     )  # DO NOT MAKE THREADED - router retry fallback relies on this!
                 except Exception as e:
                     raise e
@@ -2512,6 +2536,15 @@ _STREAMING_CALL_TYPES: Final = frozenset(
     }
 )
 
+_NEVER_STREAMING_CALL_TYPES: Final = frozenset(
+    {
+        CallTypes.extraction,
+        CallTypes.aextraction,
+        CallTypes.extraction.value,
+        CallTypes.aextraction.value,
+    }
+)
+
 
 def _is_streaming_request(
     kwargs: Mapping[str, object],
@@ -2523,6 +2556,8 @@ def _is_streaming_request(
         - if "stream=True" in kwargs  (litellm chat completion, litellm text completion, litellm messages)
         - if call_type is generate_content_stream or agenerate_content_stream (litellm google genai)
     """
+    if call_type in _NEVER_STREAMING_CALL_TYPES:
+        return False
     if "stream" in kwargs and kwargs["stream"] is True:
         return True
     return call_type in _STREAMING_CALL_TYPES
@@ -2567,19 +2602,14 @@ def _select_tokenizer_helper(model: str) -> SelectTokenizerResponse:
 
     try:
         result: Final = _return_huggingface_tokenizer(model)
-        if result is not None:
+        if result is not None and not isinstance(result, _HuggingFaceTokenizerLoadFailure):
             return result
     except Exception as e:
         from litellm.rust_bridge.fork_guard import ForkedAfterNativeRuntimeStarted, ProcessReservedForForking
 
         if isinstance(e, (ForkedAfterNativeRuntimeStarted, ProcessReservedForForking)):
             raise
-        verbose_logger.warning(
-            "Falling back to tiktoken for %s; token counts may be approximate. "
-            "For Python Hugging Face tokenization, install tokenizers and huggingface-hub. Error: %s",
-            json.dumps(redact_secrets(model)),
-            json.dumps(redact_secrets(str(e))),
-        )
+        _warn_huggingface_tokenizer_fallback(model, str(e))
 
     # default - tiktoken
     return _return_openai_tokenizer(model)
@@ -2593,7 +2623,15 @@ def uses_anthropic_tokenizer(model: str) -> bool:
     return model in litellm.anthropic_models and "claude-3" not in model
 
 
-HuggingFaceTokenizerKind = Literal["cohere", "anthropic", "llama2", "llama3"]
+HuggingFaceTokenizerKind = Literal["cohere", "anthropic", "deepseek", "llama2", "llama3"]
+
+_DEEPSEEK_TOKENIZER_MODEL: Final = re.compile(
+    r"deepseek[-_.](?:chat[-_.])?v[34]|(?:^|/)deepseek-(?:chat|reasoner|flash)(?::free)?$", re.IGNORECASE
+)
+
+_BUNDLED_TOKENIZER_LOAD_LOCKS: Final[Mapping[HuggingFaceTokenizerKind, threading.Lock]] = MappingProxyType(
+    {"anthropic": threading.Lock(), "deepseek": threading.Lock()}
+)
 
 
 def huggingface_tokenizer_kind(model: str) -> HuggingFaceTokenizerKind | None:
@@ -2602,6 +2640,8 @@ def huggingface_tokenizer_kind(model: str) -> HuggingFaceTokenizerKind | None:
         return "cohere"
     if uses_anthropic_tokenizer(model):
         return "anthropic"
+    if _DEEPSEEK_TOKENIZER_MODEL.search(model):
+        return "deepseek"
     if "llama-2" in model.lower() or "replicate" in model.lower():
         return "llama2"
     if "llama-3" in model.lower():
@@ -2609,14 +2649,39 @@ def huggingface_tokenizer_kind(model: str) -> HuggingFaceTokenizerKind | None:
     return None
 
 
-def _return_huggingface_tokenizer(model: str) -> SelectTokenizerResponse | None:
+@dataclass(frozen=True, slots=True)
+class _HuggingFaceTokenizerLoadFailure:
+    reason: str
+
+
+def _warn_huggingface_tokenizer_fallback(model: str, reason: str) -> None:
+    verbose_logger.warning(
+        "Falling back to tiktoken for %s; token counts may be approximate. "
+        "For Python Hugging Face tokenization, install tokenizers and huggingface-hub. Error: %s",
+        json.dumps(redact_secrets(model)),
+        json.dumps(redact_secrets(reason)),
+    )
+
+
+def _return_huggingface_tokenizer(model: str) -> SelectTokenizerResponse | _HuggingFaceTokenizerLoadFailure | None:
     kind: Final = huggingface_tokenizer_kind(model)
     if kind is None:
         return None
-    return {
-        "type": "huggingface_tokenizer",
-        "tokenizer": _load_huggingface_tokenizer(kind, _huggingface_tokenizer_backend()),
-    }
+    backend: Final = _huggingface_tokenizer_backend()
+    key: Final = _huggingface_tokenizer_failure_key(kind, backend)
+    with _BUNDLED_TOKENIZER_LOAD_LOCKS.get(kind, nullcontext()):
+        cached_failure: Final = _HUGGINGFACE_TOKENIZER_LOAD_FAILURES.get_cache(key)
+        if isinstance(cached_failure, _HuggingFaceTokenizerLoadFailure):
+            return cached_failure
+        tokenizer: Final = _load_huggingface_tokenizer_recording_failure(kind, backend, key)
+    if isinstance(tokenizer, _HuggingFaceTokenizerLoadFailure):
+        _warn_huggingface_tokenizer_fallback(model, tokenizer.reason)
+        return tokenizer
+    return {"type": "huggingface_tokenizer", "tokenizer": tokenizer}
+
+
+def _huggingface_tokenizer_failure_key(kind: HuggingFaceTokenizerKind, backend: Decision) -> str:
+    return f"{kind}:{backend.name}"
 
 
 @lru_cache(maxsize=DEFAULT_MAX_LRU_CACHE_SIZE)
@@ -2627,12 +2692,33 @@ def _load_huggingface_tokenizer(kind: HuggingFaceTokenizerKind, backend: Decisio
             return tokenizer_dispatch.from_pretrained("Xenova/c4ai-command-r-v01-tokenizer")
         case "anthropic":
             return tokenizer_dispatch.anthropic()
+        case "deepseek":
+            return tokenizer_dispatch.from_str(
+                resources.files("litellm.litellm_core_utils.tokenizers")
+                .joinpath("deepseek_tokenizer.json")
+                .read_text(encoding="utf-8")
+            )
         case "llama2":
             return tokenizer_dispatch.from_pretrained("hf-internal-testing/llama-tokenizer")
         case "llama3":
             return tokenizer_dispatch.from_pretrained("Xenova/llama-3-tokenizer")
         case _:
             assert_never(kind)
+
+
+def _load_huggingface_tokenizer_recording_failure(
+    kind: HuggingFaceTokenizerKind, backend: Decision, key: str
+) -> HuggingFace | _HuggingFaceTokenizerLoadFailure:
+    try:
+        return _load_huggingface_tokenizer(kind, backend)
+    except Exception as error:
+        from litellm.rust_bridge.fork_guard import ForkedAfterNativeRuntimeStarted, ProcessReservedForForking
+
+        if isinstance(error, (ForkedAfterNativeRuntimeStarted, ProcessReservedForForking)):
+            raise
+        failure: Final = _HuggingFaceTokenizerLoadFailure(reason=str(error))
+        _HUGGINGFACE_TOKENIZER_LOAD_FAILURES.set_cache(key, failure, ttl=HUGGINGFACE_TOKENIZER_LOAD_RETRY_SECONDS)
+        return failure
 
 
 def encode(model="", text="", custom_tokenizer: dict | None = None):
@@ -3399,14 +3485,20 @@ def _builtin_cost_map() -> dict[str, Mapping[str, object]]:
     return cast(dict[str, Mapping[str, object]], litellm.model_cost)
 
 
-def _replace_cost_map_entry(cost_map: dict[str, Mapping[str, object]], key: str, entry: Mapping[str, object]) -> None:
+def _replace_cost_map_entry(
+    cost_map: dict[str, Mapping[str, object]], key: str, entry: Mapping[str, object], registration: Mapping[str, object]
+) -> None:
     current: Final = cost_map.get(key)
     merged: Final = {**(current or {}), **entry}
-    if not isinstance(current, AliasedCostEntry):
-        cost_map.update({key: merged})
-        return
-    sharing_names: Final = tuple(name for name in current.names if cost_map.get(name) is current)
-    cost_map.update(dict.fromkeys((key, *sharing_names), AliasedCostEntry(merged, current.names)))
+    names: Final = current.names if isinstance(current, AliasedCostEntry) else ()
+    previous_fields: Final[frozenset[str]] = (
+        current.registered_fields if isinstance(current, AliasedCostEntry) else frozenset()
+    )
+    registered_fields: Final = previous_fields | frozenset(
+        name for name, value in registration.items() if value is not None
+    )
+    sharing_names: Final = tuple(name for name in names if cost_map.get(name) is current)
+    cost_map.update(dict.fromkeys((key, *sharing_names), AliasedCostEntry(merged, names, registered_fields)))
 
 
 def _without_synthesized_costs(
@@ -3487,6 +3579,25 @@ def _without_overridden_price_variants(
     )
 
 
+@with_config(ConfigDict(extra="allow"))
+class _PricingModelInfo(ModelInfo):
+    pass
+
+
+_PRICING_MODEL_INFO: Final = TypeAdapter(_PricingModelInfo)
+
+
+def model_info_with_pricing_overrides(model_info: ModelInfo, registration: Mapping[str, object]) -> ModelInfo:
+    from litellm.types.utils import is_server_derived_pricing_key
+
+    overrides: Final = {
+        name: value for name, value in registration.items() if value is not None and is_server_derived_pricing_key(name)
+    }
+    return _PRICING_MODEL_INFO.validate_python(
+        update_dictionary(dict(_without_overridden_price_variants(model_info, overrides)), overrides)
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class _BuiltinCostMatch:
     key: str
@@ -3495,7 +3606,7 @@ class _BuiltinCostMatch:
 
 
 @dataclass(frozen=True, slots=True)
-class _LookupMiss:
+class ModelInfoLookupMiss:
     tripped: bool
 
 
@@ -3582,17 +3693,19 @@ def is_generalized_model_info(model_info: ModelInfo) -> bool:
 _REGISTRATION_ATTEMPTS: Final = 3
 
 
-def _lookup_for_registration(model: str, custom_llm_provider: str | None) -> ModelInfo | _LookupMiss:
+def lookup_model_info_for_registration(model: str, custom_llm_provider: str | None) -> ModelInfo | ModelInfoLookupMiss:
     try:
         info: Final = get_model_info(model=model, custom_llm_provider=custom_llm_provider)
     except ModelNotMappedError:
-        return _LookupMiss(tripped=False)
+        return ModelInfoLookupMiss(tripped=False)
     except Exception:
-        return _LookupMiss(tripped=True)
-    return _LookupMiss(tripped=False) if is_generalized_model_info(info) else info
+        return ModelInfoLookupMiss(tripped=True)
+    return ModelInfoLookupMiss(tripped=False) if is_generalized_model_info(info) else info
 
 
-def _get_builtin_model_info_for_registration(model: str, custom_llm_provider: str | None) -> ModelInfo | _LookupMiss:
+def _get_builtin_model_info_for_registration(
+    model: str, custom_llm_provider: str | None
+) -> ModelInfo | ModelInfoLookupMiss:
     """Resolve ``model`` to its built-in cost-map entry for registration merging.
 
     Misses when the lookup cannot map the model or resolved it via a
@@ -3601,10 +3714,12 @@ def _get_builtin_model_info_for_registration(model: str, custom_llm_provider: st
     changing the map mid-walk, is retried, so a transient failure registers exactly
     where the untripped lookup would.
     """
-    lookups: Final = (_lookup_for_registration(model, custom_llm_provider) for _ in range(_REGISTRATION_ATTEMPTS))
+    lookups: Final = (
+        lookup_model_info_for_registration(model, custom_llm_provider) for _ in range(_REGISTRATION_ATTEMPTS)
+    )
     return next(
-        (lookup for lookup in lookups if not (isinstance(lookup, _LookupMiss) and lookup.tripped)),
-        _LookupMiss(tripped=True),
+        (lookup for lookup in lookups if not (isinstance(lookup, ModelInfoLookupMiss) and lookup.tripped)),
+        ModelInfoLookupMiss(tripped=True),
     )
 
 
@@ -3639,7 +3754,7 @@ def _registration_base(
     builtin_model_info: Final = _get_builtin_model_info_for_registration(
         model=key, custom_llm_provider=custom_llm_provider
     )
-    if not isinstance(builtin_model_info, _LookupMiss):
+    if not isinstance(builtin_model_info, ModelInfoLookupMiss):
         return _RegistrationWrite(
             key=builtin_model_info["key"],
             entry=dict(_without_synthesized_costs(builtin_model_info, key=key, value=value)),
@@ -3658,6 +3773,15 @@ def _registration_base(
     return _RegistrationWrite(key=key, entry=dict(fallback.entry))
 
 
+def _base_fields_replaced_by(value: Mapping[str, object]) -> frozenset[str]:
+    return (
+        frozenset({"explicit_cache_read_input_token_cost"})
+        if value.get("cache_read_input_token_cost") is not None
+        and value.get("explicit_cache_read_input_token_cost") is None
+        else frozenset()
+    )
+
+
 def _registration_write(
     key: str, value: Mapping[str, object], custom_llm_provider: str | None, warning_display_name: str | None
 ) -> _RegistrationWrite:
@@ -3672,7 +3796,10 @@ def _registration_write(
         for name, field_value in base.entry.items()
         if name != "litellm_provider" or field_value is not None
     }
-    return _RegistrationWrite(key=base.key, entry=update_dictionary(existing_model, value))
+    return _RegistrationWrite(
+        key=base.key,
+        entry={**update_dictionary(existing_model, value), **dict.fromkeys(_base_fields_replaced_by(value))},
+    )
 
 
 def _registration_attempt(
@@ -3684,7 +3811,7 @@ def _registration_attempt(
 ) -> _RegistrationWrite | None:
     source: Final = _builtin_cost_map()
     write: Final = _registration_write(key, value, custom_llm_provider, warning_display_name)
-    _replace_cost_map_entry(_builtin_cost_map() if final_attempt else source, write.key, write.entry)
+    _replace_cost_map_entry(_builtin_cost_map() if final_attempt else source, write.key, write.entry, value)
     return write if final_attempt or litellm.model_cost is source else None
 
 
@@ -3705,6 +3832,27 @@ def _register_on_current_map(
 
 
 _runtime_registered_model_cost: Final[dict[str, dict[str, object]]] = {}  # mutable-ok: replayed on reload
+
+
+def runtime_model_cost_registrations(
+    model: str, custom_llm_provider: str
+) -> tuple[tuple[str, Mapping[str, object]], ...]:
+    names: Final = get_potential_model_names(model, custom_llm_provider)
+    candidates: Final = (
+        model,
+        names["combined_model_name"],
+        f"{custom_llm_provider}/{names['split_model']}",
+        names["split_model"],
+        names["stripped_model_name"],
+    )
+    entries: Final = ((key, _builtin_cost_map().get(key)) for key in dict.fromkeys(candidates))
+    registered: Final = (
+        (key, entry) for key, entry in entries if isinstance(entry, AliasedCostEntry) and entry.registered_fields
+    )
+    return tuple(
+        (key, MappingProxyType({name: value for name, value in entry.items() if name in entry.registered_fields}))
+        for key, entry in registered
+    )
 
 
 class _LiveDeploymentReplay:
@@ -3819,7 +3967,10 @@ def register_model(
     if persist_across_reloads:
         _registrations: Final[Mapping[str, Mapping[str, object]]] = loaded_model_cost
         for _registered_key, _registered_value in _registrations.items():
-            _runtime_registered_model_cost[_registered_key] = dict(_registered_value)
+            _runtime_registered_model_cost[_registered_key] = update_dictionary(
+                dict(_runtime_registered_model_cost.get(_registered_key, {})),
+                _RATE_TABLE.validate_python(_registered_value),
+            )
 
     for key, value in loaded_model_cost.items():
         write = _register_on_current_map(str(key), value, custom_llm_provider, warning_display_name)
@@ -4796,6 +4947,12 @@ def pre_process_optional_params(passed_params: dict, non_default_params: dict, c
     return optional_params
 
 
+def _declared_reasoning_efforts(model_info: Mapping[str, object] | None) -> tuple[str, ...]:
+    from litellm.router_utils.reasoning_effort_capability import deployment_reasoning_effort_levels
+
+    return deployment_reasoning_effort_levels(model_info) or ()
+
+
 def get_optional_params(
     # use the openai defaults
     # https://platform.openai.com/docs/api-reference/chat/create
@@ -5329,11 +5486,21 @@ def get_optional_params(
             drop_params=bool(drop_params),
         )
     elif custom_llm_provider == "openai":
-        optional_params = litellm.OpenAIConfig().map_openai_params(
-            non_default_params=non_default_params,
-            optional_params=optional_params,
-            model=model,
-            drop_params=bool(drop_params),
+        optional_params = (
+            litellm.OpenAIGPT5Config().map_openai_params(
+                non_default_params=non_default_params,
+                optional_params=optional_params,
+                model=model,
+                drop_params=bool(drop_params),
+                declared_reasoning_efforts=_declared_reasoning_efforts(model_info),
+            )
+            if litellm.OpenAIGPT5Config.is_model_gpt_5_model(model=model)
+            else litellm.OpenAIConfig().map_openai_params(
+                non_default_params=non_default_params,
+                optional_params=optional_params,
+                model=model,
+                drop_params=bool(drop_params),
+            )
         )
     elif custom_llm_provider == "nebius":
         optional_params = litellm.NebiusConfig().map_openai_params(
@@ -5357,6 +5524,7 @@ def get_optional_params(
                 optional_params=optional_params,
                 model=_azure_detection_model,
                 drop_params=bool(drop_params),
+                declared_reasoning_efforts=_declared_reasoning_efforts(model_info),
             )
         else:
             verbose_logger.debug(
@@ -5378,11 +5546,21 @@ def get_optional_params(
                 drop_params=bool(drop_params),
             )
     elif provider_config is not None:
-        optional_params = provider_config.map_openai_params(
-            non_default_params=non_default_params,
-            optional_params=optional_params,
-            model=model,
-            drop_params=bool(drop_params),
+        optional_params = (
+            provider_config.map_openai_params(
+                non_default_params=non_default_params,
+                optional_params=optional_params,
+                model=model,
+                drop_params=bool(drop_params),
+                declared_reasoning_efforts=_declared_reasoning_efforts(model_info),
+            )
+            if custom_llm_provider == "azure_ai" and isinstance(provider_config, litellm.AzureAIStudioConfig)
+            else provider_config.map_openai_params(
+                non_default_params=non_default_params,
+                optional_params=optional_params,
+                model=model,
+                drop_params=bool(drop_params),
+            )
         )
     else:  # assume passing in params for openai-like api
         optional_params = litellm.OpenAILikeChatConfig().map_openai_params(
@@ -5453,8 +5631,9 @@ def add_provider_specific_params_to_optional_params(
         # for openai, azure we should pass the extra/passed params within `extra_body` https://github.com/openai/openai-python/blob/ac33853ba10d13ac149b1fa3ca6dba7d613065c9/src/openai/resources/models.py#L46
         if _should_drop_param(k="extra_body", additional_drop_params=additional_drop_params) is False:
             extra_body: Final = dict(passed_params.pop("extra_body", None) or {})
+            withheld_params: Final = frozenset[str]() if custom_llm_provider == "litellm_proxy" else LITELLM_ONLY_PARAMS
             for k in passed_params:
-                if k not in openai_params and k not in LITELLM_ONLY_PARAMS and passed_params[k] is not None:
+                if k not in openai_params and k not in withheld_params and passed_params[k] is not None:
                     extra_body[k] = passed_params[k]
             if not isinstance(optional_params.get("extra_body"), dict):
                 optional_params["extra_body"] = {}
@@ -6580,6 +6759,7 @@ def get_model_info_helper(
                 ),
                 cache_read_input_token_cost=_model_info.get("cache_read_input_token_cost", None),
                 cache_read_input_audio_token_cost=_model_info.get("cache_read_input_audio_token_cost", None),
+                explicit_cache_read_input_token_cost=_model_info.get("explicit_cache_read_input_token_cost", None),
                 prompt_cache_min_tokens=_model_info.get("prompt_cache_min_tokens", None),
                 cache_read_input_token_cost_above_200k_tokens=_model_info.get(
                     "cache_read_input_token_cost_above_200k_tokens", None
@@ -6778,6 +6958,7 @@ def get_model_info_helper(
                 supports_computer_use=_model_info.get("supports_computer_use", None),
                 search_context_cost_per_query=_model_info.get("search_context_cost_per_query", None),
                 web_search_billing_unit=_model_info.get("web_search_billing_unit", None),
+                search_free_requests=_model_info.get("search_free_requests", None),
                 google_maps_grounding_cost_per_query=_model_info.get("google_maps_grounding_cost_per_query", None),
                 tpm=_model_info.get("tpm", None),
                 rpm=_model_info.get("rpm", None),
@@ -8165,6 +8346,26 @@ def trim_messages(
 from litellm.caching.in_memory_cache import InMemoryCache
 
 
+class _HuggingFaceTokenizerLoadFailureCache(Protocol):
+    def get_cache(self, key: str) -> object | None: ...
+
+    def set_cache(self, key: str, value: object, ttl: float | None = None) -> None: ...
+
+    def flush_cache(self) -> None: ...
+
+
+_HUGGINGFACE_TOKENIZER_LOAD_FAILURES: Final[_HuggingFaceTokenizerLoadFailureCache] = (
+    cast(  # cast-ok: cache methods are untyped
+        _HuggingFaceTokenizerLoadFailureCache,
+        InMemoryCache(
+            max_size_in_memory=16,
+            default_ttl=HUGGINGFACE_TOKENIZER_LOAD_RETRY_SECONDS,
+            clock=lambda: time.monotonic(),
+        ),
+    )
+)
+
+
 class AvailableModelsCache(InMemoryCache):
     def __init__(self, ttl_seconds: int = 300, max_size: int = 1000):
         super().__init__(ttl_seconds, max_size)
@@ -9443,6 +9644,12 @@ class ProviderConfigManager:
         return None
 
     @staticmethod
+    def get_provider_extraction_config(model: str, provider: LlmProviders) -> BaseExtractionConfig | None:
+        if provider == LlmProviders.CLOUDFLARE:
+            return litellm.CloudflareExtractionConfig()
+        return None
+
+    @staticmethod
     def get_provider_anthropic_messages_config(
         model: str,
         provider: LlmProviders,
@@ -10531,6 +10738,10 @@ class ProviderConfigManager:
             )
 
             return OpenCodeHarnessConfig()
+        if harness == _Harness.PI:
+            from litellm.llms.pi.harness.transformation import PiHarnessConfig
+
+            return PiHarnessConfig()
         if harness == _Harness.DEEPAGENTS:
             from litellm.llms.deepagents.harness.transformation import (
                 DeepAgentsHarnessConfig,

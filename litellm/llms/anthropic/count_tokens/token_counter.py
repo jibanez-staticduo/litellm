@@ -14,6 +14,11 @@ from litellm.exceptions import AuthenticationError
 from litellm.llms.anthropic import oauth_policy
 from litellm.llms.anthropic.count_tokens.handler import AnthropicCountTokensHandler
 from litellm.llms.anthropic.count_tokens.transformation import COUNT_TOKEN_OPTION_NAMES
+from litellm.llms.anthropic.count_tokens.transformation import (
+    AnthropicCountFields,
+    ChatCountTranslationError,
+    anthropic_count_fields,
+)
 from litellm.llms.base_llm.base_utils import BaseTokenCounter
 from litellm.types.utils import CountContextManagement, LlmProviders, TokenCountMessagesFormat, TokenCountResponse
 
@@ -48,6 +53,8 @@ class AnthropicTokenCounter(BaseTokenCounter):
         messages_format: TokenCountMessagesFormat = "anthropic",
         output_format: JsonValue = None,
         context_management: CountContextManagement | None = None,
+        chat_params: Mapping[str, JsonValue] = MappingProxyType({}),
+        count_options: Mapping[str, JsonValue] = MappingProxyType({}),
     ) -> TokenCountResponse | None:
         """
         Count tokens using Anthropic's CountTokens API.
@@ -80,6 +87,30 @@ class AnthropicTokenCounter(BaseTokenCounter):
                 error_message="Managed Anthropic token counting requires messages",
                 status_code=400,
             )
+
+        from litellm.llms.anthropic.chat.transformation import AnthropicConfig
+
+        match translated := await anthropic_count_fields(
+            model_to_use, messages, system, tools, messages_format, AnthropicConfig(), chat_params
+        ):
+            case ChatCountTranslationError():
+                return translated.response(request_model, model_to_use, "anthropic_api")
+            case AnthropicCountFields():
+                return await self.count_tokens(
+                    model_to_use=model_to_use,
+                    messages=[dict(message) for message in translated.messages],
+                    contents=contents,
+                    deployment=deployment,
+                    request_model=request_model,
+                    tools=[dict(tool) for tool in translated.tools] if translated.tools is not None else None,
+                    system=translated.system,
+                    messages_format="anthropic",
+                    output_format=output_format,
+                    context_management=context_management,
+                    count_options=translated.options,
+                )
+            case None:
+                pass
 
         try:
             from litellm.llms.anthropic.native_transport import is_anthropic_native_sdk
@@ -132,7 +163,7 @@ class AnthropicTokenCounter(BaseTokenCounter):
                 api_base=api_base,
                 tools=_COUNT_MESSAGES.validate_python(tools) if tools is not None else None,
                 system=oauth_policy.apply_anthropic_oauth_system(system, litellm_params),
-                optional_params=optional_params,
+                optional_params={**optional_params, **count_options},
                 native_params=litellm_params if native else None,
             )
             return TokenCountResponse(

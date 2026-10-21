@@ -211,6 +211,7 @@ class ProviderSpecificModelInfo(TypedDict, total=False):
     supports_parallel_function_calling: bool | None
     supports_web_search: bool | None
     supports_reasoning: bool | None
+    supports_sampling_params: ReadOnly[bool | None]
     supports_adaptive_thinking: bool | None
     supports_legacy_thinking: ReadOnly[bool | None]
     thinking_always_on: ReadOnly[bool | None]
@@ -242,6 +243,12 @@ class SearchContextCostPerQuery(TypedDict, total=False):
     search_context_size_low: float
     search_context_size_medium: float
     search_context_size_high: float
+
+
+class SearchFreeRequests(TypedDict):
+    count: ReadOnly[int]
+    period: ReadOnly[Literal["day", "month"]]
+    shared_group: ReadOnly[str]
 
 
 class AgenticLoopParams(TypedDict, total=False):
@@ -290,6 +297,7 @@ class OffPeakPricing(TypedDict, total=False):
     output_cost_per_token: ReadOnly[float]
     output_cost_per_reasoning_token: ReadOnly[float]
     cache_read_input_token_cost: ReadOnly[float]
+    explicit_cache_read_input_token_cost: ReadOnly[float]
     cache_creation_input_token_cost: ReadOnly[float]
 
 
@@ -319,6 +327,7 @@ class ModelInfoBase(ProviderSpecificModelInfo, total=False):
     cache_read_input_token_cost: float | None
     cache_read_input_audio_token_cost: ReadOnly[float | None]
     cache_read_input_image_token_cost: ReadOnly[float | None]
+    explicit_cache_read_input_token_cost: ReadOnly[float | None]
     cache_read_input_token_cost_flex: float | None  # OpenAI flex service tier pricing
     cache_read_input_token_cost_priority: float | None  # OpenAI priority service tier pricing
     cache_read_input_token_cost_balanced: ReadOnly[float | None]
@@ -433,6 +442,7 @@ class ModelInfoBase(ProviderSpecificModelInfo, total=False):
     web_search_billing_unit: (
         Literal["per_query", "per_prompt"] | None
     )  # "per_query" (Gemini 3.x) or "per_prompt" (Gemini 2.x)
+    search_free_requests: ReadOnly[SearchFreeRequests | None]
     google_maps_grounding_cost_per_query: ReadOnly[float | None]
     citation_cost_per_token: float | None  # Cost per citation token for Perplexity
     tiered_pricing: list[dict[str, Any]] | None  # Tiered pricing structure for models like Dashscope
@@ -448,6 +458,7 @@ class ModelInfoBase(ProviderSpecificModelInfo, total=False):
             "responses",
             "decisions",
             "evaluation",
+            "extraction",
             "ocr",
             "realtime",
         ]
@@ -508,6 +519,8 @@ class CallTypes(str, Enum):
     adecisions = "adecisions"
     systemone = "systemone"
     asystemone = "asystemone"
+    extraction = "extraction"
+    aextraction = "aextraction"
     arealtime = "_arealtime"
     aresponses_websocket = "_aresponses_websocket"
     create_batch = "create_batch"
@@ -698,6 +711,8 @@ CallTypesLiteral = Literal[
     "adecisions",
     "systemone",
     "asystemone",
+    "extraction",
+    "aextraction",
     "_arealtime",
     "_aresponses_websocket",
     "create_batch",
@@ -811,6 +826,8 @@ API_ROUTE_TO_CALL_TYPES: Final[Mapping[str, Sequence[CallTypes]]] = {
     "/v1/decisions": [CallTypes.adecisions, CallTypes.decisions],
     "/systemone": [CallTypes.asystemone, CallTypes.systemone],
     "/v1/systemone": [CallTypes.asystemone, CallTypes.systemone],
+    "/extraction": [CallTypes.aextraction, CallTypes.extraction],
+    "/v1/extraction": [CallTypes.aextraction, CallTypes.extraction],
     # Batches
     "/batches": [CallTypes.acreate_batch, CallTypes.create_batch],
     "/v1/batches": [CallTypes.acreate_batch, CallTypes.create_batch],
@@ -1839,6 +1856,13 @@ class PromptTokensDetailsWrapper(
 
     cached_tokens_details: CachedTokensDetails | None = None
     """Details of cached (cache-hit) tokens sent to the model. OpenAI realtime naming; carries the per-modality cache-read split."""
+    cache_type: str | None = None
+    """Provider-reported cache mode. DashScope returns ``ephemeral`` for explicit Qwen Context Cache requests."""
+
+    @field_validator("cache_type", mode="before")
+    @classmethod
+    def _drop_non_string_cache_type(cls, value: object) -> str | None:
+        return value if isinstance(value, str) else None
 
     def __setattr__(self, name: str, value: object) -> None:
         super().__setattr__(name, value)
@@ -1888,6 +1912,8 @@ class PromptTokensDetailsWrapper(
             del self.cache_creation_token_details
         if self.cached_tokens_details is None:
             del self.cached_tokens_details
+        if self.cache_type is None:
+            del self.cache_type
 
 
 class ServerToolUse(LiteLLMBaseModel):
@@ -2048,6 +2074,10 @@ class Usage(SafeAttributeModel, CompletionUsage):
     def __setitem__(self, key, value) -> None:
         # Allow dictionary-style assignment of attributes
         setattr(self, key, value)
+
+
+class UnreportedUsage(Usage):
+    pass
 
 
 class StreamingChoices(OpenAIObject):
@@ -3923,6 +3953,7 @@ class MirroredPricingParams(LiteLLMBaseModel):
     input_cost_per_character: float | None = None
     output_cost_per_character: float | None = None
     cache_read_input_token_cost: float | None = None
+    explicit_cache_read_input_token_cost: float | None = None
     cache_creation_input_token_cost: float | None = None
     cache_creation_input_token_cost_above_1hr: float | None = None
     tiered_pricing: list[dict[str, Any]] | None = None
@@ -4190,7 +4221,7 @@ oauth_token_exchange_litellm_params: Final = (
     "token_exchange_profile",
     "token_exchange_scope",
 )
-github_copilot_oauth_litellm_params: Final = ("github_copilot_auth_type",)
+github_copilot_oauth_litellm_params: Final = ("github_copilot_auth_type", "github_copilot_host")
 OIDC_SECRET_REFERENCE_PREFIX: Final = "oidc/"
 API_KEY_SECRET_REFERENCE_REJECTION: Final = (
     "Rejected Request: api_key holds an oidc/ secret reference, which only a deployment or credential a proxy "

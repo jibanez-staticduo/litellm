@@ -92,6 +92,7 @@ CONNECTION_NAMES: Final = (
     "azure_ad_token_provider",
     "litellm_credential_name",
     "github_copilot_auth_type",
+    "github_copilot_host",
     "configurable_clientside_auth_params",
     "use_xai_oauth",
     "use_anthropic_oauth",
@@ -105,6 +106,7 @@ CONNECTION_NAMES: Final = (
     "chatgpt_token_dir",
     "fireworks_forward_user_id",
     "aws_batch_role_arn",
+    "aws_bedrock_control_plane_endpoint",
     "s3_bucket_name",
     "s3_region_name",
     "s3_endpoint_url",
@@ -297,6 +299,7 @@ INTERNAL_STATE_NAMES: Final = (
 
 BEDROCK_BATCH_NAMES: Final = (
     "aws_batch_role_arn",
+    "aws_bedrock_control_plane_endpoint",
     "s3_bucket_name",
     "s3_region_name",
     "s3_endpoint_url",
@@ -710,6 +713,7 @@ NAMES_SHARED_WITH_TYPED_MODELS: Final[Mapping[str, tuple[str, ...]]] = MappingPr
             "api_key",
             "api_version",
             "aws_batch_role_arn",
+            "aws_bedrock_control_plane_endpoint",
             "azure_password",
             "azure_scope",
             "azure_username",
