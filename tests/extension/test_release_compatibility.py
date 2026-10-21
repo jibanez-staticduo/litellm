@@ -52,13 +52,13 @@ def test_missing_extension_module_rejected():
         check_interfaces(manifest, read)
 
 
-@pytest.mark.parametrize("core,extension", [("1.108.0", "0.1.0"), ("1.105.9", "0.1.0"), ("1.106.0", "0.2.0")])
+@pytest.mark.parametrize("core,extension", [("1.109.0", "0.1.0"), ("1.105.9", "0.1.0"), ("1.106.0", "0.2.0")])
 def test_version_mismatch_rejected(core, extension):
     with pytest.raises(CompatibilityError):
         check_versions(load_manifest(), {"litellm": core, "staticduo-litellm": extension})
 
 
-@pytest.mark.parametrize("core", ["1.106.0", "1.106.99", "1.107.0", "1.107.99"])
+@pytest.mark.parametrize("core", ["1.106.0", "1.106.99", "1.107.0", "1.107.99", "1.108.0", "1.108.99"])
 def test_reviewed_minor_and_patch_releases_allowed(core):
     assert check_versions(load_manifest(), {"litellm": core, "staticduo-litellm": "0.1.0"}) is None
 
