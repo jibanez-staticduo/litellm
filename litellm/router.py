@@ -5278,7 +5278,7 @@ class Router:
     def _effective_chatgpt_params(
         deployment: Mapping[str, object], kwargs: Mapping[str, object]
     ) -> Mapping[str, object]:
-        raw_params: Final = deployment.get("litellm_params") or {}
+        raw_params: Final = _DEPLOYMENT_PARAMS_ADAPTER.validate_python(deployment.get("litellm_params") or {})
         params: Final = (
             _FALLBACK_HOP_ADAPTER.validate_python(raw_params)
             if isinstance(raw_params, Mapping)
@@ -5301,7 +5301,7 @@ class Router:
         deployment: Mapping[str, object], kwargs: Mapping[str, object]
     ) -> Mapping[str, object]:
         effective_params: Final = Router._effective_chatgpt_params(deployment, kwargs)
-        raw_nominal_params: Final = deployment.get("litellm_params") or {}
+        raw_nominal_params: Final = _DEPLOYMENT_PARAMS_ADAPTER.validate_python(deployment.get("litellm_params") or {})
         nominal_params: Final = (
             _FALLBACK_HOP_ADAPTER.validate_python(raw_nominal_params)
             if isinstance(raw_nominal_params, Mapping)
