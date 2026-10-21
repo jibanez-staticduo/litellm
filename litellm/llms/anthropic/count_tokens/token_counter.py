@@ -13,8 +13,8 @@ from litellm._logging import verbose_logger
 from litellm.exceptions import AuthenticationError
 from litellm.llms.anthropic import oauth_policy
 from litellm.llms.anthropic.count_tokens.handler import AnthropicCountTokensHandler
-from litellm.llms.anthropic.count_tokens.transformation import COUNT_TOKEN_OPTION_NAMES
 from litellm.llms.anthropic.count_tokens.transformation import (
+    COUNT_TOKEN_OPTION_NAMES,
     AnthropicCountFields,
     ChatCountTranslationError,
     anthropic_count_fields,

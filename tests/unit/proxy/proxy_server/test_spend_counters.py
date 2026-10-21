@@ -1576,9 +1576,9 @@ async def test_invalidate_spend_counter_swallows_redis_failure_no_raise(monkeypa
 
 
 @pytest.mark.asyncio
-async def test_update_cache_no_cached_entities_schedules_pipeline_flush(monkeypatch):
-    fake_user_cache = _make_user_api_key_cache(get_value=None)
-    monkeypatch.setattr(ps, "user_api_key_cache", fake_user_cache)
+async def test_update_cache_does_not_create_missing_auth_objects(monkeypatch):
+    cache: Final = UserApiKeyCache()
+    monkeypatch.setattr(ps, "user_api_key_cache", cache)
 
     await ps.update_cache(
         token=None,
@@ -1590,14 +1590,12 @@ async def test_update_cache_no_cached_entities_schedules_pipeline_flush(monkeypa
         tags=["x"],
     )
 
-    assert fake_user_cache.async_get_cache.await_count == 0
-    fake_user_cache.async_batch_get_cache.assert_awaited_once()
-    assert fake_user_cache.async_batch_get_cache.await_args.kwargs["keys"] == [
-        "u1",
-        f"{ps.litellm_proxy_admin_name}:spend",
-        "end_user_id:eu1",
-        "tag:x",
-    ]
+    assert tuple(cache.get_cache(key=key) for key in ("u1", "end_user_id:eu1", "team_id:t1", "tag:x")) == (
+        None,
+        None,
+        None,
+        None,
+    )
 
 
 @pytest.mark.asyncio

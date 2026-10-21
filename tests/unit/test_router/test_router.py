@@ -8363,7 +8363,8 @@ def test_update_kwargs_with_deployment_preserves_per_user_credential_policy(
     else:
         router._update_kwargs_with_deployment(deployment=deployment, kwargs=kwargs)
         assert kwargs["litellm_credential_name"] == caller_credential
-        assert kwargs["model_info"] == deployment["model_info"]
+        assert kwargs["model_info"]["id"] == deployment["model_info"]["id"]
+        assert deployment["model_info"] == {"id": "copilot-deployment"}
 
 
 def test_update_kwargs_with_deployment_uses_pass_through_request_timeout():
@@ -23966,8 +23967,10 @@ async def test_router_get_model_group_usage_wildcard_routes():
 
 @pytest.mark.usefixtures("_vcr_outcome_gate", "isolate_litellm_state", "setup_and_teardown")
 @pytest.mark.asyncio
-async def test_call_router_callbacks_on_success():
-    router = Router(
+async def test_call_router_callbacks_on_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    fixed_time: Final = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr("litellm.router.get_utc_datetime", lambda: fixed_time)
+    router: Final = Router(
         model_list=[
             {
                 "model_name": "gemini/*",
@@ -23977,25 +23980,17 @@ async def test_call_router_callbacks_on_success():
         ]
     )
 
-    with patch.object(router.cache, "async_increment_cache_pipeline", new=AsyncMock()) as mock_callback:
-        await router.acompletion(
-            model="gemini/gemini-2.5-flash",
-            messages=[{"role": "user", "content": "Hello, how are you?"}],
-            mock_response="Hello, I'm good.",
-        )
-        await asyncio.sleep(1)
-        assert mock_callback.call_count == 1
+    response: Final = await router.acompletion(
+        model="gemini/gemini-2.5-flash",
+        messages=[{"role": "user", "content": "Hello, how are you?"}],
+        mock_response="Hello, I'm good.",
+    )
+    keys: Final = [f"global_router:1:gemini/gemini-2.5-flash:{kind}:12-00" for kind in ("tpm", "rpm")]
+    assert await router.cache.async_batch_get_cache(keys=keys) == [response.usage.total_tokens, 1]
 
-        increment_list = mock_callback.call_args_list[0].kwargs["increment_list"]
-        assert len(increment_list) == 2
+    await GLOBAL_LOGGING_WORKER.flush()
 
-        for increment in increment_list:
-            if "tpm" in increment["key"]:
-                assert increment["key"].startswith("global_router:1:gemini/gemini-2.5-flash:tpm")
-                assert increment["increment_value"] == 30
-            elif "rpm" in increment["key"]:
-                assert increment["key"].startswith("global_router:1:gemini/gemini-2.5-flash:rpm")
-                assert increment["increment_value"] == 1
+    assert await router.cache.async_batch_get_cache(keys=keys) == [response.usage.total_tokens, 1]
 
 
 @pytest.mark.usefixtures("_vcr_outcome_gate", "isolate_litellm_state", "setup_and_teardown")

@@ -14681,12 +14681,12 @@ async def run_thread(
 #     dependencies=[Depends(user_api_key_auth)],
 # )
 # async def get_available_routes(user_api_key_dict: UserAPIKeyAuth = Depends(user_api_key_auth)):
+from litellm.litellm_core_utils.tool_fields import DropPolicy, drop_policy
 from litellm.llms.anthropic import oauth_policy as anthropic_oauth_policy
 from litellm.llms.anthropic.common_utils import AnthropicError
 from litellm.llms.base_llm.base_utils import BaseTokenCounter
-from litellm.proxy.common_utils.openai_error_payload import error_status_code
-from litellm.litellm_core_utils.tool_fields import DropPolicy, drop_policy
 from litellm.llms.openai.responses.count_tokens.token_counter import OpenAITokenCounter
+from litellm.proxy.common_utils.openai_error_payload import error_status_code
 from litellm.proxy.db.routing_prisma_wrapper import WriterPinnedClient
 from litellm.repositories.config_repository import ConfigRepository
 from litellm.repositories.model_repository import ModelRepository
@@ -15462,7 +15462,7 @@ async def count_request_tokens(
         "user_api_key_team_id": user_api_key_dict.team_id if user_api_key_dict is not None else None,
     }
     routing_kwargs: Final = _TOKEN_COUNT_ROUTING_KWARGS.validate_python(
-        MappingProxyType({"metadata": routing_metadata})
+        MappingProxyType({"metadata": routing_metadata, **_responses_routing_kwargs(responses_request)})
     )
     if llm_router is not None:
         # get 1 deployment corresponding to the model
