@@ -3313,9 +3313,9 @@ async def test_track_cost_callback_failure_alert_never_carries_request_metadata_
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("identity_field", ["agent_id", "billing_agent_id"])
-async def test_autonomous_llm_callback_persists_without_human_or_key(
+async def test_autonomous_llm_callback_persists_without_human_or_key(  # test-quality-ok: asserts database-boundary arguments without a persistence seam
     identity_field: str,
-) -> None:  # test-quality-ok: verifies anonymous-agent charges reach the persistence boundary; no injection seam
+) -> None:
     kwargs: Final = {
         "call_type": "acompletion",
         "model": "test-model",
