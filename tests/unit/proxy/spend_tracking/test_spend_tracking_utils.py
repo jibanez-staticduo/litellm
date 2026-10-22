@@ -73,6 +73,20 @@ from litellm.types.utils import (
 )
 
 
+def test_spend_compaction_retention_preserves_cycle_and_credential_safeguards():
+    from litellm.constants import MAX_STRING_LENGTH_PROMPT_IN_DB
+
+    summary: Final = "Context retained. " * (MAX_STRING_LENGTH_PROMPT_IN_DB // 8)
+    block: Final = {"type": "compaction", "content": summary}
+    body: Final[dict[str, object]] = {"response": block, "api_key": "sk-private"}
+    body["cycle"] = body
+
+    stored: Final = _sanitize_request_body_for_spend_logs_payload(body, keep_compaction_blocks=True)
+
+    assert stored == {"response": block, "api_key": REDACTED_BY_LITELM_STRING, "cycle": {}}
+    assert body["cycle"] is body
+
+
 def _get_additional_usage_values_for_usage(usage: litellm.Usage) -> dict:
     payload = get_logging_payload(
         kwargs={

@@ -3750,9 +3750,13 @@ class TestSpendLogsPayload:
 
             expected_payload_with_pod_routing: Final[SpendLogsPayload] = {
                 **expected_payload,
-                "metadata": expected_payload["metadata"].replace(
-                    '"routing_decision": null, ',
-                    '"routing_decision": null, "kubernetes_pod_routing": null, ',
+                "metadata": json.dumps(
+                    {
+                        **json.loads(expected_payload["metadata"]),
+                        "kubernetes_pod_routing": None,
+                        "used_server_oauth_token": False,
+                        "anthropic_auth_profile": None,
+                    }
                 ),
             }
             differences = _compare_nested_dicts(
