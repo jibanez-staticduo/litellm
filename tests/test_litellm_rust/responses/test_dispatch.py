@@ -345,7 +345,7 @@ def test_each_detected_feature_reaches_its_rule(
     monkeypatch.setattr(litellm, "cache", None)
     for setting in ("api_key", "openai_key", "api_base", "num_retries"):
         monkeypatch.setattr(litellm, setting, None)
-    for name in ("SSL_SECURITY_LEVEL", "SSL_ECDH_CURVE", "OPENAI_API_KEY"):
+    for name in ("SSL_SECURITY_LEVEL", "SSL_ECDH_CURVE", "OPENAI_API_KEY", "OPENAI_API_BASE", "OPENAI_BASE_URL"):
         monkeypatch.delenv(name, raising=False)
     assert served({}) is native_result
     for name, value in settings.items():
