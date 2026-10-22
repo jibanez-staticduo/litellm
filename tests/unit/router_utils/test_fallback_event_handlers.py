@@ -13,15 +13,16 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 import respx
+from pydantic import TypeAdapter
 
 import litellm
 from litellm import Router
 from litellm.integrations.custom_logger import CustomLogger
-from litellm.llms.anthropic.pass_through.messages.fake_stream_iterator import FakeAnthropicMessagesStreamIterator
 from litellm.litellm_core_utils import get_llm_provider_logic
 from litellm.litellm_core_utils.litellm_logging import Logging
 from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
-from litellm.router_utils.cooldown_handlers import mark_advisor_orchestration_failure
+from litellm.llms.anthropic.pass_through.messages.fake_stream_iterator import FakeAnthropicMessagesStreamIterator
+from litellm.router_utils.cooldown_handlers import async_get_cooldown_deployments, mark_advisor_orchestration_failure
 from litellm.router_utils.fallback_event_handlers import (
     MID_STREAM_FALLBACK_CONTROLS_KEY,
     PRE_ROUTING_SELECTED_MODEL_KEY,
@@ -49,14 +50,21 @@ from litellm.router_utils.fallback_event_handlers import (
     validate_chatgpt_model_group_profiles,
 )
 from litellm.types.router import FallbackSkipReason, SkippedFallbackTarget
+from litellm.types.utils import Choices, Message, ModelResponse, StandardLoggingPayload, Usage
 from tests._vcr_conftest_common import install_live_call_probe, record_vcr_outcome
 from tests.fake_openai_endpoint import FAKE_OPENAI_API_BASE
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("cross_group,effective_override,allow_cross", (
-    (False, False, False), (True, False, True), (True, True, False), (True, True, True),
-))
+@pytest.mark.parametrize(
+    "cross_group,effective_override,allow_cross",
+    (
+        (False, False, False),
+        (True, False, True),
+        (True, True, False),
+        (True, True, True),
+    ),
+)
 async def test_chatgpt_profile_failover_replays_history_on_provider_transport(
     cross_group: bool, effective_override: bool, allow_cross: bool, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -64,9 +72,15 @@ async def test_chatgpt_profile_failover_replays_history_on_provider_transport(
 
     monkeypatch.setenv("DISABLE_AIOHTTP_TRANSPORT", "True")
     for profile in ("account-a", "account-b"):
-        (tmp_path / f"{profile}.json").write_text(json.dumps({
-            "access_token": "fixture-token", "account_id": profile, "expires_at": 1e20,
-        }))
+        (tmp_path / f"{profile}.json").write_text(
+            json.dumps(
+                {
+                    "access_token": "fixture-token",
+                    "account_id": profile,
+                    "expires_at": 1e20,
+                }
+            )
+        )
     router: Final = Router(
         model_list=[
             {
@@ -74,7 +88,9 @@ async def test_chatgpt_profile_failover_replays_history_on_provider_transport(
                 "litellm_params": {
                     "model": "chatgpt/unit-test-model",
                     "chatgpt_auth_profile": "account-a" if effective_override else profile,
-                    "chatgpt_token_dir": str(tmp_path), "api_base": "https://backend.example.test", "weight": 1,
+                    "chatgpt_token_dir": str(tmp_path),
+                    "api_base": "https://backend.example.test",
+                    "weight": 1,
                 },
                 "model_info": {"id": profile},
             }
@@ -83,10 +99,17 @@ async def test_chatgpt_profile_failover_replays_history_on_provider_transport(
         chatgpt_profile_pool_model_groups=("primary-group",),
         allow_chatgpt_cross_profile_fallback=allow_cross,
         enable_weighted_failover=not cross_group,
-        fallbacks=[{"primary-group": [
-            {"model": "fallback-group", "chatgpt_auth_profile": "account-b"}
-            if effective_override else "fallback-group"
-        ]}] if cross_group else [],
+        fallbacks=[
+            {
+                "primary-group": [
+                    {"model": "fallback-group", "chatgpt_auth_profile": "account-b"}
+                    if effective_override
+                    else "fallback-group"
+                ]
+            }
+        ]
+        if cross_group
+        else [],
         num_retries=0,
         retry_after=0,
         optional_pre_call_checks=["responses_api_deployment_check"],
@@ -96,17 +119,27 @@ async def test_chatgpt_profile_failover_replays_history_on_provider_transport(
     )
     caller_input: Final = [{"role": "user", "content": "full history for replay"}]
     completed: Final = {
-        "type": "response.completed", "response": {
-            "id": "resp-completed", "object": "response", "created_at": 1, "status": "completed",
-            "model": "unit-test-model", "output": [],
+        "type": "response.completed",
+        "response": {
+            "id": "resp-completed",
+            "object": "response",
+            "created_at": 1,
+            "status": "completed",
+            "model": "unit-test-model",
+            "output": [],
         },
     }
     with respx.mock(assert_all_called=True) as transport:
-        route: Final = transport.post(url__regex=r"https://backend\.example\.test/.*").mock(side_effect=[
-            httpx.Response(429, json={"error": {"message": "fixture quota", "type": "rate_limit_exceeded"}}),
-            httpx.Response(200, headers={"content-type": "text/event-stream"},
-                           text=f"data: {json.dumps(completed)}\n\ndata: [DONE]\n\n"),
-        ])
+        route: Final = transport.post(url__regex=r"https://backend\.example\.test/.*").mock(
+            side_effect=[
+                httpx.Response(429, json={"error": {"message": "fixture quota", "type": "rate_limit_exceeded"}}),
+                httpx.Response(
+                    200,
+                    headers={"content-type": "text/event-stream"},
+                    text=f"data: {json.dumps(completed)}\n\ndata: [DONE]\n\n",
+                ),
+            ]
+        )
         if effective_override and not allow_cross:
             with pytest.raises(litellm.RateLimitError, match="fixture quota"):
                 await router.aresponses(model="primary-group", input=caller_input, previous_response_id=previous_id)
@@ -115,7 +148,9 @@ async def test_chatgpt_profile_failover_replays_history_on_provider_transport(
             assert caller_input == [{"role": "user", "content": "full history for replay"}]
             return
         response: Final = await router.aresponses(
-            model="primary-group", input=caller_input, previous_response_id=previous_id,
+            model="primary-group",
+            input=caller_input,
+            previous_response_id=previous_id,
         )
     assert response.status == "completed"
     assert route.call_count == 2
@@ -324,6 +359,220 @@ class RecordingRouter:
 
     def get_model_list(self, model_name):
         return []
+
+
+def _request_logging_obj() -> Logging:
+    return Logging(
+        model="primary-model",
+        messages=[{"role": "user", "content": "ping"}],
+        stream=True,
+        call_type="anthropic_messages",
+        start_time=datetime(2026, 1, 1),
+        litellm_call_id="fallback-hop",
+        function_id="fallback-hop",
+    )
+
+
+class _SuccessRecorder(CustomLogger):
+    def __init__(self) -> None:
+        super().__init__()
+        self.logged: tuple[tuple[int, float], ...] = ()
+
+    async def async_log_success_event(
+        self, kwargs: Mapping[str, object], response_obj: object, start_time: datetime, end_time: datetime
+    ) -> None:
+        payload: Final = TypeAdapter(StandardLoggingPayload).validate_python(kwargs["standard_logging_object"])
+        self.logged = (*self.logged, (payload["completion_tokens"], payload["response_cost"]))
+
+
+class HopLoggingItsOwnSuccessRouter(FakeRouter):
+    async def async_function_with_fallbacks(self, *args: object, **kwargs: object) -> StreamingWrapper:
+        hop_response: Final = ModelResponse(
+            id="chatcmpl-hop",
+            model="gpt-5.6",
+            choices=[Choices(index=0, message=Message(role="assistant", content="served by the hop"))],
+            usage=Usage(prompt_tokens=52, completion_tokens=7, total_tokens=59),
+        )
+        now: Final = datetime(2026, 1, 1)
+        logging_obj: Final = kwargs["litellm_logging_obj"]
+        assert isinstance(logging_obj, Logging)
+        await logging_obj.async_success_handler(result=hop_response, start_time=now, end_time=now)
+        return StreamingWrapper()
+
+
+@pytest.mark.asyncio
+async def test_run_async_fallback_opens_the_hop_without_the_superseded_attempts_partial_usage() -> None:
+    """A stream the failed attempt dropped stashed the usage it consumed on the request's logging object. The
+    hop that replaces it logs its own usage, so the integrations see the hop's tokens and cost, not the stash."""
+    recorder: Final = _SuccessRecorder()
+    logging_obj: Final = Logging(
+        model="gpt-5.6",
+        messages=[{"role": "user", "content": "ping"}],
+        stream=False,
+        call_type="completion",
+        start_time=datetime(2026, 1, 1),
+        litellm_call_id="fallback-hop-success",
+        function_id="fallback-hop-success",
+        dynamic_async_success_callbacks=[recorder],
+    )
+    logging_obj.model_call_details["custom_llm_provider"] = "openai"
+    logging_obj.model_call_details["litellm_params"] = {"acompletion": True}
+    logging_obj.model_call_details["current_attempt_api_call_start_time"] = datetime(2026, 1, 1)
+    logging_obj.litellm_params = logging_obj.model_call_details["litellm_params"]
+    partial_usage: Final = Usage(prompt_tokens=52, completion_tokens=1, total_tokens=53)
+    logging_obj.record_partial_usage_for_failure(partial_usage, 0.01)
+
+    await run_async_fallback(
+        litellm_router=HopLoggingItsOwnSuccessRouter(),
+        fallback_model_group=["fallback-model"],
+        original_model_group="primary-model",
+        original_exception=RuntimeError("stream dropped before content"),
+        max_fallbacks=3,
+        fallback_depth=0,
+        litellm_logging_obj=logging_obj,
+    )
+
+    assert tuple(tokens for tokens, _ in recorder.logged) == (7,)
+    assert recorder.logged[0][1] != 0.01
+    assert logging_obj.model_call_details["failed_attempts_usage"] == ((partial_usage, 0.01),)
+    assert logging_obj.model_call_details["current_attempt_api_call_start_time"] is None
+
+
+@pytest.mark.asyncio
+async def test_run_async_fallback_preserves_superseded_usage_when_hop_fails_before_opening() -> None:
+    logging_obj: Final = _request_logging_obj()
+    partial_usage: Final = Usage(prompt_tokens=52, completion_tokens=1, total_tokens=53)
+    logging_obj.record_partial_usage_for_failure(partial_usage, 0.01)
+
+    with pytest.raises(RuntimeError, match="fallback model also failed"):
+        await run_async_fallback(
+            litellm_router=AlwaysFailRouter(),
+            fallback_model_group=["fallback-model"],
+            original_model_group="primary-model",
+            original_exception=RuntimeError("stream dropped before content"),
+            max_fallbacks=3,
+            fallback_depth=0,
+            litellm_logging_obj=logging_obj,
+        )
+
+    assert logging_obj.model_call_details["failed_attempts_usage"] == ((partial_usage, 0.01),)
+
+
+class _RateLimitedHop(Exception):
+    def __init__(self, deployment_id: str = "fallback-dep-1") -> None:
+        super().__init__("fallback deployment rate limited")
+        self.status_code = 429
+        self.failed_deployment_id = deployment_id
+
+
+_EARLIER_FAILURE_MARKER: Final = datetime(2026, 1, 1)
+_FIRST_HOP_FAILURE_MARKER: Final = datetime(2026, 1, 2)
+_FINAL_HOP_FAILURE_MARKER: Final = datetime(2026, 1, 3)
+
+
+class _TwoFailureFallbackRouter(Router):
+    def __init__(self) -> None:
+        super().__init__(
+            model_list=[
+                {
+                    "model_name": "fallback-model",
+                    "litellm_params": {"model": "openai/gpt-5.6", "api_key": "fake-key"},
+                    "model_info": {"id": f"fallback-dep-{index}"},
+                }
+                for index in (1, 2)
+            ],
+            allowed_fails=0,
+            cooldown_time=60,
+            num_retries=0,
+        )
+
+    async def async_function_with_fallbacks(self, *args: object, **kwargs: object) -> NoReturn:
+        logging_obj: Final[object] = kwargs["litellm_logging_obj"]
+        assert isinstance(logging_obj, Logging)
+        assert logging_obj.model_call_details.get("has_logged_async_failure", False) is False
+
+        logging_obj.model_call_details["current_attempt_api_call_start_time"] = _FIRST_HOP_FAILURE_MARKER
+        try:
+            raise _RateLimitedHop("fallback-dep-1")
+        except _RateLimitedHop:
+            logging_obj.mark_logging_complete("async_failure")
+
+        logging_obj.model_call_details["current_attempt_api_call_start_time"] = _FINAL_HOP_FAILURE_MARKER
+        raise _RateLimitedHop("fallback-dep-2")
+
+
+def _two_deployment_router() -> Router:
+    return Router(
+        model_list=[
+            {
+                "model_name": "fallback-model",
+                "litellm_params": {"model": "openai/gpt-5.6", "api_key": "fake-key"},
+                "model_info": {"id": f"fallback-dep-{index}"},
+            }
+            for index in (1, 2)
+        ],
+        num_retries=0,
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure_already_logged", [False, True])
+async def test_run_async_fallback_cools_down_a_failed_hop_once(failure_already_logged: bool) -> None:
+    """The manual cooldown stands in for the failure callbacks the logging object blocks once a failure has
+    been logged. A hop whose own failure was the first one logged already ran them, so only a hop that failed
+    with the flag already set gets the manual cooldown."""
+    router: Final = _two_deployment_router()
+    logging_obj: Final = _request_logging_obj()
+    if failure_already_logged:
+        logging_obj.model_call_details["current_attempt_api_call_start_time"] = _EARLIER_FAILURE_MARKER
+        logging_obj.mark_logging_complete("async_failure")
+
+    async def rate_limited_hop(*args: object, **kwargs: object) -> NoReturn:
+        hop_logging_obj: Final = kwargs["litellm_logging_obj"]
+        assert isinstance(hop_logging_obj, Logging)
+        hop_logging_obj.model_call_details["current_attempt_api_call_start_time"] = _FINAL_HOP_FAILURE_MARKER
+        if hop_logging_obj.model_call_details.get("has_logged_async_failure", False) is not True:
+            hop_logging_obj.mark_logging_complete("async_failure")
+        raise _RateLimitedHop()
+
+    with pytest.raises(_RateLimitedHop):
+        await run_async_fallback(
+            litellm_router=router,
+            fallback_model_group=["fallback-model"],
+            original_model_group="primary-model",
+            original_exception=RuntimeError("stream dropped before content"),
+            max_fallbacks=3,
+            fallback_depth=0,
+            litellm_logging_obj=logging_obj,
+            original_function=rate_limited_hop,
+            metadata={},
+        )
+
+    cooled_down: Final = await async_get_cooldown_deployments(litellm_router_instance=router, parent_otel_span=None)
+    assert cooled_down == (["fallback-dep-1"] if failure_already_logged else [])
+
+
+@pytest.mark.asyncio
+async def test_run_async_fallback_cools_down_the_final_deployment_after_retry_failure_logging() -> None:
+    router: Final = _TwoFailureFallbackRouter()
+    logging_obj: Final = _request_logging_obj()
+    assert logging_obj.model_call_details.get("has_logged_async_failure", False) is False
+
+    with pytest.raises(_RateLimitedHop):
+        await run_async_fallback(
+            litellm_router=router,
+            fallback_model_group=["fallback-model"],
+            original_model_group="primary-model",
+            original_exception=RuntimeError("stream dropped before content"),
+            max_fallbacks=3,
+            fallback_depth=0,
+            litellm_logging_obj=logging_obj,
+            metadata={},
+        )
+
+    assert logging_obj.model_call_details.get("has_logged_async_failure", False) is True
+    cooled_down: Final = await async_get_cooldown_deployments(litellm_router_instance=router, parent_otel_span=None)
+    assert cooled_down == ["fallback-dep-2"]
 
 
 @pytest.mark.asyncio
@@ -1434,11 +1683,18 @@ class TestRunAsyncFallbackTriggersCooldown:
             return []
 
         async def async_function_with_fallbacks(self, *args, **kwargs):
+            logging_obj: Final = kwargs.get("litellm_logging_obj")
+            if isinstance(logging_obj, Logging):
+                logging_obj.model_call_details["current_attempt_api_call_start_time"] = _FINAL_HOP_FAILURE_MARKER
+                if logging_obj.model_call_details.get("has_logged_async_failure", False) is not True:
+                    logging_obj.mark_logging_complete("async_failure")
             raise RuntimeError("fallback model also failed")
 
-    def _logging_obj(self, has_logged_async_failure: bool) -> MagicMock:
-        logging_obj = MagicMock()
-        logging_obj.model_call_details = {"has_logged_async_failure": has_logged_async_failure}
+    def _logging_obj(self, has_logged_async_failure: bool) -> Logging:
+        logging_obj: Final = _request_logging_obj()
+        if has_logged_async_failure:
+            logging_obj.model_call_details["current_attempt_api_call_start_time"] = _EARLIER_FAILURE_MARKER
+            logging_obj.mark_logging_complete("async_failure")
         return logging_obj
 
     @pytest.mark.asyncio

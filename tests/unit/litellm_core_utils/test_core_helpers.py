@@ -1,5 +1,6 @@
 """Tests for litellm_core_utils.core_helpers module."""
 
+import datetime
 import json
 import logging
 import threading
@@ -18,13 +19,13 @@ from litellm.litellm_core_utils.core_helpers import (
     drop_params_env_flag,
     drop_params_flag,
     get_litellm_metadata_from_kwargs,
-    get_parent_otel_span_from_kwargs,
     get_or_create_metadata_bucket,
+    get_parent_otel_span_from_kwargs,
     get_provider_response_headers_from_hidden_params,
     map_finish_reason,
     normalize_drop_params,
-    process_response_headers,
     preserve_upstream_non_openai_attributes,
+    process_response_headers,
     reconstruct_model_name,
     redact_nested_match_and_regex_keys,
     set_provider_response_headers_in_hidden_params,
@@ -66,9 +67,7 @@ def test_preserve_upstream_non_openai_attributes_keeps_scalar_and_structured_val
         scalar_attribute="scalar",
         structured_attribute={"items": ["value"]},
     )
-    model_response: Final = ModelResponseStream(
-        choices=[StreamingChoices(index=0, delta=Delta(content="hello"))]
-    )
+    model_response: Final = ModelResponseStream(choices=[StreamingChoices(index=0, delta=Delta(content="hello"))])
 
     preserve_upstream_non_openai_attributes(model_response, original_chunk)
 
@@ -258,9 +257,7 @@ class TestMapFinishReasonAnthropic:
             ("content_filtered", "content_filter"),
         ],
     )
-    def test_anthropic_finish_reasons(
-        self, provider_reason: str, expected: str
-    ) -> None:
+    def test_anthropic_finish_reasons(self, provider_reason: str, expected: str) -> None:
         assert map_finish_reason(provider_reason) == expected
 
     def test_refusal(self):
@@ -332,9 +329,7 @@ class TestMapFinishReasonZhipu:
 
 
 class TestMapFinishReasonOpenAIPassthrough:
-    @pytest.mark.parametrize(
-        "reason", ["stop", "length", "tool_calls", "function_call", "content_filter"]
-    )
+    @pytest.mark.parametrize("reason", ["stop", "length", "tool_calls", "function_call", "content_filter"])
     def test_openai_values_pass_through(self, reason):
         assert map_finish_reason(reason) == reason
 
@@ -345,9 +340,7 @@ class TestMapFinishReasonGenericError:
         assert map_finish_reason("error") == "stop"
 
     def test_lowercase_error_does_not_warn(self, mocker):
-        warn = mocker.patch(
-            "litellm.litellm_core_utils.core_helpers.verbose_logger.warning"
-        )
+        warn = mocker.patch("litellm.litellm_core_utils.core_helpers.verbose_logger.warning")
         assert map_finish_reason("error") == "stop"
         warn.assert_not_called()
 
@@ -365,8 +358,7 @@ class TestFinishReasonMapOutputsAreValid:
         """Every value in _FINISH_REASON_MAP must be a valid OpenAI finish reason."""
         for provider_reason, openai_reason in _FINISH_REASON_MAP.items():
             assert openai_reason in VALID_OPENAI_FINISH_REASONS, (
-                f"Mapped value '{openai_reason}' (from '{provider_reason}') "
-                f"is not a valid OpenAI finish reason"
+                f"Mapped value '{openai_reason}' (from '{provider_reason}') is not a valid OpenAI finish reason"
             )
 
 
@@ -376,28 +368,18 @@ class TestRedactNestedMatchAndRegexKeys:
             "assessments": [
                 {
                     "sensitiveInformationPolicy": {
-                        "piiEntities": [
-                            {"type": "NAME", "match": "secret-name", "action": "BLOCKED"}
-                        ]
+                        "piiEntities": [{"type": "NAME", "match": "secret-name", "action": "BLOCKED"}]
                     },
-                    "wordPolicy": {
-                        "customWords": [{"match": "badword", "action": "BLOCKED"}]
-                    },
+                    "wordPolicy": {"customWords": [{"match": "badword", "action": "BLOCKED"}]},
                 }
             ],
             "regex": "should-redact-key-named-regex",
         }
         out = redact_nested_match_and_regex_keys(payload)
-        assert out["assessments"][0]["sensitiveInformationPolicy"]["piiEntities"][0][
-            "match"
-        ] == "[REDACTED]"
-        assert out["assessments"][0]["wordPolicy"]["customWords"][0]["match"] == (
-            "[REDACTED]"
-        )
+        assert out["assessments"][0]["sensitiveInformationPolicy"]["piiEntities"][0]["match"] == "[REDACTED]"
+        assert out["assessments"][0]["wordPolicy"]["customWords"][0]["match"] == ("[REDACTED]")
         assert out["regex"] == "[REDACTED]"
-        assert payload["assessments"][0]["sensitiveInformationPolicy"]["piiEntities"][
-            0
-        ]["match"] == "secret-name"
+        assert payload["assessments"][0]["sensitiveInformationPolicy"]["piiEntities"][0]["match"] == "secret-name"
 
     def test_passes_through_none_and_str(self):
         assert redact_nested_match_and_regex_keys(None) is None
@@ -560,13 +542,17 @@ class TestIsExpectedClientError:
         assert is_expected_client_error(over_budget) is True
 
         litellm_limit = RateLimitError(
-            message="key over rpm", llm_provider="anthropic", model="claude-haiku-4-5",
+            message="key over rpm",
+            llm_provider="anthropic",
+            model="claude-haiku-4-5",
             category=RateLimitErrorCategory.LITELLM_RATE_LIMIT,
         )
         assert is_expected_client_error(litellm_limit) is True
 
         vendor_limit = RateLimitError(
-            message="rate limited upstream", llm_provider="anthropic", model="claude-haiku-4-5",
+            message="rate limited upstream",
+            llm_provider="anthropic",
+            model="claude-haiku-4-5",
             category=RateLimitErrorCategory.VENDOR_RATE_LIMIT,
         )
         assert is_expected_client_error(vendor_limit) is False
@@ -685,3 +671,36 @@ def test_spend_metadata_merge_reads_request_metadata_that_is_a_read_only_mapping
     )
 
     assert merged == {"user_api_key_hash": "hash", "model_group": "claude"}
+
+
+class TestReceiveStampSurvivesASecondMetadataBucket:
+    """A guardrail hook can plant ``litellm_metadata`` on a chat request after the proxy stamped
+    ``litellm_received_at`` into ``metadata``. The resolved bucket must still carry the stamp, or
+    ``x-litellm-overhead-duration-ms`` starts at the router call and hides every pre-call cost."""
+
+    def test_receive_stamp_is_carried_into_litellm_metadata(self):
+        received_at = datetime.datetime(2026, 10, 21, 5, 0, tzinfo=datetime.timezone.utc)
+        kwargs = {
+            "litellm_params": {
+                "metadata": {"litellm_received_at": received_at, "user_api_key_user_id": "user-1"},
+                "litellm_metadata": {"applied_guardrails": ["perf-pre"]},
+            }
+        }
+
+        resolved = get_litellm_metadata_from_kwargs(kwargs)
+
+        assert resolved is kwargs["litellm_params"]["litellm_metadata"]
+        assert resolved["litellm_received_at"] is received_at
+        assert resolved["user_api_key_user_id"] == "user-1"
+
+    def test_litellm_metadata_keeps_its_own_receive_stamp(self):
+        own = datetime.datetime(2026, 10, 21, 5, 0, tzinfo=datetime.timezone.utc)
+        other = datetime.datetime(2026, 10, 21, 5, 1, tzinfo=datetime.timezone.utc)
+        kwargs = {
+            "litellm_params": {
+                "metadata": {"litellm_received_at": other},
+                "litellm_metadata": {"litellm_received_at": own},
+            }
+        }
+
+        assert get_litellm_metadata_from_kwargs(kwargs)["litellm_received_at"] is own

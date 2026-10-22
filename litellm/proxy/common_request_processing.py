@@ -1985,6 +1985,7 @@ class ProxyBaseLLMRequestProcessing:
         self.data = data
         self.served_model = served_model
         self._tags_before_guardrails: frozenset[str] | None = None
+        self.route_type: str | None = None
 
     @property
     def litellm_call_id(self) -> str | None:
@@ -2436,6 +2437,7 @@ class ProxyBaseLLMRequestProcessing:
 
         ## LOGGING OBJECT ## - initialize logging object for logging success/failure events for call
         ## IMPORTANT Note: - initialize this before running pre-call checks. Ensures we log rejected requests to langfuse.
+        self.route_type = route_type
         logging_obj, self.data = litellm.utils.function_setup(
             original_function=route_type,
             rules_obj=litellm.utils.Rules(),
@@ -2807,6 +2809,7 @@ class ProxyBaseLLMRequestProcessing:
                 user_api_key_dict=user_api_key_dict,
                 original_exception=exc,
                 request_data=self.data,
+                dispatched_call_type=self.route_type,
             )
 
         return await open_sse_before_first_byte(
@@ -2871,6 +2874,7 @@ class ProxyBaseLLMRequestProcessing:
                     "skip_pre_call_logic=True requires litellm_logging_obj to be set in data. "
                     "Ensure common_processing_pre_call_logic was called before using this parameter."
                 )
+            self.route_type = route_type
         else:
             self.data, logging_obj = await self._pre_call_with_fallbacks(
                 request=request,
@@ -3480,6 +3484,7 @@ class ProxyBaseLLMRequestProcessing:
                     user_api_key_dict=user_api_key_dict,
                     original_exception=exc,
                     request_data=request_data,
+                    dispatched_call_type=self.route_type,
                 )
             except HTTPException:
                 return
@@ -4149,6 +4154,7 @@ class ProxyBaseLLMRequestProcessing:
             user_api_key_dict=user_api_key_dict,
             original_exception=e,
             request_data=self.data,
+            dispatched_call_type=self.route_type,
         )
         # Use transformed exception if callback returned one, otherwise use original
         if transformed_exception is not None:

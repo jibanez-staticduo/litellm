@@ -36,7 +36,6 @@ from litellm.litellm_core_utils.redact_messages import _get_turn_off_message_log
 from litellm.llms.bedrock.base_aws_llm import BaseAWSLLM
 from litellm.llms.fireworks_ai.common_utils import get_fireworks_session_id
 from litellm.proxy._types import AddTeamCallback, ProxyException, TeamCallbackMetadata, UserAPIKeyAuth
-from litellm.types.litellm_params import AGENTIC_LOOP_KWARG_NAMES
 from litellm.proxy.litellm_pre_call_utils import (
     KeyAndTeamLoggingSettings,
     LiteLLMProxyRequestSetup,
@@ -58,6 +57,7 @@ from litellm.proxy.litellm_pre_call_utils import (
     move_guardrails_to_metadata,
 )
 from litellm.proxy.spend_tracking.spend_tracking_utils import get_logging_payload
+from litellm.types.litellm_params import AGENTIC_LOOP_KWARG_NAMES
 from litellm.types.utils import CredentialItem
 
 
@@ -1229,6 +1229,7 @@ async def test_add_litellm_data_to_request_strips_user_control_fields():
         "litellm_metadata": copy.deepcopy(malicious_metadata),
         "weights": {"gpt-3.5-turbo": {"forged-deployment-id": 100}},
         "_router_weights": {"gpt-3.5-turbo": {"forged-deployment-id": 100}},
+        "_encrypted_content_affinity_pinned": True,
     }
 
     updated = await add_litellm_data_to_request(
@@ -1251,6 +1252,7 @@ async def test_add_litellm_data_to_request_strips_user_control_fields():
     assert "_router_weights" not in updated
     assert "weights" not in updated["proxy_server_request"]["body"]
     assert "_router_weights" not in updated["proxy_server_request"]["body"]
+    assert "_encrypted_content_affinity_pinned" not in updated
 
     stripped_keys = {
         "disable_global_guardrails",
@@ -5313,7 +5315,6 @@ async def test_bearer_token_not_in_debug_logs():
 # =====================================================================
 
 
-
 @pytest.fixture()
 def setup_test_credentials():
     """Populate litellm.credential_list with test credentials and enable feature flag, clean up after."""
@@ -6579,7 +6580,6 @@ class TestApplyKeyTagsPreAuth:
 # Tests for #27516: provider hint resolution from deployment when the
 # user-facing model name has no provider prefix.
 # =====================================================================
-
 
 
 def test_resolve_provider_from_deployment_uses_litellm_params_model():
@@ -10126,8 +10126,8 @@ class TestResolveUserProviderCredentials:
         _get_hierarchical_router_settings) must be part of discovery."""
         from types import SimpleNamespace
 
-        from litellm.proxy.litellm_pre_call_utils import _resolve_user_provider_credentials_for_request
         import litellm.proxy.auth.auth_checks as auth_checks
+        from litellm.proxy.litellm_pre_call_utils import _resolve_user_provider_credentials_for_request
 
         table = self._env(monkeypatch)
         monkeypatch.setattr(
@@ -10502,9 +10502,7 @@ async def test_header_mapped_user_id_cannot_load_another_users_connection(monkey
     from litellm.proxy.litellm_pre_call_utils import add_litellm_data_to_request
 
     _per_user_env(monkeypatch)
-    load = AsyncMock(
-        return_value={"copilot-cred": {"access_token": "gho_user_a_token", "github_host": "github.com"}}
-    )
+    load = AsyncMock(return_value={"copilot-cred": {"access_token": "gho_user_a_token", "github_host": "github.com"}})
     monkeypatch.setattr(upc, "aget_user_provider_credentials", load)
     router = Router(
         model_list=[
@@ -10558,9 +10556,7 @@ async def test_per_user_token_resolution_uses_key_identity_without_header_mappin
     from litellm.proxy.litellm_pre_call_utils import add_litellm_data_to_request
 
     _per_user_env(monkeypatch)
-    load = AsyncMock(
-        return_value={"copilot-cred": {"access_token": "gho_user_a_token", "github_host": "github.com"}}
-    )
+    load = AsyncMock(return_value={"copilot-cred": {"access_token": "gho_user_a_token", "github_host": "github.com"}})
     monkeypatch.setattr(upc, "aget_user_provider_credentials", load)
     router = Router(
         model_list=[

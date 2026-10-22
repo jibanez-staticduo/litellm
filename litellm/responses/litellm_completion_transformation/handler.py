@@ -9,6 +9,7 @@ from pydantic import TypeAdapter
 
 import litellm
 from litellm.responses.additional_tools import hoist_additional_tools
+from litellm.responses.litellm_completion_transformation.compaction_items import holds_compaction_summary
 from litellm.responses.litellm_completion_transformation.hosted_vllm_codex_summary import (
     HostedVLLMCodexSummaryStream,
     run_summary_sync,
@@ -20,6 +21,7 @@ from litellm.responses.litellm_completion_transformation.streaming_iterator impo
 )
 from litellm.responses.litellm_completion_transformation.transformation import (
     LiteLLMCompletionResponsesConfig,
+    with_compaction_items_as_params,
 )
 from litellm.responses.streaming_iterator import BaseResponsesAPIStreamingIterator
 from litellm.types.llms.openai import (
@@ -131,6 +133,7 @@ class LiteLLMCompletionTransformationHandler:
                 instructions=responses_api_request.get("instructions"),
                 request_kwargs=_REQUEST_KWARGS_ADAPTER.validate_python(kwargs),
                 previous_response_client_ids=previous_response_client_ids,
+                input_replaces_history=holds_compaction_summary(with_compaction_items_as_params(request_input)),
             )
 
         acompletion_args: Final = {}

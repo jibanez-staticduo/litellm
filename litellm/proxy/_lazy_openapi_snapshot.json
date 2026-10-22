@@ -30494,6 +30494,9 @@
                       },
                       {
                         "$ref": "#/components/schemas/OutputToolSearchCall"
+                      },
+                      {
+                        "$ref": "#/components/schemas/ResponseCompactionItem"
                       }
                     ]
                   },

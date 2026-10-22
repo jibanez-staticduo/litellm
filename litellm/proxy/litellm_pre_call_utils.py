@@ -368,6 +368,7 @@ _UNTRUSTED_ROOT_CONTROL_FIELDS: Final = (
     "_anthropic_native_identity",
     "weights",
     "_router_weights",
+    "_encrypted_content_affinity_pinned",
     "fallback_depth",
     "_target_order",
     "attempted_targets",

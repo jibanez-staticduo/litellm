@@ -35,6 +35,7 @@ from litellm.litellm_core_utils.prompt_templates.mid_conversation_system import 
     parts_of,
 )
 from litellm.litellm_core_utils.reasoning_effort_utils import non_numeric_thinking_budget_error
+from litellm.litellm_core_utils.url_utils import join_api_base
 from litellm.llms.anthropic.wif import (
     aget_anthropic_wif_token,
     anthropic_base_without_chat_suffix,
@@ -470,7 +471,7 @@ def _fetch_anthropic_models_page(
     # which a read-only one cannot support
     query: Final = f"?after_id={quote(after_id)}" if after_id else ""
     response: Final = litellm.module_level_client.get(
-        url=f"{api_base}/v1/models{query}",
+        url=f"{join_api_base(api_base, 'v1/models')}{query}",
         headers=headers,
         follow_redirects=False,
     )
@@ -1421,7 +1422,7 @@ class AnthropicModelInfo(BaseLLMModelInfo):
         return normalize_anthropic_oauth_headers({**caller_headers, **anthropic_headers}, managed_token is not None)
 
     @staticmethod
-    def get_api_base(api_base: str | None = None) -> str | None:
+    def resolve_anthropic_api_base(api_base: str | None = None) -> str:
         from litellm.secret_managers.main import get_secret_str
 
         return (
@@ -1430,6 +1431,10 @@ class AnthropicModelInfo(BaseLLMModelInfo):
             or get_secret_str("ANTHROPIC_BASE_URL")
             or "https://api.anthropic.com"
         )
+
+    @staticmethod
+    def get_api_base(api_base: str | None = None) -> str | None:
+        return AnthropicModelInfo.resolve_anthropic_api_base(api_base)
 
     @staticmethod
     def get_api_key(api_key: str | None = None) -> str | None:
@@ -1548,14 +1553,14 @@ class AnthropicModelInfo(BaseLLMModelInfo):
         api_base: str | None,
         litellm_params: Mapping[str, object] | None,
     ) -> list[str]:  # mutable-ok: matches get_models' list[str] contract shared by every provider override
-        resolved_api_base: Final = AnthropicModelInfo.get_api_base(api_base)
+        resolved_api_base: Final = AnthropicModelInfo.resolve_anthropic_api_base(api_base)
         auth_header: Final = AnthropicModelInfo.get_auth_header(
             api_key,
             resolved_api_base,
             litellm_params=litellm_params,
             allow_workload_identity=config_allows_workload_identity(self),
         )
-        if resolved_api_base is None or auth_header is None:
+        if auth_header is None:
             raise ValueError(
                 "ANTHROPIC_API_BASE/ANTHROPIC_BASE_URL or ANTHROPIC_API_KEY/ANTHROPIC_AUTH_TOKEN (or workload "
                 "identity federation via ANTHROPIC_FEDERATION_RULE_ID/ANTHROPIC_ORGANIZATION_ID/"

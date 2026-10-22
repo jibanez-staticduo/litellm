@@ -37,9 +37,7 @@ from litellm.types.utils import (
 )
 
 CHAT_COMPLETION_ID = "chatcmpl-77d33d09-effa-4cd2-9c0d-c742d4358256"
-RESPONSE_ID_EVENT_TYPES = frozenset(
-    {"response.created", "response.in_progress", "response.completed"}
-)
+RESPONSE_ID_EVENT_TYPES = frozenset({"response.created", "response.in_progress", "response.completed"})
 
 
 @pytest.mark.asyncio
@@ -48,30 +46,67 @@ async def test_client_tool_search_stream_is_dispatched_as_search_not_function():
     encoded = json.dumps(arguments)
     chunks = [
         ModelResponseStream(
-            id=CHAT_COMPLETION_ID, model="qwen3.8-flash-next", created=1748575031,
-            choices=[StreamingChoices(index=0, delta=Delta(role="assistant", tool_calls=[{
-                "index": 0, "id": "call_search", "type": "function",
-                "function": {"name": "tool_search", "arguments": encoded[:10]},
-            }]))],
+            id=CHAT_COMPLETION_ID,
+            model="qwen3.8-flash-next",
+            created=1748575031,
+            choices=[
+                StreamingChoices(
+                    index=0,
+                    delta=Delta(
+                        role="assistant",
+                        tool_calls=[
+                            {
+                                "index": 0,
+                                "id": "call_search",
+                                "type": "function",
+                                "function": {"name": "tool_search", "arguments": encoded[:10]},
+                            }
+                        ],
+                    ),
+                )
+            ],
         ),
         ModelResponseStream(
-            id=CHAT_COMPLETION_ID, model="qwen3.8-flash-next", created=1748575031,
-            choices=[StreamingChoices(index=0, delta=Delta(tool_calls=[{
-                "index": 0, "function": {"arguments": encoded[10:]},
-            }]))],
+            id=CHAT_COMPLETION_ID,
+            model="qwen3.8-flash-next",
+            created=1748575031,
+            choices=[
+                StreamingChoices(
+                    index=0,
+                    delta=Delta(
+                        tool_calls=[
+                            {
+                                "index": 0,
+                                "function": {"arguments": encoded[10:]},
+                            }
+                        ]
+                    ),
+                )
+            ],
         ),
         ModelResponseStream(
-            id=CHAT_COMPLETION_ID, model="qwen3.8-flash-next", created=1748575031,
+            id=CHAT_COMPLETION_ID,
+            model="qwen3.8-flash-next",
+            created=1748575031,
             choices=[StreamingChoices(index=0, delta=Delta(), finish_reason="tool_calls")],
         ),
     ]
     iterator = LiteLLMCompletionStreamingIterator(
-        model="qwen3.8-flash-next", litellm_custom_stream_wrapper=_FakeStreamWrapper(chunks),
-        request_input="Find calendar tools", custom_llm_provider="hosted_vllm",
-        responses_api_request={"tool_choice": {"type": "tool_search"}, "tools": [{
-            "type": "tool_search", "execution": "client", "description": "Find tools",
-            "parameters": {"type": "object", "properties": {"query": {"type": "string"}}},
-        }]},
+        model="qwen3.8-flash-next",
+        litellm_custom_stream_wrapper=_FakeStreamWrapper(chunks),
+        request_input="Find calendar tools",
+        custom_llm_provider="hosted_vllm",
+        responses_api_request={
+            "tool_choice": {"type": "tool_search"},
+            "tools": [
+                {
+                    "type": "tool_search",
+                    "execution": "client",
+                    "description": "Find tools",
+                    "parameters": {"type": "object", "properties": {"query": {"type": "string"}}},
+                }
+            ],
+        },
     )
     events = [event async for event in iterator]
     added = [e.item for e in events if e.type == "response.output_item.added" and e.item.type == "tool_search_call"]
@@ -91,17 +126,22 @@ async def test_client_tool_search_stream_is_dispatched_as_search_not_function():
     assert not any(e.type.startswith("response.function_call_arguments.") for e in events)
 
 
-@pytest.mark.parametrize("choice", [
-    {"type": "tool_search"},
-    {"type": "function", "name": "lookup_probe"},
-    {"type": "custom", "name": "apply_patch"},
-    {"type": "function", "name": "exec", "namespace": "functions"},
-    {"type": "custom", "name": "exec", "namespace": "functions"},
-])
+@pytest.mark.parametrize(
+    "choice",
+    [
+        {"type": "tool_search"},
+        {"type": "function", "name": "lookup_probe"},
+        {"type": "custom", "name": "apply_patch"},
+        {"type": "function", "name": "exec", "namespace": "functions"},
+        {"type": "custom", "name": "exec", "namespace": "functions"},
+    ],
+)
 def test_created_event_preserves_responses_tool_choice(choice):
     iterator = LiteLLMCompletionStreamingIterator(
-        model="qwen3.8-flash-next", litellm_custom_stream_wrapper=_FakeStreamWrapper([]),
-        request_input="Use the tool", responses_api_request={"tool_choice": choice},
+        model="qwen3.8-flash-next",
+        litellm_custom_stream_wrapper=_FakeStreamWrapper([]),
+        request_input="Use the tool",
+        responses_api_request={"tool_choice": choice},
     )
     event = iterator.create_response_created_event()
     assert event.model_dump()["response"]["tool_choice"] == choice
@@ -157,11 +197,7 @@ def _build_iterator(chunks) -> LiteLLMCompletionStreamingIterator:
 
 
 def _response_ids(events) -> list[str]:
-    return [
-        event.response.id
-        for event in events
-        if getattr(event, "type", None) in RESPONSE_ID_EVENT_TYPES
-    ]
+    return [event.response.id for event in events if getattr(event, "type", None) in RESPONSE_ID_EVENT_TYPES]
 
 
 @pytest.mark.asyncio
@@ -175,8 +211,7 @@ async def test_reasoning_lifecycle_survives_wire_serialization(sync, empty_prefi
         choices=[StreamingChoices(index=0, delta=Delta(reasoning_content="Check the sum."))],
     )
     iterator = _build_iterator(
-        ([_chunk("")] if empty_prefix else [])
-        + [reasoning, _chunk("42"), _chunk("", finish_reason="stop")]
+        ([_chunk("")] if empty_prefix else []) + [reasoning, _chunk("42"), _chunk("", finish_reason="stop")]
     )
     events = list(iterator) if sync else [event async for event in iterator]
     wire = [json.loads(event.model_dump_json(exclude_none=True, exclude_unset=True)) for event in events]
@@ -205,13 +240,17 @@ async def test_reasoning_lifecycle_survives_wire_serialization(sync, empty_prefi
     assert saved["summary"] == []
     assert saved["content"] == done[0]["item"]["content"]
     from litellm.responses.litellm_completion_transformation.transformation import LiteLLMCompletionResponsesConfig
+
     replayed = LiteLLMCompletionResponsesConfig.transform_responses_api_input_to_messages(
         [saved, {"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": "42"}]}],
-        responses_api_request={}, replay_reasoning=True,
+        responses_api_request={},
+        replay_reasoning=True,
     )
     assert replayed[0]["reasoning_content"] == "Check the sum."
     assert replayed[0]["content"] == [{"type": "text", "text": "42"}]
-    content_done = next(event for event in wire if event["type"] == "response.content_part.done" and event["output_index"] == 1)
+    content_done = next(
+        event for event in wire if event["type"] == "response.content_part.done" and event["output_index"] == 1
+    )
     assert content_done["part"]["type"] == "output_text"
     assert content_done["output_index"] == 1
 
@@ -344,9 +383,7 @@ async def test_web_search_stream_preserves_hosted_and_client_calls(sync_mode, to
             content=None,
             provider_specific_fields={
                 "web_search_results": [first_result],
-                "web_search_calls": [
-                    build_web_search_call(call_ids[0], {"query": "one"}, first_result)
-                ]
+                "web_search_calls": [build_web_search_call(call_ids[0], {"query": "one"}, first_result)]
                 if tool_type != "function" and first_result["type"] == "web_search_tool_result"
                 else [],
             },
@@ -445,9 +482,7 @@ async def test_web_search_stream_preserves_hosted_and_client_calls(sync_mode, to
         assert {event["output_index"] for event in search_events} == {completed_indexes[item["id"]]}
         assert search_events[0]["item"]["status"] == "in_progress"
         assert search_events[-1]["item"] == item
-        assert item["status"] == (
-            "failed" if result_kind == "error" and call_id.endswith("01Search") else "completed"
-        )
+        assert item["status"] == ("failed" if result_kind == "error" and call_id.endswith("01Search") else "completed")
         assert item["action"]["type"] == "search"
         assert item["action"]["query"] == ("one" if call_id.endswith("01Search") else "two")
         assert item["action"]["queries"] == [item["action"]["query"]]
@@ -556,9 +591,7 @@ def test_tool_call_arguments_are_chunked_to_match_openai_behavior():
     )
 
     # Create a chunk with a large arguments string that should be split
-    large_arguments = (
-        '{"param1": "value1", "param2": "value2", "param3": "value3"}'  # 67 chars
-    )
+    large_arguments = '{"param1": "value1", "param2": "value2", "param3": "value3"}'  # 67 chars
     chunk = ModelResponseStream(
         id="chunk-1",
         created=123,
@@ -613,9 +646,7 @@ def test_tool_call_arguments_are_chunked_to_match_openai_behavior():
 
     # Keep draining pending events (expected: ceil(67 / 10) = 7 delta events)
     while iterator._pending_tool_events:
-        evt = iterator._transform_chat_completion_chunk_to_response_api_chunk(
-            empty_chunk
-        )
+        evt = iterator._transform_chat_completion_chunk_to_response_api_chunk(empty_chunk)
         if evt and evt.type == ResponsesAPIStreamEvents.FUNCTION_CALL_ARGUMENTS_DELTA:
             delta_events.append(evt)
 
@@ -668,20 +699,12 @@ def test_tool_call_delta_without_id_uses_index_mapping():
     while iterator._pending_tool_events:
         all_events.append(iterator._pending_tool_events.pop(0))
 
-    delta_events = [
-        evt
-        for evt in all_events
-        if evt.type == ResponsesAPIStreamEvents.FUNCTION_CALL_ARGUMENTS_DELTA
-    ]
+    delta_events = [evt for evt in all_events if evt.type == ResponsesAPIStreamEvents.FUNCTION_CALL_ARGUMENTS_DELTA]
     streamed_arguments = "".join(evt.delta for evt in delta_events)
 
     assert streamed_arguments == '{"location": "New York"}'
 
-    output_item_added_events = [
-        evt
-        for evt in all_events
-        if evt.type == ResponsesAPIStreamEvents.OUTPUT_ITEM_ADDED
-    ]
+    output_item_added_events = [evt for evt in all_events if evt.type == ResponsesAPIStreamEvents.OUTPUT_ITEM_ADDED]
     assert len(output_item_added_events) == 1
     assert output_item_added_events[0].item.id == "fc_call_abc123"
     assert output_item_added_events[0].item.call_id == "call_abc123"
@@ -722,18 +745,10 @@ def test_parallel_tool_calls_without_ids_use_index_mapping():
     while iterator._pending_tool_events:
         all_events.append(iterator._pending_tool_events.pop(0))
 
-    output_item_added_events = [
-        evt
-        for evt in all_events
-        if evt.type == ResponsesAPIStreamEvents.OUTPUT_ITEM_ADDED
-    ]
+    output_item_added_events = [evt for evt in all_events if evt.type == ResponsesAPIStreamEvents.OUTPUT_ITEM_ADDED]
     assert len(output_item_added_events) == 2
 
-    delta_events = [
-        evt
-        for evt in all_events
-        if evt.type == ResponsesAPIStreamEvents.FUNCTION_CALL_ARGUMENTS_DELTA
-    ]
+    delta_events = [evt for evt in all_events if evt.type == ResponsesAPIStreamEvents.FUNCTION_CALL_ARGUMENTS_DELTA]
     arguments_by_call_id = {}
     for evt in delta_events:
         arguments_by_call_id.setdefault(evt.item_id, "")
@@ -786,11 +801,7 @@ def test_reused_index_with_new_call_id_marks_fallback_ambiguous():
     while iterator._pending_tool_events:
         all_events.append(iterator._pending_tool_events.pop(0))
 
-    delta_events = [
-        evt
-        for evt in all_events
-        if evt.type == ResponsesAPIStreamEvents.FUNCTION_CALL_ARGUMENTS_DELTA
-    ]
+    delta_events = [evt for evt in all_events if evt.type == ResponsesAPIStreamEvents.FUNCTION_CALL_ARGUMENTS_DELTA]
     arguments_by_call_id = {}
     for evt in delta_events:
         arguments_by_call_id.setdefault(evt.item_id, "")
@@ -830,22 +841,17 @@ def test_sync_streaming_events_share_the_chat_completion_response_id():
     assert len(response_ids) == 3
     assert len(set(response_ids)) == 1
     assert (
-        ResponsesAPIRequestUtils.decode_responses_api_response_id(response_ids[0])["response_id"]
-        == CHAT_COMPLETION_ID
+        ResponsesAPIRequestUtils.decode_responses_api_response_id(response_ids[0])["response_id"] == CHAT_COMPLETION_ID
     )
 
 
 @pytest.mark.asyncio
 async def test_streaming_emits_every_chunk_after_priming_the_response_id():
-    iterator = _build_iterator(
-        [_chunk("Hel"), _chunk("lo"), _chunk("!", finish_reason="stop")]
-    )
+    iterator = _build_iterator([_chunk("Hel"), _chunk("lo"), _chunk("!", finish_reason="stop")])
 
     events = [event async for event in iterator]
 
-    deltas = "".join(
-        event.delta for event in events if getattr(event, "type", None) == "response.output_text.delta"
-    )
+    deltas = "".join(event.delta for event in events if getattr(event, "type", None) == "response.output_text.delta")
     assert deltas == "Hello!"
 
 
@@ -891,7 +897,9 @@ async def test_leading_empty_choices_chunk_does_not_kill_the_stream():
 
     event_types = [getattr(event, "type", None) for event in events]
     assert event_types.count(ResponsesAPIStreamEvents.OUTPUT_ITEM_ADDED) == 1
-    assert "".join(event.delta for event in events if event.type == ResponsesAPIStreamEvents.OUTPUT_TEXT_DELTA) == "Hello!"
+    assert (
+        "".join(event.delta for event in events if event.type == ResponsesAPIStreamEvents.OUTPUT_TEXT_DELTA) == "Hello!"
+    )
     assert event_types[-1] == ResponsesAPIStreamEvents.RESPONSE_COMPLETED
 
 
@@ -1169,9 +1177,7 @@ def test_streamed_unrecognized_tool_choice_is_echoed_as_auto() -> None:
         litellm_metadata={},
     )
 
-    response_events: Final = [
-        event for event in iterator if getattr(event, "type", None) in RESPONSE_ID_EVENT_TYPES
-    ]
+    response_events: Final = [event for event in iterator if getattr(event, "type", None) in RESPONSE_ID_EVENT_TYPES]
 
     assert [event.response.tool_choice for event in response_events] == ["auto", "auto", "auto"]
 
@@ -1212,9 +1218,7 @@ def _signed_thinking_and_text_in_one_chunk() -> tuple[ModelResponseStream, ...]:
     chunk: Final = _chunk("Hello!", finish_reason="stop")
     signed_block: Final = {"type": "thinking", "thinking": "", "signature": "sig_only"}
     delta: Final = Delta(**{**chunk.choices[0].delta.model_dump(), "thinking_blocks": [signed_block]})
-    return (
-        chunk.model_copy(update={"choices": [StreamingChoices(index=0, delta=delta, finish_reason="stop")]}),
-    )
+    return (chunk.model_copy(update={"choices": [StreamingChoices(index=0, delta=delta, finish_reason="stop")]}),)
 
 
 StreamChunks = Callable[[], tuple[ModelResponseStream, ...]]
@@ -1435,15 +1439,13 @@ def test_reasoning_done_preserves_collected_chunks_for_final_assembly() -> None:
     next(
         event
         for event in iterator
-        if getattr(event, "type", None) == ResponsesAPIStreamEvents.OUTPUT_ITEM_ADDED
-        and event.item.type == "reasoning"
+        if getattr(event, "type", None) == ResponsesAPIStreamEvents.OUTPUT_ITEM_ADDED and event.item.type == "reasoning"
     )
     collected_before: Final = deepcopy(iterator.collected_chat_completion_chunks)
     next(
         event
         for event in iterator
-        if getattr(event, "type", None) == ResponsesAPIStreamEvents.OUTPUT_ITEM_DONE
-        and event.item.type == "reasoning"
+        if getattr(event, "type", None) == ResponsesAPIStreamEvents.OUTPUT_ITEM_DONE and event.item.type == "reasoning"
     )
     assert iterator.collected_chat_completion_chunks[: len(collected_before)] == collected_before
 
@@ -1666,28 +1668,51 @@ async def test_client_and_server_tool_search_keep_their_execution_in_one_stream(
     chunk: Final = ModelResponseStream(
         id=CHAT_COMPLETION_ID,
         model="claude-sonnet-5-5",
-        choices=[StreamingChoices(index=0, finish_reason="tool_calls", delta=Delta(content=None, tool_calls=[
-            {"index": 0, "id": "call_client", "type": "function",
-             "function": {"name": "tool_search", "arguments": '{"query":"calendar"}'}},
-            {"index": 1, "id": "srvtoolu_server", "type": "function",
-             "function": {"name": "tool_search_tool_regex", "arguments": '{"pattern":"weather"}'}},
-        ]))],
+        choices=[
+            StreamingChoices(
+                index=0,
+                finish_reason="tool_calls",
+                delta=Delta(
+                    content=None,
+                    tool_calls=[
+                        {
+                            "index": 0,
+                            "id": "call_client",
+                            "type": "function",
+                            "function": {"name": "tool_search", "arguments": '{"query":"calendar"}'},
+                        },
+                        {
+                            "index": 1,
+                            "id": "srvtoolu_server",
+                            "type": "function",
+                            "function": {"name": "tool_search_tool_regex", "arguments": '{"pattern":"weather"}'},
+                        },
+                    ],
+                ),
+            )
+        ],
     )
     iterator: Final = LiteLLMCompletionStreamingIterator(
         model="claude-sonnet-5-5",
         litellm_custom_stream_wrapper=_FakeStreamWrapper([chunk]),
         request_input="Find calendar and weather tools",
-        responses_api_request={"tools": [
-            {"type": "tool_search", "execution": "client", "parameters": {"type": "object"}},
-            {"type": "tool_search", "execution": "server"},
-        ]},
+        responses_api_request={
+            "tools": [
+                {"type": "tool_search", "execution": "client", "parameters": {"type": "object"}},
+                {"type": "tool_search", "execution": "server"},
+            ]
+        },
         custom_llm_provider="anthropic",
     )
     events: Final = await _collect_events(iterator, sync_mode)
-    added: Final = [event for event in events if event.type == "response.output_item.added"
-                    and event.item.type == "tool_search_call"]
-    done: Final = [event for event in events if event.type == "response.output_item.done"
-                   and event.item.type == "tool_search_call"]
+    added: Final = [
+        event
+        for event in events
+        if event.type == "response.output_item.added" and event.item.type == "tool_search_call"
+    ]
+    done: Final = [
+        event for event in events if event.type == "response.output_item.done" and event.item.type == "tool_search_call"
+    ]
     completed: Final = next(event.response for event in events if event.type == "response.completed")
 
     assert [item.execution for item in completed.output] == ["client", "server"]
@@ -1738,9 +1763,7 @@ async def test_anthropic_tool_search_call_streams_as_tool_search_call_item(sync_
             model="claude-sonnet-5-5",
             object="chat.completion.chunk",
             choices=[
-                StreamingChoices(
-                    index=0, delta=delta, finish_reason="tool_calls" if index == len(deltas) - 1 else None
-                )
+                StreamingChoices(index=0, delta=delta, finish_reason="tool_calls" if index == len(deltas) - 1 else None)
             ],
         )
         for index, delta in enumerate(deltas)
@@ -1841,3 +1864,37 @@ async def test_caller_function_named_like_the_search_tool_streams_as_function_ca
 
     assert [(item["type"], item["name"]) for item in output] == [("function_call", "tool_search_tool_regex")]
     assert "response.function_call_arguments.done" in [event["type"] for event in events]
+
+
+@pytest.mark.parametrize("sync_mode", [True, False])
+@pytest.mark.asyncio
+async def test_a_compaction_block_without_its_summary_streams_no_compaction_item(sync_mode: bool):
+    deltas: Final = (
+        Delta(
+            role="assistant",
+            content="",
+            provider_specific_fields={"compaction_blocks": [{"type": "compaction", "content": None}]},
+        ),
+        Delta(content="Ok."),
+    )
+    chunks: Final = tuple(
+        ModelResponseStream(
+            id=CHAT_COMPLETION_ID,
+            created=1748575031,
+            model="claude-sonnet-5-5",
+            object="chat.completion.chunk",
+            choices=[
+                StreamingChoices(index=0, delta=delta, finish_reason="stop" if index == len(deltas) - 1 else None)
+            ],
+        )
+        for index, delta in enumerate(deltas)
+    )
+    iterator: Final = _build_iterator(chunks)
+    events: Final = (
+        [event.model_dump(exclude_none=True) for event in iterator]
+        if sync_mode
+        else [event.model_dump(exclude_none=True) async for event in iterator]
+    )
+
+    assert [event["item"]["type"] for event in events if "item" in event] == ["message", "message"]
+    assert [item["type"] for item in events[-1]["response"]["output"]] == ["message"]

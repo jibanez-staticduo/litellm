@@ -56,6 +56,7 @@ except (ImportError, AttributeError):
 
 from typing import Annotated
 
+from openai.types.responses.response_compaction_item import ResponseCompactionItem
 from openai.types.responses.response_create_params import (
     Reasoning,
     ResponseIncludable,
@@ -1496,6 +1497,7 @@ class ResponsesAPIResponse(BaseLiteLLMOpenAIResponseObject):
             | CustomToolCallOutputItem
             | ResponseToolSearchCall
             | OutputToolSearchCall
+            | ResponseCompactionItem
         ]
     )
     parallel_tool_calls: bool | None = None

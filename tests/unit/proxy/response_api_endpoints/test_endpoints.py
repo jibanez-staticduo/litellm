@@ -176,6 +176,105 @@ async def test_streaming_upstream_errors_keep_the_client_protocol(
         assert "error" in events[-1]
 
 
+_COMPACTION_ITEM: Final = {
+    "type": "compaction",
+    "encrypted_content": json.dumps({"type": "compaction", "content": "the cat is named Biscuit"}),
+}
+_HISTORY_BEFORE_COMPACTION: Final = (
+    {"role": "user", "content": "a long turn " * 200},
+    {"role": "assistant", "content": "a long reply " * 200},
+)
+_TURN_AFTER_COMPACTION: Final = {"role": "user", "content": "what is the cat's name?"}
+
+
+async def _cursor_stream_failure_prompt_tokens(
+    monkeypatch: pytest.MonkeyPatch, request_input: list[Mapping[str, str]], fails_after_output: bool
+) -> int:
+    import litellm.proxy.proxy_server as ps
+    from litellm.integrations.custom_logger import CustomLogger
+    from litellm.proxy.auth.user_api_key_auth import user_api_key_auth
+
+    class _FailureRowRecorder(CustomLogger):
+        prompt_tokens: int | None = None
+
+        async def async_post_call_failure_hook(
+            self,
+            request_data: dict,
+            original_exception: Exception,
+            user_api_key_dict: object,
+            traceback_str: str | None = None,
+        ) -> None:
+            usage: Final = request_data.get("combined_usage_object")
+            self.prompt_tokens = usage.prompt_tokens if isinstance(usage, litellm.Usage) else None
+
+    model: Final = "gpt-6-astra"
+    upstream_url: Final = "https://streaming.example/v1"
+    created: Final = {
+        "type": "response.created",
+        "sequence_number": 0,
+        "response": {
+            "id": "resp_upstream",
+            "object": "response",
+            "created_at": 1,
+            "status": "in_progress",
+            "model": model,
+            "output": [],
+        },
+    }
+    output_delta: Final = {
+        "type": "response.output_text.delta",
+        "sequence_number": 1,
+        "item_id": "msg_partial",
+        "output_index": 0,
+        "content_index": 0,
+        "delta": "Biscuit",
+    }
+    failed: Final = {"type": "error", "error": {"message": "upstream broke", "code": "server_error", "type": None}}
+    events: Final = (created, output_delta, failed) if fails_after_output else (created, failed)
+    wire: Final = "".join("data: " + json.dumps(event) + "\n\n" for event in events)
+    recorder: Final = _FailureRowRecorder()
+    router: Final = litellm.Router(
+        model_list=[
+            {
+                "model_name": model,
+                "litellm_params": {"model": "openai/" + model, "api_base": upstream_url, "api_key": "fixture-key"},
+            }
+        ],
+        num_retries=0,
+    )
+    monkeypatch.setattr(ps, "llm_router", router)
+    monkeypatch.setattr(litellm, "callbacks", [recorder])
+    monkeypatch.setattr(litellm, "disable_aiohttp_transport", True)
+    monkeypatch.setitem(app.dependency_overrides, user_api_key_auth, _auth_override)
+    with respx.mock as transport:
+        transport.post(upstream_url + "/responses").respond(
+            200, content=wire, headers={"Content-Type": "text/event-stream"}
+        )
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app), base_url="http://testserver") as client:
+            result: Final = await client.post(
+                "/cursor/chat/completions", json={"model": model, "stream": True, "input": request_input}
+            )
+    assert recorder.prompt_tokens is not None, result.text
+    return recorder.prompt_tokens
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("fails_after_output", [False, True])
+async def test_a_failed_cursor_stream_counts_its_input_from_the_newest_compaction_item(
+    monkeypatch: pytest.MonkeyPatch, fails_after_output: bool
+) -> None:
+    """Cursor's route maps to no call type, yet it dispatches a Responses call, which sends
+    the provider only the newest compaction item onward, so the failure row counts that much."""
+    resent: Final = await _cursor_stream_failure_prompt_tokens(
+        monkeypatch, [*_HISTORY_BEFORE_COMPACTION, _COMPACTION_ITEM, _TURN_AFTER_COMPACTION], fails_after_output
+    )
+    dispatched_after_trim: Final = await _cursor_stream_failure_prompt_tokens(
+        monkeypatch, [_COMPACTION_ITEM, _TURN_AFTER_COMPACTION], fails_after_output
+    )
+
+    assert resent == dispatched_after_trim
+
+
 @pytest.mark.asyncio
 async def test_responses_api_background_polling_rejects_missing_input():
     from fastapi import Response as FastAPIResponse
@@ -1702,11 +1801,19 @@ class TestResponsesWSStreamingFirstMessage:
 @pytest.mark.parametrize(
     ("failure", "expected_status", "expected_type"),
     [
-        (ValueError("No deployments available - crossed budget: Exceeded budget for deployment"), 429, "rate_limit_exceeded"),
+        (
+            ValueError("No deployments available - crossed budget: Exceeded budget for deployment"),
+            429,
+            "rate_limit_exceeded",
+        ),
         (litellm.BadRequestError(message="bad input", model="m", llm_provider="openai"), 400, "invalid_request_error"),
         (RuntimeError("boom"), 500, "server_error"),
         (ValueError(f"{RouterErrors.no_deployments_with_tag_routing.value}=['free']"), 401, "invalid_request_error"),
-        (ProxyException(message="Authentication Error", type="auth_error", param=None, code=401), 401, "invalid_request_error"),
+        (
+            ProxyException(message="Authentication Error", type="auth_error", param=None, code=401),
+            401,
+            "invalid_request_error",
+        ),
         (HTTPException(status_code=403, detail="key not allowed"), 403, "invalid_request_error"),
     ],
     ids=["crossed-budget", "bad-request", "unexpected", "tag-routing", "proxy-auth", "http-exception"],
@@ -2153,9 +2260,8 @@ class TestResponsesWSFirstFrameModelAuth:
 
     @pytest.mark.asyncio
     async def test_frame_guard_rejects_a_turn_a_guardrail_rerouted_to_another_model(self):
-        from litellm.proxy.response_api_endpoints.endpoints import _responses_ws_frame_guard
-
         from litellm.proxy.hooks.proxy_track_cost_callback import ProxyDBLogger
+        from litellm.proxy.response_api_endpoints.endpoints import _responses_ws_frame_guard
 
         async def pre_call_hook(user_api_key_dict, data, call_type, guardrails_only):
             data["litellm_metadata"]["standard_logging_guardrail_information"] = [{"guardrail_cost": 0.5}]
@@ -2477,6 +2583,7 @@ class TestResponsesWSFirstFrameModelAuth:
         ws.receive_text = AsyncMock(
             return_value=json.dumps({"type": "response.create", "model": "gpt-4o-mini", "input": []})
         )
+
         async def close_over_the_network(**kwargs):
             await asyncio.sleep(0)
 
@@ -2496,7 +2603,9 @@ class TestResponsesWSFirstFrameModelAuth:
 
         def route_request(data, **kwargs):
             async def relay():
-                guarded = await data["responses_ws_frame_guard"](json.dumps({"type": "response.create", "input": "two"}))
+                guarded = await data["responses_ws_frame_guard"](
+                    json.dumps({"type": "response.create", "input": "two"})
+                )
                 guarded.bill_refusal(refusal)
                 if relay_outcome == "still_relaying":
                     await asyncio.Event().wait()
@@ -2514,6 +2623,7 @@ class TestResponsesWSFirstFrameModelAuth:
             side_effect=lambda user_api_key_dict, data, call_type, guardrails_only: data
         )
         proxy_logging_obj.post_call_failure_hook = AsyncMock(side_effect=slow_failure_hook)
+
         async def release_over_the_network(user_api_key_dict):
             await asyncio.sleep(0.01)
 
@@ -2556,7 +2666,9 @@ class TestResponsesWSFirstFrameModelAuth:
             row_may_finish.set()
             await asyncio.wait_for(row_written.wait(), timeout=1)
 
-        assert proxy_logging_obj.post_call_failure_hook.await_args.kwargs["original_exception"] is (crash if crashed else refusal)
+        assert proxy_logging_obj.post_call_failure_hook.await_args.kwargs["original_exception"] is (
+            crash if crashed else refusal
+        )
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("ending", ["client_closed", "crash"])
@@ -2591,7 +2703,9 @@ class TestResponsesWSFirstFrameModelAuth:
 
         def route_request(data, **kwargs):
             async def relay():
-                guarded = await data["responses_ws_frame_guard"](json.dumps({"type": "response.create", "input": "two"}))
+                guarded = await data["responses_ws_frame_guard"](
+                    json.dumps({"type": "response.create", "input": "two"})
+                )
                 guarded.bill_refusal(refusal)
                 if ending == "crash":
                     raise crash
@@ -2666,7 +2780,9 @@ class TestResponsesWSFirstFrameModelAuth:
 
         def route_request(data, **kwargs):
             async def relay():
-                guarded = await data["responses_ws_frame_guard"](json.dumps({"type": "response.create", "input": "two"}))
+                guarded = await data["responses_ws_frame_guard"](
+                    json.dumps({"type": "response.create", "input": "two"})
+                )
                 guarded.bill_refusal(refusal)
                 data["litellm_metadata"]["standard_logging_guardrail_information"] = "written by a broken callback"
                 raise RuntimeError("relay crashed")
@@ -3030,9 +3146,8 @@ def test_cursor_chat_completions_messages_body_uses_chat_pipeline():
     ``messages`` to ``input`` (the pre-fix behavior) produced items the Responses API
     rejects. Asserts acompletion is called with the exact messages and aresponses is
     never touched."""
-    from litellm.proxy.auth.user_api_key_auth import user_api_key_auth
-
     import litellm.proxy.proxy_server as ps
+    from litellm.proxy.auth.user_api_key_auth import user_api_key_auth
 
     messages = [
         {"role": "user", "content": "read a file"},
@@ -3115,13 +3230,12 @@ def test_cursor_chat_completions_input_body_uses_responses_pipeline_and_strips_s
 
     from openai.types.responses import ResponseOutputMessage, ResponseOutputText
 
+    import litellm.proxy.proxy_server as ps
     from litellm.proxy.auth.user_api_key_auth import user_api_key_auth
     from litellm.proxy.common_utils.http_parsing_utils import (
         read_request_body as real_read_request_body,
     )
     from litellm.types.llms.openai import ResponsesAPIResponse
-
-    import litellm.proxy.proxy_server as ps
 
     captured_requests = []
 
@@ -3194,9 +3308,8 @@ def test_cursor_models_route_delegates_to_model_list():
     for lack of a Cursor API key, so BYOK verification fails before any chat request
     is sent. Both /cursor/models and /cursor/v1/models must serve the standard model
     list instead."""
-    from litellm.proxy.auth.user_api_key_auth import user_api_key_auth
-
     import litellm.proxy.proxy_server as ps
+    from litellm.proxy.auth.user_api_key_auth import user_api_key_auth
 
     model_payload = {"data": [{"id": "gpt-5.6", "object": "model"}], "object": "list"}
 
@@ -3258,8 +3371,8 @@ class TestNestFlatChatTools:
 class TestCursorMessagesArmToolNormalization:
     @pytest.mark.asyncio
     async def test_flat_custom_tool_nested_before_chat_completion_delegation(self):
-        from litellm.proxy.auth.user_api_key_auth import user_api_key_auth
         from litellm.proxy._types import UserAPIKeyAuth
+        from litellm.proxy.auth.user_api_key_auth import user_api_key_auth
 
         seen = {}
 
@@ -3321,8 +3434,8 @@ class TestCursorMessagesArmToolNormalization:
 
     @pytest.mark.asyncio
     async def test_messages_body_without_flat_tools_leaves_parsed_body_cache_untouched(self):
-        from litellm.proxy.auth.user_api_key_auth import user_api_key_auth
         from litellm.proxy._types import UserAPIKeyAuth
+        from litellm.proxy.auth.user_api_key_auth import user_api_key_auth
 
         seen = {}
 
@@ -3522,10 +3635,10 @@ class TestNormalizeToolDialectCoversBothFields:
 class TestCursorInputArmFlattening:
     @pytest.mark.asyncio
     async def test_nested_chat_shapes_in_input_body_reach_aresponses_flattened(self):
-        from litellm.proxy._types import UserAPIKeyAuth
-        from litellm.proxy.auth.user_api_key_auth import user_api_key_auth
         from openai.types.responses import ResponseOutputMessage, ResponseOutputText
 
+        from litellm.proxy._types import UserAPIKeyAuth
+        from litellm.proxy.auth.user_api_key_auth import user_api_key_auth
         from litellm.types.llms.openai import ResponsesAPIResponse
 
         mock_response = ResponsesAPIResponse(
@@ -3982,11 +4095,11 @@ class TestCursorVariantResolvedBeforeAuth:
     router already serves must reach auth untouched."""
 
     def _run_with_recording_auth(self, mock_router, request_model: str):
+        from fastapi import Request
+
         from litellm.proxy._types import UserAPIKeyAuth
         from litellm.proxy.auth.user_api_key_auth import user_api_key_auth
         from litellm.proxy.common_utils.http_parsing_utils import read_request_body
-
-        from fastapi import Request
 
         bodies_seen_by_auth = []
 
@@ -4368,7 +4481,9 @@ class TestResponsesInputTokens:
 
         assert response.status_code == 200, response.text
         sent = counter.await_args.kwargs["responses_request"]
-        assert {name: sent[name] for name in ("tools", "tool_choice", "parallel_tool_calls") if name in sent} == expected
+        assert {
+            name: sent[name] for name in ("tools", "tool_choice", "parallel_tool_calls") if name in sent
+        } == expected
 
     def test_previous_response_id_reaches_the_counter_authorized_next_to_the_id_the_client_held(self) -> None:
         from litellm.types.utils import ADDRESSED_RESPONSE_ID_FIELD
@@ -4832,3 +4947,26 @@ def test_responses_routes_document_response_models_in_openapi_schema():
     assert "output" in ok_200_properties("/v1/responses/{response_id}", "get")
     assert "deleted" in ok_200_properties("/v1/responses/{response_id}", "delete")
     assert "data" in ok_200_properties("/v1/responses/{response_id}/input_items", "get")
+
+
+_COMPACTION_SUMMARY: Final = "The user planned a Tokyo trip."
+_NEXT_TURN: Final = {"type": "message", "role": "user", "content": "And Osaka?"}
+_COMPACTED_INPUT: Final = [
+    {"type": "message", "role": "user", "content": "Plan a Tokyo trip. " * 200},
+    {"type": "message", "role": "assistant", "content": "Day one, Asakusa. " * 200},
+    {
+        "type": "compaction",
+        "id": "cmp_1",
+        "encrypted_content": json.dumps({"type": "compaction", "content": _COMPACTION_SUMMARY}),
+    },
+    _NEXT_TURN,
+]
+_SUMMARY_INPUT: Final = [{"type": "message", "role": "user", "content": _COMPACTION_SUMMARY}, _NEXT_TURN]
+
+
+def test_input_token_count_reads_a_compaction_item_as_its_summary():
+    from litellm.proxy.response_api_endpoints.endpoints import _responses_input_as_token_count_messages
+
+    assert _responses_input_as_token_count_messages(_COMPACTED_INPUT, None) == (
+        _responses_input_as_token_count_messages(_SUMMARY_INPUT, None)
+    )

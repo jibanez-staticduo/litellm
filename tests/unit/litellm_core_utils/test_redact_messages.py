@@ -26,7 +26,6 @@ import litellm
 from litellm.constants import LOGGING_WORKER_MAX_TIME_PER_COROUTINE
 from litellm.integrations.custom_logger import CustomLogger
 from litellm.litellm_core_utils.logging_worker import GLOBAL_LOGGING_WORKER
-from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
 from litellm.litellm_core_utils.redact_messages import (
     _redact_responses_api_output,
     _redacted_responses_api_response,
@@ -35,6 +34,7 @@ from litellm.litellm_core_utils.redact_messages import (
     redacted_standard_logging_payload,
     should_redact_message_logging,
 )
+from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler, HTTPHandler
 from litellm.responses.main import mock_responses_api_response
 from litellm.types.router import BaselineRouteStamp
 from litellm.types.utils import (
@@ -57,6 +57,8 @@ def _provider_fields() -> dict[str, object]:
         "reasoningContentBlocks": [{"reasoningText": {"text": SECRET}}],
         "citations": [{"cited_text": SECRET}],
         "thought_signatures": [SIGNATURE],
+        "compaction_blocks": [{"type": "compaction", "content": SECRET}],
+        "compaction_delta": {"type": "compaction_delta", "content": SECRET},
     }
 
 
@@ -163,6 +165,30 @@ def test_streaming_redaction_redacts_delta_provider_fields_without_touching_the_
     assert SECRET not in str(response.choices[0].delta), response
     assert response.choices[0].delta.provider_specific_fields["thought_signatures"] == [SIGNATURE]
     assert fields == _provider_fields()
+
+
+@pytest.mark.parametrize("shape", ["object", "dict"])
+def test_redaction_hides_a_compaction_summary_in_responses_api_output(shape: str) -> None:
+    response: Final = ResponsesAPIResponse(
+        id="resp_1",
+        created_at=1,
+        model="claude-sonnet-5-5",
+        object="response",
+        status="completed",
+        output=[
+            {
+                "type": "compaction",
+                "id": "cmp_1",
+                "encrypted_content": json.dumps({"type": "compaction", "content": SECRET}),
+            }
+        ],
+    )
+    result: Final = response if shape == "object" else response.model_dump()
+
+    redacted: Final = perform_redaction({}, result)
+
+    assert SECRET not in str(redacted), redacted
+    assert SECRET in str(result)
 
 
 @pytest.mark.parametrize("surface", ("typed", "dict", "standard", "callback", "helper"))

@@ -1,20 +1,25 @@
-from pathlib import Path
-import ast, asyncio, importlib, time
+import ast
+import asyncio
 import contextlib
 import copy
 import functools
 import gc
+import importlib
+import inspect
 import itertools
 import json
 import logging
 import os
 import sys
 import threading
+import time
+import traceback
 import warnings
 from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable, Mapping
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from types import MappingProxyType, SimpleNamespace
-from typing import TYPE_CHECKING, Final, Literal, cast
+from typing import TYPE_CHECKING, Final, List, Literal, Optional, cast
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import httpx
@@ -23,6 +28,7 @@ import pytest
 import respx
 from fastapi import HTTPException
 from opentelemetry import trace
+from pydantic import TypeAdapter
 
 import litellm
 from litellm import APIConnectionError, Router
@@ -32,14 +38,19 @@ from litellm.caching.caching import DualCache
 from litellm.caching.in_memory_cache import DEFAULT_MAX_SIZE_IN_MEMORY, InMemoryCache
 from litellm.caching.redis_cache import _redis_circuit_breaker_guard
 from litellm.exceptions import GuardrailRaisedException, MidStreamFallbackError, ModifyResponseException
-from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
 from litellm.integrations.custom_guardrail import CustomGuardrail
 from litellm.integrations.custom_logger import CustomLogger
 from litellm.integrations.otel.plumbing.context import set_request_root_span
 from litellm.litellm_core_utils.litellm_logging import Logging as LiteLLMLogging
-from litellm.llms.anthropic.pass_through.messages.streaming_iterator import closing_superseded_attempt
+from litellm.litellm_core_utils.logging_worker import GLOBAL_LOGGING_WORKER
+from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
 from litellm.llms.anthropic.pass_through.messages.agentic_streaming_iterator import (
     SERVER_FULFILLED_TOOL_LEAK_ERROR_SSE_BYTES,
+)
+from litellm.llms.anthropic.pass_through.messages.streaming_iterator import closing_superseded_attempt
+from litellm.llms.base_llm.vector_store.transformation import (
+    LiteLLMVectorStoreEmbeddingExecutor,
+    RouterVectorStoreEmbeddingExecutor,
 )
 from litellm.llms.bedrock.common_utils import BedrockError
 from litellm.models.access_group import LiteLLM_AccessGroupTable
@@ -48,16 +59,16 @@ from litellm.router import (
     MAX_BUFFERED_PRE_CONTENT_ANTHROPIC_CHUNKS,
     MAX_HELD_PRE_OUTPUT_RESPONSES_EVENTS,
     FallbackAwareAnthropicMessagesStream,
-    _stream_commits_now,
+    Span,
     _anthropic_stream_error_is_gateway_verdict,
-    _stream_fallback_error_for_raised,
     _anthropic_stream_forwards_ping_live,
-    _stream_raised_error_status,
     _anthropic_stream_should_decline_fallback,
     _is_retriable_anthropic_status,
     _responses_stream_holds_event,
+    _stream_commits_now,
+    _stream_fallback_error_for_raised,
+    _stream_raised_error_status,
     _without_line_breaks,
-    Span,
 )
 from litellm.router_strategy import simple_shuffle
 from litellm.router_utils.client_initalization_utils import MaxParallelRequestsLimit
@@ -87,19 +98,11 @@ from litellm.types.router import (
     RouterRateLimitError,
     RoutingContext,
 )
-from litellm.litellm_core_utils.logging_worker import GLOBAL_LOGGING_WORKER
-from litellm.llms.base_llm.vector_store.transformation import (
-    LiteLLMVectorStoreEmbeddingExecutor,
-    RouterVectorStoreEmbeddingExecutor,
-)
-from litellm.types.utils import CallTypes, CredentialItem
+from litellm.types.utils import CallTypes, CredentialItem, Usage
 from litellm.utils import _invalidate_model_cost_lowercase_map
 from tests._vcr_conftest_common import install_live_call_probe, record_vcr_outcome
 from tests.fake_openai_endpoint import FAKE_OPENAI_API_BASE
 from tests.large_text import text
-import traceback
-import inspect
-from typing import List, Optional
 
 if TYPE_CHECKING:
     from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
@@ -866,6 +869,7 @@ async def test_async_router_afile_content_uses_deployment_custom_llm_provider():
     This prevents "None is not a valid LlmProviders" errors when calling file content operations.
     """
     from unittest.mock import MagicMock, patch
+
     from litellm.types.llms.openai import HttpxBinaryResponseContent
 
     router = litellm.Router(
@@ -7856,6 +7860,29 @@ def test_count_pre_call_check_tokens_across_api_surfaces():
         router._count_pre_call_check_tokens(messages=None, input=None)
 
 
+def test_count_pre_call_check_tokens_skips_the_history_a_compaction_item_replaces():
+    router = litellm.Router(model_list=[{"model_name": "m", "litellm_params": {"model": "gpt-3.5-turbo"}}])
+    summary: Final = "The user planned a Tokyo trip."
+    compaction_item: Final = {
+        "type": "compaction",
+        "id": "cmp_1",
+        "encrypted_content": json.dumps({"type": "compaction", "content": summary}),
+    }
+    history: Final = [
+        {"role": "user", "content": "Plan a Tokyo trip. " * 200},
+        {"role": "assistant", "content": "Day one, Asakusa. " * 200},
+    ]
+    next_turn: Final = {"role": "user", "content": "And Osaka?"}
+
+    compacted_tokens: Final = router._count_pre_call_check_tokens(
+        messages=None, input=[*history, compaction_item, next_turn]
+    )
+
+    assert compacted_tokens == router._count_pre_call_check_tokens(
+        messages=None, input=[{"role": "user", "content": summary}, next_turn]
+    )
+
+
 def test_pre_call_checks_no_messages_or_input_does_not_crash(monkeypatch):
     """
     When neither messages nor input is provided (e.g. endpoints without prompt text),
@@ -11107,6 +11134,7 @@ async def test_health_probe_preserves_normal_caller_policy(
     strict_ids: tuple[str, ...],
 ) -> None:
     import time
+
     from litellm.types.router import AllowedFailsPolicy, RouterRateLimitError
 
     router: Final = Router(
@@ -16566,6 +16594,7 @@ class _AnthropicMessagesFakeByteStream:
         self._hidden_params = {"additional_headers": {"x-amzn-requestid": "req-1"}}
         self.closed = False
         self.closed_as_superseded = False
+        self.close_contexts: tuple[bool, ...] = ()
 
     def __aiter__(self):
         return self
@@ -16576,6 +16605,7 @@ class _AnthropicMessagesFakeByteStream:
         return self._chunks.pop(0)
 
     async def aclose(self) -> None:
+        self.close_contexts = (*self.close_contexts, closing_superseded_attempt())
         self.closed_as_superseded = self.closed_as_superseded or closing_superseded_attempt()
         self.closed = True
 
@@ -17837,6 +17867,49 @@ async def test_anthropic_messages_stream_dropped_before_content_is_retried_withi
     assert [(attempted, budget) for _, attempted, budget in provider.calls] == [(0, 2), (1, 2)]
 
 
+class _AnthropicMessagesRetryStashRecorder:
+    def __init__(self) -> None:
+        self.observed: tuple[Usage | None, ...] = ()
+
+    def record(self, usage: Usage | None) -> None:
+        self.observed = (*self.observed, usage)
+
+
+@pytest.mark.asyncio
+async def test_anthropic_messages_retry_opens_without_the_superseded_attempts_partial_usage() -> None:
+    """The dropped attempt's usage stays available for terminal billing without reaching the retry's success log."""
+    router: Final = _anthropic_messages_retry_router(num_retries=1)
+    logging_obj: Final = LiteLLMLogging(
+        model="glm",
+        messages=[{"role": "user", "content": "ping"}],
+        stream=True,
+        call_type="anthropic_messages",
+        start_time=datetime(2026, 1, 1),
+        litellm_call_id="retry-own-usage",
+        function_id="retry-own-usage",
+    )
+    partial_usage: Final = Usage(prompt_tokens=52, completion_tokens=1, total_tokens=53)
+    logging_obj.record_partial_usage_for_failure(partial_usage, 0.01)
+    stash_recorder: Final = _AnthropicMessagesRetryStashRecorder()
+    usage_adapter: Final = TypeAdapter(Usage | None)
+
+    def retry_stream() -> _AnthropicMessagesFakeByteStream:
+        stash_recorder.record(
+            usage_adapter.validate_python(logging_obj.model_call_details.get("combined_usage_object"))
+        )
+        return _anthropic_messages_retried_stream()
+
+    provider: Final = _AnthropicMessagesScriptedProvider(_anthropic_messages_dropped_before_content, retry_stream)
+
+    stream: Final = await _anthropic_messages_stream_through_router(router, provider, litellm_logging_obj=logging_obj)
+    body: Final = tuple([chunk async for chunk in stream])
+
+    assert stash_recorder.observed == (None,)
+    assert body == (_anthropic_messages_message_start_chunk(), _anthropic_messages_content_chunk("pong"))
+    assert "response_cost" not in logging_obj.model_call_details
+    assert logging_obj.model_call_details["failed_attempts_usage"] == ((partial_usage, 0.01),)
+
+
 @pytest.mark.asyncio
 async def test_anthropic_messages_superseded_stream_is_closed_before_the_retry_opens():
     """Both attempts log through the request's one logging object, so the superseded attempt's end-of-stream
@@ -17859,6 +17932,7 @@ async def test_anthropic_messages_superseded_stream_is_closed_before_the_retry_o
 
     assert body == [_anthropic_messages_message_start_chunk(), _anthropic_messages_content_chunk("pong")]
     assert superseded_closed_when_retry_opened == [True]
+    assert superseded.close_contexts[0] is True
 
 
 @pytest.mark.asyncio
@@ -23240,6 +23314,7 @@ class TestAutoRouterTraceProvenance:
     @pytest.fixture
     def _tracing(self, monkeypatch: pytest.MonkeyPatch) -> "tuple[OpenTelemetryV2, InMemorySpanExporter]":
         from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
         from litellm.integrations.otel import OpenTelemetryV2Config
         from litellm.integrations.otel.logger import OpenTelemetryV2
         from litellm.integrations.otel.plumbing import providers
@@ -28048,6 +28123,7 @@ async def test_responses_router_preserves_caller_metadata_and_internal_oauth_att
 @pytest.mark.asyncio
 async def test_native_client_router_selects_profile_and_never_reuses_cached_account_response(tmp_path: Path) -> None:
     from itertools import count
+
     from litellm.caching.caching import Cache
     from litellm.caching.llm_caching_handler import LLMClientCache
     from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
@@ -30376,7 +30452,9 @@ def test_update_kwargs_with_deployment_reads_stream_options_from_pydantic_litell
     Router()._update_kwargs_with_deployment(
         deployment={
             "model_name": "gpt-5-mini",
-            "litellm_params": LiteLLM_Params(model="openai/gpt-5-mini", api_key="fake-key", stream_options=stream_options),
+            "litellm_params": LiteLLM_Params(
+                model="openai/gpt-5-mini", api_key="fake-key", stream_options=stream_options
+            ),
             "model_info": {"id": "pydantic-params"},
         },
         kwargs=kwargs,

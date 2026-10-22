@@ -1,5 +1,7 @@
 """Tests for the shared guardrail content extraction helpers."""
 
+import json
+
 from litellm.proxy.guardrails._content_utils import (
     apply_redacted_messages_back,
     build_inspection_messages,
@@ -165,6 +167,20 @@ def test_iter_message_text_inspects_reasoning_content_and_summary():
         ]
     }
     assert list(iter_message_text(data)) == ["content secret", "summary secret"]
+
+
+def test_iter_message_text_inspects_compaction_summary():
+    data = {
+        "input": [
+            {
+                "type": "compaction",
+                "id": "cmp_1",
+                "encrypted_content": json.dumps({"type": "compaction", "content": "banned word"}),
+            },
+            {"role": "user", "content": "next turn"},
+        ]
+    }
+    assert list(iter_message_text(data)) == ["banned word", "next turn"]
 
 
 # ── walk_user_text ────────────────────────────────────────────────────────────
@@ -347,6 +363,29 @@ def test_walk_user_text_redacts_reasoning_content_and_summary():
     assert item["id"] == "rs_1"
 
 
+def test_walk_user_text_redacts_compaction_summary_and_keeps_the_block():
+    data = {
+        "input": [
+            {
+                "type": "compaction",
+                "id": "cmp_1",
+                "encrypted_content": json.dumps(
+                    {"type": "compaction", "content": "AKIAEXAMPLE summary", "signature": "sig"}
+                ),
+            }
+        ]
+    }
+    visited = walk_user_text(data, lambda s: s.replace("AKIAEXAMPLE", "[REDACTED]"))
+    item = data["input"][0]
+    assert visited == 1
+    assert (item["type"], item["id"]) == ("compaction", "cmp_1")
+    assert json.loads(item["encrypted_content"]) == {
+        "type": "compaction",
+        "content": "[REDACTED] summary",
+        "signature": "sig",
+    }
+
+
 # ── build_inspection_messages ─────────────────────────────────────────────────
 
 
@@ -513,9 +552,7 @@ def test_build_inspection_messages_includes_reasoning_summary():
             }
         ]
     }
-    assert build_inspection_messages(data) == [
-        {"role": "assistant", "content": "secret summary"}
-    ]
+    assert build_inspection_messages(data) == [{"role": "assistant", "content": "secret summary"}]
 
 
 # ── has_non_string_content ────────────────────────────────────────────────────
@@ -675,6 +712,7 @@ def test_is_string_batch_input_rejects_other_shapes():
 # LIT-4302: custom_tool_call_output walking
 # -------------------------------------------------------------------
 
+
 def test_iter_message_text_walks_custom_tool_call_output():
     """custom_tool_call_output items should yield their output text."""
     data = {
@@ -683,6 +721,7 @@ def test_iter_message_text_walks_custom_tool_call_output():
         ]
     }
     from litellm.proxy.guardrails._content_utils import iter_message_text
+
     texts = list(iter_message_text(data))
     assert "tool-secret" in texts
 

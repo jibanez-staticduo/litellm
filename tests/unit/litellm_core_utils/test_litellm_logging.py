@@ -1,11 +1,9 @@
-from pathlib import Path
-from queue import Queue
-from litellm.types.llms.openai import ResponsesAPIStreamEvents
 import asyncio
 import contextlib
 import copy
 import datetime
 import importlib.abc
+import inspect
 import json
 import logging
 import os
@@ -14,10 +12,14 @@ import threading
 import time
 import traceback
 from collections.abc import AsyncIterator, Callable, Iterator, Mapping, Sequence
-from datetime import datetime as datetime_standard_logging, datetime as datetime_unit_test, datetime as dt_object
+from datetime import datetime as datetime_standard_logging
+from datetime import datetime as datetime_unit_test
+from datetime import datetime as dt_object
 from importlib.machinery import ModuleSpec
+from pathlib import Path
+from queue import Queue
 from types import MappingProxyType, ModuleType
-from typing import Final, Literal
+from typing import Final, List, Literal, Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -43,7 +45,6 @@ from litellm.constants import (
 from litellm.cost_calculator import ocr_batch_cost
 from litellm.integrations.custom_logger import CustomLogger
 from litellm.litellm_core_utils import litellm_logging
-from litellm.litellm_core_utils.litellm_logging import Logging as LitellmLogging
 from litellm.litellm_core_utils.litellm_logging import (
     BilledRoundsSpend,
     Logging,
@@ -53,6 +54,7 @@ from litellm.litellm_core_utils.litellm_logging import (
     get_standard_logging_object_payload,
     set_callbacks,
 )
+from litellm.litellm_core_utils.litellm_logging import Logging as LitellmLogging
 from litellm.litellm_core_utils.logging_worker import GLOBAL_LOGGING_WORKER
 from litellm.llms.base_llm.ocr.transformation import OCRUsageInfo
 from litellm.proxy._types import UserAPIKeyAuth
@@ -60,11 +62,17 @@ from litellm.proxy.hooks.cache_control_check import PROXY_CacheControlCheck
 from litellm.proxy.hooks.max_iterations_limiter import PROXY_MaxIterationsHandler
 from litellm.proxy.hooks.parallel_request_limiter_v3 import PROXY_MaxParallelRequestsHandler_v3
 from litellm.proxy.utils import InternalUsageCache
-from litellm.types.llms.openai import ResponseAPIUsage, ResponseCompletedEvent, ResponsesAPIResponse
+from litellm.types.llms.openai import (
+    ResponseAPIUsage,
+    ResponseCompletedEvent,
+    ResponsesAPIResponse,
+    ResponsesAPIStreamEvents,
+)
 from litellm.types.utils import (
     CallTypes,
     CostBreakdown,
     ImageResponse,
+    LiteLLMCommonStrings,
     LiteLLMRealtimeStreamLoggingObject,
     ModelResponse,
     StandardLoggingHiddenParams,
@@ -75,9 +83,6 @@ from litellm.types.utils import (
     Usage,
 )
 from tests._vcr_conftest_common import install_live_call_probe, record_vcr_outcome
-import inspect
-from typing import List, Optional
-from litellm.types.utils import LiteLLMCommonStrings
 
 
 @pytest.fixture
@@ -1856,13 +1861,19 @@ def test_mark_logging_complete_flags_by_stream_and_event(
         "async_failure",
         "sync_failure",
     )
+    attempt_marker: Final = datetime_unit_test(2026, 1, 1)
     logging_obj.stream = stream
+    logging_obj.model_call_details["current_attempt_api_call_start_time"] = attempt_marker
 
     logging_obj.mark_logging_complete(event_type=event)
 
     expected_to_run: Final = stream and event in ("async_success", "sync_success")
     assert logging_obj.should_run_logging(event_type=event) is expected_to_run
     assert all(logging_obj.should_run_logging(event_type=other_event) for other_event in events if other_event != event)
+    if event == "async_failure":
+        assert logging_obj.model_call_details["async_failure_logged_attempt"] is attempt_marker
+    else:
+        assert "async_failure_logged_attempt" not in logging_obj.model_call_details
 
 
 @pytest.mark.parametrize("stream", [False, True])
@@ -2613,7 +2624,6 @@ async def test_completed_success_selects_one_implemented_hook(
         assert response_id == response.id
         assert cost == logging_obj.model_call_details["response_cost"]
         assert (thread_id == loop_thread) is (kind != "sync")
-
 
 
 @pytest.mark.parametrize("for_async_request,split_registries", [(False, False), (True, False), (True, True)])
@@ -5124,12 +5134,10 @@ def test_reported_cost_respects_configured_pricing_and_additional_charges(
                         else {}
                     ),
                 }
-            }
-        }
+            },
+        },
     )
-    logging_obj.model_call_details.update(
-        {"additional_response_cost": additional_cost, "cache_hit": cache_hit}
-    )
+    logging_obj.model_call_details.update({"additional_response_cost": additional_cost, "cache_hit": cache_hit})
     logging_obj._provider_reported_cost = reported_cost
     response: Final = ModelResponse(
         model=pricing_model,
@@ -7076,8 +7084,11 @@ async def test_background_interaction_completion_rebills_after_in_progress_succe
 
     class SyncRecorder(CustomLogger):
         def log_success_event(
-            self, kwargs: dict[str, object], response_obj: object,
-            start_time: dt.datetime, end_time: dt.datetime,
+            self,
+            kwargs: dict[str, object],
+            response_obj: object,
+            start_time: dt.datetime,
+            end_time: dt.datetime,
         ) -> None:
             events.put((response_obj, kwargs.get("response_cost")))
             logged.set()
@@ -7110,10 +7121,10 @@ async def test_background_interaction_completion_rebills_after_in_progress_succe
         assert logging_obj.model_call_details["response_cost"] > 0
         assert logging_obj.model_call_details["standard_logging_object"]["total_tokens"] == 175
 
-
     assert events.qsize() == 2
     assert events.get_nowait() == (in_progress, None)
     assert events.get_nowait() == (completed, logging_obj.model_call_details["response_cost"])
+
 
 @pytest.mark.asyncio
 async def test_background_interaction_completion_prices_the_settled_body_itself():
@@ -7607,8 +7618,8 @@ def test_restore_correlation_context_safe_to_call_repeatedly(monkeypatch):
 
 
 def test_restore_correlation_context_does_not_resanitize(monkeypatch):
-    from litellm.litellm_core_utils.litellm_logging import Logging
     from litellm._logging import _sanitize_correlation_id
+    from litellm.litellm_core_utils.litellm_logging import Logging
 
     monkeypatch.setattr(litellm, "request_correlation_in_logs", True)
     trace_id_var.set("outer-trace")
@@ -7755,11 +7766,11 @@ class TestNonInferenceCallTypesAreNotBilled:
         assert cost == 0.0
 
     def test_retrieved_usage_is_not_re_reported_in_standard_logging_payload(self):
+        from datetime import datetime
+
         from litellm.litellm_core_utils.litellm_logging import (
             get_standard_logging_object_payload,
         )
-
-        from datetime import datetime
 
         logging_obj = self._logging_obj("aget_responses")
         now = datetime.now()
@@ -10401,8 +10412,13 @@ class TestAzurePTUSpilloverCost:
             assert payload is not None
             model_map_value: Final = payload["model_map_information"]["model_map_value"]
             assert model_map_value is not None
-            assert model_map_value["input_cost_per_token"] == litellm.model_cost[self.SERVED_MODEL]["input_cost_per_token"]
-            assert model_map_value["output_cost_per_token"] == litellm.model_cost[self.SERVED_MODEL]["output_cost_per_token"]
+            assert (
+                model_map_value["input_cost_per_token"] == litellm.model_cost[self.SERVED_MODEL]["input_cost_per_token"]
+            )
+            assert (
+                model_map_value["output_cost_per_token"]
+                == litellm.model_cost[self.SERVED_MODEL]["output_cost_per_token"]
+            )
             assert response_cost == pytest.approx(
                 100 * model_map_value["input_cost_per_token"] + 50 * model_map_value["output_cost_per_token"]
             )
@@ -11170,7 +11186,11 @@ def test_standard_logging_payload_reports_the_deployment_entry_the_request_was_b
             }
         }
         logging_obj.update_environment_variables(
-            model="gpt-5.4-nano", user="", optional_params={}, litellm_params=litellm_params, custom_llm_provider="openai"
+            model="gpt-5.4-nano",
+            user="",
+            optional_params={},
+            litellm_params=litellm_params,
+            custom_llm_provider="openai",
         )
         response: Final = ModelResponse(
             model="gpt-5.4-nano",
@@ -11443,6 +11463,7 @@ def test_enterprise_alerting_loggers_resolves_real_classes():
     from litellm_enterprise.enterprise_callbacks.send_emails.resend_email import ResendEmailLogger
     from litellm_enterprise.enterprise_callbacks.send_emails.sendgrid_email import SendGridEmailLogger
     from litellm_enterprise.enterprise_callbacks.send_emails.smtp_email import SMTPEmailLogger
+
     from litellm.litellm_core_utils import litellm_logging as logging_module
 
     logging_module._enterprise_alerting_loggers.cache_clear()
@@ -11462,6 +11483,7 @@ def test_enterprise_alerting_loggers_falls_back_without_disabling_callback_contr
     from litellm_enterprise.enterprise_callbacks.callback_controls import (
         EnterpriseCallbackControls,
     )
+
     from litellm.integrations.custom_logger import CustomLogger
     from litellm.litellm_core_utils import litellm_logging as logging_module
 
@@ -11502,10 +11524,11 @@ def test_init_email_alerting_logger_reuses_instance(
     integration: Literal["smtp_email", "resend_email", "sendgrid_email"],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from litellm.litellm_core_utils import litellm_logging as logging_module
     from litellm_enterprise.enterprise_callbacks.send_emails.resend_email import ResendEmailLogger
     from litellm_enterprise.enterprise_callbacks.send_emails.sendgrid_email import SendGridEmailLogger
     from litellm_enterprise.enterprise_callbacks.send_emails.smtp_email import SMTPEmailLogger
+
+    from litellm.litellm_core_utils import litellm_logging as logging_module
 
     logger_class: Final = (
         SMTPEmailLogger
@@ -11540,9 +11563,10 @@ def test_init_email_alerting_logger_reuses_instance(
 
 
 def test_init_pagerduty_logger_reuses_instance(monkeypatch):
-    from litellm.types.integrations.pagerduty import AlertingConfig
     from litellm_enterprise.enterprise_callbacks.pagerduty.pagerduty import PagerDutyAlerting
+
     from litellm.litellm_core_utils import litellm_logging as logging_module
+    from litellm.types.integrations.pagerduty import AlertingConfig
 
     monkeypatch.setenv("PAGERDUTY_API_KEY", "test-pagerduty-key")
     logging_module._in_memory_loggers.clear()
@@ -12430,7 +12454,6 @@ def test_cost_breakdown_in_standard_logging_payload():
     Test that cost breakdown fields are properly included in StandardLoggingPayload.
     Tests input_cost, output_cost, tool_usage_cost, and total_cost fields.
     """
-    import time
 
     from datetime import datetime as datetime_standard_logging
 
@@ -12438,7 +12461,6 @@ def test_cost_breakdown_in_standard_logging_payload():
         Logging,
         get_standard_logging_object_payload,
     )
-    from litellm.types.utils import Usage
 
     # Create a mock logging object with cost breakdown
     logging_obj = Logging(
@@ -13919,6 +13941,7 @@ def test_memory_luna_ambiguous_reference_fails_closed(memory_luna_router: litell
     )
     assert logging_obj._response_cost_calculator(response) is None
     assert "ambiguous" in str(logging_obj.model_call_details["response_cost_failure_debug_information"])
+
 
 def test_masking_function_isolated_from_other_loggers():
     from litellm.litellm_core_utils.litellm_logging import (

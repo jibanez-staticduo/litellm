@@ -19,17 +19,17 @@ from litellm.proxy.db.db_spend_update_writer import DBSpendUpdateWriter
 from litellm.proxy.db.model_usage_rollup import build_model_usage_transaction
 from litellm.proxy.db.spend_log_tool_index import response_tool_call_names
 from litellm.proxy.hooks.proxy_track_cost_callback import (
-    _get_budget_reservation_from_metadata,
     ProxyDBLogger,
+    _get_budget_reservation_from_metadata,
     _should_track_cost_callback,
     _update_database_and_spend_counters,
     run_spend_event,
 )
 from litellm.proxy.route_llm_request import ProxyModelNotFoundError
-from litellm.proxy.utils import ProxyUpdateSpend
 from litellm.proxy.spend_tracking.spend_event import SpendEventDecodeError, build_spend_event, decode_spend_event
 from litellm.proxy.spend_tracking.spend_event_producer import SpendEventProducer, UnixAddress
 from litellm.proxy.spend_tracking.spend_tracking_utils import get_logging_payload
+from litellm.proxy.utils import ProxyUpdateSpend
 from litellm.types.router import Deployment, LiteLLM_Params
 from litellm.types.utils import CallTypes, LiteLLMBatch, ModelResponse, PromptTokensDetailsWrapper, Usage
 
@@ -417,6 +417,74 @@ async def test_async_post_call_failure_hook_does_not_clobber_guardrail_info_in_m
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
+    "request_headers, caller_metadata, redaction_is_global, code_word_is_stored",
+    [
+        ({"x-litellm-enable-message-redaction": "true"}, {"user_id": "claude-code-session"}, False, False),
+        ({"litellm-enable-message-redaction": "true"}, {}, False, False),
+        ({"user-agent": "claude-cli"}, {"user_id": "claude-code-session"}, False, True),
+        ({"user-agent": "claude-cli"}, {"headers": {"x-litellm-enable-message-redaction": "true"}}, False, False),
+        ({"litellm-disable-message-redaction": "true"}, {"user_id": "claude-code-session"}, True, False),
+    ],
+    ids=[
+        "enable_header_redacts",
+        "legacy_enable_header_redacts",
+        "no_header_stores_prompt",
+        "caller_metadata_headers_still_apply",
+        "disable_header_never_loosens_global_redaction",
+    ],
+)
+async def test_async_post_call_failure_hook_honors_the_redaction_header_on_a_litellm_metadata_route(
+    monkeypatch: pytest.MonkeyPatch,
+    request_headers: dict[str, str],
+    caller_metadata: dict[str, object],
+    redaction_is_global: bool,
+    code_word_is_stored: bool,
+):
+    monkeypatch.setenv("STORE_PROMPTS_IN_SPEND_LOGS", "true")
+    monkeypatch.setattr(litellm, "turn_off_message_logging", redaction_is_global)
+    writer: Final = MagicMock(spec=DBSpendUpdateWriter)
+    writer.update_database = AsyncMock()
+    logger: Final = ProxyDBLogger(spend_writer=lambda: writer)
+    request_input: Final = "The code word is VERMILION-42. Reply OK."
+    body_metadata: Final = dict(caller_metadata)
+    litellm_metadata_headers: Final = dict(request_headers)
+
+    await logger.async_post_call_failure_hook(
+        request_data={
+            "model": "gpt-5.6",
+            "input": request_input,
+            "metadata": body_metadata,
+            "litellm_metadata": {"headers": litellm_metadata_headers},
+            "proxy_server_request": {
+                "url": "http://localhost/v1/responses",
+                "body": {
+                    "model": "gpt-5.6",
+                    "input": request_input,
+                    "temperature": 7,
+                    "metadata": body_metadata,
+                    "litellm_metadata": {"headers": litellm_metadata_headers},
+                },
+            },
+        },
+        original_exception=Exception("temperature must be at most 2"),
+        user_api_key_dict=UserAPIKeyAuth(api_key="test_api_key"),
+    )
+
+    row: Final = get_logging_payload(
+        kwargs=writer.update_database.call_args.kwargs["kwargs"],
+        response_obj={},
+        start_time=datetime.now(),
+        end_time=datetime.now(),
+    )
+    stored_request: Final = json.loads(row["proxy_server_request"])
+    assert stored_request["temperature"] == 7
+    assert ("VERMILION-42" in row["proxy_server_request"]) is code_word_is_stored
+    assert stored_request["metadata"].get("headers") == caller_metadata.get("headers")
+    assert stored_request["litellm_metadata"]["headers"] == request_headers
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
     "used_client_oauth_token, custom_llm_provider, expected",
     [(True, "anthropic", True), (True, "bedrock", False), (False, "anthropic", False)],
 )
@@ -460,7 +528,10 @@ async def test_async_post_call_failure_hook_carries_used_client_oauth_token_from
 @pytest.mark.parametrize(
     "metadata_buckets, expected",
     [
-        ({"metadata": {"used_client_oauth_token": True}, "litellm_metadata": {"used_client_oauth_token": False}}, False),
+        (
+            {"metadata": {"used_client_oauth_token": True}, "litellm_metadata": {"used_client_oauth_token": False}},
+            False,
+        ),
         ({"metadata": {"used_client_oauth_token": True}, "litellm_metadata": {"user_id": "caller"}}, None),
         ({"metadata": {"used_client_oauth_token": "yes"}}, None),
     ],
@@ -617,7 +688,10 @@ async def test_async_post_call_failure_hook_adds_guardrail_cost_to_recovered_str
     [
         (None, ["detect-only-scanner"]),
         ([], ["detect-only-scanner"]),
-        ([{"guardrail_name": "logged-before-the-failure", "guardrail_status": "success"}], ["logged-before-the-failure"]),
+        (
+            [{"guardrail_name": "logged-before-the-failure", "guardrail_status": "success"}],
+            ["logged-before-the-failure"],
+        ),
     ],
 )
 async def test_async_post_call_failure_hook_keeps_a_guardrail_verdict_recorded_after_the_failure_was_logged(
@@ -3239,7 +3313,9 @@ async def test_track_cost_callback_failure_alert_never_carries_request_metadata_
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("identity_field", ["agent_id", "billing_agent_id"])
-async def test_autonomous_llm_callback_persists_without_human_or_key(identity_field: str) -> None:  # test-quality-ok: verifies anonymous-agent charges reach the persistence boundary; no injection seam
+async def test_autonomous_llm_callback_persists_without_human_or_key(
+    identity_field: str,
+) -> None:  # test-quality-ok: verifies anonymous-agent charges reach the persistence boundary; no injection seam
     kwargs: Final = {
         "call_type": "acompletion",
         "model": "test-model",
@@ -3263,9 +3339,12 @@ async def test_autonomous_llm_callback_persists_without_human_or_key(identity_fi
 
 @pytest.mark.parametrize("agent_id,expected", [(None, False), ("autonomous-agent", True)])
 def test_autonomous_agent_cost_tracking_needs_no_human_or_virtual_key(agent_id: str | None, expected: bool) -> None:
-    assert _should_track_cost_callback(
-        user_api_key=None, user_id=None, team_id=None, end_user_id=None, call_type="acompletion", agent_id=agent_id
-    ) is expected
+    assert (
+        _should_track_cost_callback(
+            user_api_key=None, user_id=None, team_id=None, end_user_id=None, call_type="acompletion", agent_id=agent_id
+        )
+        is expected
+    )
 
 
 _CALL_START: Final = datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -3305,6 +3384,7 @@ async def test_track_cost_callback_enqueue_emits_no_service_span():  # test-qual
 
     assert update_database.await_count == 1, "the spend enqueue itself must still run"
     assert success_hook.await_count == 0, [call.kwargs for call in success_hook.await_args_list]
+
 
 class _SharedCounter:
     def __init__(self) -> None:

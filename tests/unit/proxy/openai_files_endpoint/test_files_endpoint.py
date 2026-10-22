@@ -1,21 +1,17 @@
-import json
 from typing import Final, List, Optional
+from unittest.mock import AsyncMock, MagicMock
 from urllib.parse import quote
-from unittest.mock import ANY, AsyncMock, MagicMock
 
+import httpx
 import pytest
 import respx
-import httpx
 from fastapi.testclient import TestClient
 from pytest_mock import MockerFixture
-
 
 import litellm
 from litellm import Router
 from litellm.files.types import FileContentStreamingResult
-from litellm.proxy._types import LiteLLM_UserTableFiltered, LitellmUserRoles, UserAPIKeyAuth
-from litellm.proxy.hooks import get_proxy_hook
-from litellm.proxy.management_endpoints.internal_user_endpoints import ui_view_users
+from litellm.proxy._types import LitellmUserRoles, UserAPIKeyAuth
 from litellm.proxy.openai_files_endpoints.file_content_streaming_handler import (
     FileContentStreamingHandler,
 )
@@ -28,7 +24,6 @@ from litellm.types.llms.openai import (
 
 client = TestClient(app)
 from litellm.caching.caching import DualCache
-from litellm.proxy.proxy_server import hash_token
 from litellm.proxy.utils import ProxyLogging
 
 VALID_BATCH_LINE = (
@@ -78,13 +73,9 @@ def llm_router() -> Router:
 
 
 def setup_proxy_logging_object(monkeypatch, llm_router: Router) -> ProxyLogging:
-    proxy_logging_object = ProxyLogging(
-        user_api_key_cache=DualCache(default_in_memory_ttl=1)
-    )
+    proxy_logging_object = ProxyLogging(user_api_key_cache=DualCache(default_in_memory_ttl=1))
     proxy_logging_object._add_proxy_hooks(llm_router)
-    monkeypatch.setattr(
-        "litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_object
-    )
+    monkeypatch.setattr("litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_object)
     return proxy_logging_object
 
 
@@ -350,7 +341,6 @@ def test_mock_create_audio_file(mocker: MockerFixture, monkeypatch, llm_router: 
     """
     import litellm
     import litellm.proxy.proxy_server as ps
-    from litellm import Router
     from litellm.proxy._types import LitellmUserRoles
     from litellm.proxy.utils import ProxyLogging
 
@@ -358,13 +348,9 @@ def test_mock_create_audio_file(mocker: MockerFixture, monkeypatch, llm_router: 
     monkeypatch.setattr("litellm.proxy.proxy_server.prisma_client", None)
 
     # Mock create_file as an async function
-    mock_create_file = mocker.patch(
-        "litellm.files.main.create_file", new=mocker.AsyncMock()
-    )
+    mock_create_file = mocker.patch("litellm.files.main.create_file", new=mocker.AsyncMock())
 
-    proxy_logging_obj = ProxyLogging(
-        user_api_key_cache=DualCache(default_in_memory_ttl=1)
-    )
+    proxy_logging_obj = ProxyLogging(user_api_key_cache=DualCache(default_in_memory_ttl=1))
 
     proxy_logging_obj._add_proxy_hooks(llm_router)
 
@@ -430,23 +416,17 @@ def test_mock_create_audio_file(mocker: MockerFixture, monkeypatch, llm_router: 
         ):
             raise NotImplementedError("Not implemented for test")
 
-        async def afile_delete(
-            self, file_id, litellm_parent_otel_span, llm_router, **data
-        ):
+        async def afile_delete(self, file_id, litellm_parent_otel_span, llm_router, **data):
             raise NotImplementedError("Not implemented for test")
 
-        async def afile_content(
-            self, file_id, litellm_parent_otel_span, llm_router, **data
-        ):
+        async def afile_content(self, file_id, litellm_parent_otel_span, llm_router, **data):
             raise NotImplementedError("Not implemented for test")
 
     # Manually add the hook to the proxy_hook_mapping
     proxy_logging_obj.proxy_hook_mapping["managed_files"] = DummyManagedFiles()
 
     monkeypatch.setattr("litellm.proxy.proxy_server.llm_router", llm_router)
-    monkeypatch.setattr(
-        "litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj
-    )
+    monkeypatch.setattr("litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj)
 
     app.dependency_overrides[ps.user_api_key_auth] = lambda: UserAPIKeyAuth(
         user_role=LitellmUserRoles.PROXY_ADMIN, user_id="test-user"
@@ -483,9 +463,7 @@ def test_mock_create_audio_file(mocker: MockerFixture, monkeypatch, llm_router: 
             ):
                 azure_call_found = True
                 break
-        assert (
-            azure_call_found
-        ), f"Azure call not found with expected parameters. Calls: {calls}"
+        assert azure_call_found, f"Azure call not found with expected parameters. Calls: {calls}"
 
         # Check for OpenAI call
         openai_call_found = False
@@ -555,15 +533,11 @@ def test_create_file_batch_streams_from_upload_spool(monkeypatch, llm_router: Ro
         )
         assert resp.status_code == 200, resp.text
         file_elem = captured["file_elem"]
-        assert not isinstance(
-            file_elem, (bytes, bytearray)
-        ), "batch upload must be a streamable handle, not in-memory bytes"
-        assert hasattr(file_elem, "read") and hasattr(
-            file_elem, "seek"
-        ), "batch upload must be a seekable file handle"
-        assert (
-            captured["streamed_content"] == content
-        ), "the handle must stream the uploaded bytes"
+        assert not isinstance(file_elem, (bytes, bytearray)), (
+            "batch upload must be a streamable handle, not in-memory bytes"
+        )
+        assert hasattr(file_elem, "read") and hasattr(file_elem, "seek"), "batch upload must be a seekable file handle"
+        assert captured["streamed_content"] == content, "the handle must stream the uploaded bytes"
 
         captured.clear()
         resp = client.post(
@@ -573,17 +547,13 @@ def test_create_file_batch_streams_from_upload_spool(monkeypatch, llm_router: Ro
             headers={"Authorization": "Bearer test-key"},
         )
         assert resp.status_code == 200, resp.text
-        assert isinstance(
-            captured["file_elem"], (bytes, bytearray)
-        ), "non-batch upload must stay in-memory bytes"
+        assert isinstance(captured["file_elem"], (bytes, bytearray)), "non-batch upload must stay in-memory bytes"
     finally:
         app.dependency_overrides.pop(ps.user_api_key_auth, None)
 
 
 @pytest.mark.flaky(retries=3, delay=2)
-def test_target_storage_invokes_storage_backend(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
-):
+def test_target_storage_invokes_storage_backend(mocker: MockerFixture, monkeypatch, llm_router: Router):
     """
     Ensure target_storage is parsed and invokes the storage backend service.
     """
@@ -640,9 +610,7 @@ def test_target_storage_invokes_storage_backend(
 
 
 @pytest.mark.flaky(retries=3, delay=2)
-def test_target_storage_with_target_models(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
-):
+def test_target_storage_with_target_models(mocker: MockerFixture, monkeypatch, llm_router: Router):
     """
     Ensure target_storage and target_model_names are parsed and passed through.
     """
@@ -722,6 +690,16 @@ def _router_with_executed_batch_model() -> Router:
                 "litellm_params": {"model": "gemini/gemini-2.0-flash"},
                 "model_info": {"id": "gemini-2.0-flash-id"},
             },
+            {
+                "model_name": "vertex-batch-drop",
+                "litellm_params": {"model": "vertex_ai/gemini-2.5-flash", "drop_params": True},
+                "model_info": {"id": "vertex-batch-drop-id"},
+            },
+            {
+                "model_name": "vertex-batch-keep",
+                "litellm_params": {"model": "vertex_ai/gemini-2.5-flash", "drop_params": False},
+                "model_info": {"id": "vertex-batch-keep-id"},
+            },
         ]
     )
 
@@ -753,8 +731,10 @@ def batch_upload_seams(mocker: MockerFixture, monkeypatch):
         "litellm.proxy.openai_files_endpoints.storage_backend_service.StorageBackendFileService.upload_file_to_storage_backend",
         new=mocker.AsyncMock(return_value=uploaded),
     )
-    provider_upload = mocker.patch(  # test-quality-ok: the route calls litellm.acreate_file directly with no injection seam
-        "litellm.acreate_file", new=mocker.AsyncMock(return_value=uploaded)
+    provider_upload = (
+        mocker.patch(  # test-quality-ok: the route calls litellm.acreate_file directly with no injection seam
+            "litellm.acreate_file", new=mocker.AsyncMock(return_value=uploaded)
+        )
     )
     try:
         with respx.mock(assert_all_called=False) as upstream:
@@ -939,10 +919,41 @@ def test_batch_upload_for_a_provider_model_still_goes_to_the_provider(batch_uplo
     assert provider_upload.call_args.kwargs["custom_llm_provider"] == "gemini"
 
 
-@pytest.mark.skip(reason="mock respx fails on ci/cd - unclear why")
-def test_create_file_and_call_chat_completion_e2e(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
+@pytest.mark.parametrize(
+    "model, expected_drop_params",
+    [("vertex-batch-drop", True), ("vertex-batch-keep", False)],
+)
+def test_batch_upload_for_a_provider_model_carries_the_deployment_drop_params(
+    batch_upload_seams, model: str, expected_drop_params: bool
 ):
+    _, provider_upload, _ = batch_upload_seams
+
+    response = _upload_batch_file({"x-litellm-model": model}, {})
+
+    assert response.status_code == 200, response.text
+    assert provider_upload.call_args.kwargs["drop_params"] is expected_drop_params
+
+
+def test_batch_upload_for_a_provider_model_without_deployment_drop_params_sends_no_drop_params(batch_upload_seams):
+    _, provider_upload, _ = batch_upload_seams
+
+    response = _upload_batch_file({"x-litellm-model": "gemini-2.0-flash"}, {})
+
+    assert response.status_code == 200, response.text
+    assert "drop_params" not in provider_upload.call_args.kwargs
+
+
+def test_batch_upload_keeps_the_callers_drop_params_over_the_deployment(batch_upload_seams):
+    _, provider_upload, _ = batch_upload_seams
+
+    response = _upload_batch_file({"x-litellm-model": "vertex-batch-keep", "user-agent": "claude-cli/2.1.0"}, {})
+
+    assert response.status_code == 200, response.text
+    assert provider_upload.call_args.kwargs["drop_params"] is True
+
+
+@pytest.mark.skip(reason="mock respx fails on ci/cd - unclear why")
+def test_create_file_and_call_chat_completion_e2e(mocker: MockerFixture, monkeypatch, llm_router: Router):
     """
     1. Create a file
     2. Call a chat completion with the file
@@ -975,16 +986,10 @@ def test_create_file_and_call_chat_completion_e2e(
         mocker.patch.object(llm_router, "acreate_file", return_value=mock_file_response)
 
         # Mock the Gemini API call using respx
-        mock_gemini_response = {
-            "candidates": [
-                {"content": {"parts": [{"text": "This is a test audio file"}]}}
-            ]
-        }
+        mock_gemini_response = {"candidates": [{"content": {"parts": [{"text": "This is a test audio file"}]}}]}
 
         # Mock the Gemini API endpoint with a more flexible pattern
-        gemini_route = mock.post(
-            url__regex=r".*generativelanguage\.googleapis\.com.*"
-        ).mock(
+        gemini_route = mock.post(url__regex=r".*generativelanguage\.googleapis\.com.*").mock(
             return_value=respx.MockResponse(status_code=200, json=mock_gemini_response),
         )
 
@@ -1088,9 +1093,7 @@ def test_create_file_and_call_chat_completion_e2e(
 
 
 @pytest.mark.skip(reason="function migrated to litellm/proxy/hooks/managed_files.py")
-def test_create_file_for_each_model(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
-):
+def test_create_file_for_each_model(mocker: MockerFixture, monkeypatch, llm_router: Router):
     """
     Test that create_file_for_each_model creates files for each target model and returns a unified file ID
     """
@@ -1102,16 +1105,12 @@ def test_create_file_for_each_model(
         create_file_for_each_model,
     )
     from litellm.proxy.utils import ProxyLogging
-    from litellm.types.llms.openai import OpenAIFileObject, OpenAIFilesPurpose
+    from litellm.types.llms.openai import OpenAIFileObject
 
     # Setup proxy logging
-    proxy_logging_obj = ProxyLogging(
-        user_api_key_cache=DualCache(default_in_memory_ttl=1)
-    )
+    proxy_logging_obj = ProxyLogging(user_api_key_cache=DualCache(default_in_memory_ttl=1))
     proxy_logging_obj._add_proxy_hooks(llm_router)
-    monkeypatch.setattr(
-        "litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj
-    )
+    monkeypatch.setattr("litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj)
 
     # Mock user API key dict
     user_api_key_dict = UserAPIKeyAuth(
@@ -1193,18 +1192,14 @@ def test_create_file_for_each_model(
     assert openai_call_found, "OpenAI call not found with expected parameters"
 
 
-def test_create_file_with_expires_after(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
-):
+def test_create_file_with_expires_after(mocker: MockerFixture, monkeypatch, llm_router: Router):
     """
     Test that expires_after is properly parsed and passed through when creating a file
     """
     from litellm.llms.base_llm.files.transformation import BaseFileEndpoints
     from litellm.types.llms.openai import OpenAIFileObject
 
-    proxy_logging_obj = ProxyLogging(
-        user_api_key_cache=DualCache(default_in_memory_ttl=1)
-    )
+    proxy_logging_obj = ProxyLogging(user_api_key_cache=DualCache(default_in_memory_ttl=1))
     proxy_logging_obj._add_proxy_hooks(llm_router)
 
     class DummyManagedFiles(BaseFileEndpoints):
@@ -1252,21 +1247,15 @@ def test_create_file_with_expires_after(
         ):
             raise NotImplementedError("Not implemented for test")
 
-        async def afile_delete(
-            self, file_id, litellm_parent_otel_span, llm_router, **data
-        ):
+        async def afile_delete(self, file_id, litellm_parent_otel_span, llm_router, **data):
             raise NotImplementedError("Not implemented for test")
 
-        async def afile_content(
-            self, file_id, litellm_parent_otel_span, llm_router, **data
-        ):
+        async def afile_content(self, file_id, litellm_parent_otel_span, llm_router, **data):
             raise NotImplementedError("Not implemented for test")
 
     proxy_logging_obj.proxy_hook_mapping["managed_files"] = DummyManagedFiles()
     monkeypatch.setattr("litellm.proxy.proxy_server.llm_router", llm_router)
-    monkeypatch.setattr(
-        "litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj
-    )
+    monkeypatch.setattr("litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj)
 
     # Create test file content
     test_file_content = b'{"prompt": "Hello", "completion": "Hi"}'
@@ -1291,20 +1280,14 @@ def test_create_file_with_expires_after(
     assert result["purpose"] == "fine-tune"
 
 
-def test_create_file_with_expires_after_missing_anchor(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
-):
+def test_create_file_with_expires_after_missing_anchor(mocker: MockerFixture, monkeypatch, llm_router: Router):
     """
     Test that an error is returned when expires_after[anchor] is missing
     """
-    proxy_logging_obj = ProxyLogging(
-        user_api_key_cache=DualCache(default_in_memory_ttl=1)
-    )
+    proxy_logging_obj = ProxyLogging(user_api_key_cache=DualCache(default_in_memory_ttl=1))
     proxy_logging_obj._add_proxy_hooks(llm_router)
     monkeypatch.setattr("litellm.proxy.proxy_server.llm_router", llm_router)
-    monkeypatch.setattr(
-        "litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj
-    )
+    monkeypatch.setattr("litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj)
 
     test_file_content = b'{"prompt": "Hello", "completion": "Hi"}'
     test_file = ("mydata.jsonl", test_file_content, "application/json")
@@ -1328,20 +1311,14 @@ def test_create_file_with_expires_after_missing_anchor(
     )
 
 
-def test_create_file_with_expires_after_missing_seconds(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
-):
+def test_create_file_with_expires_after_missing_seconds(mocker: MockerFixture, monkeypatch, llm_router: Router):
     """
     Test that an error is returned when expires_after[seconds] is missing
     """
-    proxy_logging_obj = ProxyLogging(
-        user_api_key_cache=DualCache(default_in_memory_ttl=1)
-    )
+    proxy_logging_obj = ProxyLogging(user_api_key_cache=DualCache(default_in_memory_ttl=1))
     proxy_logging_obj._add_proxy_hooks(llm_router)
     monkeypatch.setattr("litellm.proxy.proxy_server.llm_router", llm_router)
-    monkeypatch.setattr(
-        "litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj
-    )
+    monkeypatch.setattr("litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj)
 
     test_file_content = b'{"prompt": "Hello", "completion": "Hi"}'
     test_file = ("mydata.jsonl", test_file_content, "application/json")
@@ -1365,18 +1342,14 @@ def test_create_file_with_expires_after_missing_seconds(
     )
 
 
-def test_create_file_with_expires_after_valid_values(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
-):
+def test_create_file_with_expires_after_valid_values(mocker: MockerFixture, monkeypatch, llm_router: Router):
     """
     Test that expires_after works with valid anchor and seconds values
     """
     from litellm.llms.base_llm.files.transformation import BaseFileEndpoints
     from litellm.types.llms.openai import OpenAIFileObject
 
-    proxy_logging_obj = ProxyLogging(
-        user_api_key_cache=DualCache(default_in_memory_ttl=1)
-    )
+    proxy_logging_obj = ProxyLogging(user_api_key_cache=DualCache(default_in_memory_ttl=1))
     proxy_logging_obj._add_proxy_hooks(llm_router)
 
     class DummyManagedFiles(BaseFileEndpoints):
@@ -1423,21 +1396,15 @@ def test_create_file_with_expires_after_valid_values(
         ):
             raise NotImplementedError("Not implemented for test")
 
-        async def afile_delete(
-            self, file_id, litellm_parent_otel_span, llm_router, **data
-        ):
+        async def afile_delete(self, file_id, litellm_parent_otel_span, llm_router, **data):
             raise NotImplementedError("Not implemented for test")
 
-        async def afile_content(
-            self, file_id, litellm_parent_otel_span, llm_router, **data
-        ):
+        async def afile_content(self, file_id, litellm_parent_otel_span, llm_router, **data):
             raise NotImplementedError("Not implemented for test")
 
     proxy_logging_obj.proxy_hook_mapping["managed_files"] = DummyManagedFiles()
     monkeypatch.setattr("litellm.proxy.proxy_server.llm_router", llm_router)
-    monkeypatch.setattr(
-        "litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj
-    )
+    monkeypatch.setattr("litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj)
 
     test_file_content = b'{"prompt": "Hello", "completion": "Hi"}'
     test_file = ("mydata.jsonl", test_file_content, "application/json")
@@ -1461,18 +1428,14 @@ def test_create_file_with_expires_after_valid_values(
     assert result["purpose"] == "fine-tune"
 
 
-def test_create_file_without_expires_after(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
-):
+def test_create_file_without_expires_after(mocker: MockerFixture, monkeypatch, llm_router: Router):
     """
     Test that file creation works normally without expires_after
     """
     from litellm.llms.base_llm.files.transformation import BaseFileEndpoints
     from litellm.types.llms.openai import OpenAIFileObject
 
-    proxy_logging_obj = ProxyLogging(
-        user_api_key_cache=DualCache(default_in_memory_ttl=1)
-    )
+    proxy_logging_obj = ProxyLogging(user_api_key_cache=DualCache(default_in_memory_ttl=1))
     proxy_logging_obj._add_proxy_hooks(llm_router)
 
     class DummyManagedFiles(BaseFileEndpoints):
@@ -1491,9 +1454,7 @@ def test_create_file_without_expires_after(
                 expires_after = getattr(create_file_request, "expires_after", None)
 
             # expires_after should be None when not provided
-            assert (
-                expires_after is None
-            ), "expires_after should be None when not provided"
+            assert expires_after is None, "expires_after should be None when not provided"
 
             return OpenAIFileObject(
                 id="file-abc123",
@@ -1519,21 +1480,15 @@ def test_create_file_without_expires_after(
         ):
             raise NotImplementedError("Not implemented for test")
 
-        async def afile_delete(
-            self, file_id, litellm_parent_otel_span, llm_router, **data
-        ):
+        async def afile_delete(self, file_id, litellm_parent_otel_span, llm_router, **data):
             raise NotImplementedError("Not implemented for test")
 
-        async def afile_content(
-            self, file_id, litellm_parent_otel_span, llm_router, **data
-        ):
+        async def afile_content(self, file_id, litellm_parent_otel_span, llm_router, **data):
             raise NotImplementedError("Not implemented for test")
 
     proxy_logging_obj.proxy_hook_mapping["managed_files"] = DummyManagedFiles()
     monkeypatch.setattr("litellm.proxy.proxy_server.llm_router", llm_router)
-    monkeypatch.setattr(
-        "litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj
-    )
+    monkeypatch.setattr("litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj)
 
     test_file_content = b'{"prompt": "Hello", "completion": "Hi"}'
     test_file = ("mydata.jsonl", test_file_content, "application/json")
@@ -1555,9 +1510,7 @@ def test_create_file_without_expires_after(
     assert result["purpose"] == "fine-tune"
 
 
-def test_managed_files_with_loadbalancing(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
-):
+def test_managed_files_with_loadbalancing(mocker: MockerFixture, monkeypatch, llm_router: Router):
     """
     Test that managed files work with loadbalancing when both target_model_names
     and enable_loadbalancing_on_batch_endpoints are enabled.
@@ -1572,9 +1525,7 @@ def test_managed_files_with_loadbalancing(
     # Enable loadbalancing on batch endpoints
     monkeypatch.setattr("litellm.enable_loadbalancing_on_batch_endpoints", True)
 
-    proxy_logging_obj = ProxyLogging(
-        user_api_key_cache=DualCache(default_in_memory_ttl=1)
-    )
+    proxy_logging_obj = ProxyLogging(user_api_key_cache=DualCache(default_in_memory_ttl=1))
     proxy_logging_obj._add_proxy_hooks(llm_router)
 
     # Track calls to verify loadbalancing through router
@@ -1590,9 +1541,7 @@ def test_managed_files_with_loadbalancing(
             user_api_key_dict,
         ):
             # Verify we receive the target model names
-            assert (
-                len(target_model_names_list) > 0
-            ), "Should have target_model_names_list"
+            assert len(target_model_names_list) > 0, "Should have target_model_names_list"
 
             # Simulate what managed files does - call llm_router.acreate_file for each model
             # This is where loadbalancing happens internally
@@ -1624,26 +1573,18 @@ def test_managed_files_with_loadbalancing(
         ):
             raise NotImplementedError("Not implemented for test")
 
-        async def afile_delete(
-            self, file_id, litellm_parent_otel_span, llm_router, **data
-        ):
+        async def afile_delete(self, file_id, litellm_parent_otel_span, llm_router, **data):
             raise NotImplementedError("Not implemented for test")
 
-        async def afile_content(
-            self, file_id, litellm_parent_otel_span, llm_router, **data
-        ):
+        async def afile_content(self, file_id, litellm_parent_otel_span, llm_router, **data):
             raise NotImplementedError("Not implemented for test")
 
     import litellm.proxy.proxy_server as ps
     from litellm.proxy._types import LitellmUserRoles
 
-    proxy_logging_obj.proxy_hook_mapping["managed_files"] = (
-        ManagedFilesWithLoadbalancing()
-    )
+    proxy_logging_obj.proxy_hook_mapping["managed_files"] = ManagedFilesWithLoadbalancing()
     monkeypatch.setattr("litellm.proxy.proxy_server.llm_router", llm_router)
-    monkeypatch.setattr(
-        "litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj
-    )
+    monkeypatch.setattr("litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj)
     monkeypatch.setattr("litellm.proxy.proxy_server.prisma_client", None)
 
     # Override auth to avoid dependence on shared proxy state in parallel CI
@@ -1677,19 +1618,13 @@ def test_managed_files_with_loadbalancing(
 
     # Verify that managed files was called (via router for loadbalancing)
     # This proves that managed files took precedence over deprecated loadbalancing
-    assert (
-        len(router_acreate_file_calls) == 2
-    ), "Should have called router for both models"
+    assert len(router_acreate_file_calls) == 2, "Should have called router for both models"
     assert router_acreate_file_calls[0]["model"] == "azure-gpt-3-5-turbo"
     assert router_acreate_file_calls[1]["model"] == "gpt-3.5-turbo"
-    assert all(
-        call["via_router"] for call in router_acreate_file_calls
-    ), "All calls should go through router"
+    assert all(call["via_router"] for call in router_acreate_file_calls), "All calls should go through router"
 
 
-def test_create_file_with_nested_litellm_metadata(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
-):
+def test_create_file_with_nested_litellm_metadata(mocker: MockerFixture, monkeypatch, llm_router: Router):
     """
     Test that nested litellm_metadata is correctly parsed from form data in bracket notation.
 
@@ -1699,9 +1634,7 @@ def test_create_file_with_nested_litellm_metadata(
     from litellm.llms.base_llm.files.transformation import BaseFileEndpoints
     from litellm.types.llms.openai import OpenAIFileObject
 
-    proxy_logging_obj = ProxyLogging(
-        user_api_key_cache=DualCache(default_in_memory_ttl=1)
-    )
+    proxy_logging_obj = ProxyLogging(user_api_key_cache=DualCache(default_in_memory_ttl=1))
     proxy_logging_obj._add_proxy_hooks(llm_router)
 
     captured_litellm_metadata = {}
@@ -1717,13 +1650,9 @@ def test_create_file_with_nested_litellm_metadata(
         ):
             # Capture litellm_metadata for verification
             if isinstance(create_file_request, dict):
-                captured_litellm_metadata.update(
-                    create_file_request.get("litellm_metadata", {})
-                )
+                captured_litellm_metadata.update(create_file_request.get("litellm_metadata", {}))
             else:
-                captured_litellm_metadata.update(
-                    getattr(create_file_request, "litellm_metadata", {})
-                )
+                captured_litellm_metadata.update(getattr(create_file_request, "litellm_metadata", {}))
 
             return OpenAIFileObject(
                 id="file-test-123",
@@ -1749,21 +1678,15 @@ def test_create_file_with_nested_litellm_metadata(
         ):
             raise NotImplementedError("Not implemented for test")
 
-        async def afile_delete(
-            self, file_id, litellm_parent_otel_span, llm_router, **data
-        ):
+        async def afile_delete(self, file_id, litellm_parent_otel_span, llm_router, **data):
             raise NotImplementedError("Not implemented for test")
 
-        async def afile_content(
-            self, file_id, litellm_parent_otel_span, llm_router, **data
-        ):
+        async def afile_content(self, file_id, litellm_parent_otel_span, llm_router, **data):
             raise NotImplementedError("Not implemented for test")
 
     proxy_logging_obj.proxy_hook_mapping["managed_files"] = DummyManagedFiles()
     monkeypatch.setattr("litellm.proxy.proxy_server.llm_router", llm_router)
-    monkeypatch.setattr(
-        "litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj
-    )
+    monkeypatch.setattr("litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj)
 
     test_file_content = b'{"prompt": "Hello", "completion": "Hi"}'
     test_file = ("test.jsonl", test_file_content, "application/jsonl")
@@ -1796,9 +1719,7 @@ def test_create_file_with_nested_litellm_metadata(
     assert captured_litellm_metadata["environment"] == "prod"
 
 
-def test_create_file_with_deep_nested_litellm_metadata(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
-):
+def test_create_file_with_deep_nested_litellm_metadata(mocker: MockerFixture, monkeypatch, llm_router: Router):
     """
     Test that deeply nested litellm_metadata is correctly parsed from form data.
 
@@ -1812,9 +1733,7 @@ def test_create_file_with_deep_nested_litellm_metadata(
     monkeypatch.setattr("litellm.proxy.proxy_server.master_key", None)
     monkeypatch.setattr("litellm.proxy.proxy_server.prisma_client", None)
 
-    proxy_logging_obj = ProxyLogging(
-        user_api_key_cache=DualCache(default_in_memory_ttl=1)
-    )
+    proxy_logging_obj = ProxyLogging(user_api_key_cache=DualCache(default_in_memory_ttl=1))
     proxy_logging_obj._add_proxy_hooks(llm_router)
 
     captured_litellm_metadata = {}
@@ -1829,13 +1748,9 @@ def test_create_file_with_deep_nested_litellm_metadata(
             user_api_key_dict,
         ):
             if isinstance(create_file_request, dict):
-                captured_litellm_metadata.update(
-                    create_file_request.get("litellm_metadata", {})
-                )
+                captured_litellm_metadata.update(create_file_request.get("litellm_metadata", {}))
             else:
-                captured_litellm_metadata.update(
-                    getattr(create_file_request, "litellm_metadata", {})
-                )
+                captured_litellm_metadata.update(getattr(create_file_request, "litellm_metadata", {}))
 
             return OpenAIFileObject(
                 id="file-test-456",
@@ -1861,21 +1776,15 @@ def test_create_file_with_deep_nested_litellm_metadata(
         ):
             raise NotImplementedError("Not implemented for test")
 
-        async def afile_delete(
-            self, file_id, litellm_parent_otel_span, llm_router, **data
-        ):
+        async def afile_delete(self, file_id, litellm_parent_otel_span, llm_router, **data):
             raise NotImplementedError("Not implemented for test")
 
-        async def afile_content(
-            self, file_id, litellm_parent_otel_span, llm_router, **data
-        ):
+        async def afile_content(self, file_id, litellm_parent_otel_span, llm_router, **data):
             raise NotImplementedError("Not implemented for test")
 
     proxy_logging_obj.proxy_hook_mapping["managed_files"] = DummyManagedFiles()
     monkeypatch.setattr("litellm.proxy.proxy_server.llm_router", llm_router)
-    monkeypatch.setattr(
-        "litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj
-    )
+    monkeypatch.setattr("litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj)
 
     app.dependency_overrides[ps.user_api_key_auth] = lambda: UserAPIKeyAuth(
         user_role=LitellmUserRoles.PROXY_ADMIN, user_id="test-user"
@@ -1938,9 +1847,7 @@ def _make_capturing_managed_files():
             if isinstance(create_file_request, dict):
                 captured["expires_after"] = create_file_request.get("expires_after")
             else:
-                captured["expires_after"] = getattr(
-                    create_file_request, "expires_after", None
-                )
+                captured["expires_after"] = getattr(create_file_request, "expires_after", None)
             return OpenAIFileObject(
                 id="file-abc123",
                 object="file",
@@ -1965,14 +1872,10 @@ def _make_capturing_managed_files():
         ):
             raise NotImplementedError
 
-        async def afile_delete(
-            self, file_id, litellm_parent_otel_span, llm_router, **data
-        ):
+        async def afile_delete(self, file_id, litellm_parent_otel_span, llm_router, **data):
             raise NotImplementedError
 
-        async def afile_content(
-            self, file_id, litellm_parent_otel_span, llm_router, **data
-        ):
+        async def afile_content(self, file_id, litellm_parent_otel_span, llm_router, **data):
             raise NotImplementedError
 
     return CapturingManagedFiles(), captured
@@ -1987,15 +1890,11 @@ def _post_file_with_team_metadata(
     """POST /v1/files with given team_metadata, return captured expires_after."""
     from litellm.proxy.auth.user_api_key_auth import user_api_key_auth
 
-    proxy_logging_obj = ProxyLogging(
-        user_api_key_cache=DualCache(default_in_memory_ttl=1)
-    )
+    proxy_logging_obj = ProxyLogging(user_api_key_cache=DualCache(default_in_memory_ttl=1))
     dummy, captured = _make_capturing_managed_files()
     proxy_logging_obj.proxy_hook_mapping["managed_files"] = dummy
     monkeypatch.setattr("litellm.proxy.proxy_server.llm_router", llm_router)
-    monkeypatch.setattr(
-        "litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj
-    )
+    monkeypatch.setattr("litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj)
 
     user_key = UserAPIKeyAuth(api_key="test-key", team_metadata=team_metadata)
     app.dependency_overrides[user_api_key_auth] = lambda: user_key
@@ -2015,9 +1914,7 @@ def _post_file_with_team_metadata(
     return captured["expires_after"]
 
 
-def test_file_team_override_overrides_caller(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
-):
+def test_file_team_override_overrides_caller(mocker: MockerFixture, monkeypatch, llm_router: Router):
     """Team enforced_file_expires_after wins over caller-provided value."""
     expires_after = _post_file_with_team_metadata(
         monkeypatch,
@@ -2039,9 +1936,7 @@ def test_file_team_override_overrides_caller(
     assert expires_after["seconds"] == 3600
 
 
-def test_file_no_team_setting_preserves_caller(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
-):
+def test_file_no_team_setting_preserves_caller(mocker: MockerFixture, monkeypatch, llm_router: Router):
     """No team setting = caller-provided expires_after passes through."""
     expires_after = _post_file_with_team_metadata(
         monkeypatch,
@@ -2058,9 +1953,7 @@ def test_file_no_team_setting_preserves_caller(
     assert expires_after["seconds"] == 86400
 
 
-def test_file_team_injects_when_caller_sends_nothing(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
-):
+def test_file_team_injects_when_caller_sends_nothing(mocker: MockerFixture, monkeypatch, llm_router: Router):
     """Team enforcement applies even when caller sends no expiry."""
     expires_after = _post_file_with_team_metadata(
         monkeypatch,
@@ -2085,21 +1978,15 @@ def test_file_team_injects_when_caller_sends_nothing(
 # ---------------------------------------------------------------------------
 
 
-def _post_file_raw(
-    monkeypatch, llm_router: Router, team_metadata: dict, form_data: dict
-):
+def _post_file_raw(monkeypatch, llm_router: Router, team_metadata: dict, form_data: dict):
     """POST /v1/files and return the raw response (no status assertion)."""
     from litellm.proxy.auth.user_api_key_auth import user_api_key_auth
 
-    proxy_logging_obj = ProxyLogging(
-        user_api_key_cache=DualCache(default_in_memory_ttl=1)
-    )
+    proxy_logging_obj = ProxyLogging(user_api_key_cache=DualCache(default_in_memory_ttl=1))
     dummy, _ = _make_capturing_managed_files()
     proxy_logging_obj.proxy_hook_mapping["managed_files"] = dummy
     monkeypatch.setattr("litellm.proxy.proxy_server.llm_router", llm_router)
-    monkeypatch.setattr(
-        "litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj
-    )
+    monkeypatch.setattr("litellm.proxy.proxy_server.proxy_logging_obj", proxy_logging_obj)
 
     user_key = UserAPIKeyAuth(api_key="test-key", team_metadata=team_metadata)
     app.dependency_overrides[user_api_key_auth] = lambda: user_key
@@ -2118,9 +2005,7 @@ def _post_file_raw(
     return response
 
 
-def test_file_missing_anchor_key_returns_500(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
-):
+def test_file_missing_anchor_key_returns_500(mocker: MockerFixture, monkeypatch, llm_router: Router):
     """Missing 'anchor' key in team metadata returns 500."""
     response = _post_file_raw(
         monkeypatch,
@@ -2137,9 +2022,7 @@ def test_file_missing_anchor_key_returns_500(
     assert "malformed" in response.json()["error"]["message"]
 
 
-def test_file_missing_seconds_key_returns_500(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
-):
+def test_file_missing_seconds_key_returns_500(mocker: MockerFixture, monkeypatch, llm_router: Router):
     """Missing 'seconds' key in team metadata returns 500."""
     response = _post_file_raw(
         monkeypatch,
@@ -2156,9 +2039,7 @@ def test_file_missing_seconds_key_returns_500(
     assert "malformed" in response.json()["error"]["message"]
 
 
-def test_file_invalid_anchor_returns_500(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
-):
+def test_file_invalid_anchor_returns_500(mocker: MockerFixture, monkeypatch, llm_router: Router):
     """Invalid anchor value in team metadata returns 500."""
     response = _post_file_raw(
         monkeypatch,
@@ -2178,9 +2059,7 @@ def test_file_invalid_anchor_returns_500(
     assert "created_at" in response.json()["error"]["message"]
 
 
-def test_get_file_content_streams_openai_direct_path(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
-):
+def test_get_file_content_streams_openai_direct_path(mocker: MockerFixture, monkeypatch, llm_router: Router):
     import litellm.proxy.proxy_server as ps
     from litellm.proxy._types import LitellmUserRoles
 
@@ -2459,9 +2338,7 @@ def test_require_managed_files_rejects_missing_target_model_names(
     mock_acreate_file.assert_not_called()
 
 
-def test_require_managed_files_allows_managed_file_upload(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
-):
+def test_require_managed_files_allows_managed_file_upload(mocker: MockerFixture, monkeypatch, llm_router: Router):
     import litellm.proxy.proxy_server as ps
     from litellm.llms.base_llm.files.transformation import BaseFileEndpoints
     from litellm.proxy._types import LitellmUserRoles
@@ -2506,14 +2383,10 @@ def test_require_managed_files_allows_managed_file_upload(
         ):
             raise NotImplementedError
 
-        async def afile_delete(
-            self, file_id, litellm_parent_otel_span, llm_router, **data
-        ):
+        async def afile_delete(self, file_id, litellm_parent_otel_span, llm_router, **data):
             raise NotImplementedError
 
-        async def afile_content(
-            self, file_id, litellm_parent_otel_span, llm_router, **data
-        ):
+        async def afile_content(self, file_id, litellm_parent_otel_span, llm_router, **data):
             raise NotImplementedError
 
     proxy_logging_obj.proxy_hook_mapping["managed_files"] = DummyManagedFiles()
@@ -2543,9 +2416,7 @@ def test_require_managed_files_allows_managed_file_upload(
     mock_acreate_file.assert_not_called()
 
 
-def test_require_managed_files_rejects_model_param_bypass(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
-):
+def test_require_managed_files_rejects_model_param_bypass(mocker: MockerFixture, monkeypatch, llm_router: Router):
     """
     Supplying model alongside target_model_names must not bypass managed files:
     route_create_file would otherwise take the model branch and call
@@ -2638,14 +2509,10 @@ def test_require_managed_files_accepts_target_model_names_bracket_form(
         ):
             raise NotImplementedError
 
-        async def afile_delete(
-            self, file_id, litellm_parent_otel_span, llm_router, **data
-        ):
+        async def afile_delete(self, file_id, litellm_parent_otel_span, llm_router, **data):
             raise NotImplementedError
 
-        async def afile_content(
-            self, file_id, litellm_parent_otel_span, llm_router, **data
-        ):
+        async def afile_content(self, file_id, litellm_parent_otel_span, llm_router, **data):
             raise NotImplementedError
 
     proxy_logging_obj.proxy_hook_mapping["managed_files"] = DummyManagedFiles()
@@ -2726,14 +2593,10 @@ def test_require_managed_files_accepts_repeated_target_model_names_bracket_form(
         ):
             raise NotImplementedError
 
-        async def afile_delete(
-            self, file_id, litellm_parent_otel_span, llm_router, **data
-        ):
+        async def afile_delete(self, file_id, litellm_parent_otel_span, llm_router, **data):
             raise NotImplementedError
 
-        async def afile_content(
-            self, file_id, litellm_parent_otel_span, llm_router, **data
-        ):
+        async def afile_content(self, file_id, litellm_parent_otel_span, llm_router, **data):
             raise NotImplementedError
 
     proxy_logging_obj.proxy_hook_mapping["managed_files"] = DummyManagedFiles()
@@ -2761,9 +2624,7 @@ def test_require_managed_files_accepts_repeated_target_model_names_bracket_form(
     assert received_target_model_names == ["azure-gpt-3-5-turbo", "gpt-3.5-turbo"]
 
 
-def test_list_files_resolves_wildcard_deployment_credentials(
-    mocker: MockerFixture, monkeypatch
-):
+def test_list_files_resolves_wildcard_deployment_credentials(mocker: MockerFixture, monkeypatch):
     """
     GET /v1/files?target_model_names=<model> must resolve the upstream api_key
     from the matching (wildcard) deployment. Regression for the path routing
@@ -2933,9 +2794,7 @@ def test_list_files_model_routing_does_not_forward_custom_llm_provider_twice(
     proxy_logging_obj.post_call_failure_hook.assert_not_called()
 
 
-def test_list_files_without_target_model_names_uses_team_openai_deployment(
-    mocker: MockerFixture, monkeypatch
-):
+def test_list_files_without_target_model_names_uses_team_openai_deployment(mocker: MockerFixture, monkeypatch):
     """
     Plain GET /v1/files (no target_model_names) must resolve the upstream openai
     api_key from the team's openai deployment instead of falling through to a
@@ -2994,9 +2853,7 @@ def test_list_files_without_target_model_names_uses_team_openai_deployment(
     proxy_logging_obj.post_call_failure_hook.assert_not_called()
 
 
-def test_unscoped_list_files_uses_managed_file_store(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
-):
+def test_unscoped_list_files_uses_managed_file_store(mocker: MockerFixture, monkeypatch, llm_router: Router):
     import litellm.proxy.proxy_server as ps
     from litellm.llms.base_llm.files.transformation import BaseFileEndpoints
     from litellm.proxy._types import LitellmUserRoles
@@ -3202,8 +3059,7 @@ def test_unscoped_list_files_returns_400_for_a_limit_outside_the_openai_range(
     assert response.json() == {
         "error": {
             "message": (
-                f"Invalid 'limit': integer {bound} value. "
-                f"Expected a value {expected_range}, but got {limit} instead."
+                f"Invalid 'limit': integer {bound} value. Expected a value {expected_range}, but got {limit} instead."
             ),
             "type": "invalid_request_error",
             "param": "limit",
@@ -3234,9 +3090,7 @@ def test_unscoped_list_files_accepts_the_ends_of_the_openai_limit_range(
     ],
     ids=["managed-file-store", "target-model-names", "provider-route"],
 )
-def test_list_files_validates_the_limit_on_every_branch(
-    mocker: MockerFixture, monkeypatch, llm_router: Router, path
-):
+def test_list_files_validates_the_limit_on_every_branch(mocker: MockerFixture, monkeypatch, llm_router: Router, path):
     """The limit is a route-level contract, so the scoped and provider branches reject it too."""
     _setup_unscoped_list_files_route(mocker, monkeypatch, llm_router, _permissive_afile_list)
 
@@ -3356,9 +3210,7 @@ def test_unscoped_list_files_accepts_every_documented_purpose(
     assert managed_files.afile_list.await_args.kwargs["purpose"] == purpose
 
 
-def test_list_files_reports_a_bad_target_model_names_as_a_400(
-    mocker: MockerFixture, monkeypatch, llm_router: Router
-):
+def test_list_files_reports_a_bad_target_model_names_as_a_400(mocker: MockerFixture, monkeypatch, llm_router: Router):
     """The exception tail answers with the OpenAI error object a client can branch on:
     the type its 400 status stands for, and a JSON null param rather than the literal
     string "None" no OpenAI SDK has a case for."""
@@ -3391,9 +3243,7 @@ def test_list_files_reports_an_unexpected_file_store_error_as_a_500(
     assert response.json()["error"]["message"] == "managed file table is unreachable"
 
 
-def test_list_files_restricted_team_does_not_leak_global_openai_credentials(
-    mocker: MockerFixture, monkeypatch
-):
+def test_list_files_restricted_team_does_not_leak_global_openai_credentials(mocker: MockerFixture, monkeypatch):
     """
     A team whose allowlist only grants anthropic must NOT resolve a global
     openai deployment's api_key for plain GET /v1/files. Regression for the
@@ -3457,9 +3307,7 @@ def test_list_files_restricted_team_does_not_leak_global_openai_credentials(
     assert captured_kwargs.get("api_key") != "global-openai-key"
 
 
-def test_list_files_prefers_team_byok_over_global_openai_deployment(
-    mocker: MockerFixture, monkeypatch
-):
+def test_list_files_prefers_team_byok_over_global_openai_deployment(mocker: MockerFixture, monkeypatch):
     """
     When a team has its own BYOK openai deployment (model_info.team_id set), plain
     GET /v1/files must use the team's key, not a shared/global openai deployment.
@@ -3529,9 +3377,7 @@ def test_list_files_prefers_team_byok_over_global_openai_deployment(
     proxy_logging_obj.post_call_failure_hook.assert_not_called()
 
 
-def test_list_files_with_all_proxy_models_team_uses_openai_deployment(
-    mocker: MockerFixture, monkeypatch
-):
+def test_list_files_with_all_proxy_models_team_uses_openai_deployment(mocker: MockerFixture, monkeypatch):
     """
     Teams with all-proxy-models (or empty models) must still resolve openai
     credentials for plain GET /v1/files.
@@ -3635,9 +3481,7 @@ def _assert_vertex_named_credentials_attached(captured_kwargs: dict) -> None:
     assert captured_kwargs.get("model") is None
 
 
-def test_create_file_provider_only_resolves_named_vertex_credentials(
-    mocker: MockerFixture, monkeypatch
-):
+def test_create_file_provider_only_resolves_named_vertex_credentials(mocker: MockerFixture, monkeypatch):
     """
     POST /v1/files with only a custom-llm-provider header (no model, no
     target_model_names) must attach the configured named vertex credential to
@@ -3695,9 +3539,7 @@ def test_create_file_provider_only_resolves_named_vertex_credentials(
     proxy_logging_obj.post_call_failure_hook.assert_not_called()
 
 
-def test_get_file_provider_only_resolves_named_vertex_credentials(
-    mocker: MockerFixture, monkeypatch
-):
+def test_get_file_provider_only_resolves_named_vertex_credentials(mocker: MockerFixture, monkeypatch):
     import litellm.proxy.proxy_server as ps
     from litellm.proxy._types import LitellmUserRoles
 
@@ -3748,9 +3590,7 @@ def test_get_file_provider_only_resolves_named_vertex_credentials(
     proxy_logging_obj.post_call_failure_hook.assert_not_called()
 
 
-def test_get_file_content_provider_only_resolves_named_vertex_credentials(
-    mocker: MockerFixture, monkeypatch
-):
+def test_get_file_content_provider_only_resolves_named_vertex_credentials(mocker: MockerFixture, monkeypatch):
     import litellm.proxy.proxy_server as ps
     from litellm.proxy._types import LitellmUserRoles
 
@@ -3803,9 +3643,7 @@ def test_get_file_content_provider_only_resolves_named_vertex_credentials(
     proxy_logging_obj.post_call_failure_hook.assert_not_called()
 
 
-def test_delete_file_provider_only_resolves_named_vertex_credentials(
-    mocker: MockerFixture, monkeypatch
-):
+def test_delete_file_provider_only_resolves_named_vertex_credentials(mocker: MockerFixture, monkeypatch):
     import litellm.proxy.proxy_server as ps
     from litellm.proxy._types import LitellmUserRoles
 
@@ -3856,9 +3694,7 @@ def test_delete_file_provider_only_resolves_named_vertex_credentials(
     proxy_logging_obj.post_call_failure_hook.assert_not_called()
 
 
-def test_create_file_provider_only_skips_other_team_vertex_deployment(
-    mocker: MockerFixture, monkeypatch
-):
+def test_create_file_provider_only_skips_other_team_vertex_deployment(mocker: MockerFixture, monkeypatch):
     """
     Regression: with a team-scoped vertex deployment indexed before a global
     one under the same model name, a provider-only upload from a different
@@ -3966,9 +3802,7 @@ def _team_openai_plus_global_anthropic_router() -> Router:
     )
 
 
-def _list_files_captured_kwargs(
-    mocker: MockerFixture, monkeypatch, router: Router, key_models: list
-) -> dict:
+def _list_files_captured_kwargs(mocker: MockerFixture, monkeypatch, router: Router, key_models: list) -> dict:
     import litellm.proxy.proxy_server as ps
     from litellm.proxy._types import LitellmUserRoles
 
@@ -4027,9 +3861,7 @@ def test_list_files_key_restricted_to_other_provider_does_not_leak_team_openai_c
     assert captured_kwargs.get("api_key") != "team-openai-key"
 
 
-def test_list_files_key_allowed_openai_model_still_resolves_team_credentials(
-    mocker: MockerFixture, monkeypatch
-):
+def test_list_files_key_allowed_openai_model_still_resolves_team_credentials(mocker: MockerFixture, monkeypatch):
     """
     A key whose allowlist includes the team's openai model keeps resolving that
     deployment's credentials for provider-only openai files calls.
@@ -4072,9 +3904,7 @@ def test_require_managed_files_rejects_raw_provider_file_id(
     )
 
     try:
-        response = getattr(client, http_method)(
-            url, headers={"Authorization": "Bearer test-key"}
-        )
+        response = getattr(client, http_method)(url, headers={"Authorization": "Bearer test-key"})
     finally:
         app.dependency_overrides.pop(ps.user_api_key_auth, None)
         monkeypatch.setattr("litellm.require_managed_files", False)
@@ -4170,9 +4000,9 @@ def test_get_file_content_model_routed_attaches_trusted_model_credentials(monkey
     assert len(calls) == 1, f"expected exactly one routed retrieval, got {len(calls)}"
     snapshot = calls[0].get("_litellm_internal_model_credentials")
     assert snapshot is not None, "model-routed branch must attach the trusted credential snapshot"
-    assert isinstance(
-        snapshot, MappingProxyType
-    ), "snapshot must be a MappingProxyType; a plain dict is rejected by get_configured_s3_bucket_name"
+    assert isinstance(snapshot, MappingProxyType), (
+        "snapshot must be a MappingProxyType; a plain dict is rejected by get_configured_s3_bucket_name"
+    )
     assert snapshot["s3_bucket_name"] == "configured-batch-bucket"
 
 
@@ -4267,9 +4097,7 @@ def test_raw_provider_file_id_retrieve_allowed_when_managed_files_not_required(
     )
 
     try:
-        response = client.get(
-            "/v1/files/file-victim-abc123", headers={"Authorization": "Bearer test-key"}
-        )
+        response = client.get("/v1/files/file-victim-abc123", headers={"Authorization": "Bearer test-key"})
     finally:
         app.dependency_overrides.pop(ps.user_api_key_auth, None)
 
@@ -4314,9 +4142,7 @@ def _teardown_batch_upload_endpoint():
     app.dependency_overrides.pop(ps.user_api_key_auth, None)
 
 
-def test_create_file_batch_over_max_batch_file_size_mb_rejected_before_forwarding(
-    monkeypatch, llm_router: Router
-):
+def test_create_file_batch_over_max_batch_file_size_mb_rejected_before_forwarding(monkeypatch, llm_router: Router):
     import litellm.proxy.proxy_server as ps
 
     forwarded_calls = _setup_batch_upload_endpoint(monkeypatch, llm_router)
@@ -4412,9 +4238,7 @@ def test_create_file_batch_over_max_batch_file_records_rejected_before_forwardin
     assert len(forwarded_calls) == 1
 
 
-def test_create_file_batch_uploads_over_daily_limit_get_429_and_only_valid_files_count(
-    monkeypatch, llm_router: Router
-):
+def test_create_file_batch_uploads_over_daily_limit_get_429_and_only_valid_files_count(monkeypatch, llm_router: Router):
     import litellm.proxy.proxy_server as ps
     from litellm.proxy._types import LitellmUserRoles
 
@@ -4969,35 +4793,28 @@ class _ManagedFileTableOverRows:
     async def find_many(self, where, take=None, order=None, cursor=None, skip=0):
         rows = self._owned_rows(where)
         if cursor is not None:
-            start = next(
-                index
-                for index, row in enumerate(rows)
-                if row.unified_file_id == cursor["unified_file_id"]
-            )
+            start = next(index for index, row in enumerate(rows) if row.unified_file_id == cursor["unified_file_id"])
             rows = rows[start + skip :]
         return rows if take is None else rows[:take]
 
 
-def _setup_unscoped_list_files_route_over_real_hook(
-    mocker, monkeypatch, llm_router: Router, rows
-):
+def _setup_unscoped_list_files_route_over_real_hook(mocker, monkeypatch, llm_router: Router, rows):
     """Wire GET /v1/files to a real managed-files hook over `rows`, with no provider
     credentials in the process. The neighbouring setup stubs the hook with a
     MagicMock, so it cannot see anything past the route's argument plumbing."""
-    import litellm.proxy.proxy_server as ps
-    from litellm.proxy._types import LitellmUserRoles
     from litellm_enterprise.proxy.hooks.managed_files import (
         PROXY_LiteLLMManagedFiles,
     )
+
+    import litellm.proxy.proxy_server as ps
+    from litellm.proxy._types import LitellmUserRoles
 
     for env_var in ("OPENAI_API_KEY", "OPENAI_ADMIN_KEY", "OPENAI_ORGANIZATION"):
         monkeypatch.delenv(env_var, raising=False)
     monkeypatch.setattr(litellm, "api_key", None, raising=False)
     monkeypatch.setattr(litellm, "openai_key", None, raising=False)
 
-    managed_files = PROXY_LiteLLMManagedFiles(
-        internal_usage_cache=MagicMock(), prisma_client=MagicMock()
-    )
+    managed_files = PROXY_LiteLLMManagedFiles(internal_usage_cache=MagicMock(), prisma_client=MagicMock())
     managed_files.prisma_client.db.litellm_managedfiletable = _ManagedFileTableOverRows(rows)
 
     proxy_logging_obj = setup_proxy_logging_object(monkeypatch, llm_router)
@@ -5387,9 +5204,7 @@ def test_create_file_path_traversal_filename_rejected_before_forwarding(monkeypa
     assert forwarded_calls == []
 
 
-def test_list_files_target_model_names_passes_trusted_bedrock_credentials(
-    mocker: MockerFixture, monkeypatch
-):
+def test_list_files_target_model_names_passes_trusted_bedrock_credentials(mocker: MockerFixture, monkeypatch):
     """
     GET /v1/files?target_model_names=<bedrock model> must hand the deployment's
     immutable credential snapshot to litellm.afile_list, since Bedrock resolves
@@ -5635,8 +5450,9 @@ def _setup_managed_file_route_answering_404(
 ) -> None:
     """Wire the single-file routes to a managed file store that knows no file, the way the
     managed files hook answers once a file has been deleted or was never the caller's."""
-    import litellm.proxy.proxy_server as ps
     from fastapi import HTTPException
+
+    import litellm.proxy.proxy_server as ps
     from litellm.llms.base_llm.files.transformation import BaseFileEndpoints
     from litellm.proxy._types import LitellmUserRoles
 

@@ -1,3 +1,4 @@
+from typing import Final
 from unittest.mock import AsyncMock, Mock
 
 import httpx
@@ -82,6 +83,19 @@ def test_predibase_get_complete_url_stream_and_non_stream():
 
     assert non_stream_url.endswith("/generate")
     assert stream_url.endswith("/generate_stream")
+
+
+@pytest.mark.parametrize(("model", "stream"), [("generate", False), ("generate_stream", True)])
+def test_predibase_get_complete_url_appends_the_route_to_a_model_named_like_it(model: str, stream: bool) -> None:
+    url: Final = PredibaseConfig().get_complete_url(
+        api_base="https://serving.example.com",
+        api_key="test-key",
+        model=model,
+        optional_params={"stream": stream},
+        litellm_params={"predibase_tenant_id": "tenant-123"},
+    )
+
+    assert url.endswith(f"/llms/{model}/{model}")
 
 
 def test_predibase_get_complete_url_missing_tenant_id():
@@ -174,10 +188,7 @@ def test_predibase_transform_response_success_best_of(monkeypatch):
     assert result.choices[1].message.content == "secondary-output"
     assert result.usage.prompt_tokens == 5
     assert result.usage.completion_tokens == 3
-    assert (
-        result._hidden_params["additional_headers"]["llm_provider-x-request-id"]
-        == "req-123"
-    )
+    assert result._hidden_params["additional_headers"]["llm_provider-x-request-id"] == "req-123"
 
 
 def test_predibase_transform_response_invalid_json():
@@ -206,9 +217,7 @@ def test_predibase_transform_response_error_field():
     with pytest.raises(PredibaseError) as exc:
         config.transform_response(
             model="predibase-model",
-            raw_response=httpx.Response(
-                status_code=400, json={"error": "invalid request"}
-            ),
+            raw_response=httpx.Response(status_code=400, json={"error": "invalid request"}),
             model_response=_build_model_response(),
             logging_obj=Mock(),
             request_data={},
@@ -438,9 +447,7 @@ def test_predibase_transform_response_usage_fallbacks(monkeypatch):
     logging_obj = Mock()
     encoding = Mock()
     encoding.encode.side_effect = RuntimeError("encoding failure")
-    monkeypatch.setattr(
-        "litellm.token_counter", lambda messages: (_ for _ in ()).throw(RuntimeError())
-    )
+    monkeypatch.setattr("litellm.token_counter", lambda messages: (_ for _ in ()).throw(RuntimeError()))
 
     raw_response = httpx.Response(
         status_code=200,
