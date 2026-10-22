@@ -547,7 +547,7 @@ class OpenAIGPTConfig(BaseLLMModelInfo, BaseConfig):
         """
         tools: Final = optional_params.get("tools")
         provider: Final = litellm_params.get("custom_llm_provider")
-        if not isinstance(tools, list) or provider != "openai":
+        if not isinstance(tools, list) or not isinstance(provider, str) or provider != "openai":
             return _NO_TOOLS_UPDATE
         raw_api_base: Final = litellm_params.get("api_base")
         sanitize: Final = (
