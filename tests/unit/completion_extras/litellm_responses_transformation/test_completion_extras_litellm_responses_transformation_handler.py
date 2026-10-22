@@ -1,8 +1,13 @@
+import asyncio
+import json
 from datetime import datetime
+from pathlib import Path
+from typing import Final
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
-
+import respx
 
 import litellm
 from litellm.completion_extras.litellm_responses_transformation.handler import (
@@ -10,8 +15,79 @@ from litellm.completion_extras.litellm_responses_transformation.handler import (
 )
 from litellm.litellm_core_utils.litellm_logging import Logging as LiteLLMLogging
 from litellm.litellm_core_utils.streaming_handler import CustomStreamWrapper
+from litellm.proxy._types import SpendLogsPayload
+from litellm.proxy.spend_tracking.spend_tracking_utils import get_logging_payload
 from litellm.types.router import GenericLiteLLMParams
 from litellm.types.utils import ModelResponse
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.parametrize("rate", [0.0, 0.002])
+async def test_chatgpt_bridge_persists_terminal_cost_once(
+    stream: bool, rate: float, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, respx_mock: respx.MockRouter
+) -> None:
+    (tmp_path / "auth.json").write_text(
+        json.dumps({"access_token": "transport-only", "account_id": "transport-only", "expires_at": 4102444800})
+    )
+    completed: Final = {
+        "id": "resp_bridge_spend",
+        "object": "response",
+        "created_at": 1,
+        "status": "completed",
+        "model": "gpt-6-luna",
+        "output": [{"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": "ok"}]}],
+        "usage": {"input_tokens": 100, "output_tokens": 20, "total_tokens": 120},
+    }
+    events: Final = (
+        {
+            "type": "response.output_text.delta",
+            "delta": "ok",
+            "item_id": "msg_1",
+            "output_index": 0,
+            "content_index": 0,
+            "sequence_number": 1,
+        },
+        {"type": "response.completed", "response": completed, "sequence_number": 2},
+    )
+    sent: Final[list[bytes]] = []
+    rows: Final[asyncio.Queue[SpendLogsPayload]] = asyncio.Queue()
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        sent.append(request.content)
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            content="".join(f"data: {json.dumps(event)}\n\n" for event in events),
+        )
+
+    async def capture(kwargs: dict, response_obj: object, start_time: datetime, end_time: datetime) -> None:
+        rows.put_nowait(get_logging_payload(kwargs, response_obj, start_time, end_time))
+
+    monkeypatch.setattr(litellm, "disable_aiohttp_transport", True)
+    respx_mock.post("https://transport.invalid/v1/responses").mock(side_effect=respond)
+    result: Final = await litellm.acompletion(
+        model="chatgpt/gpt-6-luna",
+        messages=[{"role": "user", "content": "hello"}],
+        api_base="https://transport.invalid/v1",
+        chatgpt_token_dir=str(tmp_path),
+        stream=stream,
+        input_cost_per_token=rate,
+        output_cost_per_token=rate * 2,
+        success_callback=[capture],
+        num_retries=0,
+    )
+    if stream:
+        chunks: Final = [chunk async for chunk in result]
+        assert "".join(chunk.choices[0].delta.content or "" for chunk in chunks) == "ok"
+    else:
+        assert result.choices[0].message.content == "ok"
+    row: Final = await asyncio.wait_for(rows.get(), timeout=5)
+    assert row["spend"] == pytest.approx(100 * rate + 20 * rate * 2)
+    assert row["prompt_tokens"] == 100
+    assert row["completion_tokens"] == 20
+    assert len(sent) == 1
+    assert rows.empty()
 
 
 def test_is_preformatted_cached_chat_stream_true():

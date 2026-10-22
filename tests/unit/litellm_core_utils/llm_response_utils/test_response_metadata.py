@@ -12,6 +12,7 @@ from collections.abc import Iterator
 from typing import Final
 from unittest.mock import MagicMock
 
+import httpx
 import pytest
 
 import litellm
@@ -25,8 +26,10 @@ from litellm.litellm_core_utils.llm_response_utils.response_metadata import (
     response_timing_metrics,
     update_response_metadata,
 )
+from litellm.llms.openai.responses.transformation import OpenAIResponsesAPIConfig
 from litellm.proxy._types import UserAPIKeyAuth
 from litellm.proxy.common_request_processing import ProxyBaseLLMRequestProcessing
+from litellm.responses.streaming_iterator import ResponsesAPIStreamingIterator, SyncResponsesAPIStreamingIterator
 from litellm.types.utils import ModelResponse, Usage
 
 
@@ -685,3 +688,32 @@ def test_update_response_metadata_keeps_the_provider_model_after_the_proxy_rewri
         select_model_name_for_cost_calc(model=None, completion_response=result, custom_llm_provider="azure")
         == "azure/gpt-5.4-nano-2026-03-17"
     )
+
+
+@pytest.mark.parametrize("iterator_type", [ResponsesAPIStreamingIterator, SyncResponsesAPIStreamingIterator])
+@pytest.mark.parametrize("provider", ["openai", "chatgpt", "azure"])
+def test_stream_metadata_defers_cost_until_terminal_usage(
+    iterator_type: type[ResponsesAPIStreamingIterator] | type[SyncResponsesAPIStreamingIterator], provider: str
+) -> None:
+    start: Final = datetime.datetime(2026, 1, 1)
+    logger: Final = Logging(
+        model="gpt-6-luna",
+        messages=[],
+        stream=True,
+        call_type="aresponses",
+        start_time=start,
+        litellm_call_id="stream-pricing",
+        function_id="stream-pricing",
+    )
+    logger.update_environment_variables(litellm_params={}, optional_params={}, custom_llm_provider=provider)
+    response: Final = iterator_type(
+        response=httpx.Response(200),
+        model="gpt-6-luna",
+        responses_api_provider_config=OpenAIResponsesAPIConfig(),
+        logging_obj=logger,
+        custom_llm_provider=provider,
+    )
+    update_response_metadata(response, logger, "gpt-6-luna", {}, start, start)
+    assert "response_cost" not in response._hidden_params
+    assert logger.cost_breakdown is None
+    assert response._hidden_params["litellm_call_id"] == "stream-pricing"

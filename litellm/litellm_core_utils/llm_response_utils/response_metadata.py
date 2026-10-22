@@ -156,6 +156,8 @@ class ResponseMetadata:
         otherwise price the cached response as a fresh call.
         """
 
+        from litellm.responses.streaming_iterator import BaseResponsesAPIStreamingIterator
+
         ## ADD OTHER HIDDEN PARAMS
         model_info: Final = kwargs.get("model_info", {}) or {}
         model_id: Final = model_info.get("id", None)
@@ -163,11 +165,17 @@ class ResponseMetadata:
             "litellm_call_id": getattr(logging_obj, "litellm_call_id", None),
             "api_base": get_api_base(model=model or "", optional_params=kwargs),
             "model_id": model_id,
-            "response_cost": logging_obj.response_cost_calculator(
-                result=self.result,
-                litellm_model_name=model,
-                router_model_id=model_id,
-                cache_hit=cache_hit,
+            **(
+                {}
+                if isinstance(self.result, BaseResponsesAPIStreamingIterator)
+                else {
+                    "response_cost": logging_obj.response_cost_calculator(
+                        result=self.result,
+                        litellm_model_name=model,
+                        router_model_id=model_id,
+                        cache_hit=cache_hit,
+                    )
+                }
             ),
             "additional_headers": process_response_headers(
                 self._get_additional_headers_from_hidden_params() or {},
