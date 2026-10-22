@@ -1141,6 +1141,7 @@ class LiteLLMCompletionStreamingIterator(ResponsesAPIStreamingIterator):
         if reasoning_item_id is None:
             return
         reasoning_content: Final = "".join(self._accumulated_reasoning_content_parts)
+        self._queue_compaction_item_done()
         self._pending_response_events.extend(
             (
                 self.create_reasoning_text_done_event(reasoning_item_id, reasoning_content, self._sequence_number + 1),
