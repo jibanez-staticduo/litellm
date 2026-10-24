@@ -2207,6 +2207,7 @@ async def test_anthropic_messages_with_extra_headers():
         ],
         "model": "claude-haiku-4-5-20251001",
         "stop_reason": "end_turn",
+        "stop_sequence": None,
         "usage": {"input_tokens": 10, "output_tokens": 20},
     }
 
@@ -2270,6 +2271,7 @@ async def test_anthropic_messages_with_thinking():
         ],
         "model": "claude-haiku-4-5-20251001",
         "stop_reason": "end_turn",
+        "stop_sequence": None,
         "usage": {"input_tokens": 10, "output_tokens": 20},
     }
 
@@ -2384,6 +2386,7 @@ async def test_anthropic_messages_bedrock_dynamic_region():
         "content": [{"type": "text", "text": "This is a mock response"}],
         "model": "bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0",
         "stop_reason": "end_turn",
+        "stop_sequence": None,
         "usage": {"input_tokens": 10, "output_tokens": 20},
     }
 

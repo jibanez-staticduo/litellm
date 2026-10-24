@@ -93,6 +93,28 @@ def test_retired_roi_calculator_cannot_be_loaded_or_called(
             assert response.status_code == 404, f"{method} {path}: {response.text}"
 
 
+@pytest.mark.parametrize("disable_lazy_routes", ("false", "true"))
+def test_usage_ai_lazy_feature_retains_its_router_and_endpoint(
+    monkeypatch: pytest.MonkeyPatch, disable_lazy_routes: str
+) -> None:
+    monkeypatch.setenv(FLAG, disable_lazy_routes)
+    app: Final = FastAPI()
+    attach_lazy_features(app)
+
+    with TestClient(app) as client:
+        if disable_lazy_routes == "false":
+            assert "/usage/ai/chat" not in _paths(app)
+            assert loaded_lazy_modules(app) == set()
+            response: Final = client.post("/usage/ai/chat", json={})
+            assert response.status_code == 422, response.text
+            assert "/usage/ai/chat" in _paths(app)
+            assert "litellm.proxy.management_endpoints.usage_endpoints" in loaded_lazy_modules(app)
+        else:
+            assert "/usage/ai/chat" in _paths(app)
+            response: Final = client.post("/usage/ai/chat", json={})
+            assert response.status_code == 422, response.text
+
+
 @pytest.mark.parametrize("value", ("1", "true", "TRUE", "yes", "on"))
 def test_flag_registers_every_feature_at_startup(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
     monkeypatch.setenv(FLAG, value)
