@@ -470,22 +470,22 @@ class MCPServerConfig(TypedDict, total=False):
 class _ProtectedResourceMetadataPayload(TypedDict, total=False):
     """The RFC 9728 protected-resource metadata document fields this gateway reads."""
 
-    authorization_servers: Sequence[object]
-    scopes_supported: Sequence[str] | str
-    scopes: Sequence[str] | str
+    authorization_servers: ReadOnly[Sequence[object]]
+    scopes_supported: ReadOnly[Sequence[str] | str]
+    scopes: ReadOnly[Sequence[str] | str]
 
 
 class _AuthorizationServerMetadataPayload(TypedDict, total=False):
     """The RFC 8414 / OpenID Discovery authorization-server metadata fields this gateway reads."""
 
-    issuer: str
-    authorization_endpoint: str
-    token_endpoint: str
-    registration_endpoint: str
+    issuer: ReadOnly[str]
+    authorization_endpoint: ReadOnly[str]
+    token_endpoint: ReadOnly[str]
+    registration_endpoint: ReadOnly[str]
     client_id_metadata_document_supported: ReadOnly[object]
-    scopes_supported: Sequence[str] | str
-    grant_types_supported: Sequence[str]
-    token_endpoint_auth_methods_supported: Sequence[str]
+    scopes_supported: ReadOnly[Sequence[str] | str]
+    grant_types_supported: ReadOnly[Sequence[str]]
+    token_endpoint_auth_methods_supported: ReadOnly[Sequence[str]]
     authorization_response_iss_parameter_supported: ReadOnly[StrictBool]
 
 
@@ -5496,7 +5496,9 @@ class MCPServerManager:
             try:
                 response = await self._fetch_oauth_discovery_url(url, server_url)
                 response.raise_for_status()
-                data: Final = _AUTHORIZATION_SERVER_METADATA_ADAPTER.validate_python(response.json())
+                data: _AuthorizationServerMetadataPayload = _AUTHORIZATION_SERVER_METADATA_ADAPTER.validate_python(
+                    response.json()
+                )  # rebind-ok: retry loop parses a separate discovery document at each candidate URL
             except SSRFError as exc:
                 verbose_logger.warning(
                     "MCP OAuth discovery: refusing to fetch authorization-server "

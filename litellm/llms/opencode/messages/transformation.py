@@ -24,16 +24,16 @@ class OpenCodeGoMessagesConfig(AnthropicMessagesConfig):
         litellm_params: Mapping[str, object],
         api_key: str | None = None,
         api_base: str | None = None,
-    ) -> tuple[dict[str, object], str | None]:  # mutable-ok: native Messages handler mutates validated headers
+    ) -> tuple[dict[str, str], str | None]:  # mutable-ok: native Messages handler mutates validated headers
         headers_out, base = super().validate_anthropic_messages_environment(  # pyright: ignore[reportUnknownMemberType, reportUnknownVariableType]  # validate legacy headers before returning them
-            headers=go_headers(headers, litellm_params, api_key, model),
+            headers=TypeAdapter(dict[str, str]).validate_python(go_headers(headers, litellm_params, api_key, model)),
             model=model,
             messages=list(messages),
             optional_params=dict(optional_params),
             litellm_params=dict(litellm_params),
             api_base=go_api_base(api_base, model),
         )
-        return TypeAdapter(dict[str, object]).validate_python(headers_out), base
+        return TypeAdapter(dict[str, str]).validate_python(headers_out), base
 
     def get_complete_url(
         self,

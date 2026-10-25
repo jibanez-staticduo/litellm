@@ -2011,11 +2011,12 @@ def test_gpt_5_6_alias_prices_match_sol(local_model_cost_map):
     alias = litellm.model_cost["gpt-5.6"]
     sol = litellm.model_cost["gpt-5.6-sol"]
 
-    cost_fields = sorted(field for field in sol if "cost" in field)
-    assert len(cost_fields) == 33
+    alias_cost_fields = {field for field in alias if "cost" in field}
+    sol_cost_fields = {field for field in sol if "cost" in field}
+    assert alias_cost_fields == sol_cost_fields
 
-    for field in cost_fields:
-        assert alias.get(field) == sol.get(field), field
+    for field in sol_cost_fields:
+        assert alias[field] == sol[field], field
 
 
 @pytest.mark.parametrize(
