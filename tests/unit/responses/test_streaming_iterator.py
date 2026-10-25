@@ -2671,6 +2671,44 @@ async def test_shutdown_drain_waits_for_a_pending_logging_task():
 
 
 @pytest.mark.asyncio
+async def test_shutdown_drain_prunes_closed_loop_tasks_and_waits_for_current_loop_tasks():
+    async def completed_row() -> object:
+        return None
+
+    def create_closed_loop_task() -> asyncio.Task[object]:
+        stale_loop: Final = asyncio.new_event_loop()
+        try:
+            stale_row: Final = streaming_module.spawn_logging_task(
+                stale_loop, completed_row(), task_name="completed row on a closed loop"
+            )
+            stale_loop.call_soon(stale_loop.stop)
+            stale_loop.run_forever()
+            return stale_row
+        finally:
+            stale_loop.close()
+
+    stale_row: Final = await asyncio.to_thread(create_closed_loop_task)
+    assert stale_row.done()
+    assert stale_row.get_loop().is_closed()
+    assert stale_row in streaming_module._PENDING_LOGGING_TASKS
+
+    release: Final = asyncio.Event()
+    current_row: Final = streaming_module.spawn_logging_task(
+        asyncio.get_running_loop(), release.wait(), task_name="current row"
+    )
+    drain: Final = asyncio.create_task(streaming_module.drain_logging_tasks(timeout=1))
+    await asyncio.sleep(0)
+
+    assert not drain.done()
+    assert stale_row not in streaming_module._PENDING_LOGGING_TASKS
+
+    release.set()
+    await drain
+
+    assert current_row.done()
+
+
+@pytest.mark.asyncio
 async def test_shutdown_drain_gives_up_on_a_stuck_logging_task_at_its_timeout():
     stuck: Final = streaming_module.spawn_logging_task(
         asyncio.get_running_loop(), asyncio.Event().wait(), task_name="stuck"

@@ -220,7 +220,18 @@ def spawn_logging_task(
 async def drain_logging_tasks(timeout: float = 5.0) -> None:
     if not _PENDING_LOGGING_TASKS:
         return
-    _, pending = await asyncio.wait(tuple(_PENDING_LOGGING_TASKS), timeout=timeout)
+
+    running_loop: Final = asyncio.get_running_loop()
+    closed_loop_tasks: Final = tuple(task for task in _PENDING_LOGGING_TASKS if task.get_loop().is_closed())
+    for task in closed_loop_tasks:
+        _PENDING_LOGGING_TASKS.discard(task)
+        if task.done():
+            _log_background_task_failure(task, task_name=task.get_name())
+
+    current_loop_tasks: Final = tuple(task for task in _PENDING_LOGGING_TASKS if task.get_loop() is running_loop)
+    if not current_loop_tasks:
+        return
+    _, pending = await asyncio.wait(current_loop_tasks, timeout=timeout)
     if pending:
         verbose_logger.warning("Timed out draining %d logging tasks on shutdown, dropping them", len(pending))
 
