@@ -3371,11 +3371,22 @@ def _override_live_session_authorizer(
     monkeypatch: pytest.MonkeyPatch,
     authorizer: Callable[[WebSocket, str], Awaitable[UserAPIKeyAuth]],
 ) -> None:
-    from litellm.proxy import proxy_server
+    from fastapi.routing import APIWebSocketRoute
+    from litellm.proxy.realtime_endpoints.live import router as live_router
 
+    session_route: Final = next(
+        route
+        for route in (*app.routes, *live_router.routes)
+        if isinstance(route, APIWebSocketRoute) and route.path in ("/v1/live/sessions", "/sessions")
+    )
+    model_authorizer: Final = next(
+        dependency.call
+        for dependency in session_route.dependant.dependencies
+        if getattr(dependency.call, "__name__", None) == "live_session_model_authorizer"
+    )
     monkeypatch.setitem(
-        proxy_server.app.dependency_overrides,
-        proxy_server.live_session_model_authorizer,
+        app.dependency_overrides,
+        model_authorizer,
         lambda: authorizer,
     )
 
