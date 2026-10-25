@@ -3367,10 +3367,7 @@ def test_live_session_accept_failure_releases_reservations(
     route_call.assert_not_awaited()
 
 
-def _override_live_session_authorizer(
-    monkeypatch: pytest.MonkeyPatch,
-    authorizer: Callable[[WebSocket, str], Awaitable[UserAPIKeyAuth]],
-) -> None:
+def _live_session_dependency(name: str) -> Callable[..., object]:
     from fastapi.routing import APIWebSocketRoute
     from litellm.proxy.realtime_endpoints.live import router as live_router
 
@@ -3382,8 +3379,16 @@ def _override_live_session_authorizer(
     model_authorizer: Final = next(
         dependency.call
         for dependency in session_route.dependant.dependencies
-        if getattr(dependency.call, "__name__", None) == "live_session_model_authorizer"
+        if getattr(dependency.call, "__name__", None) == name
     )
+    return model_authorizer
+
+
+def _override_live_session_authorizer(
+    monkeypatch: pytest.MonkeyPatch,
+    authorizer: Callable[[WebSocket, str], Awaitable[UserAPIKeyAuth]],
+) -> None:
+    model_authorizer: Final = _live_session_dependency("live_session_model_authorizer")
     monkeypatch.setitem(
         app.dependency_overrides,
         model_authorizer,
@@ -3747,7 +3752,8 @@ def test_live_session_releases_the_upgrade_reservation_before_the_frame_reserves
     monkeypatch.setattr(proxy_server, "route_request", route)
     monkeypatch.setattr(proxy_server, "_release_realtime_budget_reservation", release_budget)
     monkeypatch.setattr(proxy_server, "_release_realtime_max_parallel_slot", no_op)
-    monkeypatch.setitem(proxy_server.app.dependency_overrides, proxy_server.user_api_key_auth_live_websocket, upgrade_auth)
+    upgrade_authorizer: Final = _live_session_dependency("user_api_key_auth_live_websocket")
+    monkeypatch.setitem(app.dependency_overrides, upgrade_authorizer, upgrade_auth)
     _override_live_session_authorizer(monkeypatch, authorize)
 
     with client_no_auth.websocket_connect(
