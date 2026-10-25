@@ -590,7 +590,8 @@ def test_registered_inference_routes_have_an_explicit_managed_access_decision(ro
         "/videos", "/batches", "/files", "/fine_tuning", "/assistants", "/threads", "/utils/",
         "/vector_stores", "/vector_store/", "/search", "/containers", "/skills", "/claude-code/",
         "/interactions", "/agents", "/responses/{", "/responses/input_tokens",
-        "/realtime/client_secrets", "/realtime/calls", "/realtime/transcription_sessions",
-    )) or normalized in ("/models", "/cursor/models", "/cursor/v1/models", "/claude_code_gateway/v1/models")
+        "/realtime/client_secrets", "/realtime/calls", "/realtime/transcription_sessions", "/live/",
+    )) or normalized in ("/models", "/cursor/models", "/cursor/v1/models", "/claude_code_gateway/v1/models", "/live")
+    unsupported_live_session: Final = normalized == "/live/sessions"
     concrete: Final = route.split("?")[0].replace("{model}", "model").replace("{model_name:path}", "model")
-    assert managed_agent_route_allowed(concrete, None) is not unsupported, route
+    assert managed_agent_route_allowed(concrete, None) is not (unsupported and not unsupported_live_session), route
