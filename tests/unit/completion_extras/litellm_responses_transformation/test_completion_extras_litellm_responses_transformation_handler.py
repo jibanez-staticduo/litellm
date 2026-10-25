@@ -24,9 +24,23 @@ from litellm.types.utils import ModelResponse
 @pytest.mark.asyncio
 @pytest.mark.parametrize("stream", [False, True])
 @pytest.mark.parametrize("rate", [0.0, 0.002])
+@patch("litellm.llms.chatgpt.responses.transformation.Authenticator")
+@patch("litellm.llms.chatgpt.chat.transformation.Authenticator")
 async def test_chatgpt_bridge_persists_terminal_cost_once(
-    stream: bool, rate: float, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, respx_mock: respx.MockRouter
+    mock_chat_authenticator: MagicMock,
+    mock_responses_authenticator: MagicMock,
+    stream: bool,
+    rate: float,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    respx_mock: respx.MockRouter,
 ) -> None:
+    authenticator: Final = MagicMock()
+    authenticator.get_access_token.return_value = "transport-only"
+    authenticator.get_account_id.return_value = "transport-only"
+    authenticator.get_api_base.return_value = "https://transport.invalid/v1"
+    mock_chat_authenticator.return_value = authenticator
+    mock_responses_authenticator.return_value = authenticator
     (tmp_path / "auth.json").write_text(
         json.dumps({"access_token": "transport-only", "account_id": "transport-only", "expires_at": 4102444800})
     )
