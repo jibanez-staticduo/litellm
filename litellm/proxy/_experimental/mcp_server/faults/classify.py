@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Final
 
 import httpx
+from pydantic import TypeAdapter
 
 from litellm._logging import verbose_logger
 from litellm.proxy._experimental.mcp_server.faults.types import (
@@ -25,6 +26,8 @@ from litellm.proxy._experimental.mcp_server.faults.types import (
     UpstreamReportedFault,
 )
 
+_DECODED_JSON: Final = TypeAdapter(object)
+
 
 def _safe_text(response: httpx.Response) -> str:
     try:
@@ -35,8 +38,8 @@ def _safe_text(response: httpx.Response) -> str:
 
 def _safe_json(response: httpx.Response) -> object:
     try:
-        return response.json()
-    except (ValueError, RecursionError, httpx.ResponseNotRead):
+        return _DECODED_JSON.validate_python(response.json())
+    except Exception:
         return None
 
 

@@ -84,7 +84,7 @@ from litellm.experimental_mcp_client.client import (
 from litellm.integrations.custom_guardrail import (
     _sync_guardrail_info_to_logging_obj,  # pyright: ignore[reportPrivateUsage] - the same bridge @log_guardrail_information uses; reimplementing it here would fork the metadata-key logic
 )
-from litellm.litellm_core_utils.url_utils import async_safe_get
+from litellm.litellm_core_utils.url_utils import SSRFError, async_safe_get
 from litellm.llms.custom_httpx.http_handler import get_async_httpx_client
 from litellm.proxy._experimental.mcp_server.auth.user_api_key_auth_mcp import (  # noqa: F401  # legacy module exports
     MCPRequestHandler,
@@ -465,6 +465,35 @@ class MCPServerConfig(TypedDict, total=False):
     timeout: float
     max_concurrent_requests: int
     rpm: ReadOnly[int | None]
+
+
+class _ProtectedResourceMetadataPayload(TypedDict, total=False):
+    """The RFC 9728 protected-resource metadata document fields this gateway reads."""
+
+    authorization_servers: Sequence[object]
+    scopes_supported: Sequence[str]
+    scopes: Sequence[str]
+
+
+class _AuthorizationServerMetadataPayload(TypedDict, total=False):
+    """The RFC 8414 / OpenID Discovery authorization-server metadata fields this gateway reads."""
+
+    issuer: str
+    authorization_endpoint: str
+    token_endpoint: str
+    registration_endpoint: str
+    client_id_metadata_document_supported: ReadOnly[object]
+    scopes_supported: Sequence[str]
+    grant_types_supported: Sequence[str]
+    token_endpoint_auth_methods_supported: Sequence[str]
+
+
+_PROTECTED_RESOURCE_METADATA_ADAPTER: Final = TypeAdapter(_ProtectedResourceMetadataPayload)
+_AUTHORIZATION_SERVER_METADATA_ADAPTER: Final = TypeAdapter(_AuthorizationServerMetadataPayload)
+
+
+def _mapping_value(source: Mapping[str, object], key: str, default: object) -> object:
+    return source.get(key, default)
 
 
 def _blank_to_none(value: str | None) -> str | None:
@@ -2737,7 +2766,9 @@ class MCPServerManager:
                 server_id=server_id,
                 name=name_for_prefix,
                 protocol_version=TypeAdapter(MCPUpstreamProtocol).validate_python(
-                    server_config.get("protocol_version", mcp_info.get("protocol_version", "auto"))
+                    _mapping_value(
+                        server_config, "protocol_version", _mapping_value(mcp_info, "protocol_version", "auto")
+                    )
                 ),
                 alias=alias,
                 server_name=server_name,
@@ -5336,7 +5367,16 @@ class MCPServerManager:
         try:
             response: Final = await self._fetch_oauth_discovery_url(resource_metadata_url, server_url)
             response.raise_for_status()
-            data = response.json()  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            data: Final = _PROTECTED_RESOURCE_METADATA_ADAPTER.validate_python(response.json())
+        except SSRFError as exc:
+            verbose_logger.warning(
+                "MCP OAuth discovery: refusing to fetch resource metadata from %s "
+                "(rejected by SSRF guard for server %s): %s",
+                resource_metadata_url,
+                server_url,
+                exc,
+            )
+            return [], None
         except Exception as exc:  # pragma: no cover - network issues
             verbose_logger.debug(
                 "Failed to fetch MCP OAuth metadata from %s: %s",
@@ -5455,7 +5495,16 @@ class MCPServerManager:
             try:
                 response = await self._fetch_oauth_discovery_url(url, server_url)
                 response.raise_for_status()
-                data = response.json()
+                data: Final = _AUTHORIZATION_SERVER_METADATA_ADAPTER.validate_python(response.json())
+            except SSRFError as exc:
+                verbose_logger.warning(
+                    "MCP OAuth discovery: refusing to fetch authorization-server "
+                    "metadata from %s (rejected by SSRF guard for server %s): %s",
+                    url,
+                    server_url,
+                    exc,
+                )
+                continue
             except Exception as exc:  # pragma: no cover - network issues
                 verbose_logger.debug(
                     "Failed to fetch authorization metadata from %s: %s",

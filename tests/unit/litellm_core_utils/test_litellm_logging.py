@@ -85,6 +85,7 @@ from litellm.types.utils import (
 from tests._vcr_conftest_common import install_live_call_probe, record_vcr_outcome
 
 
+
 @pytest.fixture
 def logging_obj():
     return LitellmLogging(
@@ -14084,3 +14085,36 @@ def test_legacy_s3_logs_a_streamed_anthropic_messages_call_handed_off_from_the_a
     assert s3_writer.log_event.call_count == expected_s3_writes
     if expected_s3_writes:
         assert s3_writer.log_event.call_args.kwargs["response_obj"] is complete_response
+
+
+_GO_PRICED_MESSAGE: Final = {
+    "id": "msg_go",
+    "type": "message",
+    "role": "assistant",
+    "model": "claude-haiku-5-5",
+    "content": [{"type": "text", "text": "answer"}],
+    "stop_reason": "end_turn",
+    "stop_sequence": None,
+    "usage": {"input_tokens": 1200, "output_tokens": 300, "cost": 0, "opencode": {"list_cost": 0.00412}},
+}
+
+
+@pytest.mark.parametrize(
+    ("usage", "expected_header"),
+    (
+        ({"input_tokens": 1200, "output_tokens": 300, "cost": 0, "opencode": {"list_cost": 0.00412}}, 0.00412),
+        ({"input_tokens": 1200, "output_tokens": 300}, None),
+    ),
+    ids=("list-cost-reported", "no-list-cost-keeps-the-price-map"),
+)
+def test_native_messages_body_carries_the_reported_list_cost_into_the_priced_response(usage, expected_header):
+    logging_obj = _anthropic_messages_logging_obj()
+    logging_obj.stream = False
+    logging_obj.optional_params = {}
+    logging_obj.model_call_details["custom_llm_provider"] = "opencode_go"
+
+    priced = logging_obj.billable_result({**_GO_PRICED_MESSAGE, "usage": usage})
+
+    assert isinstance(priced, ModelResponse)
+    headers = priced._hidden_params.get("additional_headers") or {}
+    assert headers.get("llm_provider-x-litellm-response-cost") == expected_header

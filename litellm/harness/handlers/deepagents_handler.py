@@ -163,7 +163,7 @@ class DeepAgentsHandler(BaseHarnessHandler):
 
     async def history(
         self, ctx: SessionContext
-    ) -> list[dict[str, Any]]:  # mutable-ok: BaseHarnessHandler.history API returns OpenAI message dicts
+    ) -> list[dict[str, object]]:  # mutable-ok: BaseHarnessHandler.history API returns OpenAI message dicts
         agent, deps = self._require_agent()
         snapshot: Final = await agent.aget_state(self._run_config(ctx, None))
         messages: Final = (snapshot.values or MappingProxyType({})).get("messages") or ()

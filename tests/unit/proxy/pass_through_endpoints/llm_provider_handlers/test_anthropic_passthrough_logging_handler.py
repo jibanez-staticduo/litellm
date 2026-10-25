@@ -2843,3 +2843,102 @@ def test_streamed_messages_end_turn_logs_no_stop_details(mock_logging_obj):
     assert logged.choices[0].finish_reason == "stop"
     provider_fields: Final = logged.choices[0].message.provider_specific_fields or {}
     assert "stop_details" not in provider_fields
+
+
+def _go_sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data)}\n\n"
+
+
+_GO_MESSAGE_DELTA_USAGE: Final = {
+    "input_tokens": 1200,
+    "output_tokens": 300,
+    "cost": 0,
+    "opencode": {"billing_source": "go", "list_cost": 0.00412},
+}
+
+
+def _go_stream_chunks() -> list[str]:
+    message = {
+        "id": "msg_go",
+        "type": "message",
+        "role": "assistant",
+        "model": "claude-haiku-5-5",
+        "content": [],
+        "stop_reason": None,
+        "stop_sequence": None,
+        "usage": {"input_tokens": 1200, "output_tokens": 0},
+    }
+    return [
+        _go_sse("message_start", {"type": "message_start", "message": message}),
+        _go_sse(
+            "content_block_start",
+            {"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": ""}},
+        ),
+        _go_sse(
+            "content_block_delta",
+            {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "ok"}},
+        ),
+        _go_sse("content_block_stop", {"type": "content_block_stop", "index": 0}),
+        _go_sse(
+            "message_delta",
+            {
+                "type": "message_delta",
+                "delta": {"stop_reason": "end_turn", "stop_sequence": None},
+                "usage": _GO_MESSAGE_DELTA_USAGE,
+            },
+        ),
+        _go_sse("message_stop", {"type": "message_stop"}),
+    ]
+
+
+def _go_logging_obj() -> LiteLLMLoggingObj:
+    logging_obj = LiteLLMLoggingObj(
+        model="opencode_go/claude-haiku-5-5",
+        messages=[{"role": "user", "content": "hi"}],
+        stream=True,
+        call_type="anthropic_messages",
+        start_time=datetime.now(),
+        litellm_call_id="go-stream",
+        function_id="1",
+    )
+    logging_obj.model_call_details["custom_llm_provider"] = "opencode_go"
+    logging_obj.model_call_details["stream"] = True
+    logging_obj.model_call_details["litellm_params"] = {}
+    logging_obj.litellm_params = {}
+    return logging_obj
+
+
+def test_streamed_messages_bill_the_list_cost_reported_in_the_final_message_delta():
+    result = AnthropicPassthroughLoggingHandler._handle_logging_anthropic_collected_chunks(
+        litellm_logging_obj=_go_logging_obj(),
+        passthrough_success_handler_obj=MagicMock(),
+        url_route="/v1/messages",
+        request_body={"model": "opencode_go/claude-haiku-5-5", "stream": True},
+        endpoint_type="messages",
+        start_time=datetime.now(),
+        all_chunks=_go_stream_chunks(),
+        end_time=datetime.now(),
+    )
+
+    assert result["kwargs"]["response_cost"] == 0.00412
+    assert result["result"]._hidden_params["response_cost"] == 0.00412
+
+
+def test_streamed_messages_from_other_providers_ignore_a_zero_usage_cost_field():
+    logging_obj = _go_logging_obj()
+    logging_obj.model_call_details["custom_llm_provider"] = "anthropic"
+
+    result = AnthropicPassthroughLoggingHandler._handle_logging_anthropic_collected_chunks(
+        litellm_logging_obj=logging_obj,
+        passthrough_success_handler_obj=MagicMock(),
+        url_route="/v1/messages",
+        request_body={"model": "claude-haiku-5-5", "stream": True},
+        endpoint_type="messages",
+        start_time=datetime.now(),
+        all_chunks=_go_stream_chunks(),
+        end_time=datetime.now(),
+    )
+
+    headers = result["result"]._hidden_params.get("additional_headers") or {}
+    assert "llm_provider-x-litellm-response-cost" not in headers
+    assert result["kwargs"].get("response_cost") != 0.0
