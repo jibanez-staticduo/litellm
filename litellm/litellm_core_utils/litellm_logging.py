@@ -4870,12 +4870,15 @@ class Logging(LiteLLMLoggingBaseClass):
                     response_usage
                 )
             ):
+                reported_cost: Final = provider_reported_usage_cost(
+                    response_usage, self.model_call_details.get("custom_llm_provider")
+                )
+                if reported_cost is not None:
+                    self._provider_reported_cost = reported_cost
                 if not isinstance(result.response, dict):
                     set_response_cost_in_hidden_params(
                         result.response,
-                        provider_reported_usage_cost(
-                            response_usage, self.model_call_details.get("custom_llm_provider")
-                        ),
+                        reported_cost,
                     )
                 transformed_usage = ResponseAPILoggingUtils.transform_response_api_usage_to_chat_usage(  # pyright: ignore[reportPrivateUsage]  # shared response usage normalizer  # rebind-ok: framework flow intentionally updates request or lifecycle state
                     response_usage

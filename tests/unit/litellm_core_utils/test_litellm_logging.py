@@ -10540,6 +10540,54 @@ def test_get_assembled_streaming_response_bills_a_provider_reported_usage_cost()
     assert logging_obj.response_cost_calculator(result=assembled) == 0.0042
 
 
+@pytest.mark.parametrize("typed_response", [False, True], ids=["mapping", "typed"])
+def test_get_assembled_streaming_response_bills_opencode_list_cost_for_mapping_and_typed_usage(
+    typed_response: bool,
+) -> None:
+    logging_obj = _responses_stream_logging_obj()
+    logging_obj.model_call_details["custom_llm_provider"] = "opencode_go"
+    usage = {
+        "input_tokens": 1200,
+        "output_tokens": 300,
+        "total_tokens": 1500,
+        "cost": 0,
+        "opencode": {"list_cost": 0.00412},
+    }
+    if typed_response:
+        response: dict[str, object] | ResponsesAPIResponse = ResponsesAPIResponse(
+            id="resp-go",
+            created_at=1,
+            object="response",
+            status="completed",
+            model="claude-haiku-5-5",
+            output=[],
+            usage=ResponseAPIUsage.model_validate(usage),
+        )
+        result = ResponseCompletedEvent(type="response.completed", response=response)
+    else:
+        response = {
+            "id": "resp-go",
+            "object": "response",
+            "status": "completed",
+            "model": "claude-haiku-5-5",
+            "output": [],
+            "usage": usage,
+        }
+        result = ResponseCompletedEvent.model_construct(type="response.completed", response=response)
+
+    now = datetime.datetime.now()
+    assembled = logging_obj._get_assembled_streaming_response(
+        result=result,
+        start_time=now,
+        end_time=now,
+        is_async=True,
+        streaming_chunks=[],
+    )
+
+    assert assembled is response
+    assert logging_obj.response_cost_calculator(result=assembled) == 0.00412
+
+
 def test_response_cost_calculator_prices_terminal_responses_event_from_its_response():
     logging_obj: Final = _responses_stream_logging_obj()
     inner_response: Final = ResponsesAPIResponse(

@@ -4758,6 +4758,30 @@ class TestMCPServerManager:
         assert scopes == ["read", "write"]
 
     @pytest.mark.asyncio
+    async def test_fetch_oauth_metadata_from_resource_accepts_space_delimited_scopes(self):
+        manager = MCPServerManager()
+        response = MagicMock()
+        response.json.return_value = {
+            "authorization_servers": ["https://auth.example.com"],
+            "scopes_supported": "read write",
+        }
+        response.raise_for_status = MagicMock()
+        client = MagicMock()
+        client.get = AsyncMock(return_value=response)
+
+        with patch(
+            "litellm.proxy._experimental.mcp_server.mcp_server_manager.get_async_httpx_client",
+            return_value=client,
+        ):
+            servers, scopes = await manager._fetch_oauth_metadata_from_resource(
+                "https://protected.example.com/.well-known/oauth",
+                "https://protected.example.com/mcp",
+            )
+
+        assert servers == ["https://auth.example.com"]
+        assert scopes == ["read", "write"]
+
+    @pytest.mark.asyncio
     async def test_descovery_metadata_probes_well_known_when_server_does_not_challenge(
         self,
     ):
@@ -4925,6 +4949,7 @@ class TestMCPServerManager:
                 "token_endpoint": "https://idp.example.com/token",
                 "scopes_supported": ["read", "write"],
                 "client_id_metadata_document_supported": True,
+                "authorization_response_iss_parameter_supported": True,
             },
         )
         mock_client = MagicMock()
@@ -4941,11 +4966,39 @@ class TestMCPServerManager:
         assert result.scopes == ["read", "write"]
 
         assert result.client_id_metadata_document_supported is True
+        assert result.authorization_response_iss_parameter_supported is True
 
         assert result.authorization_server_metadata is not None
         assert result.authorization_server_metadata["scopes_supported"] == ["read", "write"]
         merged = manager._merge_discovered_oauth_metadata(self._passthrough_call_server(MCPAuth.oauth2), result)
         assert merged.authorization_server_metadata == result.authorization_server_metadata
+
+    @pytest.mark.asyncio
+    async def test_fetch_single_authorization_server_metadata_accepts_space_delimited_scopes(self):
+        manager = MCPServerManager()
+        issuer = "https://idp.example.com"
+        build_response = self._issuer_doc_response_builder(
+            f"{issuer}/.well-known/oauth-authorization-server",
+            {
+                "issuer": issuer,
+                "authorization_endpoint": "https://idp.example.com/authorize",
+                "token_endpoint": "https://idp.example.com/token",
+                "scopes_supported": "read write",
+            },
+        )
+        client = MagicMock()
+        client.get = AsyncMock(side_effect=build_response)
+
+        with patch(
+            "litellm.proxy._experimental.mcp_server.mcp_server_manager.get_async_httpx_client",
+            return_value=client,
+        ):
+            result = await manager._fetch_single_authorization_server_metadata(issuer, issuer)
+
+        assert result is not None
+        assert result.authorization_url == "https://idp.example.com/authorize"
+        assert result.token_url == "https://idp.example.com/token"
+        assert result.scopes == ["read", "write"]
 
     @pytest.mark.asyncio
     async def test_fetch_single_authorization_server_metadata_rejects_issuer_mismatch(self):

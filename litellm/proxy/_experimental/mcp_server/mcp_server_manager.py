@@ -58,7 +58,7 @@ from mcp.types import (
     ResourceTemplate,
 )
 from mcp.types import Tool as MCPTool
-from pydantic import AnyUrl, Field, SecretStr, TypeAdapter, ValidationError
+from pydantic import AnyUrl, Field, SecretStr, StrictBool, TypeAdapter, ValidationError
 from typing_extensions import ReadOnly, assert_never
 
 import litellm
@@ -471,8 +471,8 @@ class _ProtectedResourceMetadataPayload(TypedDict, total=False):
     """The RFC 9728 protected-resource metadata document fields this gateway reads."""
 
     authorization_servers: Sequence[object]
-    scopes_supported: Sequence[str]
-    scopes: Sequence[str]
+    scopes_supported: Sequence[str] | str
+    scopes: Sequence[str] | str
 
 
 class _AuthorizationServerMetadataPayload(TypedDict, total=False):
@@ -483,9 +483,10 @@ class _AuthorizationServerMetadataPayload(TypedDict, total=False):
     token_endpoint: str
     registration_endpoint: str
     client_id_metadata_document_supported: ReadOnly[object]
-    scopes_supported: Sequence[str]
+    scopes_supported: Sequence[str] | str
     grant_types_supported: Sequence[str]
     token_endpoint_auth_methods_supported: Sequence[str]
+    authorization_response_iss_parameter_supported: ReadOnly[StrictBool]
 
 
 _PROTECTED_RESOURCE_METADATA_ADAPTER: Final = TypeAdapter(_ProtectedResourceMetadataPayload)
