@@ -1,3 +1,4 @@
+from typing import Final
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -51,33 +52,51 @@ def test_chatgpt_chat_auth_uses_litellm_params_for_token_and_account(mock_authen
 
 
 @patch(
-    "litellm.main.base_llm_http_handler.completion"
+    "litellm.responses.main.base_llm_http_handler.response_api_handler"
+)  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+@patch(
+    "litellm.llms.chatgpt.responses.transformation.Authenticator"
 )  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
 @patch(
     "litellm.llms.chatgpt.chat.transformation.Authenticator"
 )  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
 def test_litellm_completion_preserves_chatgpt_auth_params_into_provider(
-    mock_authenticator_class,
-    mock_completion,
-    tmp_path,
-    monkeypatch,
+    mock_chat_authenticator_class, mock_responses_authenticator_class, mock_response_api_handler, tmp_path
 ):
     mock_auth_instance = MagicMock()
     mock_auth_instance.get_api_base.return_value = "https://chatgpt.example.com"
     mock_auth_instance.get_access_token.return_value = "access-123"
     mock_auth_instance.get_account_id.return_value = "acct-123"
-    mock_authenticator_class.return_value = mock_auth_instance
-    monkeypatch.setenv("EXPERIMENTAL_OPENAI_BASE_LLM_HTTP_HANDLER", "true")
-    mock_completion.return_value = litellm.ModelResponse(choices=[{"message": {"role": "assistant", "content": "ok"}}])
-    mock_completion.side_effect = lambda *args, **kwargs: ChatGPTConfig().validate_environment(
-        headers={},
+    mock_chat_authenticator_class.return_value = mock_auth_instance
+    mock_responses_authenticator_class.return_value = mock_auth_instance
+    response: Final = ResponsesAPIResponse(
+        id="resp_123",
+        created_at=123,
         model="non-responses-test-model",
-        messages=[],
-        optional_params={},
-        litellm_params=kwargs["litellm_params"],
-        api_key=kwargs["api_key"],
-        api_base=kwargs["api_base"],
+        object="response",
+        output=[
+            {
+                "type": "message",
+                "role": "assistant",
+                "content": [{"type": "output_text", "text": "ok"}],
+            }
+        ],
     )
+
+    def provider_call(**kwargs):
+        provider_config = kwargs["responses_api_provider_config"]
+        headers = provider_config.validate_environment(
+            headers={}, model=kwargs["model"], litellm_params=kwargs["litellm_params"]
+        )
+        assert kwargs["custom_llm_provider"] == "chatgpt"
+        assert kwargs["litellm_params"].chatgpt_auth_profile == "account2"
+        assert kwargs["litellm_params"].chatgpt_token_dir == token_dir
+        assert kwargs["litellm_params"].chatgpt_auth_file == auth_file
+        assert headers["Authorization"] == "Bearer access-123"
+        assert headers["ChatGPT-Account-Id"] == "acct-123"
+        return response
+
+    mock_response_api_handler.side_effect = provider_call
     token_dir = str(tmp_path / "tokens")
     auth_file = "account2-auth.json"
 
@@ -89,45 +108,62 @@ def test_litellm_completion_preserves_chatgpt_auth_params_into_provider(
         chatgpt_auth_file=auth_file,
     )
 
-    litellm_params = mock_completion.call_args.kwargs["litellm_params"]
-    assert litellm_params["chatgpt_auth_profile"] == "account2"
-    assert litellm_params["chatgpt_token_dir"] == token_dir
-    assert litellm_params["chatgpt_auth_file"] == auth_file
-    validate_litellm_params = mock_authenticator_class.call_args_list[1].args[0]
-    assert validate_litellm_params["chatgpt_auth_profile"] == "account2"
-    assert validate_litellm_params["chatgpt_token_dir"] == token_dir
-    assert validate_litellm_params["chatgpt_auth_file"] == auth_file
+    assert mock_response_api_handler.call_count == 1
+    litellm_params = mock_response_api_handler.call_args.kwargs["litellm_params"]
+    assert mock_chat_authenticator_class.call_args.args[0].chatgpt_auth_profile == "account2"
+    assert mock_chat_authenticator_class.call_args.args[0].chatgpt_token_dir == token_dir
+    assert mock_chat_authenticator_class.call_args.args[0].chatgpt_auth_file == auth_file
+    assert mock_responses_authenticator_class.call_args.args == (litellm_params,)
 
 
 @patch(
-    "litellm.main.base_llm_http_handler.completion"
+    "litellm.responses.main.base_llm_http_handler.response_api_handler"
+)  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+@patch(
+    "litellm.llms.chatgpt.responses.transformation.Authenticator"
 )  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
 @patch(
     "litellm.llms.chatgpt.chat.transformation.Authenticator"
-)  # test-quality-ok: isolates the external or process-global boundary exercised by this regression
+)  # test-quality-ok: isolates router deployment resolution during initialization
 def test_router_deployment_chatgpt_auth_params_survive_into_provider(
-    mock_authenticator_class,
-    mock_completion,
-    tmp_path,
-    monkeypatch,
+    mock_chat_authenticator_class, mock_responses_authenticator_class, mock_response_api_handler, tmp_path
 ):
     mock_auth_instance = MagicMock()
     mock_auth_instance.get_api_base.return_value = "https://chatgpt.example.com"
     mock_auth_instance.get_access_token.return_value = "access-123"
     mock_auth_instance.get_account_id.return_value = "acct-123"
-    mock_authenticator_class.return_value = mock_auth_instance
-    monkeypatch.setenv("EXPERIMENTAL_OPENAI_BASE_LLM_HTTP_HANDLER", "true")
-    mock_completion.side_effect = lambda *args, **kwargs: ChatGPTConfig().validate_environment(
-        headers={},
-        model="non-responses-test-model",
-        messages=[],
-        optional_params={},
-        litellm_params=kwargs["litellm_params"],
-        api_key=kwargs["api_key"],
-        api_base=kwargs["api_base"],
-    )
+    mock_chat_authenticator_class.return_value = mock_auth_instance
+    mock_responses_authenticator_class.return_value = mock_auth_instance
     token_dir = str(tmp_path / "tokens")
     auth_file = "account2-auth.json"
+    response: Final = ResponsesAPIResponse(
+        id="resp_123",
+        created_at=123,
+        model="non-responses-test-model",
+        object="response",
+        output=[
+            {
+                "type": "message",
+                "role": "assistant",
+                "content": [{"type": "output_text", "text": "ok"}],
+            }
+        ],
+    )
+
+    def provider_call(**kwargs):
+        provider_config = kwargs["responses_api_provider_config"]
+        headers = provider_config.validate_environment(
+            headers={}, model=kwargs["model"], litellm_params=kwargs["litellm_params"]
+        )
+        assert kwargs["custom_llm_provider"] == "chatgpt"
+        assert kwargs["litellm_params"].chatgpt_auth_profile == "account2"
+        assert kwargs["litellm_params"].chatgpt_token_dir == token_dir
+        assert kwargs["litellm_params"].chatgpt_auth_file == auth_file
+        assert headers["Authorization"] == "Bearer access-123"
+        assert headers["ChatGPT-Account-Id"] == "acct-123"
+        return response
+
+    mock_response_api_handler.side_effect = provider_call
     router = litellm.Router(
         model_list=[
             {
@@ -147,10 +183,12 @@ def test_router_deployment_chatgpt_auth_params_survive_into_provider(
         messages=[{"role": "user", "content": "hi"}],
     )
 
-    litellm_params = mock_completion.call_args.kwargs["litellm_params"]
-    assert litellm_params["chatgpt_auth_profile"] == "account2"
-    assert litellm_params["chatgpt_token_dir"] == token_dir
-    assert litellm_params["chatgpt_auth_file"] == auth_file
+    assert mock_response_api_handler.call_count == 1
+    litellm_params = mock_response_api_handler.call_args.kwargs["litellm_params"]
+    assert mock_chat_authenticator_class.call_args.args[0].chatgpt_auth_profile == "account2"
+    assert mock_chat_authenticator_class.call_args.args[0].chatgpt_token_dir == token_dir
+    assert mock_chat_authenticator_class.call_args.args[0].chatgpt_auth_file == auth_file
+    assert mock_responses_authenticator_class.call_args.args == (litellm_params,)
 
 
 @patch(

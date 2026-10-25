@@ -5498,7 +5498,7 @@ class MCPServerManager:
                 response.raise_for_status()
                 data: _AuthorizationServerMetadataPayload = _AUTHORIZATION_SERVER_METADATA_ADAPTER.validate_python(
                     response.json()
-                )  # rebind-ok: retry loop parses a separate discovery document at each candidate URL
+                )
             except SSRFError as exc:
                 verbose_logger.warning(
                     "MCP OAuth discovery: refusing to fetch authorization-server "
