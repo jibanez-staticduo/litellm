@@ -1,3 +1,5 @@
+import base64
+import json
 from typing import Final
 from unittest.mock import MagicMock, patch
 
@@ -5,7 +7,14 @@ import pytest
 
 import litellm
 from litellm.llms.chatgpt.chat.transformation import ChatGPTConfig
+from litellm.llms.chatgpt.common_utils import ChatGPTAuthError
 from litellm.types.llms.openai import ResponsesAPIResponse
+
+
+def _client_token(account_id: str) -> str:
+    claims = json.dumps({"https://api.openai.com/auth": {"chatgpt_account_id": account_id}}).encode()
+    payload = base64.urlsafe_b64encode(claims).decode().rstrip("=")
+    return f"header.{payload}.signature"
 
 
 @patch(
@@ -49,6 +58,34 @@ def test_chatgpt_chat_auth_uses_litellm_params_for_token_and_account(mock_authen
     assert headers["session_id"] == "session-123"
     assert mock_authenticator_class.call_args_list[0].args == (litellm_params,)
     assert mock_authenticator_class.call_args_list[1].args == (litellm_params,)
+
+
+def test_chatgpt_chat_provider_forwards_client_subscription_without_gateway_login():
+    from litellm.llms.chatgpt.common_utils import CHATGPT_API_BASE
+
+    token = _client_token("acct-client")
+    config = ChatGPTConfig()
+    params = {
+        "provider_specific_header": {
+            "custom_llm_provider": "chatgpt",
+            "extra_headers": {"authorization": f"Bearer {token}", "x-litellm-api-key": "gateway"},
+        }
+    }
+
+    assert config._get_openai_compatible_provider_info("gpt-5.4", None, None, "chatgpt", params) == (
+        CHATGPT_API_BASE,
+        token,
+        "chatgpt",
+    )
+
+
+def test_chatgpt_chat_provider_rejects_client_subscription_custom_host():
+    token = _client_token("acct-client")
+    config = ChatGPTConfig()
+    params = {"extra_headers": {"Authorization": f"Bearer {token}"}}
+
+    with pytest.raises(ChatGPTAuthError, match="official HTTPS ChatGPT endpoint"):
+        config._get_openai_compatible_provider_info("gpt-5.4", "https://attacker.example", None, "chatgpt", params)
 
 
 @patch(

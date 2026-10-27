@@ -188,6 +188,51 @@ class TestChatGPTAuthenticator:
             mock_write.assert_called_once()
             assert mock_write.call_args[0][0]["account_id"] == "acct-123"
 
+    def test_get_account_id_uses_explicit_token_instead_of_saved_account(self, authenticator):
+        explicit_token = _make_jwt({"https://api.openai.com/auth": {"chatgpt_account_id": "acct-client"}})
+        auth_data = {"access_token": "saved-token", "account_id": "acct-gateway"}
+
+        with patch.object(authenticator, "_read_auth_file", return_value=auth_data):
+            assert authenticator.get_account_id(explicit_token) == "acct-client"
+            assert authenticator.get_account_id("configured-api-key") is None
+
+    def test_get_account_id_never_logs_in_for_an_explicit_token(self, authenticator):
+        with patch.object(authenticator, "_read_auth_file", return_value=None):
+            assert authenticator.get_account_id("configured-api-key") is None
+
+    def test_get_account_id_derives_explicit_client_token_without_saved_file(self, authenticator):
+        explicit_token = _make_jwt({"https://api.openai.com/auth": {"chatgpt_account_id": "acct-client"}})
+
+        with (
+            patch.object(authenticator, "_read_auth_file", return_value=None),
+            patch.object(authenticator, "_get_auth_http_client") as mock_client,
+        ):
+            assert authenticator.get_account_id(explicit_token) == "acct-client"
+        mock_client.assert_not_called()
+
+    def test_refresh_preserves_saved_workspace_when_refreshed_token_changes_account(self, tmp_path):
+        auth_file = tmp_path / "auth.json"
+        old_token = _make_jwt({"https://api.openai.com/auth": {"chatgpt_account_id": "acct-default"}})
+        new_token = _make_jwt({"exp": 4102444800, "https://api.openai.com/auth": {"chatgpt_account_id": "acct-default"}})
+        auth_file.write_text(
+            json.dumps(
+                {
+                    "access_token": old_token,
+                    "refresh_token": "refresh-token",
+                    "expires_at": 1,
+                    "account_id": "acct-selected-workspace",
+                }
+            )
+        )
+        client = MagicMock()
+        response = MagicMock()
+        response.json.return_value = {"access_token": new_token, "id_token": new_token}
+        client.post.return_value = response
+        authenticator = Authenticator({"chatgpt_auth_file": str(auth_file)}, http_client_factory=lambda: client)
+
+        assert authenticator.get_access_token() == new_token
+        assert json.loads(auth_file.read_text())["account_id"] == "acct-selected-workspace"
+
     def test_default_auth_file_uses_environment_fallbacks(self, tmp_path, monkeypatch):
         token_dir = tmp_path / "default"
         monkeypatch.setenv("CHATGPT_TOKEN_DIR", str(token_dir))
@@ -427,3 +472,27 @@ class TestChatGPTAuthenticator:
             final_state = json.load(auth_file)
         assert final_state["access_token"] == "refreshed"
         assert final_state["account_id"] == "acct-123"
+
+    def test_refresh_preserves_saved_workspace(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("time.time", lambda: 1700000000)
+        auth_file = tmp_path / "auth.json"
+        old_token = _make_jwt({"https://api.openai.com/auth": {"chatgpt_account_id": "acct-default"}})
+        new_token = _make_jwt({"exp": 4102444800, "https://api.openai.com/auth": {"chatgpt_account_id": "acct-default"}})
+        auth_file.write_text(
+            json.dumps(
+                {
+                    "access_token": old_token,
+                    "refresh_token": "refresh-token",
+                    "expires_at": 1,
+                    "account_id": "acct-selected-workspace",
+                }
+            )
+        )
+        client = MagicMock()
+        response = MagicMock()
+        response.json.return_value = {"access_token": new_token, "id_token": new_token}
+        client.post.return_value = response
+        authenticator = Authenticator({"chatgpt_auth_file": str(auth_file)}, http_client_factory=lambda: client)
+
+        assert authenticator.get_access_token() == new_token
+        assert json.loads(auth_file.read_text())["account_id"] == "acct-selected-workspace"

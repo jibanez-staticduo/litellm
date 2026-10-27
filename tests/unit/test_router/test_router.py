@@ -28252,6 +28252,145 @@ async def test_responses_router_preserves_caller_metadata_and_internal_oauth_att
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("isolate_litellm_state")
+@pytest.mark.parametrize("execution_mode", ("native_client", "native_sdk"))
+async def test_anthropic_managed_oauth_provider_authorization_keeps_deployment_cooldown_identity(
+    execution_mode: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from litellm.caching.llm_caching_handler import LLMClientCache
+    from litellm.llms.anthropic.native_transport import AnthropicNativeIdentity
+    from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
+    from litellm.types.router import AllowedFailsPolicy
+
+    class DeploymentRecorder(CustomLogger):
+        def __init__(self) -> None:
+            super().__init__()
+            self.deployment_ids: list[str | None] = []
+
+        def log_pre_api_call(self, model: object, messages: object, kwargs: Mapping[str, object]) -> None:
+            litellm_params: Final = kwargs["litellm_params"]
+            assert isinstance(litellm_params, dict)
+            metadata: Final = litellm_params.get("metadata")
+            assert isinstance(metadata, dict)
+            model_info: Final = metadata.get("model_info")
+            assert isinstance(model_info, dict)
+            deployment_id: Final = model_info.get("id")
+            self.deployment_ids.append(deployment_id if isinstance(deployment_id, str) else None)
+
+    monkeypatch.setattr(litellm, "disable_aiohttp_transport", True)
+    monkeypatch.setattr("time.time", lambda: 1767225600.0)
+
+    profile_token: Final = "sk-ant-oat01-server-profile"
+    if execution_mode == "native_client":
+        profile: Final = tmp_path / "account_b"
+        profile.mkdir()
+        (profile / ".credentials.json").write_text(
+            json.dumps(
+                {
+                    "claudeAiOauth": {
+                        "accessToken": profile_token,
+                        "expiresAt": 99999999999999,
+                        "scopes": ["user:inference"],
+                    }
+                }
+            )
+        )
+    else:
+        monkeypatch.setenv("ANTHROPIC_NATIVE_SDK_BASE_URL", "http://native-broker")
+        monkeypatch.setenv("ANTHROPIC_NATIVE_SDK_KEY", "private-broker-key")
+
+    upstream_requests: Final[list[tuple[str, str | None]]] = []
+
+    def upstream(request: httpx.Request) -> httpx.Response:
+        if execution_mode == "native_sdk":
+            assert str(request.url) == "http://native-broker/v1/messages"
+            assert request.headers["authorization"] == "Bearer private-broker-key"
+            assert request.headers["x-litellm-native-owner"] == "server-owner"
+            assert request.headers["x-litellm-native-profile"] == "fixed-profile"
+            selected_deployment: Final[str | None] = request.headers.get("x-litellm-native-deployment")
+        else:
+            assert str(request.url) == "https://api.anthropic.com/v1/messages"
+            assert request.headers["authorization"] == f"Bearer {profile_token}"
+            assert "x-api-key" not in request.headers
+            selected_deployment = None
+        assert "client-token-" not in str(request.headers)
+        upstream_requests.append((request.headers["authorization"], selected_deployment))
+        return httpx.Response(
+            429,
+            headers={"retry-after": "3600"},
+            json={"type": "error", "error": {"type": "rate_limit_error", "message": "usage limit"}},
+        )
+
+    router_params: Final = {
+        "model": "anthropic/claude-test-model",
+        "use_anthropic_oauth": True,
+        "anthropic_auth_profile": "account_b" if execution_mode == "native_client" else "fixed-profile",
+        "anthropic_execution_mode": execution_mode,
+        **(
+            {
+                "anthropic_credential_mode": "claude_code",
+                "anthropic_token_dir": str(tmp_path),
+            }
+            if execution_mode == "native_client"
+            else {}
+        ),
+    }
+    router: Final = Router(
+        model_list=[
+            {
+                "model_name": "managed-anthropic",
+                "litellm_params": router_params,
+                "model_info": {"id": "selected-deployment"},
+            }
+        ],
+        num_retries=0,
+        allowed_fails_policy=AllowedFailsPolicy(RateLimitErrorAllowedFails=1),
+    )
+    client: Final = AsyncHTTPHandler(transport=httpx.MockTransport(upstream))
+    clients: Final = LLMClientCache()
+    clients.set_cache("async_httpx_clientanthropic", client)
+    logger: Final = DeploymentRecorder()
+    native_identity: Final = AnthropicNativeIdentity("server-owner", "stale-caller-deployment")
+
+    async def call(client_token: str) -> object:
+        return await router.aanthropic_messages(
+            model="managed-anthropic",
+            messages=[{"role": "user", "content": "hello"}],
+            max_tokens=32,
+            provider_specific_header={
+                "custom_llm_provider": "anthropic",
+                "extra_headers": {"Authorization": f"Bearer client-token-{client_token}"},
+            },
+            **({"_anthropic_native_identity": native_identity} if execution_mode == "native_sdk" else {}),
+        )
+
+    try:
+        with (
+            patch("litellm.in_memory_llm_clients_cache", clients),
+            patch("litellm.callbacks", [logger]),
+        ):
+            for _ in range(2):
+                with pytest.raises(litellm.RateLimitError):
+                    await call("limited")
+                await GLOBAL_LOGGING_WORKER.flush()
+
+            assert len(upstream_requests) == 2
+            if execution_mode == "native_sdk":
+                assert {selected_deployment for _, selected_deployment in upstream_requests} == {"selected-deployment"}
+            else:
+                assert {authorization for authorization, _ in upstream_requests} == {f"Bearer {profile_token}"}
+
+            with pytest.raises(RouterRateLimitError):
+                await call("different-account")
+
+        assert len(upstream_requests) == 2
+        assert logger.deployment_ids == ["selected-deployment", "selected-deployment"]
+    finally:
+        await GLOBAL_LOGGING_WORKER.flush()
+        await client.close()
+
+
+@pytest.mark.asyncio
 async def test_native_client_router_selects_profile_and_never_reuses_cached_account_response(tmp_path: Path) -> None:
     from itertools import count
 

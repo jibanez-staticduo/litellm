@@ -4,9 +4,10 @@ Tests for ChatGPT subscription Responses API transformation
 Source: litellm/llms/chatgpt/responses/transformation.py
 """
 
+import base64
 import json
-from copy import deepcopy
 from collections.abc import Generator
+from copy import deepcopy
 from typing import Final
 from unittest.mock import MagicMock, patch
 
@@ -34,6 +35,25 @@ def local_model_cost_map(monkeypatch: pytest.MonkeyPatch) -> Generator[None, Non
 
 
 class TestChatGPTResponsesAPITransformation:
+    def test_client_subscription_headers_are_forwarded_without_gateway_login(self):
+        from litellm.llms.chatgpt.common_utils import CHATGPT_API_BASE
+
+        claims = json.dumps({"https://api.openai.com/auth": {"chatgpt_account_id": "acct-client"}}).encode()
+        payload = base64.urlsafe_b64encode(claims).decode().rstrip("=")
+        token = f"header.{payload}.signature"
+        config = ChatGPTResponsesAPIConfig()
+
+        headers = config.validate_environment(
+            headers={"authorization": f"Bearer {token}", "x-litellm-api-key": "gateway"},
+            model="gpt-5.4",
+            litellm_params=GenericLiteLLMParams(),
+        )
+
+        assert headers["Authorization"] == f"Bearer {token}"
+        assert headers["ChatGPT-Account-Id"] == "acct-client"
+        assert headers["x-litellm-api-key"] == "gateway"
+        assert CHATGPT_API_BASE == "https://chatgpt.com/backend-api/codex"
+
     @pytest.mark.parametrize("encrypted_content", [None, "", 123])
     def test_foreign_raw_reasoning_removed_without_changing_conversation(self, encrypted_content):
         history = [

@@ -36,8 +36,10 @@ from ..common_utils import (
     CHATGPT_API_BASE,
     GetAccessTokenError,
     ensure_chatgpt_session_id,
+    get_chatgpt_client_credential,
     get_chatgpt_default_headers,
     get_chatgpt_default_instructions,
+    strip_chatgpt_client_credential_headers,
 )
 
 if TYPE_CHECKING:
@@ -73,12 +75,28 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
         model: str,
         litellm_params: GenericLiteLLMParams | None,
     ) -> dict:
+        client_credential: Final = get_chatgpt_client_credential(headers)
+        session_id: Final = ensure_chatgpt_session_id(litellm_params)
+        if client_credential is not None:
+            return {
+                **get_chatgpt_default_headers(client_credential.access_token, client_credential.account_id, session_id),
+                **strip_chatgpt_client_credential_headers(headers),
+            }
         authenticator: Final = (
             self.authenticator
             or Authenticator(  # rebind-ok: framework flow intentionally updates request or lifecycle state
                 litellm_params
             )
         )  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        safe_headers: Final = strip_chatgpt_client_credential_headers(headers)
+        configured_api_key: Final = litellm_params.api_key if litellm_params is not None else None
+        if configured_api_key:
+            return {
+                **get_chatgpt_default_headers(
+                    configured_api_key, authenticator.get_account_id(configured_api_key), session_id
+                ),
+                **safe_headers,
+            }
         try:
             access_token = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
                 authenticator.get_access_token()
@@ -95,7 +113,7 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
             raise auth_error
 
         account_id = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
-            authenticator.get_account_id()
+            authenticator.get_account_id(access_token)
         )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         session_id = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
             ensure_chatgpt_session_id(  # rebind-ok: framework flow intentionally updates request or lifecycle state
@@ -107,7 +125,7 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
                 access_token, account_id, session_id
             )
         )  # rebind-ok: framework flow intentionally updates request or lifecycle state
-        return {**default_headers, **headers}
+        return {**default_headers, **safe_headers}
 
     def transform_responses_api_request(
         self,

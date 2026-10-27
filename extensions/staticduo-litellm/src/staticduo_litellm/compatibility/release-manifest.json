@@ -2,10 +2,10 @@
   "schema_version": 1,
   "extension_version": "0.1.0",
   "core_version_range": ">=1.106.0,<1.109.0",
-  "upstream_baseline_commit": "541e3ed5305a530ebef74d5684d3aca2632c1009",
+  "upstream_baseline_commit": "2e27a02a9fce9bdc6ece13ba3cb8222dc5b6ecfa",
   "provider_upstream": {
     "path": "litellm/llms/chatgpt/authenticator.py",
-    "sha256": "fae5a0af1eb25b060c09c47591f3921bb10c4590ee8b0468f6091d5fb0fa84b6"
+    "sha256": "aff9d43414793e2690e7b77b9396051c1b797e09a0b458bc989f398539548d97"
   },
   "interfaces": [
     {

@@ -26,6 +26,8 @@ from litellm.llms.chatgpt.common_utils import (
     GetDeviceCodeError,
     InteractiveAuthError,
     RefreshAccessTokenError,
+    decode_jwt_claims,
+    extract_chatgpt_account_id,
 )
 from litellm.llms.chatgpt.oauth_engine import (
     DEVICE_CODE_COOLDOWN_SECONDS,
@@ -70,6 +72,8 @@ __all__: Final = (
     "JsonObject",
     "RefreshAccessTokenError",
     "can_block_current_thread",
+    "decode_jwt_claims",
+    "extract_chatgpt_account_id",
     "get_configured_request_timeout",
     "verbose_logger",
 )

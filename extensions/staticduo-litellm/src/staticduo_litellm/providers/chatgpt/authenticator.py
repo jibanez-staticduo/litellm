@@ -20,6 +20,8 @@ from staticduo_litellm.compatibility.provider_providers_chatgpt_authenticator im
     ChatGPTOAuthEngine,
     HTTPHandler,
     JsonObject,
+    decode_jwt_claims,
+    extract_chatgpt_account_id,
     optional_str,
     token_refresh_timeout,
 )
@@ -207,6 +209,12 @@ class Authenticator(ChatGPTOAuthEngine):
     def get_api_base(default_base: str = CHATGPT_API_BASE) -> str:
         return os.getenv("CHATGPT_API_BASE") or os.getenv("OPENAI_CHATGPT_API_BASE") or default_base
 
+    def _decode_jwt_claims(self, token: str) -> JsonObject:
+        return decode_jwt_claims(token)
+
+    def _extract_account_id(self, token: str | None) -> str | None:
+        return extract_chatgpt_account_id(token)
+
     def get_access_token(self) -> str:
         if self._read_only:
             return self._read_access_snapshot()[0]
@@ -218,7 +226,10 @@ class Authenticator(ChatGPTOAuthEngine):
     def _get_access_token_locked(self) -> str:
         return super().get_access_token()
 
-    def get_account_id(self) -> str | None:
+    def get_account_id(self, access_token: str | None = None) -> str | None:
+        auth_data: Final = self._read_auth_file()
+        if access_token and (not auth_data or auth_data.get("access_token") != access_token):
+            return self._extract_account_id(access_token)
         if self._read_only:
             token, auth_data = self._read_access_snapshot()
             return _optional_str(auth_data.get("account_id")) or self._extract_account_id(
@@ -230,6 +241,8 @@ class Authenticator(ChatGPTOAuthEngine):
             auth_data = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
                 self._read_auth_file()
             )
+            if access_token and (not auth_data or auth_data.get("access_token") != access_token):
+                return self._extract_account_id(access_token)
             if not auth_data:
                 return None
             account_id: Final = _optional_str(auth_data.get("account_id"))

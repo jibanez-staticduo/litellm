@@ -7,8 +7,12 @@ from litellm.types.llms.openai import AllMessageValues
 from ..authenticator import Authenticator
 from ..common_utils import (
     GetAccessTokenError,
+    chatgpt_client_api_base,
     ensure_chatgpt_session_id,
+    get_chatgpt_client_credential,
     get_chatgpt_default_headers,
+    get_chatgpt_request_credential,
+    strip_chatgpt_client_credential_headers,
 )
 from .streaming_utils import ChatGPTToolCallNormalizer
 
@@ -33,6 +37,11 @@ class ChatGPTConfig(OpenAIConfig):
         custom_llm_provider: str,
         litellm_params: object | None = None,
     ) -> tuple[str | None, str | None, str]:
+        client_credential: Final = get_chatgpt_request_credential(litellm_params)
+        if client_credential is not None:
+            return chatgpt_client_api_base(api_base), client_credential.access_token, custom_llm_provider
+        if api_key:
+            return api_base or Authenticator.get_api_base(), api_key, custom_llm_provider
         authenticator = Authenticator(  # rebind-ok: framework flow intentionally updates request or lifecycle state
             litellm_params
         )  # rebind-ok: framework flow intentionally updates request or lifecycle state
@@ -75,8 +84,24 @@ class ChatGPTConfig(OpenAIConfig):
         api_key: str | None = None,
         api_base: str | None = None,
     ) -> dict:
+        client_credential: Final = get_chatgpt_client_credential(headers)
+        if client_credential is not None:
+            return dict(
+                get_chatgpt_default_headers(
+                    client_credential.access_token,
+                    client_credential.account_id,
+                    ensure_chatgpt_session_id(litellm_params),
+                ),
+                **strip_chatgpt_client_credential_headers(headers),
+            )
         validated_headers: Final = super().validate_environment(
-            headers, model, messages, optional_params, litellm_params, api_key, api_base
+            dict(strip_chatgpt_client_credential_headers(headers)),
+            model,
+            messages,
+            optional_params,
+            litellm_params,
+            api_key,
+            api_base,
         )
 
         authenticator = Authenticator(  # rebind-ok: framework flow intentionally updates request or lifecycle state
@@ -86,7 +111,7 @@ class ChatGPTConfig(OpenAIConfig):
             api_key or authenticator.get_access_token()
         )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         account_id = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
-            authenticator.get_account_id()
+            authenticator.get_account_id(access_token)
         )  # rebind-ok: framework flow intentionally updates request or lifecycle state
         session_id = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
             ensure_chatgpt_session_id(  # rebind-ok: framework flow intentionally updates request or lifecycle state

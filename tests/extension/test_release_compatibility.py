@@ -2,16 +2,21 @@
 
 import json
 import sys
-import tomllib
 import zipfile
 from importlib import metadata
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import tomllib
 
 ROOT = Path(__file__).resolve().parents[2]
-from staticduo_litellm.compatibility.provider_upstream import ProviderUpstreamDriftError, check_provider_upstream_source
+from staticduo_litellm.compatibility.provider_upstream import (
+    CHATGPT_OAUTH_UPSTREAM_COMMIT,
+    CHATGPT_OAUTH_UPSTREAM_SHA256,
+    ProviderUpstreamDriftError,
+    check_provider_upstream_source,
+)
 from staticduo_litellm.compatibility.release_manifest import (
     CompatibilityError,
     check_interfaces,
@@ -66,6 +71,12 @@ def test_reviewed_minor_and_patch_releases_allowed(core):
 def test_upstream_drift_rejected():
     with pytest.raises(ProviderUpstreamDriftError):
         check_provider_upstream_source(b"changed upstream OAuth algorithm")
+
+
+def test_upstream_oauth_baseline_is_reviewed_historical_source():
+    manifest = load_manifest()
+    assert manifest.upstream_baseline_commit == CHATGPT_OAUTH_UPSTREAM_COMMIT
+    assert manifest.provider_upstream.sha256 == CHATGPT_OAUTH_UPSTREAM_SHA256
 
 
 def runtime_fixture(tmp_path):
@@ -338,7 +349,7 @@ def test_baker_rejects_installed_source_and_catalog_drift(tmp_path, monkeypatch)
     from scripts import staticduo_release as release
     from scripts.check_staticduo_compatibility import inventory_sha256
 
-    source = release.prepare_source(ROOT, load_manifest().upstream_baseline_commit, "HEAD")
+    source = release.prepare_source(ROOT, "upstream/main", "HEAD")
     inventory = extension_inventory(ROOT)
     source = source.model_copy(
         update={

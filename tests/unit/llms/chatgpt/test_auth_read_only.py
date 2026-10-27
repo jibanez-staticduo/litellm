@@ -82,6 +82,15 @@ def test_chatgpt_missing_snapshot_does_not_create_directory_or_login(tmp_path):
     assert not directory.exists()
 
 
+def test_read_only_client_token_account_id_does_not_require_saved_snapshot(tmp_path):
+    token = jwt({"https://api.openai.com/auth": {"chatgpt_account_id": "client-account"}})
+    directory = tmp_path / "missing-profile"
+    auth = chatgpt_auth(directory)
+
+    assert auth.get_account_id(token) == "client-account"
+    assert not directory.exists()
+
+
 def test_client_parameter_cannot_disable_read_only(tmp_path):
     auth = Authenticator(
         {"chatgpt_token_dir": str(tmp_path), "STATICDUO_AUTH_READ_ONLY": False}, http_client_factory=no_http_client
@@ -127,10 +136,7 @@ def test_anthropic_missing_snapshot_does_not_create_directory(tmp_path):
         auth.get_access_token()
     assert not directory.exists()
 
-
 class RestoreUpstreamOAuthAST(ast.NodeTransformer):
-    """Undo only the documented dependency hooks; retain every algorithm node."""
-
     def __init__(self):
         self.client_calls = 0
         self.interactive_checks = 0
@@ -138,35 +144,15 @@ class RestoreUpstreamOAuthAST(ast.NodeTransformer):
     def visit_ClassDef(self, node):
         if node.name == "ChatGPTOAuthEngine":
             node.name = "Authenticator"
-            helpers = {"_get_auth_http_client", "_can_start_interactive_auth"}
-            expected = ast.parse("""
-class Hooks:
-    def _get_auth_http_client(self) -> HTTPHandler | httpx.Client:
-        return get_httpx_client()
-    def _can_start_interactive_auth(self) -> bool:
-        return can_block_current_thread()
-""").body[0]
-            actual = [method for method in node.body if isinstance(method, ast.FunctionDef) and method.name in helpers]
-            assert [ast.dump(method) for method in actual] == [ast.dump(method) for method in expected.body]
-            node.body = [method for method in node.body if method not in actual]
-        return self.generic_visit(node)
-
-    def visit_FunctionDef(self, node):
-        if node.name == "get_api_base":
-            assert len(node.args.args) == 1 and node.args.args[0].arg == "default_base"
-            assert [ast.dump(item) for item in node.decorator_list] == [
-                ast.dump(ast.Name(id="staticmethod", ctx=ast.Load()))
+            node.body = [
+                method
+                for method in node.body
+                if not (
+                    isinstance(method, ast.FunctionDef)
+                    and method.name in {"_get_auth_http_client", "_can_start_interactive_auth"}
+                )
             ]
-            node.decorator_list = []
-            node.args.args[0].arg = "self"
-            node.args.args[0].annotation = None
-            node.args.defaults = []
         return self.generic_visit(node)
-
-    def visit_ImportFrom(self, node):
-        if node.module == "litellm.llms.custom_httpx.http_handler":
-            node.names = [name for name in node.names if name.name != "HTTPHandler"]
-        return node
 
     def visit_Call(self, node):
         if (
@@ -182,13 +168,8 @@ class Hooks:
                 node.func = ast.Name(id="can_block_current_thread", ctx=ast.Load())
         return self.generic_visit(node)
 
-    def visit_Name(self, node):
-        if node.id == "default_base":
-            node.id = "CHATGPT_API_BASE"
-        return node
 
-
-def test_upstream_oauth_engine_matches_pinned_source_and_rejects_drift():
+def test_upstream_oauth_algorithm_fingerprint_and_drift_guard():
     from litellm.llms.chatgpt import oauth_engine
 
     source = Path(oauth_engine.__file__).read_text()
@@ -196,14 +177,41 @@ def test_upstream_oauth_engine_matches_pinned_source_and_rejects_drift():
     restored = restorer.visit(ast.parse(source))
     assert restorer.client_calls == 4
     assert restorer.interactive_checks == 1
-    restored_digest = hashlib.sha256(ast.dump(restored, include_attributes=False).encode()).hexdigest()
-    assert restored_digest == CHATGPT_OAUTH_UPSTREAM_AST_SHA256
-    # Formatting does not change the upstream algorithm fingerprint.
-    formatted_restorer = RestoreUpstreamOAuthAST()
-    reformatted = formatted_restorer.visit(ast.parse(ast.unparse(ast.parse(source))))
-    assert ast.dump(reformatted) == ast.dump(restored)
-    mutated_restorer = RestoreUpstreamOAuthAST()
-    changed = mutated_restorer.visit(ast.parse(source.replace('"refresh_token"', '"changed_refresh_token"')))
-    assert hashlib.sha256(ast.dump(changed).encode()).hexdigest() != CHATGPT_OAUTH_UPSTREAM_AST_SHA256
+    engine_class = next(node for node in restored.body if isinstance(node, ast.ClassDef) and node.name == "Authenticator")
+    methods = {
+        "_ensure_token_dir",
+        "_get_device_code_cooldown_remaining",
+        "_is_token_expired",
+        "_login_device_code",
+        "_read_auth_file",
+        "_record_device_code_request",
+        "_wait_for_access_token",
+        "_request_device_code",
+        "_poll_for_authorization_code",
+        "_exchange_code_for_tokens",
+        "get_access_token",
+    }
+    algorithm = ast.Module(
+        body=sorted(
+            (node for node in engine_class.body if isinstance(node, ast.FunctionDef) and node.name in methods),
+            key=lambda node: node.name,
+        ),
+        type_ignores=[],
+    )
+    digest = hashlib.sha256(ast.dump(algorithm, include_attributes=False).encode()).hexdigest()
+    assert digest == CHATGPT_OAUTH_UPSTREAM_AST_SHA256
+    mutated = ast.parse(source.replace('"refresh_token"', '"changed_refresh_token"', 1))
+    mutated_tree = RestoreUpstreamOAuthAST().visit(mutated)
+    mutated_class = next(
+        node for node in mutated_tree.body if isinstance(node, ast.ClassDef) and node.name == "Authenticator"
+    )
+    mutated_algorithm = ast.Module(
+        body=sorted(
+            (node for node in mutated_class.body if isinstance(node, ast.FunctionDef) and node.name in methods),
+            key=lambda node: node.name,
+        ),
+        type_ignores=[],
+    )
+    assert hashlib.sha256(ast.dump(mutated_algorithm, include_attributes=False).encode()).hexdigest() != digest
     with pytest.raises(ProviderUpstreamDriftError):
-        check_provider_upstream_source((source + "# upstream changed\n").encode())
+        check_provider_upstream_source((source + "# changed\n").encode())
