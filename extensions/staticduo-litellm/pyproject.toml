@@ -3,7 +3,7 @@ name = "staticduo-litellm"
 version = "0.1.0"
 description = "StaticDuo policies and compatibility adapters for LiteLLM"
 readme = "README.md"
-requires-python = ">=3.10,<3.15"
+requires-python = ">=3.10,<3.16"
 license = "MIT"
 dependencies = [
     "httpx[http2]>=0.28.0,<1.0",

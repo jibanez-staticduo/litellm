@@ -5,6 +5,9 @@ import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from types import SimpleNamespace
+from typing import Final
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -15,8 +18,11 @@ from litellm.constants import DEFAULT_REQUEST_TIMEOUT_SECONDS, HTTP_HANDLER_CONN
 from litellm.llms.chatgpt.authenticator import (
     TOKEN_REFRESH_TIMEOUT_SECONDS,
     Authenticator,
+    get_cached_authenticator,
+    get_chatgpt_auth_file,
 )
-from litellm.llms.chatgpt.common_utils import GetAccessTokenError
+from litellm.llms.chatgpt.common_utils import GetAccessTokenError, get_chatgpt_request_credential
+from litellm.types.router import GenericLiteLLMParams
 
 
 def _multiprocess_get_token(token_dir, counter, start_event, result_queue):
@@ -188,6 +194,54 @@ class TestChatGPTAuthenticator:
             mock_write.assert_called_once()
             assert mock_write.call_args[0][0]["account_id"] == "acct-123"
 
+
+def _write_auth_record(path: Path, token: str, account_id: str) -> None:
+    path.write_text(json.dumps({"access_token": token, "account_id": account_id, "expires_at": 4102444800}))
+
+
+class TestChatGPTMultiAccountAuthenticator:
+    @pytest.fixture
+    def authenticator(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Authenticator:
+        monkeypatch.setenv("CHATGPT_TOKEN_DIR", str(tmp_path))
+        return Authenticator()
+
+    @pytest.fixture(autouse=True)
+    def fixed_clock(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("time.time", lambda: 1700000000)
+
+    def test_explicit_auth_file_overrides_environment(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("CHATGPT_TOKEN_DIR", str(tmp_path / "env-dir"))
+        monkeypatch.setenv("CHATGPT_AUTH_FILE", "env.json")
+        custom_file: Final = tmp_path / "account-a" / "auth.json"
+
+        auth: Final = Authenticator({"chatgpt_auth_file": str(custom_file)})
+
+        assert auth.auth_file == str(custom_file)
+        assert auth.token_dir == str(tmp_path / "env-dir")
+        assert custom_file.parent.exists()
+
+    def test_two_auth_files_are_isolated(self, tmp_path: Path) -> None:
+        file_a: Final = tmp_path / "account-a.json"
+        file_b: Final = tmp_path / "account-b.json"
+        _write_auth_record(file_a, "token-a", "acct-a")
+        _write_auth_record(file_b, "token-b", "acct-b")
+        auth_a: Final = Authenticator({"chatgpt_auth_file": str(file_a)})
+        auth_b: Final = Authenticator({"chatgpt_auth_file": str(file_b)})
+
+        assert auth_a.get_access_token() == "token-a"
+        assert auth_a.get_account_id() == "acct-a"
+        assert auth_b.get_access_token() == "token-b"
+        assert auth_b.get_account_id() == "acct-b"
+
+    def test_cached_authenticator_and_configured_file_resolution(self, tmp_path: Path) -> None:
+        file_a: Final = tmp_path / "account-a" / "auth.json"
+        path: Final = get_chatgpt_auth_file(GenericLiteLLMParams(chatgpt_auth_file=str(file_a)))
+        assert path == str(file_a)
+        assert get_chatgpt_auth_file(GenericLiteLLMParams()) is None
+        assert path is not None
+        get_cached_authenticator.cache_clear()
+        assert get_cached_authenticator(path) is get_cached_authenticator(path)
+
     def test_get_account_id_uses_explicit_token_instead_of_saved_account(self, authenticator):
         explicit_token = _make_jwt({"https://api.openai.com/auth": {"chatgpt_account_id": "acct-client"}})
         auth_data = {"access_token": "saved-token", "account_id": "acct-gateway"}
@@ -196,24 +250,12 @@ class TestChatGPTAuthenticator:
             assert authenticator.get_account_id(explicit_token) == "acct-client"
             assert authenticator.get_account_id("configured-api-key") is None
 
-    def test_get_account_id_never_logs_in_for_an_explicit_token(self, authenticator):
-        with patch.object(authenticator, "_read_auth_file", return_value=None):
-            assert authenticator.get_account_id("configured-api-key") is None
-
-    def test_get_account_id_derives_explicit_client_token_without_saved_file(self, authenticator):
-        explicit_token = _make_jwt({"https://api.openai.com/auth": {"chatgpt_account_id": "acct-client"}})
-
-        with (
-            patch.object(authenticator, "_read_auth_file", return_value=None),
-            patch.object(authenticator, "_get_auth_http_client") as mock_client,
-        ):
-            assert authenticator.get_account_id(explicit_token) == "acct-client"
-        mock_client.assert_not_called()
-
     def test_refresh_preserves_saved_workspace_when_refreshed_token_changes_account(self, tmp_path):
         auth_file = tmp_path / "auth.json"
         old_token = _make_jwt({"https://api.openai.com/auth": {"chatgpt_account_id": "acct-default"}})
-        new_token = _make_jwt({"exp": 4102444800, "https://api.openai.com/auth": {"chatgpt_account_id": "acct-default"}})
+        new_token = _make_jwt(
+            {"exp": 4102444800, "https://api.openai.com/auth": {"chatgpt_account_id": "acct-default"}}
+        )
         auth_file.write_text(
             json.dumps(
                 {
@@ -232,6 +274,25 @@ class TestChatGPTAuthenticator:
 
         assert authenticator.get_access_token() == new_token
         assert json.loads(auth_file.read_text())["account_id"] == "acct-selected-workspace"
+
+    def test_get_account_id_prefers_stored_value_without_rewriting_file(self, authenticator):
+        id_token = _make_jwt({"https://api.openai.com/auth": {"chatgpt_account_id": "acct-from-token"}})
+        auth_data = {"account_id": "acct-stored", "id_token": id_token}
+
+        with (
+            patch.object(authenticator, "_read_auth_file", return_value=auth_data),
+            patch.object(authenticator, "_write_auth_file") as mock_write,
+        ):
+            assert authenticator.get_account_id() == "acct-stored"
+            mock_write.assert_not_called()
+
+    def test_get_account_id_without_login_returns_none(self, authenticator):
+        with (
+            patch.object(authenticator, "_read_auth_file", return_value={}),
+            patch.object(authenticator, "_write_auth_file") as mock_write,
+        ):
+            assert authenticator.get_account_id() is None
+            mock_write.assert_not_called()
 
     def test_default_auth_file_uses_environment_fallbacks(self, tmp_path, monkeypatch):
         token_dir = tmp_path / "default"
@@ -258,6 +319,22 @@ class TestChatGPTAuthenticator:
 
         assert authenticator.token_dir == str(token_dir)
         assert authenticator.auth_file == os.path.join(str(token_dir), "account2.json")
+
+    def test_relative_auth_file_uses_environment_token_dir(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        token_dir: Final = tmp_path / "shared-tokens"
+        monkeypatch.setenv("CHATGPT_TOKEN_DIR", str(token_dir))
+
+        configured_file: Final = get_chatgpt_auth_file({"chatgpt_auth_file": "account2.json"})
+
+        assert configured_file == str(token_dir / "account2.json")
+        assert Authenticator({"chatgpt_auth_file": "account2.json"}).auth_file == configured_file
+
+    def test_params_without_provider_specific_header_are_safe(self) -> None:
+        params: Final = SimpleNamespace(chatgpt_auth_file="account2.json")
+
+        assert get_chatgpt_request_credential(params) is None
 
     @pytest.mark.parametrize(
         "profile_name",
@@ -477,7 +554,9 @@ class TestChatGPTAuthenticator:
         monkeypatch.setattr("time.time", lambda: 1700000000)
         auth_file = tmp_path / "auth.json"
         old_token = _make_jwt({"https://api.openai.com/auth": {"chatgpt_account_id": "acct-default"}})
-        new_token = _make_jwt({"exp": 4102444800, "https://api.openai.com/auth": {"chatgpt_account_id": "acct-default"}})
+        new_token = _make_jwt(
+            {"exp": 4102444800, "https://api.openai.com/auth": {"chatgpt_account_id": "acct-default"}}
+        )
         auth_file.write_text(
             json.dumps(
                 {

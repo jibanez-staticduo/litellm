@@ -19,9 +19,11 @@ def get_async_httpx_client(llm_provider: LlmProviders, params: Mapping[str, obje
     return _client(llm_provider=llm_provider, params=dict(params) if params is not None else None)
 
 
-def oauth_headers(params: GenericLiteLLMParams, model: str) -> Mapping[str, str]:
+def oauth_headers(
+    params: GenericLiteLLMParams, model: str, headers: Mapping[str, str] | None = None
+) -> Mapping[str, str]:
     result: Final = ChatGPTResponsesAPIConfig().validate_environment(  # pyright: ignore[reportUnknownVariableType, reportUnknownMemberType]  # upstream headers have a legacy bare dict annotation
-        headers={},
+        headers=dict(headers or {}),
         model=model,
         litellm_params=params,
     )

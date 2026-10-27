@@ -8673,6 +8673,184 @@
       }
     }
   },
+  "codex_passthrough": {
+    "components": {
+      "schemas": {
+        "HTTPValidationError": {
+          "properties": {
+            "detail": {
+              "items": {
+                "$ref": "#/components/schemas/ValidationError"
+              },
+              "title": "Detail",
+              "type": "array"
+            }
+          },
+          "title": "HTTPValidationError",
+          "type": "object"
+        },
+        "ValidationError": {
+          "properties": {
+            "ctx": {
+              "title": "Context",
+              "type": "object"
+            },
+            "input": {
+              "title": "Input"
+            },
+            "loc": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ]
+              },
+              "title": "Location",
+              "type": "array"
+            },
+            "msg": {
+              "title": "Message",
+              "type": "string"
+            },
+            "type": {
+              "title": "Error Type",
+              "type": "string"
+            }
+          },
+          "required": [
+            "loc",
+            "msg",
+            "type"
+          ],
+          "title": "ValidationError",
+          "type": "object"
+        }
+      }
+    },
+    "paths": {
+      "/backend-api/codex/{endpoint}": {
+        "get": {
+          "description": "Forward a client's ChatGPT subscription with separate LiteLLM authentication.",
+          "operationId": "codex_passthrough_route_backend_api_codex__endpoint__get",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "endpoint",
+              "required": true,
+              "schema": {
+                "enum": [
+                  "models",
+                  "responses"
+                ],
+                "title": "Endpoint",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {}
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "security": [
+            {
+              "APIKeyHeader": []
+            }
+          ],
+          "summary": "Codex Passthrough Route",
+          "tags": [
+            "codex_passthrough"
+          ]
+        },
+        "post": {
+          "description": "Forward a client's ChatGPT subscription with separate LiteLLM authentication.",
+          "operationId": "codex_passthrough_route_backend_api_codex__endpoint__post",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "endpoint",
+              "required": true,
+              "schema": {
+                "enum": [
+                  "models",
+                  "responses"
+                ],
+                "title": "Endpoint",
+                "type": "string"
+              }
+            }
+          ],
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  }
+                },
+                "text/event-stream": {
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              },
+              "description": "Unmodified Codex response or server-sent events"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "security": [
+            {
+              "APIKeyHeader": []
+            }
+          ],
+          "summary": "Codex Passthrough Route",
+          "tags": [
+            "codex_passthrough"
+          ]
+        }
+      }
+    }
+  },
   "compliance": {
     "components": {
       "schemas": {
@@ -39449,7 +39627,7 @@
       "/.well-known/oauth-authorization-server": {
         "get": {
           "description": "OAuth authorization server discovery endpoint.\n\nSupports both legacy pattern (/{server_name}) and root endpoint.",
-          "operationId": "oauth_authorization_server_mcp__well_known_oauth_authorization_server_get_3",
+          "operationId": "oauth_authorization_server_mcp__well_known_oauth_authorization_server_get_2",
           "parameters": [
             {
               "in": "query",
@@ -39497,7 +39675,7 @@
       "/.well-known/oauth-authorization-server/mcp": {
         "get": {
           "description": "OAuth authorization server discovery for the aggregate /mcp endpoint, the RFC 8414\npath-inserted form for a client that treats {base}/mcp as its authorization base URL.\n\nThe single-segment /mcp is reserved for the aggregate so the discovery chain stays\nconsistent: the aggregate protected-resource document advertises {base}/mcp as its\nauthorization server, so the document served here must have issuer {base}/mcp. A server\nliterally named ``mcp`` therefore does not take this route; it keeps its standard\ntwo-segment discovery at /.well-known/oauth-authorization-server/mcp/mcp. Letting the\nper-server row win here instead would serve an issuer of {base} against a resource that\nadvertised {base}/mcp, which fails the RFC 8414 issuer check and breaks the front door.",
-          "operationId": "oauth_authorization_server_aggregate__well_known_oauth_authorization_server_mcp_get_3",
+          "operationId": "oauth_authorization_server_aggregate__well_known_oauth_authorization_server_mcp_get_2",
           "responses": {
             "200": {
               "content": {
@@ -39517,7 +39695,7 @@
       "/.well-known/oauth-authorization-server/mcp/{mcp_server_name}": {
         "get": {
           "description": "OAuth authorization server discovery endpoint using standard MCP URL pattern.\n\nStandard pattern: /mcp/{server_name}\nDiscovery path: /.well-known/oauth-authorization-server/mcp/{server_name}",
-          "operationId": "oauth_authorization_server_mcp_standard__well_known_oauth_authorization_server_mcp__mcp_server_name__get_3",
+          "operationId": "oauth_authorization_server_mcp_standard__well_known_oauth_authorization_server_mcp__mcp_server_name__get_2",
           "parameters": [
             {
               "in": "path",
@@ -39558,7 +39736,7 @@
       "/.well-known/oauth-authorization-server/{mcp_server_name}": {
         "get": {
           "description": "OAuth authorization server discovery endpoint.\n\nSupports both legacy pattern (/{server_name}) and root endpoint.",
-          "operationId": "oauth_authorization_server_mcp__well_known_oauth_authorization_server__mcp_server_name__get_3",
+          "operationId": "oauth_authorization_server_mcp__well_known_oauth_authorization_server__mcp_server_name__get_2",
           "parameters": [
             {
               "in": "path",
@@ -39606,7 +39784,7 @@
       "/.well-known/oauth-authorization-server/{mcp_server_name}/mcp": {
         "get": {
           "description": "OAuth authorization server discovery for legacy /{server_name}/mcp pattern.",
-          "operationId": "oauth_authorization_server_legacy__well_known_oauth_authorization_server__mcp_server_name__mcp_get_3",
+          "operationId": "oauth_authorization_server_legacy__well_known_oauth_authorization_server__mcp_server_name__mcp_get_2",
           "parameters": [
             {
               "in": "path",
@@ -39639,261 +39817,6 @@
             }
           },
           "summary": "Oauth Authorization Server Legacy",
-          "tags": [
-            "mcp_byok_oauth"
-          ]
-        }
-      },
-      "/.well-known/oauth-protected-resource": {
-        "get": {
-          "operationId": "oauth_protected_resource_root__well_known_oauth_protected_resource_get_2",
-          "responses": {
-            "200": {
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "additionalProperties": {
-                      "anyOf": [
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "items": {
-                            "type": "string"
-                          },
-                          "type": "array"
-                        }
-                      ]
-                    },
-                    "title": "Response Oauth Protected Resource Root  Well Known Oauth Protected Resource Get",
-                    "type": "object"
-                  }
-                }
-              },
-              "description": "Successful Response"
-            }
-          },
-          "summary": "Oauth Protected Resource Root",
-          "tags": [
-            "mcp_byok_oauth"
-          ]
-        }
-      },
-      "/.well-known/oauth-protected-resource/lazymcp": {
-        "get": {
-          "operationId": "oauth_protected_resource_lazymcp__well_known_oauth_protected_resource_lazymcp_get_2",
-          "responses": {
-            "200": {
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "additionalProperties": true,
-                    "title": "Response Oauth Protected Resource Lazymcp  Well Known Oauth Protected Resource Lazymcp Get",
-                    "type": "object"
-                  }
-                }
-              },
-              "description": "Successful Response"
-            }
-          },
-          "summary": "Oauth Protected Resource Lazymcp",
-          "tags": [
-            "mcp_byok_oauth"
-          ]
-        }
-      },
-      "/.well-known/oauth-protected-resource/lazymcp/{scope}": {
-        "get": {
-          "operationId": "oauth_protected_resource_lazymcp_scope__well_known_oauth_protected_resource_lazymcp__scope__get_2",
-          "parameters": [
-            {
-              "in": "path",
-              "name": "scope",
-              "required": true,
-              "schema": {
-                "title": "Scope",
-                "type": "string"
-              }
-            }
-          ],
-          "responses": {
-            "200": {
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "additionalProperties": true,
-                    "title": "Response Oauth Protected Resource Lazymcp Scope  Well Known Oauth Protected Resource Lazymcp  Scope  Get",
-                    "type": "object"
-                  }
-                }
-              },
-              "description": "Successful Response"
-            },
-            "422": {
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "$ref": "#/components/schemas/HTTPValidationError"
-                  }
-                }
-              },
-              "description": "Validation Error"
-            }
-          },
-          "summary": "Oauth Protected Resource Lazymcp Scope",
-          "tags": [
-            "mcp_byok_oauth"
-          ]
-        }
-      },
-      "/.well-known/oauth-protected-resource/mcp": {
-        "get": {
-          "description": "OAuth protected resource discovery for the aggregate /mcp endpoint.\n\nThe single-segment ``/mcp`` path does not collide with any per-server PRM pattern\n(those are two-segment: ``/mcp/{server}`` or ``/{server}/mcp``), so this unambiguously\ndescribes the aggregate resource.",
-          "operationId": "oauth_protected_resource_aggregate__well_known_oauth_protected_resource_mcp_get_2",
-          "responses": {
-            "200": {
-              "content": {
-                "application/json": {
-                  "schema": {}
-                }
-              },
-              "description": "Successful Response"
-            }
-          },
-          "summary": "Oauth Protected Resource Aggregate",
-          "tags": [
-            "mcp_byok_oauth"
-          ]
-        }
-      },
-      "/.well-known/oauth-protected-resource/mcp/{mcp_server_name}": {
-        "get": {
-          "description": "OAuth protected resource discovery endpoint using standard MCP URL pattern.\n\nStandard pattern: /mcp/{server_name}\nDiscovery path: /.well-known/oauth-protected-resource/mcp/{server_name}\n\nThis endpoint is compliant with MCP specification and works with standard\nMCP clients like mcp-inspector and VSCode Copilot.",
-          "operationId": "oauth_protected_resource_mcp_standard__well_known_oauth_protected_resource_mcp__mcp_server_name__get_2",
-          "parameters": [
-            {
-              "in": "path",
-              "name": "mcp_server_name",
-              "required": true,
-              "schema": {
-                "title": "Mcp Server Name",
-                "type": "string"
-              }
-            }
-          ],
-          "responses": {
-            "200": {
-              "content": {
-                "application/json": {
-                  "schema": {}
-                }
-              },
-              "description": "Successful Response"
-            },
-            "422": {
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "$ref": "#/components/schemas/HTTPValidationError"
-                  }
-                }
-              },
-              "description": "Validation Error"
-            }
-          },
-          "summary": "Oauth Protected Resource Mcp Standard",
-          "tags": [
-            "mcp_byok_oauth"
-          ]
-        }
-      },
-      "/.well-known/oauth-protected-resource/toolset/{name}/lazymcp": {
-        "get": {
-          "operationId": "oauth_protected_resource_lazymcp_toolset__well_known_oauth_protected_resource_toolset__name__lazymcp_get_2",
-          "parameters": [
-            {
-              "in": "path",
-              "name": "name",
-              "required": true,
-              "schema": {
-                "title": "Name",
-                "type": "string"
-              }
-            }
-          ],
-          "responses": {
-            "200": {
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "additionalProperties": true,
-                    "title": "Response Oauth Protected Resource Lazymcp Toolset  Well Known Oauth Protected Resource Toolset  Name  Lazymcp Get",
-                    "type": "object"
-                  }
-                }
-              },
-              "description": "Successful Response"
-            },
-            "422": {
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "$ref": "#/components/schemas/HTTPValidationError"
-                  }
-                }
-              },
-              "description": "Validation Error"
-            }
-          },
-          "summary": "Oauth Protected Resource Lazymcp Toolset",
-          "tags": [
-            "mcp_byok_oauth"
-          ]
-        }
-      },
-      "/.well-known/oauth-protected-resource/{mcp_server_name}/mcp": {
-        "get": {
-          "description": "OAuth protected resource discovery endpoint using LiteLLM legacy URL pattern.\n\nLegacy pattern: /{server_name}/mcp\nDiscovery path: /.well-known/oauth-protected-resource/{server_name}/mcp\n\nThis endpoint is kept for backward compatibility. New integrations should\nuse the standard MCP pattern (/mcp/{server_name}) instead.",
-          "operationId": "oauth_protected_resource_mcp__well_known_oauth_protected_resource__mcp_server_name__mcp_get_2",
-          "parameters": [
-            {
-              "in": "path",
-              "name": "mcp_server_name",
-              "required": true,
-              "schema": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Mcp Server Name"
-              }
-            }
-          ],
-          "responses": {
-            "200": {
-              "content": {
-                "application/json": {
-                  "schema": {}
-                }
-              },
-              "description": "Successful Response"
-            },
-            "422": {
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "$ref": "#/components/schemas/HTTPValidationError"
-                  }
-                }
-              },
-              "description": "Validation Error"
-            }
-          },
-          "summary": "Oauth Protected Resource Mcp",
           "tags": [
             "mcp_byok_oauth"
           ]

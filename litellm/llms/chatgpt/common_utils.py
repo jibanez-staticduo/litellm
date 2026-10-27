@@ -137,12 +137,6 @@ You are producing plain text that will later be styled by the CLI. Follow these 
 """
 
 
-def without_oauth_identity_headers(headers: Mapping[str, object]) -> Mapping[str, object]:
-    return MappingProxyType(
-        {key: value for key, value in headers.items() if key.lower() not in ("authorization", "chatgpt-account-id")}
-    )
-
-
 class ChatGPTAuthError(BaseLLMException):
     def __init__(
         self,
@@ -381,6 +375,7 @@ def get_chatgpt_request_credential(
     )
 
 
+
 def chatgpt_client_api_base(api_base: str | None) -> str:
     base: Final = api_base or CHATGPT_API_BASE
     parsed: Final = urlsplit(base)
@@ -421,6 +416,12 @@ def _normalize_litellm_params(litellm_params: Any | None) -> dict:
         return _PARAMS.validate_python(serializer())
     except Exception:  # noqa: BLE001  # malformed request metadata is ignored as before
         return MappingProxyType({})
+
+
+def without_oauth_identity_headers(headers: Mapping[str, object]) -> Mapping[str, object]:
+    return MappingProxyType(
+        {key: value for key, value in headers.items() if key.lower() not in ("authorization", "chatgpt-account-id")}
+    )
 
 
 def get_chatgpt_session_id(litellm_params: object) -> str | None:

@@ -31,7 +31,7 @@ from litellm.types.llms.openai import (
 from litellm.types.router import GenericLiteLLMParams
 from litellm.types.utils import LlmProviders
 
-from ..authenticator import Authenticator
+from ..authenticator import Authenticator, get_cached_authenticator, get_chatgpt_auth_file
 from ..common_utils import (
     CHATGPT_API_BASE,
     GetAccessTokenError,
@@ -69,6 +69,12 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
     def custom_llm_provider(self) -> LlmProviders:
         return LlmProviders.CHATGPT
 
+    def _resolve_authenticator(self, litellm_params: GenericLiteLLMParams | None) -> Authenticator:
+        auth_file: Final = get_chatgpt_auth_file(litellm_params)
+        if auth_file:
+            return get_cached_authenticator(auth_file)
+        return self.authenticator or Authenticator(litellm_params)
+
     def validate_environment(
         self,
         headers: dict,
@@ -82,15 +88,10 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
                 **get_chatgpt_default_headers(client_credential.access_token, client_credential.account_id, session_id),
                 **strip_chatgpt_client_credential_headers(headers),
             }
-        authenticator: Final = (
-            self.authenticator
-            or Authenticator(  # rebind-ok: framework flow intentionally updates request or lifecycle state
-                litellm_params
-            )
-        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        authenticator: Final = self._resolve_authenticator(litellm_params)
         safe_headers: Final = strip_chatgpt_client_credential_headers(headers)
         configured_api_key: Final = litellm_params.api_key if litellm_params is not None else None
-        if configured_api_key:
+        if configured_api_key and not get_chatgpt_auth_file(litellm_params):
             return {
                 **get_chatgpt_default_headers(
                     configured_api_key, authenticator.get_account_id(configured_api_key), session_id
@@ -98,9 +99,7 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
                 **safe_headers,
             }
         try:
-            access_token = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
-                authenticator.get_access_token()
-            )  # rebind-ok: framework flow intentionally updates request or lifecycle state
+            access_token: Final = authenticator.get_access_token()
         except GetAccessTokenError as e:
             auth_error = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
                 AuthenticationError(  # rebind-ok: framework flow intentionally updates request or lifecycle state
@@ -112,19 +111,8 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
             auth_error.is_non_retryable_interactive_auth = True  # pyright: ignore[reportAttributeAccessIssue]  # router reads this runtime marker
             raise auth_error
 
-        account_id = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
-            authenticator.get_account_id(access_token)
-        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
-        session_id = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
-            ensure_chatgpt_session_id(  # rebind-ok: framework flow intentionally updates request or lifecycle state
-                litellm_params
-            )
-        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
-        default_headers = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
-            get_chatgpt_default_headers(  # rebind-ok: framework flow intentionally updates request or lifecycle state
-                access_token, account_id, session_id
-            )
-        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
+        account_id: Final = authenticator.get_account_id(access_token)
+        default_headers: Final = get_chatgpt_default_headers(access_token, account_id, session_id)
         return {**default_headers, **safe_headers}
 
     def transform_responses_api_request(
@@ -358,16 +346,13 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
         api_base: str | None,
         litellm_params: object,
     ) -> str:
-        authenticator: Final = (
-            self.authenticator
-            or Authenticator(  # rebind-ok: framework flow intentionally updates request or lifecycle state
-                litellm_params
-            )
-        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
-        api_base = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
-            api_base or authenticator.get_api_base() or CHATGPT_API_BASE
-        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
-        return join_api_base(api_base, "responses")
+        default_api_base: Final = (
+            self.authenticator.get_api_base()
+            if self.authenticator is not None
+            else Authenticator.get_api_base()
+        )
+        resolved_api_base: Final = api_base or default_api_base or CHATGPT_API_BASE
+        return join_api_base(resolved_api_base, "responses")
 
     def supports_native_websocket(self) -> bool:
         """ChatGPT does not support native WebSocket for Responses API"""

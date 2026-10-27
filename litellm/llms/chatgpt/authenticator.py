@@ -20,6 +20,8 @@ from staticduo_litellm.providers.chatgpt.authenticator import (
     _optional_str,  # pyright: ignore[reportPrivateUsage]  # preserve the established private import ABI at this facade
     _token_refresh_timeout,  # pyright: ignore[reportPrivateUsage]  # preserve the established private import ABI at this facade
     fcntl,
+    get_cached_authenticator,
+    get_chatgpt_auth_file,
     json,
     msvcrt,
     os,
@@ -44,6 +46,8 @@ __all__: Final = (
     "_optional_str",
     "_token_refresh_timeout",
     "fcntl",
+    "get_cached_authenticator",
+    "get_chatgpt_auth_file",
     "json",
     "msvcrt",
     "os",

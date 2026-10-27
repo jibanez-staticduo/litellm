@@ -2304,7 +2304,15 @@ async def test_model_connection(
                 )
 
         selected_by_id: Final = deployment_by_id is not None
-        reject_server_owned_wif_fields(request_litellm_params)
+        reject_server_owned_wif_fields(
+            MappingProxyType(
+                {
+                    key: value
+                    for key, value in _OBJECT_MAPPING.validate_python(request_litellm_params).items()
+                    if key != "chatgpt_auth_file"
+                }
+            )
+        )
         # Merge: config params (from proxy config) as base, request params override
         litellm_params = {
             **_config_base_for_health_check(
@@ -2349,16 +2357,14 @@ async def test_model_connection(
             or resolve_health_check_mode(probe_model_info, _OBJECT_MAPPING.validate_python(litellm_params))
         )
 
-        raw_headers: Final[dict[str, str]] = TypeAdapter(dict[str, str]).validate_python(
-            http_parsing_utils.safe_get_request_headers(request)
-        )
+        raw_headers: Final = http_parsing_utils.safe_get_request_headers(request)
         health_check_params: Final = {
             **_OBJECT_MAPPING.validate_python(litellm_params),
             **_admin_api_key_from_request(
                 _OBJECT_MAPPING.validate_python(request_litellm_params),
                 _OBJECT_MAPPING.validate_python(litellm_params),
             ),
-            "secret_fields": SecretFields(raw_headers=RedactedDict(raw_headers)),
+            "secret_fields": SecretFields(raw_headers=RedactedDict(raw_headers), mcp_client_ip=None),
         }
 
         result: Final = await run_with_timeout(

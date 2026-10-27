@@ -583,7 +583,10 @@ class GenericLiteLLMParams(CredentialLiteLLMParams, CustomPricingLiteLLMParams):
     anthropic_native_request_body: Mapping[str, JsonValue] | None = None
     chatgpt_auth_profile: str | None = None
     chatgpt_token_dir: str | None = None
-    chatgpt_auth_file: str | None = None
+    chatgpt_auth_file: str | None = Field(
+        default=None,
+        description="Path to a ChatGPT OAuth auth.json for this deployment.",
+    )
     fireworks_forward_user_id: bool | None = Field(
         default=None,
         description="Send the LiteLLM user id of the calling key as the `user` field on Fireworks AI chat, responses and messages requests.",

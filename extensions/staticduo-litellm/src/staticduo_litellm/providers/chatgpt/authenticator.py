@@ -7,6 +7,7 @@ import tempfile
 import threading
 import time
 from collections.abc import Callable, Mapping
+from functools import lru_cache
 from typing import IO, Final, TypeAlias
 
 from staticduo_litellm.compatibility.provider_providers_chatgpt_authenticator import (
@@ -87,6 +88,56 @@ def _lock_auth_file(lock_file: IO[str]) -> None:
 def _auth_lock(auth_file: str) -> threading.RLock:
     with _AUTH_LOCKS_GUARD:
         return _AUTH_LOCKS.setdefault(os.path.realpath(auth_file), threading.RLock())
+
+
+def get_chatgpt_auth_file(litellm_params: object | None) -> str | None:
+    if litellm_params is None:
+        return None
+    getter = getattr(litellm_params, "get", None)
+    configured = getter("chatgpt_auth_file") if callable(getter) else getattr(litellm_params, "chatgpt_auth_file", None)
+    if isinstance(configured, str) and configured:
+        base = os.path.expanduser(configured)
+        if not os.path.isabs(base):
+            token_dir = (
+                getter("chatgpt_token_dir") if callable(getter) else getattr(litellm_params, "chatgpt_token_dir", None)
+            )
+            resolved_dir = (
+                os.path.expanduser(str(token_dir))
+                if token_dir
+                else os.getenv("CHATGPT_TOKEN_DIR", os.path.expanduser("~/.config/litellm/chatgpt"))
+            )
+            base = os.path.join(resolved_dir, base)
+        return os.path.abspath(base)
+    profile = (
+        getter("chatgpt_auth_profile") if callable(getter) else getattr(litellm_params, "chatgpt_auth_profile", None)
+    )
+    if profile is None:
+        return None
+    token_dir = getter("chatgpt_token_dir") if callable(getter) else getattr(litellm_params, "chatgpt_token_dir", None)
+    resolved_dir = (
+        os.path.expanduser(str(token_dir))
+        if token_dir
+        else os.getenv("CHATGPT_TOKEN_DIR", os.path.expanduser("~/.config/litellm/chatgpt"))
+    )
+    name = str(profile).strip()
+    if (
+        not name
+        or name in {".", ".."}
+        or os.path.isabs(name)
+        or os.path.sep in name
+        or (os.path.altsep is not None and os.path.altsep in name)
+        or ".." in name
+        or _SAFE_AUTH_PROFILE_PATTERN.fullmatch(name) is None
+    ):
+        raise ValueError(
+            "chatgpt_auth_profile must be a logical profile name containing only letters, numbers, '_' or '-'"
+        )
+    return os.path.abspath(os.path.join(resolved_dir, f"{name}.json"))
+
+
+@lru_cache(maxsize=128)
+def get_cached_authenticator(auth_file: str) -> "Authenticator":
+    return Authenticator({"chatgpt_auth_file": auth_file})
 
 
 class Authenticator(ChatGPTOAuthEngine):
@@ -227,34 +278,32 @@ class Authenticator(ChatGPTOAuthEngine):
         return super().get_access_token()
 
     def get_account_id(self, access_token: str | None = None) -> str | None:
-        auth_data: Final = self._read_auth_file()
-        if access_token and (not auth_data or auth_data.get("access_token") != access_token):
+        explicit_auth_data: Final = self._read_auth_file()
+        if access_token and (not explicit_auth_data or explicit_auth_data.get("access_token") != access_token):
             return self._extract_account_id(access_token)
         if self._read_only:
-            token, auth_data = self._read_access_snapshot()
-            return _optional_str(auth_data.get("account_id")) or self._extract_account_id(
-                _optional_str(auth_data.get("id_token")) or token
+            snapshot: Final = self._read_access_snapshot()
+            snapshot_token: Final = snapshot[0]
+            snapshot_auth_data: Final = snapshot[1]
+            return _optional_str(snapshot_auth_data.get("account_id")) or self._extract_account_id(
+                _optional_str(snapshot_auth_data.get("id_token")) or snapshot_token
             )
         with _auth_lock(self.auth_file), open(f"{self.auth_file}.lock", "a+") as lock_file:
             os.chmod(lock_file.name, 0o600)
             _lock_auth_file(lock_file)
-            auth_data = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
-                self._read_auth_file()
-            )
-            if access_token and (not auth_data or auth_data.get("access_token") != access_token):
+            locked_auth_data: Final = self._read_auth_file()
+            if access_token and (not locked_auth_data or locked_auth_data.get("access_token") != access_token):
                 return self._extract_account_id(access_token)
-            if not auth_data:
+            if not locked_auth_data:
                 return None
-            account_id: Final = _optional_str(auth_data.get("account_id"))
+            account_id: Final = _optional_str(locked_auth_data.get("account_id"))
             if account_id:
                 return account_id
-            id_token: Final = auth_data.get("id_token")
-            access_token: Final = auth_data.get("access_token")
-            derived: Final = self._extract_account_id(_optional_str(id_token or access_token))
+            id_token: Final = _optional_str(locked_auth_data.get("id_token"))
+            saved_access_token: Final = _optional_str(locked_auth_data.get("access_token"))
+            derived: Final = self._extract_account_id(id_token or saved_access_token)
             if derived:
-                latest_auth_data = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
-                    self._read_auth_file() or auth_data
-                )
+                latest_auth_data: Final = self._read_auth_file() or locked_auth_data
                 self._write_auth_file(
                     {
                         **latest_auth_data,
@@ -361,6 +410,8 @@ __all__: Final = (
     "ValidationError",
     "base64",
     "can_block_current_thread",
+    "get_cached_authenticator",
+    "get_chatgpt_auth_file",
     "get_configured_request_timeout",
     "get_httpx_client",
     "verbose_logger",

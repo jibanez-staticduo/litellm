@@ -1,7 +1,7 @@
 scope: module
 parent: ../../../../../.staticeng/codemap.yml
 internals:
-  - path: anthropic_claude2_transformation.py
+  - path: anthropic_legacy_text_completions_transformation.py
   - path: amazon_cohere_transformation.py
   - path: amazon_ai21_transformation.py
   - path: amazon_qwen2_transformation.py
@@ -10,7 +10,7 @@ internals:
   - path: amazon_moonshot_transformation.py
   - path: amazon_titan_transformation.py
   - path: amazon_openai_transformation.py
-  - path: anthropic_claude3_transformation.py
+  - path: anthropic_claude_transformation.py
   - path: amazon_deepseek_transformation.py
   - path: base_invoke_transformation.py
   - path: amazon_qwen3_transformation.py

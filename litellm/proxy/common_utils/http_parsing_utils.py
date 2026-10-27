@@ -6,7 +6,7 @@ from typing import Annotated, Any, Final, Literal, Union, get_args, get_origin
 
 import orjson
 from fastapi import Request, UploadFile, status
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 from starlette._utils import get_route_path
 from starlette.requests import ClientDisconnect, HTTPConnection
 from typing_extensions import NotRequired, ReadOnly, Required, assert_never
@@ -31,6 +31,7 @@ _BINARY_CONTENT_TYPES: Final[frozenset[str]] = frozenset({"application/x-protobu
 
 _ANNOTATION_QUALIFIERS: Final[frozenset[object]] = frozenset({Annotated, NotRequired, ReadOnly, Required})
 _DECODED_JSON: Final = TypeAdapter(object)
+_JSON_REQUEST_BODY: Final = TypeAdapter(Mapping[str, object])
 
 
 def resolve_inference_model(
@@ -161,13 +162,11 @@ def coerce_numeric_form_fields(
     }
 
 
-def _parse_binary_body(body: bytes) -> dict:
+def _parse_binary_body(body: bytes) -> dict[str, object]:
     """JSON sent under a binary content type still parses; real binary (protobuf) carries no params -> {}."""
     try:
-        parsed: Final = _DECODED_JSON.validate_python(orjson.loads(body))
-        if isinstance(parsed, dict):
-            return parsed
-    except orjson.JSONDecodeError:
+        return dict(_JSON_REQUEST_BODY.validate_python(orjson.loads(body)))
+    except (orjson.JSONDecodeError, ValidationError):
         pass
     return {}
 
@@ -238,32 +237,7 @@ async def read_request_body(request: Request | None) -> dict:
             _mark_body_received(len(binary_body))
             parsed_body = _parse_binary_body(binary_body)
         elif _is_form_content_type(content_type):
-            try:
-                form_data: Final = await request.form()
-                _mark_body_received(_declared_content_length(request.headers))
-            except ClientDisconnect:
-                raise
-            except Exception as e:
-                # ``request.form()`` raises on malformed multipart (missing
-                # boundary, malformed chunk encoding, …). Surface as 400 so
-                # the auth-time pre-read does not silently cache ``{}`` while
-                # a later raw-body re-read sees the original payload —
-                # banned-param checks must see the same body the handler
-                # acts on.
-                verbose_proxy_logger.error("Invalid form payload: %s", e)
-                raise ProxyException(
-                    message=f"Invalid form payload: {e}",
-                    type="invalid_request_error",
-                    param="request_body",
-                    code=status.HTTP_400_BAD_REQUEST,
-                )
-            form_body: Final = dict(form_data)
-            raw_metadata: Final = form_body.get("metadata")
-            parsed_body = (
-                {**form_body, "metadata": _parse_form_metadata(raw_metadata)}
-                if isinstance(raw_metadata, str)
-                else form_body
-            )
+            parsed_body = await _read_form_request_body(request)
         else:
             # Read the request body
             body: Final = await request.body()
@@ -274,7 +248,7 @@ async def read_request_body(request: Request | None) -> dict:
                 parsed_body = {}
             else:
                 try:
-                    parsed_body = orjson.loads(body)
+                    parsed_body = dict(_JSON_REQUEST_BODY.validate_python(orjson.loads(body)))
                 except orjson.JSONDecodeError as e:
                     # The surrogate-repair fallback below runs two full-body re.sub
                     # passes, which block the event loop on multi-MB malformed bodies.
@@ -300,8 +274,9 @@ async def read_request_body(request: Request | None) -> dict:
                     body_str = re.sub(r"(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]", "", body_str)
 
                     try:
-                        parsed_body = json.loads(body_str)
-                        json.dumps(parsed_body, ensure_ascii=False).encode("utf-8")
+                        decoded_body: Final = _DECODED_JSON.validate_python(json.loads(body_str))
+                        json.dumps(decoded_body, ensure_ascii=False).encode("utf-8")
+                        parsed_body = dict(_JSON_REQUEST_BODY.validate_python(decoded_body))
                     except (json.JSONDecodeError, UnicodeEncodeError):
                         # json.loads accepts lone surrogate escapes that no provider can encode
                         verbose_proxy_logger.error("Invalid JSON payload received: %s", e)
@@ -323,6 +298,15 @@ async def read_request_body(request: Request | None) -> dict:
             param="request_body",
             code=499,
         ) from None
+    except ValidationError as e:
+        if await _allows_nonobject_request_body(request):
+            return {}
+        raise ProxyException(
+            message="Invalid JSON payload: expected an object",
+            type="invalid_request_error",
+            param="request_body",
+            code=status.HTTP_400_BAD_REQUEST,
+        ) from e
     except (json.JSONDecodeError, orjson.JSONDecodeError, ProxyException) as e:
         # Re-raise ProxyException as-is
         verbose_proxy_logger.error("Invalid JSON payload received: %s", e)
@@ -331,6 +315,56 @@ async def read_request_body(request: Request | None) -> dict:
         # Catch unexpected errors to avoid crashes
         verbose_proxy_logger.exception("Unexpected error reading request body - %s", e)
         return {}
+
+
+async def _read_form_request_body(request: Request) -> dict:
+    try:
+        form_data: Final = await request.form()
+        _mark_body_received(_declared_content_length(request.headers))
+    except ClientDisconnect:
+        raise
+    except Exception as e:
+        # ``request.form()`` raises on malformed multipart (missing
+        # boundary, malformed chunk encoding, …). Surface as 400 so
+        # the auth-time pre-read does not silently cache ``{}`` while
+        # a later raw-body re-read sees the original payload —
+        # banned-param checks must see the same body the handler
+        # acts on.
+        verbose_proxy_logger.error("Invalid form payload: %s", e)
+        raise ProxyException(
+            message=f"Invalid form payload: {e}",
+            type="invalid_request_error",
+            param="request_body",
+            code=status.HTTP_400_BAD_REQUEST,
+        )
+    form_body: Final = dict(form_data)
+    raw_metadata: Final = form_body.get("metadata")
+    return {**form_body, "metadata": _parse_form_metadata(raw_metadata)} if isinstance(raw_metadata, str) else form_body
+
+
+async def _allows_nonobject_request_body(request: Request | None) -> bool:
+    from fastapi.routing import APIRoute
+
+    from litellm.proxy.auth.auth_utils import (
+        request_dispatched_to_pass_through_endpoint,
+        request_dispatched_to_provider_pass_through,
+    )
+    from litellm.proxy.lens.buffering import LensRoute
+
+    if request is None:
+        return False
+    route: Final[object] = request.scope.get("route")
+    return (
+        request_dispatched_to_pass_through_endpoint(request)
+        or request_dispatched_to_provider_pass_through(request)
+        or isinstance(route, LensRoute)
+        or (
+            isinstance(route, APIRoute)
+            and route.body_field is not None
+            and not route.body_field.field_info.is_required()
+            and (await request.body()).strip() == b"null"
+        )
+    )
 
 
 _read_request_body: Final = read_request_body
@@ -424,7 +458,9 @@ def rewrite_request_model(
     if request is None:
         return
     cached_body: Final = _safe_get_request_parsed_body(request=request)
-    body: Final = {**cached_body, "model": model} if cached_body is not None else request_data
+    body: Final = (
+        {**_JSON_REQUEST_BODY.validate_python(cached_body), "model": model} if cached_body is not None else request_data
+    )
     safe_set_request_parsed_body(request=request, parsed_body=body)
     request._json = body  # pyright: ignore[reportPrivateUsage]  # Starlette JSON cache
     request._body = orjson.dumps(body)  # pyright: ignore[reportPrivateUsage]  # Starlette body cache

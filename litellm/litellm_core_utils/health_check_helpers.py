@@ -260,7 +260,10 @@ class HealthCheckHelpers:
 
         return {
             "chat": lambda: litellm.acompletion(
-                **model_params,
+                **{
+                    **_filter_model_params(model_params=model_params),
+                    "messages": [{"role": "user", "content": prompt or "test"}],
+                },
             ),
             "completion": lambda: litellm.atext_completion(
                 **_filter_model_params(model_params=model_params),

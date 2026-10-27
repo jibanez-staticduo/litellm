@@ -226,14 +226,8 @@ LAZY_FEATURES: Final[tuple[LazyFeature, ...]] = (
         module_path="litellm.proxy._experimental.mcp_server.byok_oauth_endpoints",
         path_prefixes=("/v1/mcp/oauth", "/.well-known/oauth-"),
         excluded_path_prefixes=("/.well-known/oauth-protected-resource",),
-    ),
-    LazyFeature(
-        # Also serves /.well-known/oauth-* (OAuth metadata discovery).
-        # No /mcp/oauth prefix here: the mounted /mcp sub-app would
-        # shadow it, and there are no actual routes there anyway.
-        name="mcp_byok_oauth",
-        module_path="litellm.proxy._experimental.mcp_server.byok_oauth_endpoints",
-        path_prefixes=("/v1/mcp/oauth", "/.well-known/oauth-"),
+        matches_fn=lambda path: (path.startswith("/v1/mcp/oauth") or path.startswith("/.well-known/oauth-"))
+        and not path.startswith("/.well-known/oauth-protected-resource"),
     ),
     LazyFeature(
         name="mcp_rest",
@@ -259,6 +253,11 @@ LAZY_FEATURES: Final[tuple[LazyFeature, ...]] = (
         name="config_overrides",
         module_path="litellm.proxy.management_endpoints.config_override_endpoints",
         path_prefixes=("/config_overrides",),
+    ),
+    LazyFeature(
+        name="codex_passthrough",
+        module_path="litellm.proxy.pass_through_endpoints.codex_passthrough_endpoints",
+        path_prefixes=("/backend-api/codex/",),
     ),
     LazyFeature(
         name="llm_passthrough",

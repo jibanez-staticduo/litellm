@@ -4,7 +4,7 @@ from litellm.exceptions import AuthenticationError
 from litellm.llms.openai.openai import OpenAIConfig
 from litellm.types.llms.openai import AllMessageValues
 
-from ..authenticator import Authenticator
+from ..authenticator import Authenticator, get_cached_authenticator, get_chatgpt_auth_file
 from ..common_utils import (
     GetAccessTokenError,
     chatgpt_client_api_base,
@@ -23,11 +23,32 @@ class ChatGPTConfig(OpenAIConfig):
         api_key: str | None = None,
         api_base: str | None = None,
         custom_llm_provider: str = "openai",
+        authenticator: Authenticator | None = None,
     ) -> None:
         super().__init__()
+        self.authenticator = authenticator
+
+    def _resolve_authenticator(self, litellm_params: object | None) -> Authenticator:
+        auth_file: Final = get_chatgpt_auth_file(litellm_params)
+        if auth_file:
+            return get_cached_authenticator(auth_file)
+        return self.authenticator or Authenticator(litellm_params)
+
+    @staticmethod
+    def _get_access_token_or_raise(authenticator: Authenticator, model: str, llm_provider: str) -> str:
+        try:
+            return authenticator.get_access_token()
+        except GetAccessTokenError as exc:
+            error = AuthenticationError(model=model, llm_provider=llm_provider, message=str(exc))
+            error.is_non_retryable_interactive_auth = True  # pyright: ignore[reportAttributeAccessIssue]  # router reads this marker
+            raise error from exc
 
     def api_base_without_login(self, api_base: str | None = None) -> str:
-        return api_base or Authenticator.get_api_base()
+        return (
+            api_base or self.authenticator.get_api_base()
+            if self.authenticator is not None
+            else api_base or Authenticator.get_api_base()
+        )
 
     def _get_openai_compatible_provider_info(
         self,
@@ -41,27 +62,10 @@ class ChatGPTConfig(OpenAIConfig):
         if client_credential is not None:
             return chatgpt_client_api_base(api_base), client_credential.access_token, custom_llm_provider
         if api_key:
-            return api_base or Authenticator.get_api_base(), api_key, custom_llm_provider
-        authenticator = Authenticator(  # rebind-ok: framework flow intentionally updates request or lifecycle state
-            litellm_params
-        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
-        dynamic_api_base = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
-            api_base or authenticator.get_api_base()
-        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
-        try:
-            dynamic_api_key = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
-                authenticator.get_access_token()
-            )  # rebind-ok: framework flow intentionally updates request or lifecycle state
-        except GetAccessTokenError as e:
-            auth_error = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
-                AuthenticationError(  # rebind-ok: framework flow intentionally updates request or lifecycle state
-                    model=model,
-                    llm_provider=custom_llm_provider,
-                    message=str(e),
-                )
-            )
-            auth_error.is_non_retryable_interactive_auth = True  # pyright: ignore[reportAttributeAccessIssue]  # router reads this runtime marker
-            raise auth_error
+            return api_base or self.api_base_without_login(), api_key, custom_llm_provider
+        authenticator: Final = self._resolve_authenticator(litellm_params)
+        dynamic_api_base: Final = api_base or authenticator.get_api_base()
+        dynamic_api_key: Final = self._get_access_token_or_raise(authenticator, model, custom_llm_provider)
         return dynamic_api_base, dynamic_api_key, custom_llm_provider
 
     def get_openai_compatible_provider_info(
@@ -94,36 +98,23 @@ class ChatGPTConfig(OpenAIConfig):
                 ),
                 **strip_chatgpt_client_credential_headers(headers),
             )
+        authenticator: Final = self._resolve_authenticator(litellm_params)
+        resolved_api_key: Final = api_key or self._get_access_token_or_raise(authenticator, model, "chatgpt")
         validated_headers: Final = super().validate_environment(
             dict(strip_chatgpt_client_credential_headers(headers)),
             model,
             messages,
             optional_params,
             litellm_params,
-            api_key,
+            resolved_api_key,
             api_base,
         )
 
-        authenticator = Authenticator(  # rebind-ok: framework flow intentionally updates request or lifecycle state
-            litellm_params
-        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
-        access_token = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
-            api_key or authenticator.get_access_token()
-        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
-        account_id = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
-            authenticator.get_account_id(access_token)
-        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
-        session_id = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
-            ensure_chatgpt_session_id(  # rebind-ok: framework flow intentionally updates request or lifecycle state
-                litellm_params
-            )
-        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
-        default_headers = (  # rebind-ok: framework flow intentionally updates request or lifecycle state
-            get_chatgpt_default_headers(  # rebind-ok: framework flow intentionally updates request or lifecycle state
-                access_token, account_id, session_id
-            )
-        )  # rebind-ok: framework flow intentionally updates request or lifecycle state
-        return {**default_headers, **validated_headers}
+        access_token: Final = resolved_api_key
+        account_id: Final = authenticator.get_account_id(access_token)
+        session_id: Final = ensure_chatgpt_session_id(litellm_params)
+        default_headers: Final = get_chatgpt_default_headers(access_token, account_id, session_id)
+        return {**validated_headers, **default_headers}
 
     def post_stream_processing(self, stream: Any) -> ChatGPTToolCallNormalizer:
         return ChatGPTToolCallNormalizer(stream)
