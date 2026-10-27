@@ -1552,7 +1552,6 @@ class Router:
             max_size_in_memory=max(len(model_list or ()), 1),
             default_ttl=2 * MODEL_INFO_REFRESH_SECONDS,
         )
-        self.model_list: list[DeploymentTypedDict] = []
         self._routing_group_rows: tuple[DeploymentTypedDict, ...] | None = None
         self._init_routing_groups(None)
         self._provider_unresolved_deployments: tuple[Callable[[], Deployment | None], ...] = ()
@@ -1569,6 +1568,8 @@ class Router:
             for m in model_list:
                 if "model" in m["litellm_params"]:
                     self.deployment_latency_map[m["litellm_params"]["model"]] = 0
+        else:
+            self.model_list: list = []  # initialize an empty list - to allow _add_deployment and delete_deployment to work
         # Track this router so a price data reload can rebuild its deployments'
         # cost-map entries from the list it is serving at that moment, whether
         # those deployments came from model_list or were added later from the DB.
@@ -11976,29 +11977,26 @@ class Router:
         - model_id: Optional[str] - the model ID to use for indexing. If None, will try to get from model["model_info"]["id"]
         """
         with self._deployment_index_lock:
-            deployment: Final = cast(  # cast-ok: insertion receives validated deployment dictionaries
-                DeploymentTypedDict, model
-            )
             idx: Final = len(self.model_list)
-            self.model_list.append(deployment)
+            self.model_list.append(model)
             self._invalidate_model_group_info_cache()
             self._invalidate_access_groups_cache()
 
             # Update model_id index for O(1) lookup
             if model_id is not None:
                 self.model_id_to_deployment_index_map[model_id] = idx
-            elif deployment.get("model_info", {}).get("id") is not None:
-                self.model_id_to_deployment_index_map[deployment["model_info"]["id"]] = idx
+            elif model.get("model_info", {}).get("id") is not None:
+                self.model_id_to_deployment_index_map[model["model_info"]["id"]] = idx
 
             # Update model_name index for O(1) lookup
-            model_name: Final = deployment.get("model_name")
+            model_name: Final = model.get("model_name")
             if model_name:
                 if model_name not in self.model_name_to_deployment_indices:
                     self.model_name_to_deployment_indices[model_name] = []
                 self.model_name_to_deployment_indices[model_name].append(idx)
 
             # Update team_model index for O(1) team-scoped lookup
-            self._update_team_model_index(deployment, idx)
+            self._update_team_model_index(model, idx)
 
     def upsert_deployment(self, deployment: Deployment) -> Deployment | None:
         """
