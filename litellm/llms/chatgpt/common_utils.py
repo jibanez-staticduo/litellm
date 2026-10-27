@@ -375,7 +375,6 @@ def get_chatgpt_request_credential(
     )
 
 
-
 def chatgpt_client_api_base(api_base: str | None) -> str:
     base: Final = api_base or CHATGPT_API_BASE
     parsed: Final = urlsplit(base)
@@ -396,18 +395,14 @@ def get_chatgpt_default_instructions() -> str:
     return os.getenv("CHATGPT_DEFAULT_INSTRUCTIONS") or CHATGPT_DEFAULT_INSTRUCTIONS
 
 
-def _normalize_litellm_params(litellm_params: Any | None) -> dict:
+def _normalize_litellm_params(litellm_params: object | None) -> Mapping[str, object]:
     if litellm_params is None:
         return MappingProxyType({})
     if isinstance(litellm_params, Mapping):
         return _PARAMS.validate_python(litellm_params)
     if isinstance(litellm_params, BaseModel):
         return MappingProxyType(
-            {
-                field: getattr(litellm_params, field)
-                for field in _LITELLM_PARAM_FIELDS
-                if hasattr(litellm_params, field)
-            }
+            {field: getattr(litellm_params, field) for field in _LITELLM_PARAM_FIELDS if hasattr(litellm_params, field)}
         )
     serializer: Final = getattr(litellm_params, "model_dump", None) or getattr(litellm_params, "dict", None)
     if not callable(serializer):
