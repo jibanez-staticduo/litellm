@@ -11976,9 +11976,9 @@ class Router:
         - model_id: Optional[str] - the model ID to use for indexing. If None, will try to get from model["model_info"]["id"]
         """
         with self._deployment_index_lock:
-            deployment: Final = cast(
+            deployment: Final = cast(  # cast-ok: insertion receives validated deployment dictionaries
                 DeploymentTypedDict, model
-            )  # cast-ok: router insertion receives validated deployment dictionaries
+            )
             idx: Final = len(self.model_list)
             self.model_list.append(deployment)
             self._invalidate_model_group_info_cache()
