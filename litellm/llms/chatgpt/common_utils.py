@@ -9,7 +9,7 @@ import platform
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Any, Final, TypeAlias
+from typing import Final, TypeAlias
 from urllib.parse import urlsplit
 from uuid import uuid4
 
