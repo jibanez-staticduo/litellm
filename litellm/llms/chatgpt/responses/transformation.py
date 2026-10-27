@@ -347,9 +347,7 @@ class ChatGPTResponsesAPIConfig(OpenAIResponsesAPIConfig):
         litellm_params: object,
     ) -> str:
         default_api_base: Final = (
-            self.authenticator.get_api_base()
-            if self.authenticator is not None
-            else Authenticator.get_api_base()
+            self.authenticator.get_api_base() if self.authenticator is not None else Authenticator.get_api_base()
         )
         resolved_api_base: Final = api_base or default_api_base or CHATGPT_API_BASE
         return join_api_base(resolved_api_base, "responses")

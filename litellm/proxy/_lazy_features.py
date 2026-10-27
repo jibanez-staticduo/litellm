@@ -226,8 +226,10 @@ LAZY_FEATURES: Final[tuple[LazyFeature, ...]] = (
         module_path="litellm.proxy._experimental.mcp_server.byok_oauth_endpoints",
         path_prefixes=("/v1/mcp/oauth", "/.well-known/oauth-"),
         excluded_path_prefixes=("/.well-known/oauth-protected-resource",),
-        matches_fn=lambda path: (path.startswith("/v1/mcp/oauth") or path.startswith("/.well-known/oauth-"))
-        and not path.startswith("/.well-known/oauth-protected-resource"),
+        matches_fn=lambda path: (
+            path.startswith(("/v1/mcp/oauth", "/.well-known/oauth-"))
+            and not path.startswith("/.well-known/oauth-protected-resource")
+        ),
     ),
     LazyFeature(
         name="mcp_rest",

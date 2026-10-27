@@ -79,9 +79,7 @@ def image_headers(
     raw_params: Final = TypeAdapter(Mapping[str, object]).validate_python(params)
     typed_headers: Final = TypeAdapter(Mapping[str, str]).validate_python(headers)
     scoped_headers: Final = ProviderSpecificHeaderUtils.get_provider_specific_headers(
-        provider_specific_header=_PROVIDER_SPECIFIC_HEADERS.validate_python(
-            raw_params.get("provider_specific_header")
-        ),
+        provider_specific_header=_PROVIDER_SPECIFIC_HEADERS.validate_python(raw_params.get("provider_specific_header")),
         custom_llm_provider="chatgpt",
     )
     configured_headers: Final = _STRING_HEADERS.validate_python(raw_params.get("extra_headers") or {})
@@ -90,11 +88,7 @@ def image_headers(
         client_credential_params
     )
     client_api_key: Final = (
-        api_key
-        if isinstance(api_key, str)
-        and is_chatgpt_oauth_key(api_key)
-        and client_credential is None
-        else None
+        api_key if isinstance(api_key, str) and is_chatgpt_oauth_key(api_key) and client_credential is None else None
     )
     explicit_account_id: Final = next(
         (
