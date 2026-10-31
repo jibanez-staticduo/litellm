@@ -137,7 +137,7 @@ class PortableCodexAgents(CustomLogger):
         clean_metadata: Final = {key: value for key, value in metadata.items() if key != CONTEXT}
         internal: Final = object_mapping(data.get("litellm_metadata"))
         clean_internal: Final = {key: value for key, value in internal.items() if key != CONTEXT}
-        if call_type != "aresponses" or data.get("model") not in self.models or not needs_transport(data):
+        if call_type != "aresponses" or not needs_transport(data):
             return {
                 **data,
                 **({"metadata": clean_metadata} if "metadata" in data else {}),

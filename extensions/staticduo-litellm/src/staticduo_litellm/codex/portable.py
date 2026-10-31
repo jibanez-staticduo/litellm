@@ -7,7 +7,7 @@ import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from itertools import chain
-from typing import Final, Protocol
+from typing import Final, Literal, Protocol
 
 from pydantic import TypeAdapter
 
@@ -82,6 +82,17 @@ async def has_legacy_history(data: Mapping[str, object], owner: str, store: Repl
     return False
 
 
+def _message_arguments_kind(item: Mapping[str, object]) -> Literal["plaintext", "invalid", "opaque"]:
+    arguments: Final = item.get("arguments")
+    if not isinstance(arguments, str):
+        return "invalid"
+    try:
+        parsed: Final = _JSON.validate_json(arguments)
+    except ValueError:
+        return "opaque"
+    return "plaintext" if isinstance(object_mapping(parsed).get("message"), str) else "invalid"
+
+
 async def _is_legacy_item(value: object, owner: str, store: ReplayStore) -> bool:
     item: Final = object_mapping(value)
     if item.get("type") in ("compaction", "context_compaction"):
@@ -98,7 +109,11 @@ async def _is_legacy_item(value: object, owner: str, store: ReplayStore) -> bool
         marker: Final = item.get("encrypted_function_args")
         if marker not in (None, []):
             return True
-        if marker is None and not await store.contains(_replay_key(owner, item)):
+        if (
+            marker is None
+            and _message_arguments_kind(item) == "opaque"
+            and not await store.contains(_replay_key(owner, item))
+        ):
             return True
     return False
 
@@ -189,16 +204,19 @@ async def _request_item(value: object, owner: str, store: ReplayStore, *, native
             native_marker: Final = item.get("encrypted_function_args")
             if native_marker not in (None, []):
                 return value
-            if native_marker is None and not await store.contains(_replay_key(owner, item)):
+            if (
+                native_marker is None
+                and (item.get("name") not in _MESSAGE_TOOLS or _message_arguments_kind(item) == "opaque")
+                and not await store.contains(_replay_key(owner, item))
+            ):
                 return value
         if item.get("name") in _MESSAGE_TOOLS:
             marker: Final = item.get("encrypted_function_args")
             if marker not in (None, []):
                 raise PortableTransportError(400, "Encrypted collaboration history cannot use portable transport.")
-            if marker is None and not await store.contains(_replay_key(owner, item)):
-                raise PortableTransportError(
-                    400, "Portable replay proof is unavailable. Start a fresh task on this endpoint."
-                )
+            if _message_arguments_kind(item) != "plaintext":
+                raise PortableTransportError(400, "Portable collaboration arguments require a plaintext message string.")
+            _replay_key(owner, item)
         return {**item, "namespace": _NAMESPACE}
     if item.get("type") != "agent_message":
         return value
