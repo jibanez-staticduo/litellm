@@ -215,7 +215,9 @@ async def _request_item(value: object, owner: str, store: ReplayStore, *, native
             if marker not in (None, []):
                 raise PortableTransportError(400, "Encrypted collaboration history cannot use portable transport.")
             if _message_arguments_kind(item) != "plaintext":
-                raise PortableTransportError(400, "Portable collaboration arguments require a plaintext message string.")
+                raise PortableTransportError(
+                    400, "Portable collaboration arguments require a plaintext message string."
+                )
             _replay_key(owner, item)
         return {**item, "namespace": _NAMESPACE}
     if item.get("type") != "agent_message":

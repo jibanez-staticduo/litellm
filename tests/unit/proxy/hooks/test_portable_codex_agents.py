@@ -201,7 +201,7 @@ async def test_external_to_native_model_switch_preserves_markerless_calls_and_re
 @pytest.mark.asyncio
 @pytest.mark.parametrize("native_history", [False, True])
 @pytest.mark.parametrize("marker", [None, []])
-@pytest.mark.parametrize("arguments", ['{}', '{"message":7}', '[]', '"message"', None, {"message": "text"}])
+@pytest.mark.parametrize("arguments", ["{}", '{"message":7}', "[]", '"message"', None, {"message": "text"}])
 async def test_plaintext_replay_rejects_invalid_argument_structure(native_history, marker, arguments):
     replay = {**call(), "namespace": "collaboration", "arguments": arguments, "encrypted_function_args": marker}
     with pytest.raises(HTTPException) as error:
